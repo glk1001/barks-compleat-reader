@@ -6,15 +6,19 @@ from pathlib import Path
 
 from loguru import logger
 
+from barks_reader.core import data_pack
 from barks_reader.core.config_info import ConfigInfo, get_app_exe_dir
-from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES
+from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES, DataPackInfo, UpdateStatus
 from barks_reader.core.reader_consts_and_types import FANTAGRAPHICS_BARKS_LIBRARY
-from barks_reader.core.reader_utils import quote_and_join_with_and
+from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.installer_support import (
     ZIP_CONFIGS_SUBDIR,
     ZIP_READER_FILES_SUBDIR,
     InstallerDataError,
     extract_subdir,
+    install_reader_files,
+    read_member,
+    require_subdir,
     subdir_bytes,
 )
 from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
@@ -23,6 +27,8 @@ _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Installation"
 
 _EXPECTED_FANTA_VOLUMES_DIR_NAME = FANTAGRAPHICS_BARKS_LIBRARY
+
+_REPORT_NOT_SHOWN = "The install is complete, but its report could not be shown:"
 
 # The window the installer works behind, and then reports in.
 _WINDOW_SIZE = (800, 950)
@@ -35,9 +41,11 @@ _PROGRESS_MESSAGE = (
 
 _CONFIG_UNREADABLE_DETAILS = (
     "The config file was just extracted from the installer data pack, so it should be"
-    " readable. Check the file exists and is not empty, then delete the"
-    ' "config" directory and run the installer again.'
+    " readable. Download the data packs again, then run the Barks Reader again: it"
+    " starts the install afresh."
 )
+# What the app's config waits as until the data is in place (`_install_app_config`).
+_PENDING_SUFFIX = ".new"
 
 # Directory of the running standalone executable, beside which the installer data
 # zips are shipped and into which config/data are installed.
@@ -58,6 +66,14 @@ sys.excepthook = _handle_uncaught_exception
 
 
 def main() -> None:
+    """Install the configs and the data packs beside the executable, and report.
+
+    The app's own config (the file `ConfigInfo.is_app_installed` looks for) is written
+    last, once the data is in place: a failed or interrupted install leaves the app not
+    installed, and the next launch runs this again. Any failure before that sets the
+    failed flag, shows the installer's error popup and exits the process; nothing after
+    it does, since the install is then complete.
+    """
     from barks_reader.core.config_info import (  # noqa: PLC0415
         ConfigInfo,
         remove_barks_reader_installer_failed_flag,
@@ -95,9 +111,9 @@ def main() -> None:
             return
 
         logger.info("Checking that the installer zips are OK.")
-        installer_zip_paths = _check_installer_zips()
+        pack = _check_installer_zips()
 
-        fanta_volumes_dir, success_shown = _run_installer(config_info, installer_zip_paths)
+        fanta_volumes_dir, success_shown = _run_installer(config_info, pack)
 
     except InstallerDataError as e:
         logger.error(f"An installer data error occurred: {e.message} {e.details}")
@@ -107,7 +123,11 @@ def main() -> None:
         _handle_installer_exception(*sys.exc_info())
     else:
         if not success_shown:
-            _show_success_message(config_info, fanta_volumes_dir)
+            # The install is complete: a report that cannot be drawn must not fail it.
+            try:
+                _show_success_message(config_info, fanta_volumes_dir)
+            except Exception:  # noqa: BLE001
+                logger.exception(_REPORT_NOT_SHOWN)
 
 
 def _show_success_message(
@@ -157,30 +177,42 @@ def _check_barks_reader_exe_location(config_info: ConfigInfo) -> None:
         _handle_wrong_exe_error(running_exe, expected_exe_name)
 
 
-def _check_installer_zips() -> list[Path]:
-    installer_zip_paths = []
+def _check_installer_zips() -> DataPackInfo:
+    """Check the two data packs beside the executable, as an update checks its packs.
+
+    Returns:
+        The version both packs carry.
+
+    Raises:
+        InstallerDataError: A pack cannot be read, was re-zipped, carries no version,
+            or the two are from different releases.
+
+    """
     # The data packs' names (and why they are not ".zip"): core/data_pack.py.
-    for zip_file in DATA_PACK_FILE_NAMES:
-        installer_zip = _barks_reader_exe_dir / zip_file
+    logger.info(f'Checking the installer zips in "{_barks_reader_exe_dir}".')
+    # No installed version: a first install takes whatever version the packs are.
+    check = data_pack.find_update(_barks_reader_exe_dir, None)
 
-        logger.info(f'Checking existence of installer zip: "{installer_zip}".')
+    if check.status is UpdateStatus.PACKS_MISSING:
+        _handle_could_not_find_data_zip_error(_barks_reader_exe_dir / check.missing[0])
+    if check.status is UpdateStatus.PACKS_NOT_VERSIONED:
+        # A re-zipped pack has no version file where it is looked for either: say that.
+        for pack_name in check.missing:
+            require_subdir(_barks_reader_exe_dir / pack_name, ZIP_READER_FILES_SUBDIR)
+    if check.available is None:
+        msg = "The Barks Reader data packs cannot be installed."
+        raise InstallerDataError(msg, check.no_update_message())
 
-        if not installer_zip.is_file():
-            _handle_could_not_find_data_zip_error(installer_zip)
-
-        installer_zip_paths.append(installer_zip)
-
-    return installer_zip_paths
+    logger.info(f'Found {check.available.display()} in "{_barks_reader_exe_dir}".')
+    return check.available
 
 
-def _run_installer(
-    config_info: ConfigInfo, installer_zip_paths: list[Path]
-) -> tuple[Path | None, bool]:
+def _run_installer(config_info: ConfigInfo, pack: DataPackInfo) -> tuple[Path | None, bool]:
     """Install the configs, then the data behind a window showing its progress.
 
     Returns:
         The Fantagraphics volumes folder, if one was found, and whether the success
-        message has been shown already (in the progress window).
+        message has been dealt with already (in the progress window).
 
     """
     from barks_reader.installer_progress import (  # noqa: PLC0415
@@ -188,31 +220,33 @@ def _run_installer(
         run_showing_progress,
     )
 
-    assert len(installer_zip_paths) == 2  # noqa: PLR2004
-
-    logger.info(
-        f'Found installer zips "{quote_and_join_with_and(installer_zip_paths)}".'
-        f" Continuing with installer script."
-    )
+    installer_zip_paths = [_barks_reader_exe_dir / name for name in DATA_PACK_FILE_NAMES]
 
     logger.info(
         f'Installing Barks Reader and Kivy configs to directory "{config_info.app_config_dir}".'
     )
     # The configs first, and before the window: they are small, and Kivy's own are
-    # among them, so the window opens as the packs set it up.
-    extract_subdir(installer_zip_paths[0], ZIP_CONFIGS_SUBDIR, config_info.app_config_dir)
+    # among them, so the window opens as the packs set it up. All but the app's own:
+    # it is what says the app is installed, so it waits until the data is in place.
+    extract_subdir(
+        installer_zip_paths[0],
+        ZIP_CONFIGS_SUBDIR,
+        config_info.app_config_dir,
+        skip=(config_info.app_config_path.name,),
+    )
 
-    reader_files_dir = config_info.app_data_dir / ZIP_READER_FILES_SUBDIR
+    reader_files_dir = ReaderSettings.get_reader_files_dir(config_info.app_data_dir)
     progress = ByteProgress(
         sum(subdir_bytes(zip_path, ZIP_READER_FILES_SUBDIR) for zip_path in installer_zip_paths)
     )
+    installed: list[Path | None] = []
 
     def install_data() -> Path | None:
         logger.info(f'Installing Barks Reader support files to directory "{reader_files_dir}".')
-        for zip_path in installer_zip_paths:
-            extract_subdir(zip_path, ZIP_READER_FILES_SUBDIR, reader_files_dir, progress.add)
-        fanta_volumes_dir = _configure_fanta_volumes_for_platform(config_info)
+        install_reader_files(pack, _barks_reader_exe_dir, reader_files_dir, progress.add)
+        fanta_volumes_dir = _install_app_config(config_info, installer_zip_paths[0])
         logger.info("Finished installing config and data files.")
+        installed.append(fanta_volumes_dir)
         return fanta_volumes_dir
 
     def show_success(fanta_volumes_dir: Path | None, end_loop: Callable[[], None]) -> None:
@@ -220,17 +254,51 @@ def _run_installer(
             config_info, fanta_volumes_dir, on_dismiss=end_loop, in_running_loop=True
         )
 
-    return run_showing_progress(
-        install_data,
-        progress,
-        title=_PROGRESS_TITLE,
-        message=_PROGRESS_MESSAGE,
-        window_size=_WINDOW_SIZE,
-        show_next=show_success,
-    )
+    try:
+        return run_showing_progress(
+            install_data,
+            progress,
+            title=_PROGRESS_TITLE,
+            message=_PROGRESS_MESSAGE,
+            window_size=_WINDOW_SIZE,
+            show_next=show_success,
+        )
+    except Exception:
+        if not installed:
+            raise
+        # The work is done, and the report that followed it in the window failed. The
+        # app is installed, so this is not a failed install; nor is the report tried
+        # again outside a window loop that has just died.
+        logger.exception(_REPORT_NOT_SHOWN)
+        return installed[0], True
 
 
-def _configure_fanta_volumes_for_platform(config_info: ConfigInfo) -> Path | None:
+def _install_app_config(config_info: ConfigInfo, installer_zip: Path) -> Path | None:
+    """Write the app's config, the install's last step: with it, the app is installed.
+
+    The pack's copy is written under a pending name, pointed at the Fantagraphics
+    volumes, and only then renamed into place, so the config is never there half-made.
+
+    Returns:
+        The Fantagraphics volumes folder, if one was found.
+
+    """
+    config_path = config_info.app_config_path
+    pending_path = config_path.with_name(config_path.name + _PENDING_SUFFIX)
+    pending_path.write_bytes(read_member(installer_zip, ZIP_CONFIGS_SUBDIR + config_path.name))
+    try:
+        fanta_volumes_dir = _configure_fanta_volumes_for_platform(config_info, pending_path)
+        pending_path.replace(config_path)
+    finally:
+        pending_path.unlink(missing_ok=True)
+    logger.info(f'Installed the Barks Reader config "{config_path}".')
+    return fanta_volumes_dir
+
+
+def _configure_fanta_volumes_for_platform(
+    config_info: ConfigInfo, config_path: Path
+) -> Path | None:
+    """Point the config at ``config_path`` at the Fantagraphics volumes folder, if found."""
     from barks_reader.core.config_info import find_fanta_volumes_dirpath  # noqa: PLC0415
     from barks_reader.core.reader_settings import BARKS_READER_SECTION, FANTA_DIR  # noqa: PLC0415
 
@@ -245,22 +313,19 @@ def _configure_fanta_volumes_for_platform(config_info: ConfigInfo) -> Path | Non
 
     # ConfigParser.read silently skips a file it cannot open, so check its result.
     barks_config = ConfigParser()
-    files_read = barks_config.read(config_info.app_config_path)
+    files_read = barks_config.read(config_path)
     if not files_read:
-        msg = (
-            f"Could not read the newly installed Barks Reader config:"
-            f'\n\n[b]"{config_info.app_config_path}".[/b]'
-        )
+        msg = f'Could not read the newly installed Barks Reader config:\n\n[b]"{config_path}".[/b]'
         raise InstallerDataError(msg, _CONFIG_UNREADABLE_DETAILS)
     if not barks_config.has_section(BARKS_READER_SECTION):
         msg = (
             f'The newly installed Barks Reader config has no "[{BARKS_READER_SECTION}]"'
-            f' section:\n\n[b]"{config_info.app_config_path}".[/b]'
+            f' section:\n\n[b]"{config_path}".[/b]'
         )
         raise InstallerDataError(msg, _CONFIG_UNREADABLE_DETAILS)
 
     barks_config.set(BARKS_READER_SECTION, FANTA_DIR, str(fanta_volumes_dir))
-    with config_info.app_config_path.open("w") as configfile:
+    with config_path.open("w") as configfile:
         barks_config.write(configfile)
     logger.info(f'Rewrote fanta volumes setting as "{fanta_volumes_dir}".')
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from configparser import ConfigParser
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
@@ -23,7 +24,12 @@ from barks_reader import (  # noqa: E402
     installer_progress,
 )
 from barks_reader.core import config_info as config_info_module  # noqa: E402
-from barks_reader.core import reader_utils  # noqa: E402
+from barks_reader.core import data_pack, reader_utils  # noqa: E402
+from barks_reader.core.data_pack import (  # noqa: E402
+    DATA_PACK_FILE_NAMES,
+    PACK_MEMBER,
+    DataPackInfo,
+)
 from barks_reader.installer_support import InstallerDataError  # noqa: E402
 from barks_reader.ui import kivy_standalone_error_popup  # noqa: E402
 
@@ -31,6 +37,16 @@ from barks_reader.ui import kivy_standalone_error_popup  # noqa: E402
 sys.excepthook = _saved_excepthook
 
 _INI_TEXT = "[Barks Reader]\nfanta_dir = Fantagraphics Volumes\n"
+_KIVY_INI_TEXT = "[kivy]\n"
+
+
+def _info(version: int) -> DataPackInfo:
+    entries = {
+        "one.txt": {"files": 1, "bytes": 1, "md5": "a"},
+        "two.txt": {"files": 1, "bytes": 1, "md5": "b"},
+    }
+    built = datetime(2026, 10, 29, tzinfo=UTC)
+    return DataPackInfo(version, f"data-v{version}", built, "main-pc", entries)
 
 
 def _make_zip(zip_path: Path, entries: dict[str, str]) -> Path:
@@ -64,7 +80,7 @@ class TestConfigureFantaVolumes:
         config_info.app_config_path.write_text(_INI_TEXT)
 
         result = first_run_installer._configure_fanta_volumes_for_platform(  # noqa: SLF001
-            config_info
+            config_info, config_info.app_config_path
         )
 
         assert result == fanta_dir
@@ -80,7 +96,7 @@ class TestConfigureFantaVolumes:
 
         with pytest.raises(InstallerDataError, match="Could not read") as exc_info:
             first_run_installer._configure_fanta_volumes_for_platform(  # noqa: SLF001
-                config_info
+                config_info, config_info.app_config_path
             )
 
         assert str(config_info.app_config_path) in exc_info.value.message
@@ -93,7 +109,7 @@ class TestConfigureFantaVolumes:
 
         with pytest.raises(InstallerDataError, match=r"no .*section"):
             first_run_installer._configure_fanta_volumes_for_platform(  # noqa: SLF001
-                config_info
+                config_info, config_info.app_config_path
             )
 
 
@@ -110,14 +126,38 @@ class _Install:
     def failed_flag(self) -> Path:
         return self.exe_dir / config_info_module.BARKS_READER_INSTALLER_FAILED_FLAG_FILE
 
-    def write_packs(self, first: dict[str, str] | None = None) -> None:
-        _make_zip(
-            self.exe_dir / "barks-reader-data-1.barkspack",
-            first
-            if first is not None
-            else {"Configs/barks-reader.ini": _INI_TEXT, "Reader Files/one.txt": "1"},
-        )
-        _make_zip(self.exe_dir / "barks-reader-data-2.barkspack", {"Reader Files/two.txt": "2"})
+    @property
+    def reader_files(self) -> Path:
+        return self.config_info.app_data_dir / "Reader Files"
+
+    @property
+    def installed(self) -> bool:
+        """Whether the next launch would take the app as installed."""
+        return self.config_info.is_app_installed()
+
+    def write_packs(
+        self,
+        first: dict[str, str] | None = None,
+        *,
+        versions: tuple[int | None, int | None] = (6, 6),
+        two: str = "2",
+    ) -> None:
+        """Write both packs; `first` replaces the whole of pack 1, version file and all."""
+        packs: list[dict[str, str]] = [
+            {
+                "Configs/barks-reader.ini": _INI_TEXT,
+                "Configs/kivy/config.ini": _KIVY_INI_TEXT,
+                "Reader Files/one.txt": "1",
+            },
+            {"Reader Files/two.txt": two},
+        ]
+        for pack, version in zip(packs, versions, strict=True):
+            if version is not None:
+                pack[PACK_MEMBER] = _info(version).to_json()
+        if first is not None:
+            packs[0] = first
+        for name, pack in zip(DATA_PACK_FILE_NAMES, packs, strict=True):
+            _make_zip(self.exe_dir / name, pack)
 
     def error_message(self) -> str:
         return self.error_popup.call_args.kwargs["message"]
@@ -173,9 +213,13 @@ class TestMain:
 
         first_run_installer.main()
 
-        data_dir = install.config_info.app_data_dir / "Reader Files"
-        assert (data_dir / "one.txt").read_text() == "1"
-        assert (data_dir / "two.txt").read_text() == "2"
+        assert (install.reader_files / "one.txt").read_text() == "1"
+        assert (install.reader_files / "two.txt").read_text() == "2"
+        assert data_pack.read_installed(install.reader_files) == _info(6)
+        assert not install.reader_files.with_name("Reader Files.new").exists()
+        kivy_ini = install.config_info.app_config_dir / "kivy" / "config.ini"
+        assert kivy_ini.read_text() == _KIVY_INI_TEXT
+        assert list(install.config_info.app_config_dir.glob("*.new")) == []
         parser = ConfigParser()
         parser.read(install.config_info.app_config_path)
         assert parser.get("Barks Reader", "fanta_dir") == str(install.fanta_dir)
@@ -202,7 +246,7 @@ class TestMain:
         first_run_installer.main()
 
         _work, progress = install.progress.call_args.args
-        assert progress.total == len("1") + len("2")
+        assert progress.total > len("1") + len("2")  # and each pack's version file
         assert progress.fraction == 1.0
         assert install.progress.call_args.kwargs["title"] == "Installing the Barks Reader"
 
@@ -282,27 +326,204 @@ class TestMain:
         assert install.error_message() == "The compiled panel module failed to load."
 
     def test_a_re_zipped_pack_fails_with_its_details_shown(self, install: _Install) -> None:
-        install.write_packs({"barks-reader-data-1/Configs/barks-reader.ini": _INI_TEXT})
+        install.write_packs({"barks-reader-data-1/Reader Files/one.txt": "1"})
 
         with pytest.raises(SystemExit):
             first_run_installer.main()
 
         assert install.failed_flag.exists()
         kwargs = install.error_popup.call_args.kwargs
-        assert '"Configs/"' in kwargs["message"]
+        assert '"Reader Files/"' in kwargs["message"]
         assert "re-zipped" in kwargs["details"]
         assert kwargs["show_details"] is True
+        assert not install.installed
 
-    def test_anything_unexpected_fails_with_its_traceback(self, install: _Install) -> None:
+    def test_a_pack_that_is_no_zip_is_reported_as_a_bad_download(self, install: _Install) -> None:
         install.write_packs()
-        (install.exe_dir / "barks-reader-data-2.barkspack").write_bytes(b"not a zip")
+        (install.exe_dir / DATA_PACK_FILE_NAMES[1]).write_bytes(b"not a zip")
 
         with pytest.raises(SystemExit):
             first_run_installer.main()
 
         assert install.failed_flag.exists()
-        assert install.error_message().startswith("BadZipFile: ")
+        assert install.error_message() == "The Barks Reader data packs cannot be installed."
+        details = install.error_popup.call_args.kwargs["details"]
+        assert DATA_PACK_FILE_NAMES[1] in details
+        assert "download it again" in details
+        install.progress.assert_not_called()
+
+    def test_packs_from_different_releases_are_refused(self, install: _Install) -> None:
+        install.write_packs(versions=(5, 6))
+
+        with pytest.raises(SystemExit):
+            first_run_installer.main()
+
+        details = install.error_popup.call_args.kwargs["details"]
+        assert "different versions (data pack 5 and data pack 6)" in details
+        assert not install.reader_files.exists()
+        assert not install.installed
+
+    @pytest.mark.parametrize("versions", [(None, 6), (None, None)])
+    def test_packs_with_no_version_are_refused(
+        self, install: _Install, versions: tuple[int | None, int | None]
+    ) -> None:
+        install.write_packs(versions=versions)
+
+        with pytest.raises(SystemExit):
+            first_run_installer.main()
+
+        details = install.error_popup.call_args.kwargs["details"]
+        assert "older than the first versioned pack" in details
+        assert not install.reader_files.exists()
+        assert not install.installed
+
+    def test_data_that_is_not_what_the_packs_promised_is_not_installed(
+        self, install: _Install
+    ) -> None:
+        install.write_packs(two="too long")
+
+        with pytest.raises(SystemExit):
+            first_run_installer.main()
+
+        assert install.failed_flag.exists()
+        assert "not what its packs promised" in install.error_message()
+        details = install.error_popup.call_args.kwargs["details"]
+        assert '"two.txt" is 8 bytes, not the 1' in details
+        assert "left as it was" not in details  # nothing was installed before
+        assert not install.reader_files.exists()
+        assert not install.reader_files.with_name("Reader Files.new").exists()
+        assert not install.installed
+
+    def test_anything_unexpected_fails_with_its_traceback(self, install: _Install) -> None:
+        install.write_packs()
+
+        with (
+            patch.object(
+                first_run_installer, "install_reader_files", side_effect=RuntimeError("boom")
+            ),
+            pytest.raises(SystemExit),
+        ):
+            first_run_installer.main()
+
+        assert install.failed_flag.exists()
+        assert install.error_message() == "RuntimeError: boom"
         assert "Traceback" in install.error_popup.call_args.kwargs["details"]
+        assert not install.installed
+
+    def test_the_apps_config_is_written_only_once_the_data_is_in_place(
+        self, install: _Install
+    ) -> None:
+        """The config says "installed", so it must not exist while the data is unpacked."""
+        install.write_packs()
+        seen: list[tuple[bool, bool]] = []
+
+        def before_the_work(work: Any, *_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            kivy_ini = install.config_info.app_config_dir / "kivy" / "config.ini"
+            seen.append((kivy_ini.is_file(), install.installed))
+            return work(), False
+
+        install.progress.side_effect = before_the_work
+
+        first_run_installer.main()
+
+        assert seen == [(True, False)]  # Kivy's config for the window, not yet the app's
+        assert install.installed
+
+    def test_a_config_the_pack_lacks_fails_with_nothing_left_pending(
+        self, install: _Install
+    ) -> None:
+        install.write_packs(
+            {"Configs/kivy/config.ini": _KIVY_INI_TEXT, "Reader Files/one.txt": "1"},
+            versions=(None, 6),
+        )
+        with ZipFile(install.exe_dir / DATA_PACK_FILE_NAMES[0], "a") as pack:
+            pack.writestr(PACK_MEMBER, _info(6).to_json())
+
+        with pytest.raises(SystemExit):
+            first_run_installer.main()
+
+        assert 'has no "Configs/barks-reader.ini"' in install.error_message()
+        assert not install.installed
+
+    def test_a_config_with_no_section_fails_with_nothing_left_pending(
+        self, install: _Install
+    ) -> None:
+        install.write_packs(
+            {"Configs/barks-reader.ini": "[Other]\nkey = value\n", "Reader Files/one.txt": "1"},
+            versions=(None, 6),
+        )
+        with ZipFile(install.exe_dir / DATA_PACK_FILE_NAMES[0], "a") as pack:
+            pack.writestr(PACK_MEMBER, _info(6).to_json())
+
+        with pytest.raises(SystemExit):
+            first_run_installer.main()
+
+        assert "section" in install.error_message()
+        assert not install.installed
+        assert list(install.config_info.app_config_dir.glob("*.new")) == []
+
+    def test_a_failed_install_runs_again_and_succeeds(self, install: _Install) -> None:
+        """A failure leaves the app not installed, so the next launch installs it afresh."""
+        install.write_packs(two="too long")
+        with pytest.raises(SystemExit):
+            first_run_installer.main()
+        assert install.failed_flag.exists()
+        assert not install.installed  # so main.py runs the installer again
+
+        install.write_packs()
+        first_run_installer.main()
+
+        assert install.installed
+        assert not install.failed_flag.exists()
+        assert (install.reader_files / "two.txt").read_text() == "2"
+        install.success_message.assert_called_once()
+
+    def test_what_an_interrupted_install_left_is_replaced(self, install: _Install) -> None:
+        """A killed install's folders, and a Reader Files with no config, are not kept."""
+        install.write_packs()
+        for folder in (install.reader_files, install.reader_files.with_name("Reader Files.new")):
+            folder.mkdir(parents=True)
+            (folder / "half.txt").write_text("half")
+
+        first_run_installer.main()
+
+        assert not (install.reader_files / "half.txt").exists()
+        assert (install.reader_files / "one.txt").read_text() == "1"
+        assert not install.reader_files.with_name("Reader Files.old").exists()
+        assert install.installed
+
+    def test_a_report_that_cannot_be_shown_does_not_fail_the_install(
+        self, install: _Install
+    ) -> None:
+        install.write_packs()
+        install.success_message.side_effect = RuntimeError("no font")
+
+        first_run_installer.main()  # and no SystemExit
+
+        assert install.installed
+        assert not install.failed_flag.exists()
+        install.error_popup.assert_not_called()
+        log = (install.exe_dir / "installer.log").read_text()
+        assert "The install is complete, but its report could not be shown:" in log
+
+    def test_a_report_that_fails_in_the_progress_window_does_not_fail_the_install(
+        self, install: _Install
+    ) -> None:
+        """As `run_showing_progress` does: the work done, it raises what `show_next` raised."""
+        install.write_packs()
+        install.success_message.side_effect = RuntimeError("no font")
+
+        def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            show_next(work(), MagicMock())
+
+        install.progress.side_effect = with_a_window
+
+        first_run_installer.main()
+
+        assert install.installed
+        assert not install.failed_flag.exists()
+        install.error_popup.assert_not_called()
+        install.success_message.assert_called_once()  # not tried again with no window
 
 
 def test_an_uncaught_exception_gets_the_installers_popup() -> None:
