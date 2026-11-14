@@ -41,7 +41,20 @@ def get_ocr_prelim_dir(ocr_root_dir: Path = OCR_ROOT_DIR) -> Path:
     return prelim_dir
 
 
-OCR_PRELIM_DIR = get_ocr_prelim_dir()
+# Looked up when first asked for, not at import: the reader imports this module (through
+# the search engine) and never uses the prelim tree, so a stale override must not stop it.
+OCR_PRELIM_DIR: Path
+
+
+def __getattr__(name: str) -> Path:
+    if name == "OCR_PRELIM_DIR":
+        prelim_dir = get_ocr_prelim_dir()
+        globals()[name] = prelim_dir
+        return prelim_dir
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
+
+
 OCR_PRELIM_BACKUP_DIR = OCR_ROOT_DIR / "Prelim-backups"
 OCR_RAW_DIR = OCR_ROOT_DIR / "Raw"
 
