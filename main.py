@@ -11,6 +11,7 @@ import os
 import sys
 import threading
 from pathlib import Path
+from types import TracebackType
 
 import typer
 from comic_utils.timing import Timing
@@ -72,7 +73,11 @@ load_dotenv(Path(__file__).parent / ".env.runtime")
 _APP_TYPE = "app"
 
 
-def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
+def handle_uncaught_exception(
+    exc_type: type[BaseException],
+    exc_value: BaseException,
+    exc_traceback: TracebackType | None,
+) -> None:
     """Handle any uncaught exception in the main thread."""
     if issubclass(exc_type, KeyboardInterrupt):
         # Allow Ctrl+C to stop app cleanly.
@@ -90,7 +95,7 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # no
 sys.excepthook = handle_uncaught_exception
 
 
-def handle_thread_exception(args) -> None:  # noqa: ANN001
+def handle_thread_exception(args: threading.ExceptHookArgs) -> None:
     """Handle exceptions raised in background threads."""
     from barks_reader.ui.error_handling import handle_app_fail_with_traceback
 
