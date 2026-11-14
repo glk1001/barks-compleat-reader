@@ -144,6 +144,16 @@ SPLASH_BORDER_WIDTH = 10
 SPLASH_MARGIN = DEST_TARGET_X_MARGIN
 
 
+class PageDataError(ValueError):
+    """A page that cannot be built because of what it was given, not because of a bug.
+
+    A title too long to leave room for its inset, a scan too small to build from: the
+    message says what to go and fix, so a caller can report it in one line. A bare
+    `ValueError` cannot be told apart from one raised by a slip in the code, whose
+    traceback is the thing wanted. A `ValueError` still, for callers that catch that.
+    """
+
+
 class BasePageType(Enum):
     EMPTY_PAGE = auto()
     BLACK_PAGE = auto()
@@ -858,7 +868,7 @@ class ComicBookImageBuilder:
                 f" byline and publication text leave {room} pixels, {inset_room} after the"
                 f" gaps around the inset, and it needs {INTRO_INSET_LEAST_HEIGHT}."
             )
-            raise ValueError(msg)
+            raise PageDataError(msg)
         inset = self._get_resized_inset(
             INTRO_INSET_MAX_WIDTH,
             min(INTRO_INSET_MAX_HEIGHT, inset_room),

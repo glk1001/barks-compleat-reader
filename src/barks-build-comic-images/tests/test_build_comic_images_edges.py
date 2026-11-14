@@ -45,6 +45,7 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_TOP,
     SPLASH_BORDER_COLOR,
     ComicBookImageBuilder,
+    PageDataError,
     _get_inset_border_color,
     _get_title_page_font,
     _PubTextLine,
@@ -455,7 +456,7 @@ class TestTheIntroPageLayout:
     def test_a_title_leaving_too_little_room_for_the_inset_is_refused(self, tmp_path: Path) -> None:
         title = "Too\nMany\nLines\nMake\nOne\nTitle\nPage\nFail"
 
-        with pytest.raises(ValueError, match=r"No room for the intro inset.*inset-300x200") as e:
+        with pytest.raises(PageDataError, match=r"No room for the intro inset.*inset-300x200") as e:
             self._intro_page(tmp_path, (300, 200), title)
 
         assert f"needs {INTRO_INSET_LEAST_HEIGHT}" in str(e.value)
