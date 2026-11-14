@@ -303,6 +303,12 @@ def ok_to_run() -> bool:
     if not barks_reader_installer_failed():
         return True
 
+    from barks_reader.installer_support import clear_stale_failed_flag
+
+    # A flag left by an install that did complete (an older installer's): removed.
+    if clear_stale_failed_flag(ConfigInfo()):
+        return True
+
     logger.critical("Cannot run the Barks Reader. It looks like the Barks Reader installer failed.")
     logger.info(
         f"This is based on finding the Barks Reader FAILED flag"

@@ -8,14 +8,17 @@ from zipfile import ZipFile
 
 from loguru import logger
 
+from barks_reader.core import config_info as config_info_module
 from barks_reader.core import data_pack
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES
+from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_utils import quote_and_join_with_and
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection
     from pathlib import Path
 
+    from barks_reader.core.config_info import ConfigInfo
     from barks_reader.core.data_pack import DataPackInfo
 
 # The two top-level folders inside the packs (build-data-zips.sh).
@@ -40,6 +43,45 @@ class InstallerDataError(Exception):
         super().__init__(message)
         self.message = message
         self.details = details
+
+
+def clear_stale_failed_flag(config_info: ConfigInfo) -> bool:
+    """Remove the first-run installer's failed flag from an install that is in fact whole.
+
+    Until 2026-11-14 an install could end with the flag set and the app installed: its
+    report could not be drawn, say, after everything was in place. Only the installer
+    clears the flag, and an installed app never runs it, so the reader then refused to
+    start for good. The flag is removed when the app's config is there and the Reader
+    Files hold all their version file lists (`data_pack.installed_is_whole`); an install
+    that failed part-way keeps it.
+
+    Args:
+        config_info: The app's folders.
+
+    Returns:
+        Whether the reader can run: there was no flag, or it was stale and is gone.
+
+    """
+    flag_file = config_info_module.get_barks_reader_installer_failed_flag_file()
+    if not flag_file.is_file():
+        return True
+    if not config_info.is_app_installed():
+        return False
+    reader_files = ReaderSettings.get_reader_files_dir(config_info.app_data_dir)
+    if not data_pack.installed_is_whole(reader_files):
+        return False
+    try:
+        flag_file.unlink(missing_ok=True)
+    except OSError as exc:
+        # The folder beside the executable may not be writable: the install is whole
+        # all the same, so the reader runs, and looks again next time.
+        logger.warning(f'Could not remove the stale installer failed flag "{flag_file}": {exc}')
+    else:
+        logger.warning(
+            f'Removed a stale installer failed flag, "{flag_file}": the app is installed'
+            f' and "{reader_files}" is whole.'
+        )
+    return True
 
 
 def subdir_bytes(installer_zip: Path, subdir: str) -> int:

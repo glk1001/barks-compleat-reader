@@ -448,6 +448,38 @@ def verify_extracted(new_dir: Path, expected: DataPackInfo) -> list[str]:
     return problems
 
 
+def installed_is_whole(reader_files_dir: Path) -> bool:
+    """Return whether an installed Reader Files folder holds all its version file lists.
+
+    A closer look than `verify_extracted`, which trusts an extraction that did not
+    fail: this is asked of a folder whose install is in doubt, so every folder listed
+    must hold the bytes the pack said it would. Nothing is hashed.
+
+    Args:
+        reader_files_dir: The installed Reader Files folder.
+
+    Returns:
+        False when the folder has no (readable) version file, or anything it lists is
+        missing or not the size listed.
+
+    """
+    installed = read_installed(reader_files_dir)
+    if installed is None:
+        return False
+    for name, fingerprint in installed.entries.items():
+        path = reader_files_dir / name
+        if path.is_file():
+            size = path.stat().st_size
+        elif path.is_dir():
+            size = sum(file.stat().st_size for file in path.rglob("*") if file.is_file())
+        else:
+            return False
+        if size != fingerprint["bytes"]:
+            logger.info(f'"{path}" is {size:,} bytes, not the {fingerprint["bytes"]:,} listed.')
+            return False
+    return True
+
+
 def new_dir_for(reader_files_dir: Path) -> Path:
     """Return the folder the packs are extracted into before the swap."""
     return reader_files_dir.with_name(reader_files_dir.name + NEW_SUFFIX)

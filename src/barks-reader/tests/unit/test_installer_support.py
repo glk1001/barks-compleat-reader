@@ -3,23 +3,25 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from pathlib import Path
+from unittest.mock import patch
 from zipfile import ZipFile
 
 import pytest
+from barks_reader.core import config_info as config_info_module
 from barks_reader.core import data_pack
+from barks_reader.core.config_info import ConfigInfo
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES, PACK_MEMBER, DataPackInfo
+from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.installer_support import (
     InstallerDataError,
+    clear_stale_failed_flag,
     extract_subdir,
     install_reader_files,
     read_member,
     require_subdir,
     subdir_bytes,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 _INI_TEXT = "[Barks Reader]\nfanta_dir = Fantagraphics Volumes\n"
 
@@ -244,3 +246,66 @@ class TestInstallReaderFiles:
             install_reader_files(info, tmp_path, reader_files)
 
         assert list(reader_files.parent.iterdir()) == []
+
+
+class TestClearStaleFailedFlag:
+    """An install that completed and still has the failed flag (an older installer's)."""
+
+    @pytest.fixture
+    def config_info(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ConfigInfo:
+        """Set up an installed app with whole Reader Files and the failed flag, in tmp_path."""
+        monkeypatch.setenv("BARKS_READER_CONFIG_DIR", str(tmp_path / "config"))
+        monkeypatch.setenv("BARKS_READER_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.setattr(config_info_module, "get_app_exe_dir", lambda: tmp_path)
+        config_info = ConfigInfo()
+        config_info.app_config_path.write_text("[Barks Reader]\n", encoding="utf-8")
+        reader_files = ReaderSettings.get_reader_files_dir(config_info.app_data_dir)
+        reader_files.mkdir(parents=True)
+        built = datetime(2026, 10, 29, 6, 30, tzinfo=UTC)
+        info = DataPackInfo(6, "data-v6", built, "main-pc", {"one.txt": {"bytes": 1}})
+        (reader_files / data_pack.DATA_PACK_FILE_NAME).write_text(info.to_json(), encoding="utf-8")
+        (reader_files / "one.txt").write_text("1", encoding="utf-8")
+        config_info_module.set_barks_reader_installer_failed_flag()
+        return config_info
+
+    @staticmethod
+    def _flag() -> Path:
+        return config_info_module.get_barks_reader_installer_failed_flag_file()
+
+    def test_a_whole_install_loses_its_flag_and_runs(
+        self, config_info: ConfigInfo, loguru_sink: list[str]
+    ) -> None:
+        assert clear_stale_failed_flag(config_info) is True
+
+        assert not self._flag().exists()
+        assert any("Removed a stale installer failed flag" in line for line in loguru_sink)
+
+    def test_no_flag_runs_with_nothing_looked_at(self, config_info: ConfigInfo) -> None:
+        self._flag().unlink()
+
+        with patch.object(data_pack, "installed_is_whole") as looked:
+            assert clear_stale_failed_flag(config_info) is True
+
+        looked.assert_not_called()
+
+    def test_an_app_not_installed_keeps_its_flag(self, config_info: ConfigInfo) -> None:
+        config_info.app_config_path.unlink()
+
+        assert clear_stale_failed_flag(config_info) is False
+        assert self._flag().exists()
+
+    def test_data_that_is_not_whole_keeps_its_flag(self, config_info: ConfigInfo) -> None:
+        reader_files = ReaderSettings.get_reader_files_dir(config_info.app_data_dir)
+        (reader_files / "one.txt").write_text("", encoding="utf-8")
+
+        assert clear_stale_failed_flag(config_info) is False
+        assert self._flag().exists()
+
+    def test_a_flag_that_cannot_be_removed_still_lets_a_whole_install_run(
+        self, config_info: ConfigInfo, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(Path, "unlink", side_effect=PermissionError(13, "read-only")):
+            assert clear_stale_failed_flag(config_info) is True
+
+        assert self._flag().exists()
+        assert any("Could not remove the stale installer failed flag" in ln for ln in loguru_sink)

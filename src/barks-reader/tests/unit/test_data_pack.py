@@ -24,6 +24,7 @@ from barks_reader.core.data_pack import (
     ReaderFilesStrandedError,
     UpdateStatus,
     find_update,
+    installed_is_whole,
     installed_version_text,
     look_for_update,
     pack_dir_for_update,
@@ -360,6 +361,52 @@ class TestFindUpdate:
             f'No newer data pack beside the Barks Reader: the packs in "{tmp_path}" are'
             f" data pack 5, and data pack {installed} is installed."
         )
+
+
+class TestInstalledIsWhole:
+    @pytest.fixture
+    def reader_files(self, tmp_path: Path) -> Path:
+        """Make a Reader Files folder holding what its version file lists: a folder, a file."""
+        info = _info(
+            entries={
+                "Indexes": {"files": 2, "bytes": 5, "md5": "x"},
+                "Barks Panels.zip": {"files": 1, "bytes": 3, "md5": "y"},
+            }
+        )
+        (tmp_path / DATA_PACK_FILE_NAME).write_text(info.to_json(), encoding="utf-8")
+        (tmp_path / "Indexes" / "deeper").mkdir(parents=True)
+        (tmp_path / "Indexes" / "one").write_bytes(b"ab")
+        (tmp_path / "Indexes" / "deeper" / "two").write_bytes(b"abc")
+        (tmp_path / "Barks Panels.zip").write_bytes(b"abc")
+        return tmp_path
+
+    def test_a_folder_holding_all_it_lists_is_whole(self, reader_files: Path) -> None:
+        assert installed_is_whole(reader_files) is True
+
+    def test_a_folder_with_no_version_file_is_not(self, reader_files: Path) -> None:
+        (reader_files / DATA_PACK_FILE_NAME).unlink()
+
+        assert installed_is_whole(reader_files) is False
+
+    def test_a_listed_folder_that_is_missing_is_not_whole(self, reader_files: Path) -> None:
+        (reader_files / "Barks Panels.zip").unlink()
+
+        assert installed_is_whole(reader_files) is False
+
+    def test_a_folder_short_of_its_bytes_is_not_whole(
+        self, reader_files: Path, loguru_sink: list[str]
+    ) -> None:
+        """What an extraction that stopped part-way leaves: `verify_extracted` passes it."""
+        (reader_files / "Indexes" / "deeper" / "two").write_bytes(b"a")
+
+        assert verify_extracted(reader_files, read_installed(reader_files)) == []  # ty: ignore[invalid-argument-type]
+        assert installed_is_whole(reader_files) is False
+        assert any("is 3 bytes, not the 5 listed" in line for line in loguru_sink)
+
+    def test_a_cut_short_file_is_not_whole(self, reader_files: Path) -> None:
+        (reader_files / "Barks Panels.zip").write_bytes(b"ab")
+
+        assert installed_is_whole(reader_files) is False
 
 
 class TestVerifyExtracted:
