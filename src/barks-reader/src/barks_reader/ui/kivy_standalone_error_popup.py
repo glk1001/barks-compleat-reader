@@ -37,24 +37,17 @@ def show_error_popup(
         severity: Error severity level: "critical", "error", "warning", "info"
         details: Additional detailed information (collapsible)
         show_details: If True, drop down the details box
-        size: Size of popup window
+        size: Size of popup window, where the screen has room for it
         background_image_file: Image to put behind everything
 
     """
     from barks_reader.core.popup_frame import FrameButton
-    from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
 
-    from .kivy_standalone_show_message import show_standalone_popup
+    from .kivy_standalone_show_message import place_window, show_standalone_popup
 
-    x, y = get_centred_position_on_primary_monitor(*size)
-
-    # Set the window pos and size now to avoid moving window flicker.
-    from kivy import Config
-
-    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "width", size[0])  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "height", size[1])  # ty: ignore[missing-union-attribute]
+    # Set the window pos and size now to avoid moving window flicker; no larger than
+    # the screen has room for, where the error's text then scrolls.
+    place_window(size)
 
     content = _get_error_content(
         title=title,

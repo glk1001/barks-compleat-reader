@@ -79,9 +79,11 @@ def test_the_text_wraps_to_its_width() -> None:
 
 def test_the_report_scrolls_where_the_window_is_shorter_than_it() -> None:
     """A small screen gets a smaller window (`place_window`); the report must stay reachable."""
-    (scroll_view,) = [w for w in _content().walk() if isinstance(w, ReaderScrollView)]
+    content = _content()
+    (scroll_view,) = [w for w in content.walk() if isinstance(w, ReaderScrollView)]
 
     assert scroll_view.do_scroll_y is True
+    assert content.scroll_view is scroll_view  # where the popup finds it, for Up and Down
 
 
 def test_it_draws_no_card_and_no_button_of_its_own_on_the_frames() -> None:

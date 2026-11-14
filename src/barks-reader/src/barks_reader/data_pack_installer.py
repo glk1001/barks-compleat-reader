@@ -238,8 +238,10 @@ def _show_success_message(
     # Kivy only now: config_info must be constructed before any kivy import (its guard).
     from barks_reader.core.minimal_config_info import get_minimal_config_options  # noqa: PLC0415
     from barks_reader.core.popup_frame import FrameButton  # noqa: PLC0415
-    from barks_reader.installer_progress import place_window  # noqa: PLC0415
-    from barks_reader.ui.kivy_standalone_show_message import show_standalone_popup  # noqa: PLC0415
+    from barks_reader.ui.kivy_standalone_show_message import (  # noqa: PLC0415
+        place_window,
+        show_standalone_popup,
+    )
 
     # Set the window pos and size now to avoid moving window flicker. No OS frame: the
     # popup's own title bar is the window's top.

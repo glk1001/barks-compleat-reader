@@ -15,17 +15,14 @@ import kivy.clock
 import kivy.core.window
 import pytest
 from barks_reader import installer_progress
-from barks_reader.core import boot_splash, reader_utils, screen_metrics
+from barks_reader.core import boot_splash
 from barks_reader.installer_progress import (
     ByteProgress,
-    fit_window_to_screen,
     percent_text,
-    place_window,
     run_showing_progress,
 )
 from barks_reader.ui.popup_frame import PopupFrame
 from kivy.animation import Animation
-from kivy.config import Config
 from kivy.core.window import Window
 from kivy.uix.progressbar import ProgressBar
 
@@ -58,81 +55,6 @@ class TestByteProgress:
 @pytest.mark.parametrize(("fraction", "text"), [(0.0, "0%"), (0.229, "22%"), (1.0, "100%")])
 def test_the_caption_is_a_whole_percentage(fraction: float, text: str) -> None:
     assert percent_text(fraction) == text
-
-
-@pytest.fixture
-def screen(monkeypatch: pytest.MonkeyPatch) -> Callable[[int, int], None]:
-    """Make the primary screen a given size, with a 55-pixel taskbar allowance."""
-
-    def set_size(width: int, height: int) -> None:
-        info = MagicMock(width_pixels=width, height_pixels=height)
-        monkeypatch.setattr(screen_metrics.SCREEN_METRICS, "get_primary_screen_info", lambda: info)
-        monkeypatch.setattr(screen_metrics, "get_approximate_taskbar_height", lambda: 55)
-
-    return set_size
-
-
-class TestFitWindowToScreen:
-    def test_a_window_the_screen_has_room_for_keeps_its_size(
-        self, screen: Callable[[int, int], None]
-    ) -> None:
-        screen(1920, 1080)
-        assert fit_window_to_screen(_SIZE) == _SIZE
-
-    def test_a_window_taller_than_a_laptop_screen_is_cut_to_clear_a_bar_at_either_edge(
-        self, screen: Callable[[int, int], None]
-    ) -> None:
-        screen(1366, 768)
-        assert fit_window_to_screen(_SIZE) == (800, 768 - 2 * 55)
-
-    def test_a_window_wider_than_the_screen_is_cut_to_its_width(
-        self, screen: Callable[[int, int], None]
-    ) -> None:
-        screen(640, 1080)
-        assert fit_window_to_screen(_SIZE) == (640, 950)
-
-    def test_a_window_exactly_the_room_there_is_keeps_its_size(
-        self, screen: Callable[[int, int], None]
-    ) -> None:
-        screen(800, 950 + 2 * 55)
-        assert fit_window_to_screen(_SIZE) == _SIZE
-
-
-class TestPlaceWindow:
-    @pytest.fixture
-    def config_set(self) -> Iterator[MagicMock]:
-        """Kivy's Config is the process's: a test must not leave a window size in it."""
-        with patch.object(Config, "set") as config_set:
-            yield config_set
-
-    @staticmethod
-    def _graphics(config_set: MagicMock) -> dict[str, object]:
-        assert {call.args[0] for call in config_set.call_args_list} == {"graphics"}
-        return {call.args[1]: call.args[2] for call in config_set.call_args_list}
-
-    def test_the_window_is_centred_at_the_size_the_screen_has_room_for(
-        self, screen: Callable[[int, int], None], config_set: MagicMock
-    ) -> None:
-        screen(1366, 768)
-        with patch.object(
-            reader_utils, "get_centred_position_on_primary_monitor", return_value=(283, 55)
-        ) as centred:
-            size = place_window(_SIZE)
-
-        assert size == (800, 658)
-        centred.assert_called_once_with(800, 658)  # the fitted size, so its top is on screen
-        assert self._graphics(config_set) == {"left": 283, "top": 55, "width": 800, "height": 658}
-
-    def test_a_window_with_no_frame_of_the_desktops_says_so(
-        self, screen: Callable[[int, int], None], config_set: MagicMock
-    ) -> None:
-        screen(1920, 1080)
-        with patch.object(
-            reader_utils, "get_centred_position_on_primary_monitor", return_value=(1, 2)
-        ):
-            place_window(_SIZE, borderless=True)
-
-        assert self._graphics(config_set)["borderless"] == "1"
 
 
 @dataclass
@@ -170,7 +92,7 @@ def loop() -> Iterator[_Loop]:
         patch.object(kivy.base, "stopTouchApp") as stop,
         patch.object(Window, "show") as window_show,
         patch.object(boot_splash, "close_boot_splash") as close_splash,
-        # Its own tests are above; here it must not leave a size in Kivy's Config.
+        # Tested with the popups it serves; here it must not leave a size in Kivy's Config.
         patch.object(installer_progress, "place_window") as place,
     ):
         yield _Loop(clock, stop, window_show, close_splash, place)

@@ -448,7 +448,7 @@ class TestSuccessMessage:
         monkeypatch.setattr(sys, "argv", ["/exe/barks-reader"])
         with (
             patch.object(kivy_standalone_show_message, "show_standalone_popup") as popup,
-            patch.object(installer_progress, "place_window") as place_window,
+            patch.object(kivy_standalone_show_message, "place_window") as place_window,
             patch.object(minimal_config_info_module, "get_minimal_config_options") as options,
             patch.object(data_pack_installer, "IS_COMPILED", new=True),
         ):
@@ -482,7 +482,7 @@ class TestSuccessMessage:
         monkeypatch.setattr(sys, "argv", ["/exe/barks-reader"])
         with (
             patch.object(kivy_standalone_show_message, "show_standalone_popup") as popup,
-            patch.object(installer_progress, "place_window"),
+            patch.object(kivy_standalone_show_message, "place_window"),
             patch.object(
                 minimal_config_info_module,
                 "get_minimal_config_options",
@@ -501,7 +501,7 @@ class TestSuccessMessage:
     ) -> None:
         with (
             patch.object(kivy_standalone_show_message, "show_standalone_popup") as popup,
-            patch.object(installer_progress, "place_window"),
+            patch.object(kivy_standalone_show_message, "place_window"),
             patch.object(minimal_config_info_module, "get_minimal_config_options"),
         ):
             data_pack_installer.preview_success_message()

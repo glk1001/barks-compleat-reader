@@ -16,25 +16,29 @@ import kivy.app
 import kivy.base
 import kivy.clock
 import pytest
-from barks_reader.core import log_markers
-from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE
+from barks_kivy_ui.scrolling import ReaderScrollView
+from barks_reader.core import log_markers, reader_utils, screen_metrics
+from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_UP
 from barks_reader.core.popup_frame import FrameButton, PopupSize
 from barks_reader.ui import kivy_standalone_show_message
 from barks_reader.ui.kivy_standalone_show_message import divider_line, show_standalone_popup
 from barks_reader.ui.popup_frame import PopupFrame
 from kivy.animation import Animation
+from kivy.config import Config
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.image import Image
+from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
     from pathlib import Path
 
     from kivy.uix.modalview import ModalView
 
 _TITLE = "Barks Reader Installation"
+_SIZE = (800, 950)
 
 
 @dataclass
@@ -283,3 +287,136 @@ def test_a_divider_line_is_one_pixel_and_follows_its_widget() -> None:
     line.size = (200, 1)
     assert line.height == 1
     assert (tuple(line.rect.pos), tuple(line.rect.size)) == ((5, 6), (200, 1))
+
+
+@pytest.fixture
+def screen(monkeypatch: pytest.MonkeyPatch) -> Callable[[int, int], None]:
+    """Make the primary screen a given size, with a 55-pixel taskbar allowance."""
+
+    def set_size(width: int, height: int) -> None:
+        info = MagicMock(width_pixels=width, height_pixels=height)
+        monkeypatch.setattr(screen_metrics.SCREEN_METRICS, "get_primary_screen_info", lambda: info)
+        monkeypatch.setattr(screen_metrics, "get_approximate_taskbar_height", lambda: 55)
+
+    return set_size
+
+
+class TestFitWindowToScreen:
+    def test_a_window_the_screen_has_room_for_keeps_its_size(
+        self, screen: Callable[[int, int], None]
+    ) -> None:
+        screen(1920, 1080)
+        assert kivy_standalone_show_message.fit_window_to_screen(_SIZE) == _SIZE
+
+    def test_a_window_taller_than_a_laptop_screen_is_cut_to_clear_a_bar_at_either_edge(
+        self, screen: Callable[[int, int], None]
+    ) -> None:
+        screen(1366, 768)
+        assert kivy_standalone_show_message.fit_window_to_screen(_SIZE) == (800, 768 - 2 * 55)
+
+    def test_a_window_wider_than_the_screen_is_cut_to_its_width(
+        self, screen: Callable[[int, int], None]
+    ) -> None:
+        screen(640, 1080)
+        assert kivy_standalone_show_message.fit_window_to_screen(_SIZE) == (640, 950)
+
+    def test_a_window_exactly_the_room_there_is_keeps_its_size(
+        self, screen: Callable[[int, int], None]
+    ) -> None:
+        screen(800, 950 + 2 * 55)
+        assert kivy_standalone_show_message.fit_window_to_screen(_SIZE) == _SIZE
+
+
+class TestPlaceWindow:
+    @pytest.fixture
+    def config_set(self) -> Iterator[MagicMock]:
+        """Kivy's Config is the process's: a test must not leave a window size in it."""
+        with patch.object(Config, "set") as config_set:
+            yield config_set
+
+    @staticmethod
+    def _graphics(config_set: MagicMock) -> dict[str, object]:
+        assert {call.args[0] for call in config_set.call_args_list} == {"graphics"}
+        return {call.args[1]: call.args[2] for call in config_set.call_args_list}
+
+    def test_the_window_is_centred_at_the_size_the_screen_has_room_for(
+        self, screen: Callable[[int, int], None], config_set: MagicMock
+    ) -> None:
+        screen(1366, 768)
+        with patch.object(
+            reader_utils, "get_centred_position_on_primary_monitor", return_value=(283, 55)
+        ) as centred:
+            size = kivy_standalone_show_message.place_window(_SIZE)
+
+        assert size == (800, 658)
+        centred.assert_called_once_with(800, 658)  # the fitted size, so its top is on screen
+        assert self._graphics(config_set) == {"left": 283, "top": 55, "width": 800, "height": 658}
+
+    def test_a_window_with_no_frame_of_the_desktops_says_so(
+        self, screen: Callable[[int, int], None], config_set: MagicMock
+    ) -> None:
+        screen(1920, 1080)
+        with patch.object(
+            reader_utils, "get_centred_position_on_primary_monitor", return_value=(1, 2)
+        ):
+            kivy_standalone_show_message.place_window(_SIZE, borderless=True)
+
+        assert self._graphics(config_set)["borderless"] == "1"
+
+
+def _scrolling(view_height: int, text_height: int) -> ReaderScrollView:
+    scroll_view = ReaderScrollView(size_hint=(None, None), size=(400, view_height))
+    scroll_view.add_widget(Widget(size_hint=(None, None), size=(400, text_height)))
+    return scroll_view
+
+
+class TestScrollKeys:
+    def test_down_and_up_move_the_text_a_quarter_of_what_shows(self) -> None:
+        scroll_view = _scrolling(400, 800)  # 400 hidden: a press moves 100 of them
+        on_key = kivy_standalone_show_message.scroll_keys(scroll_view)
+
+        assert on_key(KEY_DOWN) is True
+        assert scroll_view.scroll_y == pytest.approx(0.75)
+        assert on_key(KEY_UP) is True
+        assert scroll_view.scroll_y == pytest.approx(1.0)
+
+    def test_it_stops_at_the_top_and_at_the_foot(self) -> None:
+        scroll_view = _scrolling(400, 500)  # a press is the whole of what is hidden
+        on_key = kivy_standalone_show_message.scroll_keys(scroll_view)
+
+        on_key(KEY_UP)
+        assert scroll_view.scroll_y == 1.0
+        on_key(KEY_DOWN)
+        on_key(KEY_DOWN)
+        assert scroll_view.scroll_y == 0.0
+
+    def test_text_that_all_shows_is_left_where_it_is(self) -> None:
+        scroll_view = _scrolling(400, 300)
+        on_key = kivy_standalone_show_message.scroll_keys(scroll_view)
+
+        assert on_key(KEY_DOWN) is True  # still the popup's key: it reaches nothing else
+        assert scroll_view.scroll_y == 1.0
+
+    def test_a_view_with_nothing_in_it_is_no_error(self) -> None:
+        on_key = kivy_standalone_show_message.scroll_keys(ReaderScrollView())
+
+        assert on_key(KEY_DOWN) is True
+
+    def test_other_keys_are_left_to_the_popup(self) -> None:
+        on_key = kivy_standalone_show_message.scroll_keys(_scrolling(400, 800))
+
+        assert on_key(KEY_ENTER) is False
+        assert on_key(KEY_LEFT) is False
+
+    def test_a_popup_whose_content_scrolls_is_scrolled_by_the_remote(self, app: _Loop) -> None:
+        app.content.scroll_view = _scrolling(400, 800)
+        _open(app, buttons=(FrameButton("OK", lambda: None),))
+
+        assert Window.dispatch("on_key_down", KEY_DOWN, 0, None, [])
+
+        assert app.content.scroll_view.scroll_y == pytest.approx(0.75)
+
+    def test_content_with_nothing_to_scroll_gets_no_key_handler(self, app: _Loop) -> None:
+        popup = _open(app)
+
+        assert popup.key_handler is None

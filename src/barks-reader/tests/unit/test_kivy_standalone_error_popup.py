@@ -15,13 +15,11 @@ from unittest.mock import MagicMock, patch
 import kivy.clock
 import kivy.core.clipboard
 import pytest
-from barks_reader.core import reader_utils
 from barks_reader.ui import (
     error_handling,
     kivy_standalone_error_popup,
     kivy_standalone_show_message,
 )
-from kivy.config import Config
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 
@@ -280,10 +278,7 @@ class TestCopy:
 def test_show_error_popup_places_the_window_and_shows_the_content(tmp_path: Path) -> None:
     background = tmp_path / "error-background.png"
     with (
-        patch.object(
-            reader_utils, "get_centred_position_on_primary_monitor", return_value=(10, 20)
-        ) as centred,
-        patch.object(Config, "set") as config_set,
+        patch.object(kivy_standalone_show_message, "place_window") as place_window,
         patch.object(kivy_standalone_show_message, "show_standalone_popup") as show,
     ):
         kivy_standalone_error_popup.show_error_popup(
@@ -298,13 +293,9 @@ def test_show_error_popup_places_the_window_and_shows_the_content(tmp_path: Path
             background_image_file=background,
         )
 
-    centred.assert_called_once_with(640, 480)
-    assert [c.args for c in config_set.call_args_list] == [
-        ("graphics", "left", 10),
-        ("graphics", "top", 20),
-        ("graphics", "width", 640),
-        ("graphics", "height", 480),
-    ]
+    # Fitted to the screen and centred, as every standalone popup's window is.
+    place_window.assert_called_once_with((640, 480))
+    assert show.call_args.kwargs["content"].scroll_view is not None  # Up and Down scroll it
     kwargs = show.call_args.kwargs
     assert kwargs["title"] == "Installer Critical"
     assert kwargs["timeout"] == 0

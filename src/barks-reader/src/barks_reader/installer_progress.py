@@ -12,8 +12,7 @@ loop.
 A machine whose window cannot open still installs: the work then runs with nothing
 showing, as it used to.
 
-`place_window` is where every installer window gets its size and place: no larger than
-the screen leaves it, so that its title bar and its button are on the screen.
+The window is sized and placed as every standalone popup's is (`place_window`).
 """
 
 from __future__ import annotations
@@ -22,6 +21,8 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
+
+from barks_reader.ui.kivy_standalone_show_message import place_window
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -86,57 +87,6 @@ class _Run[T]:
         if self.error is not None:
             raise self.error
         return self.result
-
-
-def fit_window_to_screen(size: tuple[int, int]) -> tuple[int, int]:
-    """Return `size`, made no larger than the primary screen has room for.
-
-    The window is centred, and where the desktop keeps its taskbar or panel is not
-    known, so the height leaves that allowance both above and below. A window taller
-    than that had its title bar above the screen's top and its button below the bottom.
-
-    Args:
-        size: The width and height wanted.
-
-    Returns:
-        The width and height to open the window at.
-
-    """
-    from barks_reader.core.screen_metrics import SCREEN_METRICS, get_approximate_taskbar_height
-
-    screen = SCREEN_METRICS.get_primary_screen_info()
-    room_high = screen.height_pixels - 2 * get_approximate_taskbar_height()
-    return min(size[0], screen.width_pixels), min(size[1], room_high)
-
-
-def place_window(size: tuple[int, int], *, borderless: bool = False) -> tuple[int, int]:
-    """Tell Kivy where the window opens and how large: centred, and fitted to the screen.
-
-    Called before the window exists, so that it opens where and as large as it will
-    stay; it does nothing to a window already open.
-
-    Args:
-        size: The width and height wanted.
-        borderless: Whether the window has no frame of the desktop's, as one has
-            whose popup's own title bar is its top.
-
-    Returns:
-        The width and height the window was given (`fit_window_to_screen`).
-
-    """
-    from kivy import Config
-
-    from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
-
-    width, height = fit_window_to_screen(size)
-    x, y = get_centred_position_on_primary_monitor(width, height)
-    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "width", width)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "height", height)  # ty: ignore[missing-union-attribute]
-    if borderless:
-        Config.set("graphics", "borderless", "1")  # ty: ignore[missing-union-attribute]
-    return width, height
 
 
 def percent_text(fraction: float) -> str:
