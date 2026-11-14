@@ -1111,6 +1111,21 @@ class TestWhatAFoundBubbleCarries:
         [speech] = engine.find_words("acapulco")[_GOOD_DEEDS].fanta_pages["007"].speech_info_list
         assert speech.entity_types == ("location",)  # its people are named, but not searched
 
+    def test_a_stop_word_searched_matches_no_name_holding_it(self, tmp_path: Path) -> None:
+        def provider(_title: str, _page: str, _group: str) -> dict[str, set[str]]:
+            return {"person": {"attila the hun"}}
+
+        pages = {
+            Titles.LOST_IN_THE_ANDES: [
+                _page(OcrTypes.EASYOCR, "041", {"0": _speech("Attila the Hun took the money!")})
+            ]
+        }
+        engine, _ = self._build(tmp_path, pages, entity_provider=provider)
+        [speech] = engine.find_words("the money")[_ANDES].fanta_pages["041"].speech_info_list
+        assert speech.entity_types == ()
+        [speech] = engine.find_words("the hun")[_ANDES].fanta_pages["041"].speech_info_list
+        assert speech.entity_types == ("person",)
+
     def test_a_name_after_a_comma_is_matched_whole(self, tmp_path: Path) -> None:
         """The person field holds "abie,adam": adam is its own name, not "abie,adam"."""
         engine, _ = self._build(tmp_path, entity_provider=_good_deeds_entities)

@@ -279,7 +279,8 @@ class SearchEngine:
     def _get_entity_types(hit: Hit, search_words: str) -> tuple[str, ...]:
         # Match whole words, not substrings: a substring test makes short query tokens
         # ("or", "a") match unrelated entity names.
-        words_lower = {w.lower() for w in search_words.split()}
+        # Stop words are never searched, so a name is not matched by its "the" or "of".
+        words_lower = {w.lower() for w in search_words.split()} - STOP_WORDS
         types = []
         for entity_type in ENTITY_TYPES:
             field_value = hit.get(f"entities_{entity_type}", "")
