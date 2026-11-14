@@ -471,9 +471,8 @@ def _get_speech_text_list(
 
 
 def _is_page_number(group: dict[str, Any]) -> bool:
-    return (
-        int(group["panel_num"]) == -1 and group["notes"] and "page number" in group["notes"].lower()
-    )
+    notes = group.get("notes")
+    return int(group["panel_num"]) == -1 and bool(notes) and "page number" in notes.lower()
 
 
 def _has_speech_page_group_changed(speech_page_group: SpeechPageGroup) -> bool:

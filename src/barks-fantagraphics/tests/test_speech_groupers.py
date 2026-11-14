@@ -144,7 +144,12 @@ class TestIsPageNumber:
     def test_not_page_number_no_note(self) -> None:
         # Returns empty string (falsy) when notes is empty, not literal False
         group = _make_group_entry(panel_num=-1, notes="")
-        assert not _is_page_number(group)
+        assert _is_page_number(group) is False
+
+    def test_not_page_number_no_notes_key(self) -> None:
+        group = _make_group_entry(panel_num=-1)
+        del group["notes"]
+        assert _is_page_number(group) is False
 
     def test_not_page_number_wrong_note(self) -> None:
         group = _make_group_entry(panel_num=-1, notes="some other note")
