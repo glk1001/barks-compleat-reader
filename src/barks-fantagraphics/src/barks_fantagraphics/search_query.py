@@ -542,7 +542,8 @@ def replace_word(text: str, word: str, replacement: str) -> str:
 
     For a spelling suggestion picked in place of a word typed: ``scroge -gold`` with
     Scrooge for scroge is ``Scrooge -gold``. Operators and brackets around the word
-    stay; a longer word holding it (``scroged``) does not change.
+    stay; a longer word holding it (``scroged``) does not change, nor does a
+    qualifier's value (``tag:scroge``), which is no searched word.
 
     Args:
         text: A typed query.
@@ -553,7 +554,7 @@ def replace_word(text: str, word: str, replacement: str) -> str:
         The query with the word replaced.
 
     """
-    found = re.compile(rf"(?<![\w'-]){re.escape(word)}(?![\w'-])", re.IGNORECASE)
+    found = re.compile(rf"(?<![\w':-]){re.escape(word)}(?![\w'-])", re.IGNORECASE)
     return found.sub(lambda _m: replacement, text)
 
 

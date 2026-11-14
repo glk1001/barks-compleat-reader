@@ -267,6 +267,9 @@ def test_nesting_past_the_recursion_limit_is_an_error_not_a_crash(text: str) -> 
         ('"pirate goldd"', "goldd", "gold", '"pirate gold"'),
         ("indo-chna", "indo-chna", "indo-china", "indo-china"),
         ("a.b a.b", "a.b", "x", "x x"),
+        # a qualifier's value is no searched word
+        ("duck tag:duck", "duck", "Duck", "Duck tag:duck"),
+        ("1950 year:1950 vol:1950", "1950", "1951", "1951 year:1950 vol:1950"),
     ],
 )
 def test_replace_word_swaps_the_whole_word_only(
