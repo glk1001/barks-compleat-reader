@@ -5,7 +5,7 @@ import re
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from loguru import logger
 from pyuca import Collator
@@ -108,12 +108,25 @@ def _normalize_entity_names(extra_terms: set[str], existing_lower: set[str]) -> 
     return normalized
 
 
-def _is_valid_entity_term(term: str) -> bool:
-    """Filter garbage spaCy-only entity names not matched by curated sets."""
-    if not term or "\n" in term:
+def _starts_like_a_term(term: str) -> bool:
+    """Return whether `term` starts with a letter (a-z), a digit or an apostrophe."""
+    if not term:
         return False
     first = term[0].lower()
-    if not (("a" <= first <= "z") or ("0" <= first <= "9") or first == "'"):
+    return ("a" <= first <= "z") or ("0" <= first <= "9") or first == "'"
+
+
+def _read_sidecar(path: Path) -> Any:  # noqa: ANN401
+    """Return a sidecar file's JSON; a missing one says the index needs rebuilding."""
+    if not path.exists():
+        msg = f"Index sidecar file is missing: {path}. The search index needs rebuilding."
+        raise FileNotFoundError(msg)
+    return json.loads(path.read_text())
+
+
+def _is_valid_entity_term(term: str) -> bool:
+    """Filter garbage spaCy-only entity names not matched by curated sets."""
+    if "\n" in term or not _starts_like_a_term(term):
         return False
     # Reject if any word is all-caps (longer than 2 chars) — speech bubble artifact
     max_caps_len = 2
@@ -363,18 +376,23 @@ class SearchEngine:
         """
         with self._index.searcher() as searcher:
             query = self._parse_literal("unstemmed", search_words)
-            if speaker:
-                if "speaker" in self._index.schema:
-                    query = And([query, Term("speaker", speaker)])
-                else:
-                    # Built before the field existed. Filtering is optional UI,
-                    # so answer the unfiltered question rather than fail it.
-                    logger.warning(
-                        "Search index has no speaker field; ignoring speaker filter."
-                        " The search index needs rebuilding."
-                    )
+            query = self._said_by(query, speaker)
             results = searcher.search(query, limit=_SEARCH_RESULT_LIMIT)
             return self._collect_and_sort_results(results, search_words)
+
+    def _said_by(self, query: Query, speaker: str | None) -> Query:
+        """Return `query` narrowed to one speaker's bubbles; as it was for no speaker."""
+        if not speaker:
+            return query
+        if "speaker" in self._index.schema:
+            return And([query, Term("speaker", speaker)])
+        # Built before the field existed. Filtering is optional UI, so answer the
+        # unfiltered question rather than fail it.
+        logger.warning(
+            "Search index has no speaker field; ignoring speaker filter."
+            " The search index needs rebuilding."
+        )
+        return query
 
     def find_bubbles(
         self,
@@ -402,14 +420,7 @@ class SearchEngine:
             return {}
         with self._index.searcher() as searcher:
             query = self._leaf_query(leaf)
-            if speaker:
-                if "speaker" in self._index.schema:
-                    query = And([query, Term("speaker", speaker)])
-                else:  # built before the field existed: answer unfiltered, as find_words does
-                    logger.warning(
-                        "Search index has no speaker field; ignoring speaker filter."
-                        " The search index needs rebuilding."
-                    )
+            query = self._said_by(query, speaker)
             title_filter = None if titles is None else self._docs_of_titles(searcher, titles)
             hits = list(searcher.search(query, limit=_SEARCH_RESULT_LIMIT, filter=title_filter))
             if isinstance(leaf, Near):
@@ -525,22 +536,10 @@ class SearchEngine:
         )
 
     def get_cleaned_terms(self) -> list[str]:
-        if not self._cleaned_terms_path.exists():
-            msg = (
-                f"Index sidecar file is missing: {self._cleaned_terms_path}."
-                " The search index needs rebuilding."
-            )
-            raise FileNotFoundError(msg)
-        return json.loads(self._cleaned_terms_path.read_text())
+        return _read_sidecar(self._cleaned_terms_path)
 
     def get_cleaned_alpha_split_terms(self) -> dict[str, dict[str, list[str]]]:
-        if not self._cleaned_alpha_split_terms_path.exists():
-            msg = (
-                f"Index sidecar file is missing: {self._cleaned_alpha_split_terms_path}."
-                " The search index needs rebuilding."
-            )
-            raise FileNotFoundError(msg)
-        return json.loads(self._cleaned_alpha_split_terms_path.read_text())
+        return _read_sidecar(self._cleaned_alpha_split_terms_path)
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
         # The name is quoted so multi-word names (e.g. "Duk Duk") match as a single
@@ -562,11 +561,7 @@ class SearchEngine:
             return {}
         # Entity terms may contain garbage entries with invalid first chars (e.g. "-ER-").
         # Filter to only terms starting with a letter, digit, or apostrophe.
-        valid = [
-            t
-            for t in terms
-            if t and (("a" <= t[0].lower() <= "z") or ("0" <= t[0] <= "9") or t[0] == "'")
-        ]
+        valid = [t for t in terms if _starts_like_a_term(t)]
         return split_alpha_terms(valid) if valid else {}
 
 
@@ -775,10 +770,9 @@ class SearchEngineCreator(SearchEngine):
         token_counts = Counter()
 
         with self._index.reader() as reader:
-            # iter_field yields tuples: (text, doc_freq, total_freq)
+            # iter_field yields (text, terminfo); weight() is the word's total uses
+            # across all bubbles, not the number of bubbles holding it.
             for text, terminfo in reader.iter_field("unstemmed"):
-                # total_freq = Total times word appears across ALL docs
-                # _doc_freq   = Number of unique docs containing the word
                 token_counts[text.decode("utf-8")] = round(terminfo.weight())
 
         return token_counts
