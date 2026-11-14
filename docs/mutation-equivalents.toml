@@ -606,7 +606,7 @@ reason = "The join only keeps the made names apart from the text and each other;
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(volumes, f, indent=4)
 + json.dump(volumes, f, indent=None)
@@ -615,7 +615,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(volumes, f, indent=4)
 + json.dump(volumes, f, )
@@ -624,7 +624,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(volumes, f, indent=4)
 + json.dump(volumes, f, indent=5)
@@ -633,7 +633,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - all_unstemmed_terms = [t.decode("utf-8") for t in reader.lexicon("unstemmed")]
 + all_unstemmed_terms = [t.decode("UTF-8") for t in reader.lexicon("unstemmed")]
@@ -642,7 +642,7 @@ reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(all_unstemmed_terms, f, indent=4)
 + json.dump(all_unstemmed_terms, f, indent=None)
@@ -651,7 +651,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(all_unstemmed_terms, f, indent=4)
 + json.dump(all_unstemmed_terms, f, )
@@ -660,7 +660,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(all_unstemmed_terms, f, indent=4)
 + json.dump(all_unstemmed_terms, f, indent=5)
@@ -669,7 +669,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(cleaned_terms, f, indent=4)
 + json.dump(cleaned_terms, f, indent=None)
@@ -678,7 +678,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(cleaned_terms, f, indent=4)
 + json.dump(cleaned_terms, f, )
@@ -687,7 +687,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(cleaned_terms, f, indent=4)
 + json.dump(cleaned_terms, f, indent=5)
@@ -696,7 +696,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(split_alpha_terms(cleaned_terms), f, indent=4)
 + json.dump(split_alpha_terms(cleaned_terms), f, indent=None)
@@ -705,7 +705,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(split_alpha_terms(cleaned_terms), f, indent=4)
 + json.dump(split_alpha_terms(cleaned_terms), f, )
@@ -714,7 +714,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(split_alpha_terms(cleaned_terms), f, indent=4)
 + json.dump(split_alpha_terms(cleaned_terms), f, indent=5)
@@ -723,7 +723,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(most_frequent_words, f, indent=4)
 + json.dump(most_frequent_words, f, indent=None)
@@ -732,7 +732,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(most_frequent_words, f, indent=4)
 + json.dump(most_frequent_words, f, )
@@ -741,7 +741,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(most_frequent_words, f, indent=4)
 + json.dump(most_frequent_words, f, indent=5)
@@ -750,7 +750,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(least_frequent_words, f, indent=4)
 + json.dump(least_frequent_words, f, indent=None)
@@ -759,7 +759,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(least_frequent_words, f, indent=4)
 + json.dump(least_frequent_words, f, )
@@ -768,7 +768,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(least_frequent_words, f, indent=4)
 + json.dump(least_frequent_words, f, indent=5)
@@ -777,7 +777,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(self._get_speaker_counts(), f, indent=4)
 + json.dump(self._get_speaker_counts(), f, indent=None)
@@ -786,7 +786,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(self._get_speaker_counts(), f, indent=4)
 + json.dump(self._get_speaker_counts(), f, )
@@ -795,7 +795,7 @@ reason = "Only the JSON file's layout changes; everything that reads it parses i
 
 [[equivalent]]
 module = "barks_fantagraphics.whoosh_search_engine"
-function = "SearchEngineCreator._build"
+function = "SearchEngineCreator.index_volumes"
 change = """
 - json.dump(self._get_speaker_counts(), f, indent=4)
 + json.dump(self._get_speaker_counts(), f, indent=5)

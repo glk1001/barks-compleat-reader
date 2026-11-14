@@ -1,8 +1,6 @@
 import heapq
 import json
 import re
-import shutil
-import tempfile
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -255,10 +253,6 @@ def _leaf_words(leaf: SearchLeaf) -> tuple[str, ...]:
 
 class SearchEngine:
     def __init__(self, index_dir: Path) -> None:
-        self._open(index_dir)
-
-    def _open(self, index_dir: Path) -> None:
-        """Open the index in ``index_dir`` and point every sidecar path into it."""
         self._index = open_dir(index_dir)
         # Each story's documents (bubbles), read once: the index does not change while open.
         self._title_docs: dict[str, frozenset[int]] = {}
@@ -573,56 +567,18 @@ class SearchEngine:
         return split_alpha_terms(valid) if valid else {}
 
 
-# A build's own folder, inside the live index folder until the build is moved in.
-_BUILD_DIR_PREFIX = ".index-build-"
-
-# whoosh.index's default index name: its files are MAIN_* (segments, write lock) and
-# _MAIN_<generation>.toc (the table of contents naming the segments in use).
-_WHOOSH_INDEX_NAME = "MAIN"
-
-
-def _is_whoosh_file(path: Path) -> bool:
-    return path.is_file() and path.name.startswith(
-        (f"{_WHOOSH_INDEX_NAME}_", f"_{_WHOOSH_INDEX_NAME}_")
-    )
-
-
-def _install_built_index(build_dir: Path, index_dir: Path) -> None:
-    """Move a finished build from ``build_dir`` into ``index_dir``, replacing the old index.
-
-    The segments and sidecars go in first and the table of contents last, so until it
-    lands Whoosh still opens the old index whole. The old index's files then go, its
-    tables of contents before its segments. Files the build did not write, such as the
-    entities-vol inputs, are left alone.
-
-    Args:
-        build_dir: The folder holding the finished build.
-        index_dir: The live index folder.
-
-    """
-    built = sorted(build_dir.iterdir(), key=lambda path: path.suffix == ".toc")
-    for path in built:
-        path.replace(index_dir / path.name)
-
-    built_names = {path.name for path in built}
-    old_whoosh_files = [
-        path
-        for path in index_dir.iterdir()
-        if _is_whoosh_file(path) and path.name not in built_names
-    ]
-    for path in sorted(old_whoosh_files, key=lambda path: path.suffix != ".toc"):
-        path.unlink()
-
-
 class SearchEngineCreator(SearchEngine):
     def __init__(
         self, comics_database: ComicsDatabase, index_dir: Path, ocr_index_to_use: OcrTypes
     ) -> None:
-        # Nothing is written here: index_volumes builds beside the live index and
-        # replaces it only once the whole build has succeeded.
         self._comics_database = comics_database
         self._ocr_index_to_use = ocr_index_to_use
-        self._live_index_dir = index_dir
+
+        index_dir.mkdir(parents=True, exist_ok=True)
+        create_in(index_dir, build_index_schema())
+
+        # Opens the index just created; sets up self._index and the sidecar paths.
+        super().__init__(index_dir)
 
     def get_search_engine(self) -> SearchEngine:
         """Return a read-only search engine backed by the index just built."""
@@ -636,14 +592,7 @@ class SearchEngineCreator(SearchEngine):
         *,
         skip_missing_pages: bool = False,
     ) -> None:
-        """Build the index for ``volumes`` with every sidecar, then put it in place.
-
-        The live folder also holds the build's inputs (the entities-vol files), and
-        the reader ships it, so the build never writes there directly. It runs in a
-        folder of its own inside the live one (so the moves into place are renames on
-        one drive, wherever the folder links to) and is moved in only when every step
-        has succeeded: a failed build leaves the live index and its sidecars as they
-        were.
+        """Build the index for ``volumes``, then write every sidecar.
 
         Args:
             volumes: The Fantagraphics volumes to index.
@@ -655,32 +604,6 @@ class SearchEngineCreator(SearchEngine):
                 a caller has to ask for it, and should say what it skipped.
 
         """
-        self._live_index_dir.mkdir(parents=True, exist_ok=True)
-        build_dir = Path(tempfile.mkdtemp(prefix=_BUILD_DIR_PREFIX, dir=self._live_index_dir))
-        try:
-            create_in(build_dir, build_index_schema())
-            self._open(build_dir)
-            self._build(
-                volumes,
-                entity_tagger=entity_tagger,
-                entity_provider=entity_provider,
-                skip_missing_pages=skip_missing_pages,
-            )
-            _install_built_index(build_dir, self._live_index_dir)
-        finally:
-            shutil.rmtree(build_dir, ignore_errors=True)
-
-        self._open(self._live_index_dir)
-
-    def _build(
-        self,
-        volumes: list[int],
-        entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
-        entity_provider: Callable[[str, str, str], dict[str, set[str]]] | None = None,
-        *,
-        skip_missing_pages: bool = False,
-    ) -> None:
-        """Index ``volumes`` into the open (build) index, then write every sidecar."""
         json_volumes_path = self._index.storage.folder / "volumes.json"
         with json_volumes_path.open("w") as f:
             json.dump(volumes, f, indent=4)
@@ -738,71 +661,65 @@ class SearchEngineCreator(SearchEngine):
 
         writer = self._index.writer()
 
-        try:
-            titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(
-                volumes, exclude_non_comics=True
+        titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(
+            volumes, exclude_non_comics=True
+        )
+        for title_str, fanta_info in titles:
+            title = fanta_info.comic_book_info.title
+            speech_page_groups = all_speech_groups.get_speech_page_groups(
+                title, skip_missing=skip_missing_pages
             )
-            for title_str, fanta_info in titles:
-                title = fanta_info.comic_book_info.title
-                speech_page_groups = all_speech_groups.get_speech_page_groups(
-                    title, skip_missing=skip_missing_pages
-                )
-                for speech_page in speech_page_groups:
-                    if speech_page.ocr_index != self._ocr_index_to_use:
-                        continue
-                    for group_id, speech_text in speech_page.speech_groups.items():
-                        if entity_provider:
-                            entities = entity_provider(title_str, speech_page.fanta_page, group_id)
-                        elif entity_tagger:
-                            entities = entity_tagger(speech_text.ai_text)
-                        else:
-                            entities = None
+            for speech_page in speech_page_groups:
+                if speech_page.ocr_index != self._ocr_index_to_use:
+                    continue
+                for group_id, speech_text in speech_page.speech_groups.items():
+                    if entity_provider:
+                        entities = entity_provider(title_str, speech_page.fanta_page, group_id)
+                    elif entity_tagger:
+                        entities = entity_tagger(speech_text.ai_text)
+                    else:
+                        entities = None
 
-                        if entities is not None:
-                            entities = _filter_entities_to_curated(
-                                cast("dict[EntityType, set[str]]", entities), curated_sets
-                            )
-                            stale.extend(
-                                (title_str, speech_page.fanta_page, group_id, entity_type, name)
-                                for entity_type, name in entity_names_absent_from_text(
-                                    entities, speech_text.ai_text
-                                )
-                            )
-                            entity_kwargs = {
-                                f"entities_{et}": ",".join(sorted(entities.get(et, set())))
-                                for et in ENTITY_TYPES
-                            }
-                        else:
-                            entity_kwargs = dict.fromkeys(ENTITY_FIELDS, "")
-
-                        writer.add_document(
-                            title=title_str,
-                            fanta_vol=str(speech_page.fanta_vol),
-                            fanta_page=speech_page.fanta_page,
-                            comic_page=speech_page.comic_page,
-                            content_id=group_id,
-                            panel_num=str(speech_text.panel_num),
-                            speaker=speech_text.speaker.speaker if speech_text.speaker else "",
-                            unstemmed=speech_text.ai_text,
-                            # Indexed stripped, stored marked up. Whoosh's
-                            # `_stored_<field>` convention lets one field do both, so
-                            # a search for "saboteurs" still matches a group lettered
-                            # "[b]SABOTEURS[/b]" while the reader gets the tags back
-                            # to render. Indexing the marked-up form instead would
-                            # put "b" and split words into the lexicon.
-                            content_raw=strip_markup(speech_text.raw_ai_text),
-                            _stored_content_raw=speech_text.raw_ai_text,
-                            **entity_kwargs,
+                    if entities is not None:
+                        entities = _filter_entities_to_curated(
+                            cast("dict[EntityType, set[str]]", entities), curated_sets
                         )
-        except BaseException:
-            # Releases the build folder's write lock, so it can be removed.
-            writer.cancel()
-            raise
+                        stale.extend(
+                            (title_str, speech_page.fanta_page, group_id, entity_type, name)
+                            for entity_type, name in entity_names_absent_from_text(
+                                entities, speech_text.ai_text
+                            )
+                        )
+                        entity_kwargs = {
+                            f"entities_{et}": ",".join(sorted(entities.get(et, set())))
+                            for et in ENTITY_TYPES
+                        }
+                    else:
+                        entity_kwargs = dict.fromkeys(ENTITY_FIELDS, "")
+
+                    writer.add_document(
+                        title=title_str,
+                        fanta_vol=str(speech_page.fanta_vol),
+                        fanta_page=speech_page.fanta_page,
+                        comic_page=speech_page.comic_page,
+                        content_id=group_id,
+                        panel_num=str(speech_text.panel_num),
+                        speaker=speech_text.speaker.speaker if speech_text.speaker else "",
+                        unstemmed=speech_text.ai_text,
+                        # Indexed stripped, stored marked up. Whoosh's
+                        # `_stored_<field>` convention lets one field do both, so
+                        # a search for "saboteurs" still matches a group lettered
+                        # "[b]SABOTEURS[/b]" while the reader gets the tags back
+                        # to render. Indexing the marked-up form instead would
+                        # put "b" and split words into the lexicon.
+                        content_raw=strip_markup(speech_text.raw_ai_text),
+                        _stored_content_raw=speech_text.raw_ai_text,
+                        **entity_kwargs,
+                    )
 
         if stale:
-            # Nothing of this build is kept, and the live index stays as it was: an
-            # index tagging the wrong bubbles is worse than an old one, and the
-            # message says how to make a right one.
+            # Nothing of this build is kept: an index tagging the wrong bubbles is
+            # worse than none, and the message says how to make a right one.
             writer.cancel()
             raise StaleEntitiesError(_stale_entities_message(stale))
 
