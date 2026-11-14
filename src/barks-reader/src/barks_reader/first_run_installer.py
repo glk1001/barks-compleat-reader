@@ -1,6 +1,6 @@
 import sys
 from collections.abc import Callable
-from configparser import ConfigParser
+from configparser import RawConfigParser
 from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
@@ -327,10 +327,10 @@ def _configure_fanta_volumes_for_platform(
     logger.info(f'Found Fantagraphics volumes directory at "{fanta_volumes_dir}".')
 
     # The file is read and written as Kivy reads and writes it (kivy.config's
-    # ConfigParser): UTF-8, whatever the machine's own encoding - Windows' is not - and
-    # with "%" doubled, since both parsers take a single one for an interpolation.
-    # ConfigParser.read silently skips a file it cannot open, so check its result.
-    barks_config = ConfigParser()
+    # ConfigParser, a RawConfigParser): UTF-8, whatever the machine's own encoding -
+    # Windows' is not - and with no interpolation, so a "%" in a path is only itself.
+    # The parser's read silently skips a file it cannot open, so check its result.
+    barks_config = RawConfigParser()
     files_read = barks_config.read(config_path, encoding="utf-8-sig")
     if not files_read:
         msg = f'Could not read the newly installed Barks Reader config:\n\n[b]"{config_path}".[/b]'
@@ -342,7 +342,7 @@ def _configure_fanta_volumes_for_platform(
         )
         raise InstallerDataError(msg, _CONFIG_UNREADABLE_DETAILS)
 
-    barks_config.set(BARKS_READER_SECTION, FANTA_DIR, str(fanta_volumes_dir).replace("%", "%%"))
+    barks_config.set(BARKS_READER_SECTION, FANTA_DIR, str(fanta_volumes_dir))
     with config_path.open("w", encoding="utf-8") as configfile:
         barks_config.write(configfile)
     logger.info(f'Rewrote fanta volumes setting as "{fanta_volumes_dir}".')

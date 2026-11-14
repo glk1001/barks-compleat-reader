@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
 
 import pytest
+from kivy.config import ConfigParser as KivyConfigParser
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -95,7 +96,11 @@ class TestConfigureFantaVolumes:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Letters outside ASCII (the file is UTF-8 on every machine) and a "%"."""
+        """Letters outside ASCII (the file is UTF-8 on every machine) and a "%".
+
+        Doubling the "%", as an interpolating parser wants, had the reader look for a
+        folder with two of them: Kivy's parser does not interpolate.
+        """
         fanta_dir = tmp_path / "José Ávila" / "100% Barks"
         monkeypatch.setattr(
             config_info_module, "find_fanta_volumes_dirpath", lambda *_args: fanta_dir
@@ -108,12 +113,13 @@ class TestConfigureFantaVolumes:
             config_info, config_info.app_config_path
         )
 
-        # As kivy.config.ConfigParser reads it: this encoding, "%" an interpolation.
+        # Kivy's own parser, the one the reader reads the file with: this encoding,
+        # and no interpolation, so the "%" is in the file once.
         text = config_info.app_config_path.read_bytes().decode("utf-8")
         assert "José Ávila" in text
-        assert "100%% Barks" in text
-        parser = ConfigParser()
-        parser.read(config_info.app_config_path, encoding="utf-8-sig")
+        assert "100% Barks" in text
+        parser = KivyConfigParser()
+        parser.read(str(config_info.app_config_path))
         assert parser.get("Barks Reader", "fanta_dir") == str(fanta_dir)
         assert parser.get("Barks Reader", "note") == "Größe"
 
