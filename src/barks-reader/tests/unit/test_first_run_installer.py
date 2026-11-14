@@ -344,6 +344,10 @@ class TestMain:
         assert install.failed_flag.exists()
         assert "barks-reader-data-1.barkspack" in install.error_message()
         assert str(install.exe_dir) in install.error_popup.call_args.kwargs["details"]
+        # The line scripts/smoke-test-build.sh looks for in a build's first run, which
+        # has no packs beside it: reword one and the other must follow.
+        log = (install.exe_dir / "installer.log").read_text()
+        assert "Checking the installer zips in" in log
 
     def test_a_renamed_executable_fails(
         self, install: _Install, monkeypatch: pytest.MonkeyPatch

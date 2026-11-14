@@ -201,7 +201,7 @@ log="$(ls "$WORK"/barks-reader-installer-*.log 2>/dev/null | head -1 || true)"
 if [[ -z "$log" ]]; then
     echo "smoke-test-build: FAIL - the installer wrote no log beside the executable" >&2
     fail=1
-elif ! grep -q "Checking existence of installer zip" "$log"; then
+elif ! grep -q "Checking the installer zips in" "$log"; then
     echo "smoke-test-build: FAIL - the installer never looked for its data packs" >&2
     fail=1
 fi

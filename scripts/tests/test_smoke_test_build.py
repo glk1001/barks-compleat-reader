@@ -31,7 +31,7 @@ pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="needs a real ba
 # files land where it looks.
 FAKE_BUILD = """#!/usr/bin/env bash
 if [[ "${1:-}" != child ]]; then
-    echo "Checking existence of installer zip" > barks-reader-installer-fake.log
+    echo "Checking the installer zips in" > barks-reader-installer-fake.log
     : > barks-reader-installer-failed.flag
     "$0" child &
     wait "$!"
