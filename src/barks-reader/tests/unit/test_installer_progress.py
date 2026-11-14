@@ -52,8 +52,13 @@ class TestByteProgress:
         assert progress.fraction == 0.0
 
 
-@pytest.mark.parametrize(("fraction", "text"), [(0.0, "0%"), (0.229, "22%"), (1.0, "100%")])
-def test_the_caption_is_a_whole_percentage(fraction: float, text: str) -> None:
+@pytest.mark.parametrize(
+    ("fraction", "text"),
+    [(0.0, "0%"), (0.224, "22%"), (0.229, "23%"), (0.996, "99%"), (0.9999, "99%"), (1.0, "100%")],
+)
+def test_the_caption_is_the_nearest_whole_percentage_and_full_only_when_it_is(
+    fraction: float, text: str
+) -> None:
     assert percent_text(fraction) == text
 
 

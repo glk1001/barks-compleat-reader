@@ -90,8 +90,13 @@ class _Run[T]:
 
 
 def percent_text(fraction: float) -> str:
-    """Return a share from 0 to 1 as the bar's caption."""
-    return f"{int(fraction * 100)}%"
+    """Return a share from 0 to 1 as the bar's caption: the nearest whole percentage.
+
+    Only the whole of it reads "100%": a share just short of it stays at "99%".
+    """
+    if fraction >= 1.0:
+        return "100%"
+    return f"{min(round(fraction * 100), 99)}%"
 
 
 def working_text(fraction: float) -> str:
