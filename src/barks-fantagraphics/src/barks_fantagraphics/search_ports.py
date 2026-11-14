@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from .search_query import SearchLeaf
-    from .whoosh_search_engine import TitleDict
+    from .search_results import TitleDict
 
 type AlphaSplitTerms = dict[str, dict[str, list[str]]]
 

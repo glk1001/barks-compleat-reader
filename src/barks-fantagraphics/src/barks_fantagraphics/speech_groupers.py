@@ -376,8 +376,8 @@ class SpeechGroups:
         srce_dest_map = {}
 
         # Deliberately the geometry-free variant. This wants the page mapping
-        # and nothing else, and `get_sorted_srce_and_dest_pages` would first
-        # demand a panel-segments file for every page, no older than its image.
+        # and nothing else, and `get_sorted_srce_and_dest_pages_with_dimensions`
+        # would first demand a panel-segments file for every page, no older than its image.
         # The one-pager skip below discards all 133 pages of the synthetic
         # "All One-Pagers" collection -- whose pages have no segments file, and
         # should not -- but it only runs *after* the page list is built, so

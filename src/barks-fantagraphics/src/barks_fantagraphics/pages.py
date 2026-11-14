@@ -152,6 +152,20 @@ def get_sorted_srce_and_dest_pages(
     get_full_paths: bool,
     srce_story_file_resolver: SrceStoryFileResolver | None = None,
 ) -> SrceAndDestPages:
+    """Return the srce and dest page lists: another name for the in-order function.
+
+    Kept because the comic-building repo calls it by this name. It loads no panel
+    geometry; ``get_sorted_srce_and_dest_pages_with_dimensions`` is the one that does.
+
+    Args:
+        comic: The comic whose pages to list.
+        get_full_paths: Whether to resolve each page's full srce and dest paths.
+        srce_story_file_resolver: How to find a page's srce file, or None for the default.
+
+    Returns:
+        The srce and dest pages, in order.
+
+    """
     return get_srce_and_dest_pages_in_order(comic, get_full_paths, srce_story_file_resolver)
 
 
@@ -197,8 +211,8 @@ def get_srce_and_dest_pages_in_order(
 ) -> SrceAndDestPages:
     """Return the srce and dest page lists, without loading any panel geometry.
 
-    ``get_sorted_srce_and_dest_pages`` wraps this and then reads every page's
-    panel-segments file to size the dest pages. That makes it the wrong call
+    ``get_sorted_srce_and_dest_pages_with_dimensions`` wraps this and then reads every
+    page's panel-segments file to size the dest pages. That makes it the wrong call
     for a caller that only wants to know which source page maps to which dest
     page: it requires a segments file to exist for every page and to be no
     older than its image, neither of which the mapping depends on.

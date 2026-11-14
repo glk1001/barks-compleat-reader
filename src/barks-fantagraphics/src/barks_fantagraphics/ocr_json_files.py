@@ -66,7 +66,6 @@ class JsonFiles:
                 self.title_annotated_images_dir / get_ocr_final_annotated_filename(self.page)
             )
             self.ocr_boxes_annotated_file.append(
-                OCR_ANNOTATIONS_DIR
-                / self.volume_dirname
+                self.title_annotated_images_dir
                 / get_ocr_boxes_annotated_filename(self.page, ocr_type)
             )

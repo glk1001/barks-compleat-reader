@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.search_ports import AlphaSplitTerms
     from barks_fantagraphics.search_query import SearchLeaf
-    from barks_fantagraphics.whoosh_search_engine import TitleDict
+    from barks_fantagraphics.search_results import TitleDict
 
 _WORD_RE = re.compile(r"\w+(?:['\-.]\w+)*'?")
 
@@ -173,8 +173,7 @@ def _leaf_matches(leaf: SearchLeaf, tokens: list[str]) -> bool:
 
 
 def _filter_by_speaker(found: TitleDict, speaker: str) -> TitleDict:
-    # `replace` rather than the constructors, so this stays free of the Whoosh
-    # module the real classes live in.
+    # `replace` keeps every other field of the result classes as it was.
     narrowed: TitleDict = {}
     for title, title_info in found.items():
         pages = {}
