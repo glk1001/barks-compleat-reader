@@ -3,12 +3,15 @@ from collections import Counter
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
+    ALL_LISTS,
     FANTA_OVERRIDE_ZIPS,
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
     SERIES_COVERS,
     SERIES_CS,
     SERIES_ONE_PAGERS,
+    get_filtered_title_lists,
+    get_num_comic_book_titles,
 )
 from barks_fantagraphics.fanta_series_data import SERIES_INFO
 
@@ -87,3 +90,50 @@ class TestOverrideZipNames:
             if not (name.startswith(f"{volume:02d} - ") and name.endswith(".cbz"))
         }
         assert misnamed == {}
+
+
+class TestFilteredTitleLists:
+    def test_every_title_is_in_the_all_list_and_in_each_list_whose_filter_takes_it(self) -> None:
+        lists = get_filtered_title_lists(
+            {
+                "covers": lambda info: info.series_name == SERIES_COVERS,
+                "none": lambda _info: False,
+            }
+        )
+        assert lists[ALL_LISTS] == list(ALL_FANTA_COMIC_BOOK_INFO.values())
+        assert lists["covers"]
+        assert all(info.series_name == SERIES_COVERS for info in lists["covers"])
+        assert len(lists["covers"]) == sum(
+            info.series_name == SERIES_COVERS for info in ALL_FANTA_COMIC_BOOK_INFO.values()
+        )
+        assert "none" not in lists
+
+
+class TestNumComicBookTitles:
+    @staticmethod
+    def _count(series: set[str], first: int, last: int) -> int:
+        return sum(
+            first <= info.comic_book_info.submitted_year <= last and info.series_name in series
+            for info in ALL_FANTA_COMIC_BOOK_INFO.values()
+        )
+
+    def test_covers_are_never_counted_and_one_pagers_only_when_asked(self) -> None:
+        years = (1942, 1966)
+        all_series = {info.series_name for info in ALL_FANTA_COMIC_BOOK_INFO.values()}
+        stories = all_series - {SERIES_COVERS, SERIES_ONE_PAGERS}
+        one_pagers = self._count({SERIES_ONE_PAGERS}, *years)
+        assert one_pagers
+        assert self._count({SERIES_COVERS}, *years)
+
+        assert get_num_comic_book_titles(years) == self._count(stories, *years)
+        assert get_num_comic_book_titles(years, include_one_pagers=True) == (
+            self._count(stories, *years) + one_pagers
+        )
+
+    def test_both_ends_of_the_year_range_are_included(self) -> None:
+        both = get_num_comic_book_titles((1950, 1951), include_one_pagers=True)
+        first = get_num_comic_book_titles((1950, 1950), include_one_pagers=True)
+        second = get_num_comic_book_titles((1951, 1951), include_one_pagers=True)
+        assert first
+        assert second
+        assert both == first + second
