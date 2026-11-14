@@ -530,3 +530,23 @@ class TestSuccessMessage:
             data_pack_installer._restart_reader()  # noqa: SLF001
 
         spawn.assert_called_once_with([sys.executable, "main.py"])
+
+    def test_a_run_by_hand_has_no_reader_to_start_again(
+        self, spawn: MagicMock, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]
+    ) -> None:
+        # As ``python -m barks_reader.data_pack_installer`` leaves it: the module itself.
+        monkeypatch.setattr(sys, "argv", [data_pack_installer.__file__])
+        with patch.object(data_pack_installer, "IS_COMPILED", new=False):
+            data_pack_installer._restart_reader()  # noqa: SLF001
+
+        spawn.assert_not_called()
+        assert any("the reader did not start this update" in line for line in loguru_sink)
+
+    def test_a_standalone_build_is_never_taken_for_a_run_by_hand(
+        self, spawn: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", [data_pack_installer.__file__])
+        with patch.object(data_pack_installer, "IS_COMPILED", new=True):
+            data_pack_installer._restart_reader()  # noqa: SLF001
+
+        spawn.assert_called_once_with([data_pack_installer.__file__])

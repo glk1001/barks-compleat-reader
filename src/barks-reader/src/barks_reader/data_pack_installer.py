@@ -13,7 +13,8 @@ was, and the reader is started again on it once the error popup has closed.
 The reader is started again by `main`, not by a popup's button: whatever closes the
 window (its OK, the desktop's own close, a popup that could not be drawn), the user is
 not left with no reader running. The one exception is an installed folder that a
-failed swap could not put back: a reader started without it would only fail.
+failed swap could not put back: a reader started without it would only fail. Nor is
+one started when this module was run by hand: there was no reader to start again.
 
 To look at the success popup without installing anything (`preview_success_message`):
 ``uv run --env-file .env.runtime python -m barks_reader.data_pack_installer --preview``.
@@ -25,6 +26,7 @@ import os
 import platform
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -43,7 +45,6 @@ from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
 _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Data Pack Update"
@@ -299,7 +300,17 @@ def success_text(installed: DataPackInfo) -> str:
     )
 
 
+def _run_by_hand() -> bool:
+    """Return whether this module was run itself (``python -m``), not by the reader."""
+    return not IS_COMPILED and Path(sys.argv[0]).resolve() == Path(__file__).resolve()
+
+
 def _restart_reader() -> None:
+    if _run_by_hand():
+        # ``sys.argv[0]`` is then this module, not the reader: the command made from it
+        # would run the installer again, and a failed one again after that.
+        logger.warning("Not starting the Barks Reader: the reader did not start this update.")
+        return
     command = data_pack.self_command(
         is_compiled=IS_COMPILED, argv0=sys.argv[0], executable=sys.executable
     )

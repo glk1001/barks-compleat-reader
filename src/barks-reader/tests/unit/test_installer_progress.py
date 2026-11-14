@@ -258,6 +258,31 @@ class TestRunShowingProgress:
 
         assert seen == [(pytest.approx(0.25), True), (1.0, True)]
 
+    def test_a_full_bar_says_the_work_is_finishing_while_it_still_runs(self, loop: _Loop) -> None:
+        progress = ByteProgress(_TOTAL)
+        seen: list[tuple[float, list[str]]] = []
+        release = installer_progress.threading.Event()
+
+        def bar_captions(popup: PopupFrame) -> list[str]:
+            texts = [w.text for w in popup.walk() if hasattr(w, "text")]
+            return [t for t in texts if t.endswith("%") or t == installer_progress.FINISHING_TEXT]
+
+        def in_loop() -> None:
+            loop.start()
+            popup = loop.popup
+            (bar,) = [w for w in popup.walk() if isinstance(w, ProgressBar)]
+            progress.add(_TOTAL)  # every byte written, and the work (held) not done
+            assert loop.tick() is True
+            seen.append((bar.value, bar_captions(popup)))
+            release.set()
+            while loop.tick():
+                pass
+            seen.append((bar.value, bar_captions(popup)))
+
+        _run(lambda: release.wait(5), in_loop, progress=progress)
+
+        assert seen == [(1.0, [installer_progress.FINISHING_TEXT]), (1.0, ["100%"])]
+
     def test_the_window_cannot_be_closed_while_the_work_runs(self, loop: _Loop) -> None:
         refused: list[bool] = []
         release = installer_progress.threading.Event()

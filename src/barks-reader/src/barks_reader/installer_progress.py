@@ -4,7 +4,8 @@
 
 Unpacking the data takes about half a minute, and until 2026-11-11 nothing showed for
 it: a first run looked like an app that had not started. The window opens first, the
-work runs on another thread, and a bar follows the bytes it has written. What comes
+work runs on another thread, and a bar follows the bytes it has written (and says
+"Finishing…" for what the work does after its last byte). What comes
 next (the installer's success message) is shown in the same window, in the same Kivy
 loop.
 
@@ -27,6 +28,10 @@ if TYPE_CHECKING:
 
 # How often the bar catches up with the work, in seconds.
 _TICK_SECS = 1 / 15
+# The bar's caption once every byte is written and the work goes on (an installer then
+# checks what it unpacked and moves it into place): a full bar reading "100%" over a
+# window that will not close looks stuck.
+FINISHING_TEXT = "Finishing…"
 
 
 class ByteProgress:
@@ -139,6 +144,11 @@ def percent_text(fraction: float) -> str:
     return f"{int(fraction * 100)}%"
 
 
+def working_text(fraction: float) -> str:
+    """Return the bar's caption while the work runs: the share, then `FINISHING_TEXT`."""
+    return FINISHING_TEXT if fraction >= 1.0 else percent_text(fraction)
+
+
 def run_showing_progress[T](
     work: Callable[[], T],
     progress: ByteProgress,
@@ -239,8 +249,8 @@ def _run_window_loop[T](
         def tick(_dt: float) -> bool:
             fraction = progress.fraction
             bar.value = fraction
-            caption.text = percent_text(fraction)
             if run.thread.is_alive():
+                caption.text = working_text(fraction)
                 return True
             run.finished = True
             bar.value = 1.0
