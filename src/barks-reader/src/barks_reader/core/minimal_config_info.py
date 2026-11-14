@@ -61,9 +61,10 @@ def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
     from .system_file_paths import SystemFilePaths  # noqa: PLC0415
 
     barks_config = ConfigParser()
-    barks_config.read(cfg_info.app_config_path)
 
     try:
+        # As Kivy, which writes the file, reads it: UTF-8, not the machine's encoding.
+        barks_config.read(cfg_info.app_config_path, encoding="utf-8-sig")
         reader_files_dir = ReaderSettings.get_reader_files_dir(cfg_info.app_data_dir)
         win_height = read_setting_from_config(barks_config, MAIN_WINDOW_HEIGHT)
         win_left = read_setting_from_config(barks_config, MAIN_WINDOW_LEFT)

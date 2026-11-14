@@ -1,3 +1,4 @@
+# cspell:ignore José Ávila Größe
 """The first-run installer: its config checks, and a whole run."""
 
 from __future__ import annotations
@@ -87,6 +88,50 @@ class TestConfigureFantaVolumes:
         parser = ConfigParser()
         parser.read(config_info.app_config_path)
         assert parser.get("Barks Reader", "fanta_dir") == str(fanta_dir)
+
+    def test_a_library_path_kivy_could_not_read_back_is_written_so_it_can(
+        self,
+        config_info: first_run_installer.ConfigInfo,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Letters outside ASCII (the file is UTF-8 on every machine) and a "%"."""
+        fanta_dir = tmp_path / "José Ávila" / "100% Barks"
+        monkeypatch.setattr(
+            config_info_module, "find_fanta_volumes_dirpath", lambda *_args: fanta_dir
+        )
+        config_info.app_config_path.write_text(
+            "[Barks Reader]\nfanta_dir = unset\nnote = Größe\n", encoding="utf-8"
+        )
+
+        first_run_installer._configure_fanta_volumes_for_platform(  # noqa: SLF001
+            config_info, config_info.app_config_path
+        )
+
+        # As kivy.config.ConfigParser reads it: this encoding, "%" an interpolation.
+        text = config_info.app_config_path.read_bytes().decode("utf-8")
+        assert "José Ávila" in text
+        assert "100%% Barks" in text
+        parser = ConfigParser()
+        parser.read(config_info.app_config_path, encoding="utf-8-sig")
+        assert parser.get("Barks Reader", "fanta_dir") == str(fanta_dir)
+        assert parser.get("Barks Reader", "note") == "Größe"
+
+    def test_the_config_is_written_as_utf_8_whatever_the_machines_encoding(
+        self, config_info: first_run_installer.ConfigInfo, fanta_dir: Path
+    ) -> None:
+        """Linux's default is UTF-8 already, so the round trip alone proves nothing here."""
+        config_info.app_config_path.write_text(_INI_TEXT)
+        path_type = type(config_info.app_config_path)
+
+        with patch.object(path_type, "open", autospec=True, side_effect=path_type.open) as opened:
+            first_run_installer._configure_fanta_volumes_for_platform(  # noqa: SLF001
+                config_info, config_info.app_config_path
+            )
+
+        writes = [call for call in opened.call_args_list if call.args[1:2] == ("w",)]
+        assert [call.kwargs.get("encoding") for call in writes] == ["utf-8"]
+        assert fanta_dir.name in config_info.app_config_path.read_text(encoding="utf-8")
 
     @pytest.mark.usefixtures("fanta_dir")
     def test_missing_config_file_fails_loudly(

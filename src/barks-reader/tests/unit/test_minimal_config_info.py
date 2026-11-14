@@ -1,3 +1,4 @@
+# cspell:ignore José Ávila
 """Unit tests for :mod:`barks_reader.core.minimal_config_info`.
 
 The minimal-config loader reads just enough of the INI file to create
@@ -110,6 +111,37 @@ class TestGetMinimalConfigOptions:
         sys_paths.check_files.assert_called_once_with(
             [various / "error-background.png", various / "success-background.png"]
         )
+
+    def test_reads_an_ini_holding_letters_outside_ascii(self, tmp_path: Path) -> None:
+        """Kivy writes the ini as UTF-8; "Á" there is a byte Windows' encoding has no letter for."""
+        _make_reader_files_tree(tmp_path)
+        ini = tmp_path / "barks-reader.ini"
+        _write_ini(ini, win_height=640)
+        with ini.open("a", encoding="utf-8") as ini_file:
+            ini_file.write("fanta_dir = C:\\Users\\José Ávila\\Barks\n")
+
+        opts = get_minimal_config_options(_make_cfg_info(tmp_path, ini))
+
+        assert opts.win_height == 640  # noqa: PLR2004
+
+    def test_reads_an_ini_that_starts_with_a_byte_order_mark(self, tmp_path: Path) -> None:
+        _make_reader_files_tree(tmp_path)
+        ini = tmp_path / "barks-reader.ini"
+        _write_ini(ini, win_height=640)
+        ini.write_bytes(b"\xef\xbb\xbf" + ini.read_bytes())
+
+        opts = get_minimal_config_options(_make_cfg_info(tmp_path, ini))
+
+        assert opts.win_height == 640  # noqa: PLR2004
+
+    def test_returns_defaults_when_ini_is_not_text(self, tmp_path: Path) -> None:
+        _make_reader_files_tree(tmp_path)
+        ini = tmp_path / "barks-reader.ini"
+        ini.write_bytes(b"[Barks Reader]\nmain_window_height = \xff\xfe\n")
+
+        opts = get_minimal_config_options(_make_cfg_info(tmp_path, ini))
+
+        assert opts == MinimalConfigOptions()
 
     def test_returns_defaults_when_ini_missing(self, tmp_path: Path) -> None:
         # No INI file and no reader-files tree; loader must not raise.
