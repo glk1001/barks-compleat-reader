@@ -3,6 +3,7 @@ from collections.abc import Callable
 from configparser import ConfigParser
 from datetime import UTC, datetime
 from pathlib import Path
+from types import TracebackType
 
 from loguru import logger
 
@@ -56,7 +57,11 @@ _log_file = (
 )
 
 
-def _handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
+def _handle_uncaught_exception(
+    exc_type: type[BaseException] | None,
+    exc_value: BaseException | None,
+    exc_traceback: TracebackType | None,
+) -> None:
     handle_app_fail_with_traceback(
         _APP_TYPE, _APP_NAME, exc_type, exc_value, exc_traceback, str(_log_file)
     )
@@ -401,7 +406,11 @@ def _missing_data_zip_error(installer_zip: Path) -> InstallerDataError:
     return InstallerDataError(message, details)
 
 
-def _handle_installer_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
+def _handle_installer_exception(
+    exc_type: type[BaseException] | None,
+    exc_value: BaseException | None,
+    exc_traceback: TracebackType | None,
+) -> None:
     _set_installer_failed_flag()
 
     handle_app_fail_with_traceback(

@@ -9,6 +9,7 @@ from barks_reader.core.reader_utils import quote_and_join_with_and
 from barks_reader.ui.kivy_standalone_show_message import place_window, show_standalone_popup
 
 DEFAULT_INSTALLER_POPUP_SIZE = (800, 1000)
+_WARNING_COLOR = [0.95, 0.55, 0.2, 1]
 
 
 def show_installer_message(
@@ -42,7 +43,7 @@ def show_installer_message(
     )
 
 
-def _get_installer_success_content(  # noqa: C901
+def _get_installer_success_content(
     fanta_vol_dir: Path | None,
     dat_zips: list[Path],
     config_dir: Path,
@@ -116,15 +117,15 @@ def _get_installer_success_content(  # noqa: C901
             # === Fantagraphics Library ==========================================
             self._add_section_header(content_box, "Fantagraphics Library Location")
             if fanta_volumes_dir:
-                self._add_info_text(
-                    content_box, "Your Fantagraphics Carl Barks Library was found at:"
-                )
+                self._add_text(content_box, "Your Fantagraphics Carl Barks Library was found at:")
                 self._add_paths_box(content_box, [fanta_volumes_dir])
             else:
-                self._add_warning_text(
-                    content_box, "Your Fantagraphics Carl Barks Library was NOT found."
+                self._add_text(
+                    content_box,
+                    "Your Fantagraphics Carl Barks Library was NOT found.",
+                    warning=True,
                 )
-                self._add_info_text(
+                self._add_text(
                     content_box,
                     "You'll need to configure the library location when the app starts.",
                 )
@@ -132,16 +133,16 @@ def _get_installer_success_content(  # noqa: C901
             # === Config & Logs ===================================================
             self._add_section_header(content_box, "Configuration & Logs")
             if app_config_dir:
-                self._add_info_text(content_box, "Default configuration files were written to:")
+                self._add_text(content_box, "Default configuration files were written to:")
                 self._add_paths_box(content_box, [app_config_dir])
 
             if app_log_path:
-                self._add_info_text(content_box, "App logging will go to:")
+                self._add_text(content_box, "App logging will go to:")
                 self._add_paths_box(content_box, [app_log_path])
 
             # === Next Steps ======================================================
             self._add_section_header(content_box, "Next Steps")
-            self._add_info_text(
+            self._add_text(
                 content_box,
                 "The main Barks Reader app will now start. Once you're happy "
                 "the app is working properly, you can delete the installer data packs:",
@@ -173,31 +174,13 @@ def _get_installer_success_content(  # noqa: C901
             parent.add_widget(lbl)
 
         @staticmethod
-        def _add_info_text(parent: Widget, text: str) -> None:
+        def _add_text(parent: Widget, text: str, *, warning: bool = False) -> None:
+            """Add a line of the report, wrapped to its width; a warning is bold and amber."""
             lbl = Label(
                 text=text,
-                font_size=info_text_font_size,
-                color=list(theme().text_secondary),
-                size_hint_y=None,
-                halign="left",
-                valign="top",
-            )
-            lbl.bind(
-                size=lambda i, v: (
-                    setattr(i, "text_size", (v[0], None)),
-                    i.texture_update(),
-                    setattr(i, "height", i.texture_size[1] + dp(4)),
-                )
-            )
-            parent.add_widget(lbl)
-
-        @staticmethod
-        def _add_warning_text(parent: Widget, text: str) -> None:
-            lbl = Label(
-                text=text,
-                font_size=warning_text_font_size,
-                color=[0.95, 0.55, 0.2, 1],
-                bold=True,
+                font_size=warning_text_font_size if warning else info_text_font_size,
+                color=_WARNING_COLOR if warning else list(theme().text_secondary),
+                bold=warning,
                 size_hint_y=None,
                 halign="left",
                 valign="top",

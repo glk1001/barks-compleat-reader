@@ -11,7 +11,7 @@ from loguru import logger
 from barks_reader.core import config_info as config_info_module
 from barks_reader.core import data_pack
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES
-from barks_reader.core.reader_settings import ReaderSettings
+from barks_reader.core.reader_settings import READER_FILES_DIR, ReaderSettings
 from barks_reader.core.reader_utils import quote_and_join_with_and
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 # The two top-level folders inside the packs (build-data-zips.sh).
 ZIP_CONFIGS_SUBDIR = "Configs/"
-ZIP_READER_FILES_SUBDIR = "Reader Files/"
+ZIP_READER_FILES_SUBDIR = f"{READER_FILES_DIR}/"  # the installed folder's own name
 
 # How much of a file is copied at a time: small enough for a progress bar to move
 # through the panels zip, large enough not to slow the copy.

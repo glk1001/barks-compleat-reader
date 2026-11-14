@@ -53,10 +53,17 @@ def test_it_says_where_everything_went() -> None:
 
 
 def test_a_library_not_found_is_a_warning_with_what_to_do() -> None:
-    texts = _texts(_content(fanta_dir=None))
+    content = _content(fanta_dir=None)
+    texts = _texts(content)
 
     assert "Your Fantagraphics Carl Barks Library was NOT found." in texts
     assert "You'll need to configure the library location when the app starts." in texts
+    # The warning stands out from the lines about it: bold, and in its own colour.
+    by_text = {w.text: w for w in content.walk() if isinstance(w, Label)}
+    warning = by_text["Your Fantagraphics Carl Barks Library was NOT found."]
+    what_to_do = by_text["You'll need to configure the library location when the app starts."]
+    assert (warning.bold, what_to_do.bold) == (True, False)
+    assert list(warning.color) != list(what_to_do.color)
 
 
 def test_what_was_not_given_is_not_listed() -> None:

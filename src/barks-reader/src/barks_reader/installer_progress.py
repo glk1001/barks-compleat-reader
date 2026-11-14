@@ -22,7 +22,11 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from barks_reader.ui.kivy_standalone_show_message import place_window
+from barks_reader.ui.kivy_standalone_show_message import (
+    log_popup_closed,
+    log_popup_opened,
+    place_window,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -182,6 +186,7 @@ def _run_window_loop[T](
         return not run.finished  # True refuses the close
 
     def on_closed() -> None:
+        log_popup_closed(title)
         if run.error is not None:
             stopTouchApp()
             return
@@ -199,6 +204,8 @@ def _run_window_loop[T](
             closable=False,
         )
         Window.bind(on_request_close=keep_window)
+        # The lines every standalone popup logs, for a test waiting on the window.
+        popup.bind(on_open=lambda *_: log_popup_opened(title))
         popup.open()
 
         def tick(_dt: float) -> bool:

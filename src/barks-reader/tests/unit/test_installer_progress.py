@@ -15,7 +15,7 @@ import kivy.clock
 import kivy.core.window
 import pytest
 from barks_reader import installer_progress
-from barks_reader.core import boot_splash
+from barks_reader.core import boot_splash, log_markers
 from barks_reader.installer_progress import (
     ByteProgress,
     percent_text,
@@ -152,6 +152,31 @@ class TestRunShowingProgress:
         show_next.assert_called_once_with("the result", loop.stop)
         loop.stop.assert_not_called()  # what follows ends the loop, when it has closed
         loop.place_window.assert_called_once_with(_SIZE, borderless=False)
+
+    def test_the_window_logs_its_opening_and_closing_as_every_standalone_popup_does(
+        self, loop: _Loop, loguru_sink: list[str]
+    ) -> None:
+        seen: list[list[str]] = []
+
+        def in_loop() -> None:
+            loop.start()
+            loop.popup.dispatch("on_open")  # as the end of its fade-in does
+            seen.append(list(loguru_sink))
+            loop.finish_closing(_work_until_done_from(loop))
+
+        def _work_until_done_from(loop_: _Loop) -> PopupFrame:
+            popup = loop_.popup
+            while loop_.tick():
+                pass
+            return popup
+
+        _run(lambda: None, in_loop)
+
+        opened = log_markers.STANDALONE_POPUP_OPENED.format(title="Installing")
+        closed = log_markers.STANDALONE_POPUP_CLOSED.format(title="Installing")
+        assert opened in seen[0]
+        assert closed not in seen[0]
+        assert closed in loguru_sink
 
     def test_a_window_with_no_frame_is_placed_as_one(self, loop: _Loop) -> None:
         def in_loop() -> None:
