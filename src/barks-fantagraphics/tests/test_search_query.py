@@ -66,6 +66,7 @@ GOLD, MINE, DUCK = Word("gold"), Word("mine"), Word("duck")
         ("gold not duck", And((GOLD, Not(DUCK)))),
         ("+gold", GOLD),
         ("gold +mine", And((GOLD, MINE))),
+        ("gold+mine", And((GOLD, MINE))),  # a + is syntax wherever it is
         ("NOT NOT duck", Not(Not(DUCK))),
         # brackets
         ("(gold)", GOLD),

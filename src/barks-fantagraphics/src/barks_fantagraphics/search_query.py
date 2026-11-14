@@ -19,7 +19,8 @@ Grammar (a space between terms means AND)::
 Operators: ``AND`` ``and`` ``&``; ``OR`` ``or`` ``|``; ``NOT`` ``not`` and a
 leading ``-``. And, or and not are stop words, never searchable, so either case is
 an operator; ``near`` is a word people search for, so only ``NEAR`` is one. A ``-``
-is NOT only at the start of a token: ``indo-china`` and ``100-foot`` are words. No
+is NOT only at the start of a token: ``indo-china`` and ``100-foot`` are words, and
+``gold+silver`` is ``gold`` and ``silver``. No
 term in the index holds ``& | + * ? : ( ) "``, so they are syntax wherever they are.
 
 A word holding ``*`` or ``?`` is a wildcard (at least two letters besides them),
@@ -248,7 +249,7 @@ _OPERATOR_WORDS = {"and": _Kind.AND, "or": _Kind.OR, "not": _Kind.NOT}
 _QUALIFIER_KEYS = ("tag", "year", "vol")
 _NEAR_RE = re.compile(r"NEAR(?:/(\d+))?")
 # What ends a word: space, and the characters that are syntax wherever they are.
-_WORD_END = frozenset('()"&|') | frozenset(" \t\n\r")
+_WORD_END = frozenset('()"&|+') | frozenset(" \t\n\r")
 
 
 def _read_quoted(text: str, start: int) -> tuple[str, int]:
@@ -279,8 +280,9 @@ def _tokenize(text: str) -> list[_Token]:  # noqa: C901, PLR0912
             tokens.append(_Token(_Kind.AND if ch == "&" else _Kind.OR, ch, i))
             i += 1
         elif ch in "+-":
-            # Only at the start of a token: a word's own hyphen (indo-china, 100-foot)
-            # is read with the word below, never here.
+            # A - only at the start of a token: a word's own hyphen (indo-china,
+            # 100-foot) is read with the word below, never here. A + ends a word, so
+            # it comes here wherever it is (gold+silver).
             tokens.append(_Token(_Kind.PLUS if ch == "+" else _Kind.NOT, ch, i))
             i += 1
         else:
