@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from functools import cache
+from functools import cache, lru_cache
 from typing import TYPE_CHECKING
 
 from .barks_tags import (
@@ -123,6 +123,12 @@ def _issue_numbers(issue: Issues) -> frozenset[int]:
     return frozenset(info.issue_number for info in BARKS_TITLE_INFO if info.issue_name == issue)
 
 
+@lru_cache(maxsize=256)
+def _typed_stems(typed: str) -> frozenset[str]:
+    """Return a typed word's stems, kept: each keystroke asks once per title."""
+    return frozenset(_stems_of(typed))
+
+
 @dataclass(frozen=True, slots=True)
 class _SearchableTitle:
     title: Titles
@@ -149,7 +155,7 @@ class _SearchableTitle:
     def has_word_for(self, typed: str) -> bool:
         """Whether a typed word starts one of the title's words or shares a stem with one."""
         return any(word.startswith(typed) for word in self.words) or bool(
-            _stems_of(typed) & self.stems
+            _typed_stems(typed) & self.stems
         )
 
 
