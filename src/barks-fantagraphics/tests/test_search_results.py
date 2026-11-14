@@ -93,6 +93,11 @@ class TestMerge:
         with pytest.raises(ValueError, match="Index inconsistency"):
             merge_title_dicts(GOLD, other)
 
+    def test_a_story_in_two_volumes_is_an_index_inconsistency(self) -> None:
+        other = {"Pirate Gold": TitleInfo(6, {"12": PageInfo("1", [_speech("1")])})}
+        with pytest.raises(ValueError, match="in both volume 5 and 6"):
+            merge_title_dicts(GOLD, other)
+
     def test_nothing_is_nothing(self) -> None:
         assert merge_title_dicts() == {}
         assert merge_title_dicts({}, {}) == {}

@@ -93,8 +93,9 @@ def merge_title_dicts(*title_dicts: TitleDict) -> TitleDict:
         A new result, in the engine's order.
 
     Raises:
-        ValueError: If two results map the same page of a story to different comic
-            pages - an inconsistent index, as the engine itself reports it.
+        ValueError: If two results put a story in different volumes, or map the same
+            page of a story to different comic pages - an inconsistent index, as the
+            engine itself reports it.
 
     """
     volumes: dict[str, int] = {}
@@ -102,7 +103,13 @@ def merge_title_dicts(*title_dicts: TitleDict) -> TitleDict:
     speeches: dict[tuple[str, str], dict[str, SpeechInfo]] = {}
     for title_dict in title_dicts:
         for title, title_info in title_dict.items():
-            volumes.setdefault(title, title_info.fanta_vol)
+            known_vol = volumes.setdefault(title, title_info.fanta_vol)
+            if known_vol != title_info.fanta_vol:
+                msg = (
+                    f'Index inconsistency for "{title}": it is in both volume {known_vol}'
+                    f" and {title_info.fanta_vol}."
+                )
+                raise ValueError(msg)
             for fanta_page, page_info in title_info.fanta_pages.items():
                 key = (title, fanta_page)
                 known = comic_pages.setdefault(key, page_info.comic_page)
