@@ -842,10 +842,33 @@ class TestStaleEntitySidecar:
         assert f'"{_ANDES}" page 041 group 1 person "Duk Duk"' in message
         assert "Re-tag the volumes" in message
 
-    def test_a_failed_build_keeps_none_of_its_bubbles(self, tmp_path: Path) -> None:
+    def test_a_failed_first_build_leaves_no_index_and_no_build_folder(self, tmp_path: Path) -> None:
         with pytest.raises(StaleEntitiesError):
             self._build(tmp_path, entity_provider=self._andes_tagged_with({"duk duk"}))
-        assert SearchEngine(tmp_path / "index").get_all_titles() == set()
+        assert list((tmp_path / "index").iterdir()) == []
+
+    @pytest.mark.parametrize("failure", ["stale entities", "provider crash"])
+    def test_a_failed_rebuild_leaves_the_live_index_and_sidecars_as_they_were(
+        self, tmp_path: Path, failure: str
+    ) -> None:
+        def crashing_provider(_title: str, _page: str, _group: str) -> dict[str, set[str]]:
+            msg = "tagger crashed"
+            raise RuntimeError(msg)
+
+        folder = tmp_path / "index"
+        self._build(tmp_path)
+        before = {path.name: path.read_bytes() for path in folder.iterdir()}
+
+        provider = (
+            self._andes_tagged_with({"duk duk"})
+            if failure == "stale entities"
+            else crashing_provider
+        )
+        with pytest.raises((StaleEntitiesError, RuntimeError)):
+            self._build(tmp_path, entity_provider=provider)
+
+        assert {path.name: path.read_bytes() for path in folder.iterdir()} == before
+        assert set(SearchEngine(folder).find_words("eggs")) == {_ANDES}
 
     def test_a_name_not_curated_is_dropped_not_judged(self, tmp_path: Path) -> None:
         """Only a curated name reaches the index, so only a curated name can be stale."""
@@ -942,6 +965,25 @@ class TestTheBuilderMore:
         self._build(tmp_path, index_dir=deep)
         engine, _ = self._build(tmp_path, index_dir=deep)  # again: no error
         assert set(engine.find_words("eggs")) == {_ANDES}
+
+    def test_a_rebuild_replaces_the_old_index_and_keeps_the_files_it_did_not_write(
+        self, tmp_path: Path
+    ) -> None:
+        folder = tmp_path / "index"
+        self._build(tmp_path)
+        (folder / "entities-vol-05.json").write_text("{}")  # a build input, not output
+        old_segments = {path.name for path in folder.glob("*.seg")}
+        assert old_segments
+
+        engine, _ = self._build(tmp_path, {Titles.GOOD_DEEDS: PAGES[Titles.GOOD_DEEDS]})
+
+        names = {path.name for path in folder.iterdir()}
+        assert (folder / "entities-vol-05.json").read_text() == "{}"
+        assert not old_segments & names
+        assert len([name for name in names if name.endswith(".toc")]) == 1
+        assert not [name for name in names if name.startswith(".index-build-")]
+        assert engine.get_all_titles() == {ENUM_TO_STR_TITLE[Titles.GOOD_DEEDS]}
+        assert SearchEngine(folder).get_all_titles() == {ENUM_TO_STR_TITLE[Titles.GOOD_DEEDS]}
 
     def test_the_sidecar_files_have_the_names_their_readers_open(self, tmp_path: Path) -> None:
         """generate_stats_images.py opens most-common-unstemmed-terms.json by name."""
