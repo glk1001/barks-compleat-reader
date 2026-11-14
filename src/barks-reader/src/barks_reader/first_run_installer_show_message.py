@@ -5,10 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from barks_reader.core.popup_frame import FrameButton
-from barks_reader.core.reader_utils import (
-    get_centred_position_on_primary_monitor,
-    quote_and_join_with_and,
-)
+from barks_reader.core.reader_utils import quote_and_join_with_and
+from barks_reader.installer_progress import place_window
 from barks_reader.ui.kivy_standalone_show_message import show_standalone_popup
 
 DEFAULT_INSTALLER_POPUP_SIZE = (800, 1000)
@@ -30,15 +28,9 @@ def show_installer_message(
     ``in_running_loop`` and ``on_dismiss`` are for the installer's progress window, whose
     Kivy loop this is then shown in (``show_standalone_popup``).
     """
-    x, y = get_centred_position_on_primary_monitor(*size)
-
-    # Set the window pos and size now to avoid moving window flicker.
-    from kivy import Config
-
-    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "width", size[0])  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "height", size[1])  # ty: ignore[missing-union-attribute]
+    # Set the window pos and size now to avoid moving window flicker; no larger than
+    # the screen has room for, where the report then scrolls.
+    place_window(size)
 
     show_standalone_popup(
         title,
@@ -93,7 +85,8 @@ def _get_installer_success_content(  # noqa: C901
                 data_zips = []
 
             # === SCROLL AREA =====================================================
-            scroll_view = ReaderScrollView(size_hint=(1, 1), do_scroll_y=False)
+            # It scrolls where the window is shorter than the report: a small screen.
+            scroll_view = ReaderScrollView(size_hint=(1, 1), do_scroll_y=True)
             content_box = BoxLayout(
                 orientation="vertical",
                 padding=[dp(4), 0],

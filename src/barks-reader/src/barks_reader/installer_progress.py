@@ -10,6 +10,9 @@ loop.
 
 A machine whose window cannot open still installs: the work then runs with nothing
 showing, as it used to.
+
+`place_window` is where every installer window gets its size and place: no larger than
+the screen leaves it, so that its title bar and its button are on the screen.
 """
 
 from __future__ import annotations
@@ -80,6 +83,57 @@ class _Run[T]:
         return self.result
 
 
+def fit_window_to_screen(size: tuple[int, int]) -> tuple[int, int]:
+    """Return `size`, made no larger than the primary screen has room for.
+
+    The window is centred, and where the desktop keeps its taskbar or panel is not
+    known, so the height leaves that allowance both above and below. A window taller
+    than that had its title bar above the screen's top and its button below the bottom.
+
+    Args:
+        size: The width and height wanted.
+
+    Returns:
+        The width and height to open the window at.
+
+    """
+    from barks_reader.core.screen_metrics import SCREEN_METRICS, get_approximate_taskbar_height
+
+    screen = SCREEN_METRICS.get_primary_screen_info()
+    room_high = screen.height_pixels - 2 * get_approximate_taskbar_height()
+    return min(size[0], screen.width_pixels), min(size[1], room_high)
+
+
+def place_window(size: tuple[int, int], *, borderless: bool = False) -> tuple[int, int]:
+    """Tell Kivy where the window opens and how large: centred, and fitted to the screen.
+
+    Called before the window exists, so that it opens where and as large as it will
+    stay; it does nothing to a window already open.
+
+    Args:
+        size: The width and height wanted.
+        borderless: Whether the window has no frame of the desktop's, as one has
+            whose popup's own title bar is its top.
+
+    Returns:
+        The width and height the window was given (`fit_window_to_screen`).
+
+    """
+    from kivy import Config
+
+    from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
+
+    width, height = fit_window_to_screen(size)
+    x, y = get_centred_position_on_primary_monitor(width, height)
+    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "width", width)  # ty: ignore[missing-union-attribute]
+    Config.set("graphics", "height", height)  # ty: ignore[missing-union-attribute]
+    if borderless:
+        Config.set("graphics", "borderless", "1")  # ty: ignore[missing-union-attribute]
+    return width, height
+
+
 def percent_text(fraction: float) -> str:
     """Return a share from 0 to 1 as the bar's caption."""
     return f"{int(fraction * 100)}%"
@@ -125,14 +179,13 @@ def run_showing_progress[T](
     try:
         _run_window_loop(run, progress, title, message, window_size, show_next, borderless)
     except Exception as e:  # any Kivy failure: the install matters more than its window
-        if run.started:
-            run.thread.join()
         if run.error is None and run.finished:
             raise  # the work is done and what followed it failed: the caller's to report
-        logger.warning(f"Could not show the installer's progress window: {e!r}.")
+        logger.opt(exception=e).warning(f"Could not show the installer's progress window: {e!r}.")
 
     if not run.started:
         return work(), False
+    # Waits for the work: a loop that died under it has left its thread still running.
     return run.outcome(), run.next_shown
 
 
@@ -145,19 +198,8 @@ def _run_window_loop[T](
     show_next: Callable[[T, Callable[[], None]], None],
     borderless: bool,
 ) -> None:
-    from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
-
-    x, y = get_centred_position_on_primary_monitor(*window_size)
-
     # Before the window exists, so that it opens where and as large as it will stay.
-    from kivy import Config
-
-    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "width", window_size[0])  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "height", window_size[1])  # ty: ignore[missing-union-attribute]
-    if borderless:
-        Config.set("graphics", "borderless", "1")  # ty: ignore[missing-union-attribute]
+    place_window(window_size, borderless=borderless)
 
     from kivy.base import runTouchApp, stopTouchApp
     from kivy.clock import Clock
@@ -175,7 +217,6 @@ def _run_window_loop[T](
         return not run.finished  # True refuses the close
 
     def on_closed() -> None:
-        Window.unbind(on_request_close=keep_window)
         if run.error is not None:
             stopTouchApp()
             return
@@ -215,7 +256,13 @@ def _run_window_loop[T](
     Window.show()
     close_boot_splash()
     Clock.schedule_once(start, 0)
-    runTouchApp()
+    try:
+        runTouchApp()
+    finally:
+        # However the loop ended, and above all when it died with the work unfinished:
+        # the window's next loop (the caller's report or error popup) must be closable.
+        # Within this loop `keep_window` already allows the close once the work is done.
+        Window.unbind(on_request_close=keep_window)
 
 
 def _progress_body(message: str) -> tuple[Any, Any, Any]:

@@ -448,9 +448,7 @@ class TestSuccessMessage:
         monkeypatch.setattr(sys, "argv", ["/exe/barks-reader"])
         with (
             patch.object(kivy_standalone_show_message, "show_standalone_popup") as popup,
-            patch.object(
-                data_pack_installer, "get_centred_position_on_primary_monitor", return_value=(1, 2)
-            ),
+            patch.object(installer_progress, "place_window") as place_window,
             patch.object(minimal_config_info_module, "get_minimal_config_options") as options,
             patch.object(data_pack_installer, "IS_COMPILED", new=True),
         ):
@@ -466,6 +464,8 @@ class TestSuccessMessage:
             assert popup.call_args.kwargs["fill_window"] is True
             (ok,) = popup.call_args.kwargs["buttons"]
             assert (ok.text, ok.closes) == ("OK", True)
+            # No frame of the desktop's: the popup's own title bar is the window's top.
+            place_window.assert_called_once_with((900, 720), borderless=True)
             ok.on_press()  # the frame closes it; main starts the reader once it has
             assert popup.call_args.kwargs["on_dismiss"] is None
 
@@ -482,9 +482,7 @@ class TestSuccessMessage:
         monkeypatch.setattr(sys, "argv", ["/exe/barks-reader"])
         with (
             patch.object(kivy_standalone_show_message, "show_standalone_popup") as popup,
-            patch.object(
-                data_pack_installer, "get_centred_position_on_primary_monitor", return_value=(1, 2)
-            ),
+            patch.object(installer_progress, "place_window"),
             patch.object(
                 minimal_config_info_module,
                 "get_minimal_config_options",
@@ -503,9 +501,7 @@ class TestSuccessMessage:
     ) -> None:
         with (
             patch.object(kivy_standalone_show_message, "show_standalone_popup") as popup,
-            patch.object(
-                data_pack_installer, "get_centred_position_on_primary_monitor", return_value=(1, 2)
-            ),
+            patch.object(installer_progress, "place_window"),
             patch.object(minimal_config_info_module, "get_minimal_config_options"),
         ):
             data_pack_installer.preview_success_message()

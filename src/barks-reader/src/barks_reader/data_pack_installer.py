@@ -33,7 +33,6 @@ from barks_reader.core import data_pack
 from barks_reader.core.config_info import IS_COMPILED, ConfigInfo, get_app_exe_dir
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES, DataPackInfo, UpdateStatus
 from barks_reader.core.reader_settings import ReaderSettings
-from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
 from barks_reader.installer_support import (
     ZIP_READER_FILES_SUBDIR,
     InstallerDataError,
@@ -236,20 +235,14 @@ def _show_success_message(
     in_running_loop: bool = False,
 ) -> None:
     # Kivy only now: config_info must be constructed before any kivy import (its guard).
-    from kivy import Config  # noqa: PLC0415
-
     from barks_reader.core.minimal_config_info import get_minimal_config_options  # noqa: PLC0415
     from barks_reader.core.popup_frame import FrameButton  # noqa: PLC0415
+    from barks_reader.installer_progress import place_window  # noqa: PLC0415
     from barks_reader.ui.kivy_standalone_show_message import show_standalone_popup  # noqa: PLC0415
 
     # Set the window pos and size now to avoid moving window flicker. No OS frame: the
     # popup's own title bar is the window's top.
-    x, y = get_centred_position_on_primary_monitor(*_POPUP_SIZE)
-    Config.set("graphics", "left", x)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "top", y)  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "width", _POPUP_SIZE[0])  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "height", _POPUP_SIZE[1])  # ty: ignore[missing-union-attribute]
-    Config.set("graphics", "borderless", "1")  # ty: ignore[missing-union-attribute]
+    place_window(_POPUP_SIZE, borderless=True)
 
     content = _success_content(success_text(installed))
 

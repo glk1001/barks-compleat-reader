@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
+from barks_kivy_ui.scrolling import ReaderScrollView
 from barks_reader import first_run_installer_show_message
-from kivy.config import Config
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 
@@ -77,6 +77,13 @@ def test_the_text_wraps_to_its_width() -> None:
     assert wrapped
 
 
+def test_the_report_scrolls_where_the_window_is_shorter_than_it() -> None:
+    """A small screen gets a smaller window (`place_window`); the report must stay reachable."""
+    (scroll_view,) = [w for w in _content().walk() if isinstance(w, ReaderScrollView)]
+
+    assert scroll_view.do_scroll_y is True
+
+
 def test_it_draws_no_card_and_no_button_of_its_own_on_the_frames() -> None:
     content = _content()
     assert not content.canvas.before.children
@@ -86,12 +93,7 @@ def test_it_draws_no_card_and_no_button_of_its_own_on_the_frames() -> None:
 def test_show_installer_message_places_the_window_and_shows_the_screen(tmp_path: Path) -> None:
     background = tmp_path / "success.png"
     with (
-        patch.object(
-            first_run_installer_show_message,
-            "get_centred_position_on_primary_monitor",
-            return_value=(30, 40),
-        ),
-        patch.object(Config, "set") as config_set,
+        patch.object(first_run_installer_show_message, "place_window") as place_window,
         patch.object(first_run_installer_show_message, "show_standalone_popup") as show,
     ):
         first_run_installer_show_message.show_installer_message(
@@ -104,12 +106,7 @@ def test_show_installer_message_places_the_window_and_shows_the_screen(tmp_path:
             background_image_file=background,
         )
 
-    assert [c.args[1:] for c in config_set.call_args_list] == [
-        ("left", 30),
-        ("top", 40),
-        ("width", 800),
-        ("height", 950),
-    ]
+    place_window.assert_called_once_with((800, 950))
     title, content = show.call_args.args
     assert title == "Installation Complete"
     assert f'"{_FANTA}"' in _texts(content)
