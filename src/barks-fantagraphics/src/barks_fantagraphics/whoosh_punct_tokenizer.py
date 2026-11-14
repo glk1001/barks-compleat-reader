@@ -1,3 +1,4 @@
+# cspell:ignore keeporiginal
 import unicodedata
 from collections.abc import Generator
 from typing import Any
@@ -76,6 +77,10 @@ class WordWithPunctTokenizer(Tokenizer):
                 return inner, 1
         return text, 0
 
+    # Whoosh passes `keeporiginal`, `removestops` and `tokenize` by those names, so they
+    # land in `_kwargs` and are ignored: stop words are always marked for removal and a
+    # value is always split into words. Indexing and our own queries rely on neither
+    # flag; Whoosh's highlighter and range queries, which we do not use, would.
     def __call__(
         self,
         value: str,

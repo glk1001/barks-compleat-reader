@@ -339,6 +339,9 @@ class BarksTitleSearch:
             titles = set.union(*included)
         for name in selection.excluded:
             titles -= set(BarksTitleSearch.get_titles_from_alias_tag(name.lower())[1])
+        # The same ranges as search_filters.SearchFilter, which the word search uses on
+        # the index's title strings and volumes; here they are on title enums. A change
+        # to what a range means (a story with no year or volume) belongs in both.
         if selection.years is not None:
             first, last = selection.years
             titles = {t for t in titles if first <= BARKS_TITLE_INFO[t].submitted_year <= last}

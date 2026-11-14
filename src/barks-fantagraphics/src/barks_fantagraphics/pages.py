@@ -498,6 +498,8 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
         srce_page.page_type,
     )
     srce_restored_timestamp = get_timestamp(Path(srce_restored_file))
+    # The four look-ups below are used only for a restorable page (see the last branch).
+    # They are made for every page all the same, to leave this build-critical order alone.
     srce_restored_upscayled_file = Path(comic.get_srce_restored_upscayled_story_file(page_num_str))
     srce_restored_upscayled_timestamp = (
         get_timestamp(srce_restored_upscayled_file)

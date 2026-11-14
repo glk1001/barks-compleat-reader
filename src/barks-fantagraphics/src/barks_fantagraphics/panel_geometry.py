@@ -167,6 +167,10 @@ def centered_bbox(
 
     """
     assert bbox_width + (2 * x_margin) <= target_page_width
+    # The height is not checked: a box taller than the page gets a negative y_min, and
+    # starts above it. panel_bounding scales a short page's height by its width, which
+    # could do that for a very narrow box. A check here wants a sweep of the real pages
+    # first, as it could stop comic builds that pass today.
     x_min = x_margin
     y_min = int(0.5 * (target_page_height - bbox_height))
     x_max = x_min + (bbox_width - 1)

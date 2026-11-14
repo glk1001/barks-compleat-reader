@@ -44,6 +44,9 @@ if TYPE_CHECKING:
 _WORD_RE = re.compile(r"\w+(?:['\-.]\w+)*'?")
 
 
+# Simpler than the index's analyzer: it keeps stop words, splits "1,000" and keeps an
+# apostrophe round a word. A test of phrases or NEAR over real text should pass
+# `tokenize=testing.whoosh_index.schema_tokens`, as the evaluator's tests do.
 def _default_tokenize(text: str) -> list[str]:
     return _WORD_RE.findall(text.lower())
 

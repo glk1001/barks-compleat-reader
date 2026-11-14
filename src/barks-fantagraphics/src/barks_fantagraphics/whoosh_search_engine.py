@@ -48,6 +48,10 @@ COLLATOR = Collator()
 # than this, so the cap is set above the largest realistic result set rather than at a
 # round number that would silently drop matches.
 _SEARCH_RESULT_LIMIT = 100_000
+# The searches are scored, though every result is re-sorted by title, page and group, so
+# the scores only decide which hits a search over the limit would keep. With the limit
+# above any real result, searching with `scored=False` should find the same for less
+# work: an untried saving, to measure before taking.
 
 MY_STOP_WORDS = STOP_WORDS.union(["oh"])
 
