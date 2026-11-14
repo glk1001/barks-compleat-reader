@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
 
 import pytest
-from barks_reader import data_pack_installer, installer_progress
+from barks_reader import data_pack_installer, installer_progress, installer_support
 from barks_reader.core import data_pack
 from barks_reader.core import minimal_config_info as minimal_config_info_module
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES, PACK_MEMBER, DataPackInfo
@@ -312,7 +312,7 @@ class TestMain:
         update.install_old_data()
         update.write_packs()
         monkeypatch.setattr(
-            data_pack_installer, "extract_subdir", MagicMock(side_effect=RuntimeError("boom"))
+            installer_support, "extract_subdir", MagicMock(side_effect=RuntimeError("boom"))
         )
 
         with pytest.raises(SystemExit):

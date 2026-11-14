@@ -1,4 +1,4 @@
-"""The first-run installer: its data-pack extraction, its config checks, and a whole run."""
+"""The first-run installer: its config checks, and a whole run."""
 
 from __future__ import annotations
 
@@ -24,11 +24,7 @@ from barks_reader import (  # noqa: E402
 )
 from barks_reader.core import config_info as config_info_module  # noqa: E402
 from barks_reader.core import reader_utils  # noqa: E402
-from barks_reader.installer_support import (  # noqa: E402
-    InstallerDataError,
-    extract_subdir,
-    subdir_bytes,
-)
+from barks_reader.installer_support import InstallerDataError  # noqa: E402
 from barks_reader.ui import kivy_standalone_error_popup  # noqa: E402
 
 # Importing the installer module installs its own excepthook; keep pytest's.
@@ -42,62 +38,6 @@ def _make_zip(zip_path: Path, entries: dict[str, str]) -> Path:
         for name, text in entries.items():
             zf.writestr(name, text)
     return zip_path
-
-
-class TestExtractSubdir:
-    def test_extracts_files_under_subdir_and_returns_count(self, tmp_path: Path) -> None:
-        zip_path = _make_zip(
-            tmp_path / "data.zip",
-            {
-                "Configs/": "",
-                "Configs/barks-reader.ini": _INI_TEXT,
-                "Configs/kivy/config.ini": "[kivy]\n",
-                "Reader Files/readme.txt": "not a config",
-            },
-        )
-        out_dir = tmp_path / "config"
-
-        num_extracted = extract_subdir(zip_path, "Configs/", out_dir)
-
-        assert num_extracted == 2  # noqa: PLR2004
-        assert (out_dir / "barks-reader.ini").read_text() == _INI_TEXT
-        assert (out_dir / "kivy" / "config.ini").read_text() == "[kivy]\n"
-        assert not (out_dir / "readme.txt").exists()
-
-    def test_the_bytes_reported_as_written_add_up_to_the_subdirs_size(self, tmp_path: Path) -> None:
-        zip_path = _make_zip(
-            tmp_path / "pack.zip",
-            {"Reader Files/a.txt": "abc", "Reader Files/deep/b.txt": "de", "Configs/c.ini": "x"},
-        )
-        written: list[int] = []
-
-        extract_subdir(zip_path, "Reader Files/", tmp_path / "out", written.append)
-
-        assert sum(written) == subdir_bytes(zip_path, "Reader Files/") == len("abc") + len("de")
-        assert subdir_bytes(zip_path, "Nothing/") == 0
-
-    def test_re_zipped_pack_with_nested_top_level_folder_fails_loudly(self, tmp_path: Path) -> None:
-        # What Safari + Finder produce: the real contents one folder deeper, plus __MACOSX.
-        zip_path = _make_zip(
-            tmp_path / "data.zip",
-            {
-                "barks-reader-data-1/Configs/barks-reader.ini": _INI_TEXT,
-                "barks-reader-data-1/Reader Files/readme.txt": "x",
-                "__MACOSX/barks-reader-data-1/._Configs": "",
-            },
-        )
-        out_dir = tmp_path / "config"
-
-        with pytest.raises(InstallerDataError) as exc_info:
-            extract_subdir(zip_path, "Configs/", out_dir)
-
-        error = exc_info.value
-        assert str(zip_path) in error.message
-        assert '"Configs/"' in error.message
-        assert "barks-reader-data-1" in error.details
-        assert "__MACOSX" in error.details
-        assert "re-zipped" in error.details
-        assert not out_dir.exists()
 
 
 class TestConfigureFantaVolumes:

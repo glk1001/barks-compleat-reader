@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import os
 import platform
-import shutil
 import sys
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -33,7 +32,7 @@ from barks_reader.core.reader_utils import get_centred_position_on_primary_monit
 from barks_reader.installer_support import (
     ZIP_READER_FILES_SUBDIR,
     InstallerDataError,
-    extract_subdir,
+    install_reader_files,
     subdir_bytes,
 )
 from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
@@ -127,9 +126,9 @@ def _install_behind_a_window(config_info: ConfigInfo, exe_dir: Path) -> tuple[Da
     )
 
     def install() -> DataPackInfo:
-        installed = _install(available, pack_dir, reader_files, progress.add)
-        logger.info(f"Installed {installed.display()}.")
-        return installed
+        install_reader_files(available, pack_dir, reader_files, progress.add)
+        logger.info(f"Installed {available.display()}.")
+        return available
 
     def show_success(installed: DataPackInfo, end_loop: Callable[[], None]) -> None:
         def restart_and_end() -> None:
@@ -165,60 +164,6 @@ def _find_update(config_info: ConfigInfo, exe_dir: Path) -> tuple[DataPackInfo, 
     assert pack_dir is not None
     logger.info(f'Installing {available.display()} from "{pack_dir}" over "{reader_files}".')
     return available, pack_dir, reader_files
-
-
-def _install(
-    available: DataPackInfo,
-    pack_dir: Path,
-    reader_files: Path,
-    on_bytes: Callable[[int], None],
-) -> DataPackInfo:
-    data_pack.clear_leftovers(reader_files)
-    new_dir = data_pack.new_dir_for(reader_files)
-    for pack_name in DATA_PACK_FILE_NAMES:
-        extract_subdir(pack_dir / pack_name, ZIP_READER_FILES_SUBDIR, new_dir, on_bytes)
-
-    problems = data_pack.verify_extracted(new_dir, available)
-    if problems:
-        shutil.rmtree(new_dir, ignore_errors=True)
-        msg = f"The extracted {available.short()} is not what its packs promised."
-        details = (
-            "\n".join(problems)
-            + "\n\nThe installed data was left as it was. Download both packs again and"
-            " check them against the release's SHA256SUMS.txt."
-        )
-        raise InstallerDataError(msg, details)
-
-    try:
-        old_dir = data_pack.swap_reader_files(reader_files)
-    except data_pack.ReaderFilesStrandedError as exc:
-        shutil.rmtree(new_dir, ignore_errors=True)
-        msg = (
-            f"The new data could not be moved in, and the installed data could not be put"
-            f' back: it is in [b]"{exc.old_dir}"[/b].'
-        )
-        details = (
-            f"{exc}\n\nClose the Barks Reader, and any window showing those folders, and"
-            f' run the update again: it puts "{exc.old_dir.name}" back first. Or rename'
-            f' that folder to "{reader_files.name}" yourself.'
-        )
-        raise InstallerDataError(msg, details) from exc
-    except OSError as exc:
-        shutil.rmtree(new_dir, ignore_errors=True)
-        msg = (
-            f'The folder [b]"{reader_files}"[/b] is in use, so the new data could not be moved in.'
-        )
-        details = (
-            f"{exc}\n\nClose the Barks Reader, and any window showing that folder, and"
-            " try the update again. The installed data was left as it was."
-        )
-        raise InstallerDataError(msg, details) from exc
-
-    if old_dir is not None:
-        shutil.rmtree(old_dir, ignore_errors=True)
-        if old_dir.exists():
-            logger.warning(f'Could not remove "{old_dir}"; the next update will.')
-    return available
 
 
 def preview_success_message() -> None:
