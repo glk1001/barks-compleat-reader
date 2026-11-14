@@ -34,6 +34,7 @@ from barks_fantagraphics.pages import (
     get_page_number_str,
     get_relative_srce_filepath,
     get_required_pages_in_order,
+    get_restore_stage_dependencies,
     get_restored_srce_dependencies,
     get_sorted_srce_and_dest_pages,
     get_sorted_srce_and_dest_pages_with_dimensions,
@@ -649,6 +650,50 @@ class TestGetRestoredSrceDependencies:
 
     def test_a_page_that_is_not_restored_has_only_its_final_file(self, comic: MagicMock) -> None:
         assert [d.file for d in self._deps(comic, PageType.COVER)] == [comic.files["restored"]]
+
+
+class TestGetRestoreStageDependencies:
+    """The four stages behind a restored page, for a chain built without a comic."""
+
+    STAGES = ("restored-upscayled", "svg", "upscayled", "original")
+
+    @pytest.fixture
+    def stages(self, tmp_path: Path) -> list[Path]:
+        files = [tmp_path / f"{name}.file" for name in self.STAGES]
+        for mtime, file in enumerate(files, start=1_000):
+            file.write_text("x")
+            os.utime(file, (mtime, mtime))
+        return files
+
+    def test_the_stages_come_back_in_the_order_given_and_on_the_chain(
+        self, stages: list[Path]
+    ) -> None:
+        deps = get_restore_stage_dependencies(*stages)
+
+        assert [d.file for d in deps] == stages
+        assert [d.timestamp for d in deps] == [file.stat().st_mtime for file in stages]
+        assert not any(d.independent for d in deps)
+
+    def test_a_stage_not_on_disk_has_the_not_on_disk_timestamp(self, stages: list[Path]) -> None:
+        stages[1].unlink()
+
+        deps = get_restore_stage_dependencies(*stages)
+
+        assert [d.timestamp == -1 for d in deps] == [False, True, False, False]
+
+    def test_only_the_upscayled_and_the_original_can_be_a_fix(self, stages: list[Path]) -> None:
+        deps = get_restore_stage_dependencies(
+            *stages,
+            upscayled_mod_type=ModifiedType.MODIFIED,
+            original_mod_type=ModifiedType.ADDED,
+        )
+
+        assert [d.mod_type for d in deps] == [
+            ModifiedType.ORIGINAL,
+            ModifiedType.ORIGINAL,
+            ModifiedType.MODIFIED,
+            ModifiedType.ADDED,
+        ]
 
 
 # ---------------------------------------------------------------------------

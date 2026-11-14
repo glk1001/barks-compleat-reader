@@ -457,6 +457,63 @@ class SrceDependency:
     mod_type: ModifiedType = ModifiedType.ORIGINAL
 
 
+def _timestamp_or_not_on_disk(file: Path) -> float:
+    return get_timestamp(file) if file.is_file() else -1
+
+
+def get_restore_stage_dependencies(
+    restored_upscayled_file: Path,
+    restored_svg_file: Path,
+    upscayled_file: Path,
+    original_file: Path,
+    *,
+    upscayled_mod_type: ModifiedType = ModifiedType.ORIGINAL,
+    original_mod_type: ModifiedType = ModifiedType.ORIGINAL,
+) -> list[SrceDependency]:
+    """Return the stages a restored page was made from, newest stage first.
+
+    The one place that says what the restore pipeline's stages are and what order they
+    come in. A comic's own chain and the integrity check's chain for a page staged into
+    a collection both end in these four, and each used to spell the order out for
+    itself.
+
+    Args:
+        restored_upscayled_file: The restored page before it was scaled down.
+        restored_svg_file: The svg of the page that was restored.
+        upscayled_file: The upscayled scan the svg was made from.
+        original_file: The scan that was upscayled.
+        upscayled_mod_type: Whether `upscayled_file` is the plain file or a fix.
+        original_mod_type: Whether `original_file` is the plain file or a fix.
+
+    Returns:
+        One dependency per stage, none of them independent. A file not on disk has the
+        timestamp -1.
+
+    """
+    return [
+        SrceDependency(
+            restored_upscayled_file,
+            _timestamp_or_not_on_disk(restored_upscayled_file),
+            independent=False,
+        ),
+        SrceDependency(
+            restored_svg_file, _timestamp_or_not_on_disk(restored_svg_file), independent=False
+        ),
+        SrceDependency(
+            upscayled_file,
+            _timestamp_or_not_on_disk(upscayled_file),
+            independent=False,
+            mod_type=upscayled_mod_type,
+        ),
+        SrceDependency(
+            original_file,
+            _timestamp_or_not_on_disk(original_file),
+            independent=False,
+            mod_type=original_mod_type,
+        ),
+    ]
+
+
 def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> list[SrceDependency]:
     """Return the files a restored srce page depends on, with their timestamps.
 
@@ -501,28 +558,14 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
     # The four look-ups below are used only for a restorable page (see the last branch).
     # They are made for every page all the same, to leave this build-critical order alone.
     srce_restored_upscayled_file = Path(comic.get_srce_restored_upscayled_story_file(page_num_str))
-    srce_restored_upscayled_timestamp = (
-        get_timestamp(srce_restored_upscayled_file)
-        if Path(srce_restored_upscayled_file).is_file()
-        else -1
-    )
     srce_restored_svg_file = Path(comic.get_srce_restored_svg_story_file(page_num_str))
-    srce_restored_svg_timestamp = (
-        get_timestamp(srce_restored_svg_file) if Path(srce_restored_svg_file).is_file() else -1
-    )
     srce_upscayl_file, upscayl_modded = comic.get_final_srce_upscayled_story_file(
         page_num_str,
         srce_page.page_type,
     )
-    srce_upscayl_timestamp = (
-        get_timestamp(Path(srce_upscayl_file)) if Path(srce_upscayl_file).is_file() else -1
-    )
     srce_original_file, original_modded = comic.get_final_srce_original_story_file(
         page_num_str,
         srce_page.page_type,
-    )
-    srce_original_timestamp = (
-        get_timestamp(Path(srce_original_file)) if Path(srce_original_file).is_file() else -1
     )
 
     underlying_files = []
@@ -563,35 +606,15 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
         get_page_str(srce_page.page_num),
         srce_page.page_type,
     ):
-        underlying_files.append(
-            SrceDependency(
+        underlying_files.extend(
+            get_restore_stage_dependencies(
                 srce_restored_upscayled_file,
-                srce_restored_upscayled_timestamp,
-                independent=False,
-            ),
-        )
-        underlying_files.append(
-            SrceDependency(
                 srce_restored_svg_file,
-                srce_restored_svg_timestamp,
-                independent=False,
-            ),
-        )
-        underlying_files.append(
-            SrceDependency(
                 Path(srce_upscayl_file),
-                srce_upscayl_timestamp,
-                independent=False,
-                mod_type=upscayl_modded,
-            ),
-        )
-        underlying_files.append(
-            SrceDependency(
                 Path(srce_original_file),
-                srce_original_timestamp,
-                independent=False,
-                mod_type=original_modded,
-            ),
+                upscayled_mod_type=upscayl_modded,
+                original_mod_type=original_modded,
+            )
         )
 
     return underlying_files
