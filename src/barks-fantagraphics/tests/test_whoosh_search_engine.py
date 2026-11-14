@@ -847,6 +847,30 @@ class TestStaleEntitySidecar:
             self._build(tmp_path, entity_provider=self._andes_tagged_with({"duk duk"}))
         assert SearchEngine(tmp_path / "index").get_all_titles() == set()
 
+    @pytest.mark.parametrize("failure", ["stale entities", "provider crash"])
+    def test_a_failed_rebuild_leaves_the_live_index_and_sidecars_as_they_were(
+        self, tmp_path: Path, failure: str
+    ) -> None:
+        def crashing_provider(_title: str, _page: str, _group: str) -> dict[str, set[str]]:
+            msg = "tagger crashed"
+            raise RuntimeError(msg)
+
+        folder = tmp_path / "index"
+        self._build(tmp_path)
+        before = {path.name: path.read_bytes() for path in folder.iterdir()}
+
+        provider = (
+            self._andes_tagged_with({"duk duk"})
+            if failure == "stale entities"
+            else crashing_provider
+        )
+        with pytest.raises((StaleEntitiesError, RuntimeError)):
+            self._build(tmp_path, entity_provider=provider)
+
+        # Not a file more or less: the cancelled segment and Whoosh's working folder go.
+        assert {path.name: path.read_bytes() for path in folder.iterdir()} == before
+        assert set(SearchEngine(folder).find_words("eggs")) == {_ANDES}
+
     def test_a_name_not_curated_is_dropped_not_judged(self, tmp_path: Path) -> None:
         """Only a curated name reaches the index, so only a curated name can be stale."""
         engine, _ = self._build(tmp_path, entity_provider=self._andes_tagged_with({"Nobody"}))
@@ -941,6 +965,37 @@ class TestTheBuilderMore:
         deep = tmp_path / "a" / "b" / "index"
         self._build(tmp_path, index_dir=deep)
         engine, _ = self._build(tmp_path, index_dir=deep)  # again: no error
+        assert set(engine.find_words("eggs")) == {_ANDES}
+
+    def test_a_rebuild_replaces_the_old_index_and_keeps_the_files_it_did_not_write(
+        self, tmp_path: Path
+    ) -> None:
+        folder = tmp_path / "index"
+        self._build(tmp_path)
+        (folder / "entities-vol-05.json").write_text("{}")  # a build input, not output
+        old_segments = {path.name for path in folder.glob("*.seg")}
+        assert old_segments
+
+        engine, _ = self._build(tmp_path, {Titles.GOOD_DEEDS: PAGES[Titles.GOOD_DEEDS]})
+
+        names = {path.name for path in folder.iterdir()}
+        assert (folder / "entities-vol-05.json").read_text() == "{}"
+        assert not old_segments & names
+        assert len([name for name in names if name.endswith(".toc")]) == 1
+        assert engine.get_all_titles() == {ENUM_TO_STR_TITLE[Titles.GOOD_DEEDS]}
+        assert SearchEngine(folder).get_all_titles() == {ENUM_TO_STR_TITLE[Titles.GOOD_DEEDS]}
+
+    def test_a_rebuild_over_an_index_of_an_older_schema_takes_todays(self, tmp_path: Path) -> None:
+        from whoosh.fields import ID, Schema
+        from whoosh.index import create_in
+
+        folder = tmp_path / "index"
+        folder.mkdir()
+        create_in(folder, Schema(title=ID(stored=True)))
+
+        engine, _ = self._build(tmp_path)
+
+        assert SearchEngine(folder)._index.schema.names() == build_index_schema().names()
         assert set(engine.find_words("eggs")) == {_ANDES}
 
     def test_the_sidecar_files_have_the_names_their_readers_open(self, tmp_path: Path) -> None:

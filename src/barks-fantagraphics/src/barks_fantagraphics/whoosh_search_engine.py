@@ -1,3 +1,4 @@
+# cspell:ignore mergetype
 import heapq
 import json
 import re
@@ -10,11 +11,12 @@ from loguru import logger
 from pyuca import Collator
 from whoosh.analysis import STOP_WORDS, LowercaseFilter, StopFilter
 from whoosh.fields import ID, KEYWORD, TEXT, Schema
-from whoosh.index import create_in, open_dir
+from whoosh.index import TOC, FileIndex, clean_files, create_in, exists_in, open_dir
 from whoosh.qparser import QueryParser
 from whoosh.query import And, Or, Query, Term
 from whoosh.reading import IndexReader
 from whoosh.searching import Hit, Searcher
+from whoosh.writing import CLEAR, IndexWriter
 
 from .alpha_split import split_alpha_terms
 from .comics_database import ComicsDatabase
@@ -567,6 +569,23 @@ class SearchEngine:
         return split_alpha_terms(valid) if valid else {}
 
 
+def _cancel_build(index: FileIndex, writer: IndexWriter) -> None:
+    """Cancel a build's writer and delete the files it left, so the old index stays whole.
+
+    A cancelled writer closes its new segment's files but leaves them in the folder;
+    Whoosh would delete them only at the next commit. Deleting every file no table
+    of contents names leaves the folder as the last commit made it.
+
+    Args:
+        index: The index being built.
+        writer: Its writer, not yet committed.
+
+    """
+    writer.cancel()
+    toc = TOC.read(index.storage, index.indexname)
+    clean_files(index.storage, index.indexname, toc.generation, toc.segments)
+
+
 class SearchEngineCreator(SearchEngine):
     def __init__(
         self, comics_database: ComicsDatabase, index_dir: Path, ocr_index_to_use: OcrTypes
@@ -575,10 +594,17 @@ class SearchEngineCreator(SearchEngine):
         self._ocr_index_to_use = ocr_index_to_use
 
         index_dir.mkdir(parents=True, exist_ok=True)
-        create_in(index_dir, build_index_schema())
+        if not exists_in(index_dir):
+            create_in(index_dir, build_index_schema())
 
-        # Opens the index just created; sets up self._index and the sidecar paths.
+        # Opens the index; sets up self._index and the sidecar paths.
         super().__init__(index_dir)
+        # The old index is kept until a build commits: Whoosh writes the new segment
+        # beside the old ones and switches to it with a new table of contents, so a
+        # build that fails first leaves the old index in use, and no file in use is
+        # ever moved (Windows refuses that). The build takes today's schema, not the
+        # one the old index was saved with.
+        self._index = open_dir(index_dir, schema=build_index_schema())
 
     def get_search_engine(self) -> SearchEngine:
         """Return a read-only search engine backed by the index just built."""
@@ -594,6 +620,9 @@ class SearchEngineCreator(SearchEngine):
     ) -> None:
         """Build the index for ``volumes``, then write every sidecar.
 
+        A build that fails before it commits (a stale entity, a missing page, a
+        crash) leaves the old index and every sidecar as they were.
+
         Args:
             volumes: The Fantagraphics volumes to index.
             entity_tagger: Tags a group's text with entities, when no provider.
@@ -604,16 +633,16 @@ class SearchEngineCreator(SearchEngine):
                 a caller has to ask for it, and should say what it skipped.
 
         """
-        json_volumes_path = self._index.storage.folder / "volumes.json"
-        with json_volumes_path.open("w") as f:
-            json.dump(volumes, f, indent=4)
-
         self._index_volume_titles(
             volumes,
             entity_tagger=entity_tagger,
             entity_provider=entity_provider,
             skip_missing_pages=skip_missing_pages,
         )
+
+        json_volumes_path = self._index.storage.folder / "volumes.json"
+        with json_volumes_path.open("w") as f:
+            json.dump(volumes, f, indent=4)
 
         if entity_tagger or entity_provider:
             self._generate_entity_term_lists()
@@ -661,69 +690,76 @@ class SearchEngineCreator(SearchEngine):
 
         writer = self._index.writer()
 
-        titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(
-            volumes, exclude_non_comics=True
-        )
-        for title_str, fanta_info in titles:
-            title = fanta_info.comic_book_info.title
-            speech_page_groups = all_speech_groups.get_speech_page_groups(
-                title, skip_missing=skip_missing_pages
+        try:
+            titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(
+                volumes, exclude_non_comics=True
             )
-            for speech_page in speech_page_groups:
-                if speech_page.ocr_index != self._ocr_index_to_use:
-                    continue
-                for group_id, speech_text in speech_page.speech_groups.items():
-                    if entity_provider:
-                        entities = entity_provider(title_str, speech_page.fanta_page, group_id)
-                    elif entity_tagger:
-                        entities = entity_tagger(speech_text.ai_text)
-                    else:
-                        entities = None
+            for title_str, fanta_info in titles:
+                title = fanta_info.comic_book_info.title
+                speech_page_groups = all_speech_groups.get_speech_page_groups(
+                    title, skip_missing=skip_missing_pages
+                )
+                for speech_page in speech_page_groups:
+                    if speech_page.ocr_index != self._ocr_index_to_use:
+                        continue
+                    for group_id, speech_text in speech_page.speech_groups.items():
+                        if entity_provider:
+                            entities = entity_provider(title_str, speech_page.fanta_page, group_id)
+                        elif entity_tagger:
+                            entities = entity_tagger(speech_text.ai_text)
+                        else:
+                            entities = None
 
-                    if entities is not None:
-                        entities = _filter_entities_to_curated(
-                            cast("dict[EntityType, set[str]]", entities), curated_sets
-                        )
-                        stale.extend(
-                            (title_str, speech_page.fanta_page, group_id, entity_type, name)
-                            for entity_type, name in entity_names_absent_from_text(
-                                entities, speech_text.ai_text
+                        if entities is not None:
+                            entities = _filter_entities_to_curated(
+                                cast("dict[EntityType, set[str]]", entities), curated_sets
                             )
-                        )
-                        entity_kwargs = {
-                            f"entities_{et}": ",".join(sorted(entities.get(et, set())))
-                            for et in ENTITY_TYPES
-                        }
-                    else:
-                        entity_kwargs = dict.fromkeys(ENTITY_FIELDS, "")
+                            stale.extend(
+                                (title_str, speech_page.fanta_page, group_id, entity_type, name)
+                                for entity_type, name in entity_names_absent_from_text(
+                                    entities, speech_text.ai_text
+                                )
+                            )
+                            entity_kwargs = {
+                                f"entities_{et}": ",".join(sorted(entities.get(et, set())))
+                                for et in ENTITY_TYPES
+                            }
+                        else:
+                            entity_kwargs = dict.fromkeys(ENTITY_FIELDS, "")
 
-                    writer.add_document(
-                        title=title_str,
-                        fanta_vol=str(speech_page.fanta_vol),
-                        fanta_page=speech_page.fanta_page,
-                        comic_page=speech_page.comic_page,
-                        content_id=group_id,
-                        panel_num=str(speech_text.panel_num),
-                        speaker=speech_text.speaker.speaker if speech_text.speaker else "",
-                        unstemmed=speech_text.ai_text,
-                        # Indexed stripped, stored marked up. Whoosh's
-                        # `_stored_<field>` convention lets one field do both, so
-                        # a search for "saboteurs" still matches a group lettered
-                        # "[b]SABOTEURS[/b]" while the reader gets the tags back
-                        # to render. Indexing the marked-up form instead would
-                        # put "b" and split words into the lexicon.
-                        content_raw=strip_markup(speech_text.raw_ai_text),
-                        _stored_content_raw=speech_text.raw_ai_text,
-                        **entity_kwargs,
-                    )
+                        writer.add_document(
+                            title=title_str,
+                            fanta_vol=str(speech_page.fanta_vol),
+                            fanta_page=speech_page.fanta_page,
+                            comic_page=speech_page.comic_page,
+                            content_id=group_id,
+                            panel_num=str(speech_text.panel_num),
+                            speaker=speech_text.speaker.speaker if speech_text.speaker else "",
+                            unstemmed=speech_text.ai_text,
+                            # Indexed stripped, stored marked up. Whoosh's
+                            # `_stored_<field>` convention lets one field do both, so
+                            # a search for "saboteurs" still matches a group lettered
+                            # "[b]SABOTEURS[/b]" while the reader gets the tags back
+                            # to render. Indexing the marked-up form instead would
+                            # put "b" and split words into the lexicon.
+                            content_raw=strip_markup(speech_text.raw_ai_text),
+                            _stored_content_raw=speech_text.raw_ai_text,
+                            **entity_kwargs,
+                        )
+
+        except BaseException:
+            _cancel_build(self._index, writer)
+            raise
 
         if stale:
-            # Nothing of this build is kept: an index tagging the wrong bubbles is
-            # worse than none, and the message says how to make a right one.
-            writer.cancel()
+            # Nothing of this build is kept, and the old index stays in use: an
+            # index tagging the wrong bubbles is worse than an old one, and the
+            # message says how to make a right one.
+            _cancel_build(self._index, writer)
             raise StaleEntitiesError(_stale_entities_message(stale))
 
-        writer.commit()
+        # Replaces every old segment with the new one, in one new table of contents.
+        writer.commit(mergetype=CLEAR)
 
     def _generate_entity_term_lists(self) -> None:
         with self._index.reader() as reader:
