@@ -284,8 +284,9 @@ class PopupKeyboardNav:
         self._focused_idx = min(self._focused_idx, len(entries) - 1)
         entry = entries[self._focused_idx]
         # The shared ring follows the entry's pos and size: the popup follows the
-        # window, and its entries are laid out again under a ring drawn once.
-        draw_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP, line_width=3)
+        # window, and its entries are laid out again under a ring drawn once. It goes
+        # under the entry's children, so the page-number chip on its edge stays on top.
+        draw_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP, line_width=3, under_children=True)
         sv = self._popup.body
         if isinstance(sv, ScrollView):
             sv.scroll_to(entry)

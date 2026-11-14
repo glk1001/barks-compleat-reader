@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     from barks_kivy_ui.scrolling import ReaderDropDown
+    from kivy.graphics import Canvas
     from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
@@ -65,17 +66,26 @@ def _draw_highlight(
     group: str,
     color: tuple[float, float, float, float],
     line_width: float,
+    *,
+    under_children: bool,
 ) -> None:
     """Draw (or redraw) the focus rectangle at the widget's current geometry."""
-    canvas_after = widget.canvas.after  # ty: ignore[missing-union-attribute]
-    canvas_after.remove_group(group)
-    with canvas_after:
+    canvas = _focus_canvas(widget, under_children=under_children)
+    canvas.remove_group(group)
+    with canvas:
         Color(*color, group=group)
         Line(
             rectangle=(widget.x, widget.y, widget.width, widget.height),
             width=line_width,
             group=group,
         )
+
+
+def _focus_canvas(widget: Widget, *, under_children: bool) -> Canvas:
+    """Return the canvas a focus ring goes in: over the widget's children, or under them."""
+    canvas = widget.canvas
+    assert canvas is not None
+    return canvas.before if under_children else canvas.after
 
 
 class NavExitMixin:
@@ -105,22 +115,34 @@ def draw_focus_highlight(
     group: str,
     color: tuple[float, float, float, float] | None = None,
     line_width: float = 2,
+    *,
+    under_children: bool = False,
 ) -> None:
     """Draw a focus highlight that tracks the widget's geometry.
 
     The highlight redraws automatically when the widget's pos or size changes
     (e.g. after a deferred Kivy layout pass). When no color is given, the
     active theme's focus-ring color is used.
+
+    Args:
+        widget: The widget the ring goes round.
+        group: The canvas group the ring is drawn in, which clears it.
+        color: The ring's colour; the theme's focus ring when None.
+        line_width: The ring's line width.
+        under_children: Draw the ring under the widget's children rather than over
+            them, so that a child sitting on the widget's edge (a caption on a
+            border) stays on top of it.
+
     """
     color = theme().focus_ring if color is None else color
     # Remove any previous binding before installing a new one.
     _unbind_highlight(widget)
 
-    _draw_highlight(widget, group, color, line_width)
+    _draw_highlight(widget, group, color, line_width, under_children=under_children)
     log_nav_focus(widget)
 
     def _on_geometry_change(*_args: object) -> None:
-        _draw_highlight(widget, group, color, line_width)
+        _draw_highlight(widget, group, color, line_width, under_children=under_children)
 
     setattr(widget, _FOCUS_BINDING_ATTR, _on_geometry_change)
     widget.bind(pos=_on_geometry_change, size=_on_geometry_change)
@@ -136,7 +158,9 @@ def _unbind_highlight(widget: Widget) -> None:
 def clear_focus_highlight(widget: Widget, group: str) -> None:
     """Remove the focus ring `group` from `widget`, and stop it following the widget."""
     _unbind_highlight(widget)
-    widget.canvas.after.remove_group(group)  # ty: ignore[missing-union-attribute]
+    # From both layers: the caller need not remember which one the ring was drawn in.
+    for under_children in (False, True):
+        _focus_canvas(widget, under_children=under_children).remove_group(group)
 
 
 def update_focus_in_list(

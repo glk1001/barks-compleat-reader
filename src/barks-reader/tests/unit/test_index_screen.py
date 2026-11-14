@@ -1763,4 +1763,6 @@ class TestThePopupsNavState:
             nav._draw_focus()
 
         assert nav._focused_idx == 1
-        draw.assert_called_once_with(entries[1], POPUP_NAV_FOCUS_GROUP, line_width=3)
+        draw.assert_called_once_with(
+            entries[1], POPUP_NAV_FOCUS_GROUP, line_width=3, under_children=True
+        )
