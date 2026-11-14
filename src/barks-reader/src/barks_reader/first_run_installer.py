@@ -72,7 +72,8 @@ def main() -> None:
     last, once the data is in place: a failed or interrupted install leaves the app not
     installed, and the next launch runs this again. Any failure before that sets the
     failed flag, shows the installer's error popup and exits the process; nothing after
-    it does, since the install is then complete.
+    it does, since the install is then complete. Each check that fails raises an
+    `InstallerDataError`, so the flag and the popup have one place (the handlers below).
     """
     from barks_reader.core.config_info import (  # noqa: PLC0415
         ConfigInfo,
@@ -163,7 +164,7 @@ def _check_panel_module_is_correct() -> None:
     from barks_reader.core.reader_utils import safe_import_check  # noqa: PLC0415
 
     if not safe_import_check("comic_utils.get_panel_bytes"):
-        _handle_panel_module_sanity_check_failed()
+        raise _panel_module_error()
 
 
 def _check_barks_reader_exe_location(config_info: ConfigInfo) -> None:
@@ -174,7 +175,7 @@ def _check_barks_reader_exe_location(config_info: ConfigInfo) -> None:
     logger.info(f'Checking the running executable "{running_exe}" is named "{expected_exe_name}".')
 
     if running_exe.name != expected_exe_name:
-        _handle_wrong_exe_error(running_exe, expected_exe_name)
+        raise _wrong_exe_error(running_exe, expected_exe_name)
 
 
 def _check_installer_zips() -> DataPackInfo:
@@ -194,7 +195,7 @@ def _check_installer_zips() -> DataPackInfo:
     check = data_pack.find_update(_barks_reader_exe_dir, None)
 
     if check.status is UpdateStatus.PACKS_MISSING:
-        _handle_could_not_find_data_zip_error(_barks_reader_exe_dir / check.missing[0])
+        raise _missing_data_zip_error(_barks_reader_exe_dir / check.missing[0])
     if check.status is UpdateStatus.PACKS_NOT_VERSIONED:
         # A re-zipped pack has no version file where it is looked for either: say that.
         for pack_name in check.missing:
@@ -363,67 +364,32 @@ def _handle_installer_data_error(error: InstallerDataError) -> None:
     )
 
 
-def _handle_panel_module_sanity_check_failed() -> None:
-    _set_installer_failed_flag()
-
+def _panel_module_error() -> InstallerDataError:
     message = "The compiled panel module failed to load."
     details = (
         "A critical part of The Barks Reader has not been configured properly. This is an"
         " unexpected error and you'll need to contact The Barks Reader developer for a fix."
     )
-
-    handle_app_fail(
-        _APP_TYPE,
-        _APP_NAME,
-        message,
-        details,
-        str(_log_file),
-        log_the_error=True,
-        background_image_file=None,
-        show_details=True,
-    )
+    return InstallerDataError(message, details)
 
 
-def _handle_wrong_exe_error(running_exe: Path, expected_exe_name: str) -> None:
-    _set_installer_failed_flag()
-
+def _wrong_exe_error(running_exe: Path, expected_exe_name: str) -> InstallerDataError:
     message = f'Unexpected Barks Reader executable:\n\n[b]"{running_exe}".[/b]'
     details = (
         f"The Barks Reader executable is expected to be named"
         f' [b]"{expected_exe_name}"[/b] - it looks like the executable was renamed'
         f" or the wrong platform's executable is being run."
     )
-
-    handle_app_fail(
-        _APP_TYPE,
-        _APP_NAME,
-        message,
-        details,
-        str(_log_file),
-        log_the_error=True,
-        background_image_file=None,
-        show_details=True,
-    )
+    return InstallerDataError(message, details)
 
 
-def _handle_could_not_find_data_zip_error(installer_zip: Path) -> None:
-    _set_installer_failed_flag()
-
+def _missing_data_zip_error(installer_zip: Path) -> InstallerDataError:
     message = f'Could not find the Barks Reader data pack:\n\n[b]"{installer_zip}".[/b]'
     details = (
         f"The Barks Reader data pack should be in the same"
         f' directory as the Barks Reader executable:\n\n[b]"{_barks_reader_exe_dir}".[/b]'
     )
-    handle_app_fail(
-        _APP_TYPE,
-        _APP_NAME,
-        message,
-        details,
-        str(_log_file),
-        log_the_error=True,
-        background_image_file=None,
-        show_details=True,
-    )
+    return InstallerDataError(message, details)
 
 
 def _handle_installer_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001

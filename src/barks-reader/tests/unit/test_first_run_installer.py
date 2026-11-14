@@ -373,6 +373,12 @@ class TestMain:
 
         assert install.failed_flag.exists()
         assert install.error_message() == "The compiled panel module failed to load."
+        kwargs = install.error_popup.call_args.kwargs
+        assert "contact The Barks Reader developer" in kwargs["details"]
+        assert kwargs["show_details"] is True
+        # Said once, by main: the popup is not asked to log it again.
+        log = (install.exe_dir / "installer.log").read_text(encoding="utf-8")
+        assert log.count("The compiled panel module failed to load.") == 1
 
     def test_a_re_zipped_pack_fails_with_its_details_shown(self, install: _Install) -> None:
         install.write_packs({"barks-reader-data-1/Reader Files/one.txt": "1"})

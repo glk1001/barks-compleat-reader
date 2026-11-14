@@ -28,11 +28,12 @@ _COPY_CHUNK_BYTES = 1024 * 1024
 
 
 class InstallerDataError(Exception):
-    """The installer data on disk is not what the installer expects.
+    """What is on disk is not what the installer expects, and it can say what.
 
-    Raised for problems a user can fix themselves (a re-zipped data pack, an unreadable
-    config), as opposed to programming errors. An installer's ``main`` shows ``message``
-    and ``details`` in its error popup instead of a raw traceback.
+    Raised for a problem the installer can name, mostly one a user can fix themselves (a
+    re-zipped data pack, a renamed executable, an unreadable config), as opposed to an
+    error nobody foresaw. An installer's ``main`` shows ``message`` and ``details`` in
+    its error popup instead of a raw traceback.
     """
 
     def __init__(self, message: str, details: str) -> None:
