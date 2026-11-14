@@ -484,3 +484,8 @@ class TestTheRealLoop:
             "popups_left": 0,
         }
         assert "Could not show the installer's progress window" not in done.stderr
+        # The lines a GUI test would wait on, from the real window: opened as its fade-in
+        # ends, closed once it has left the window.
+        opened = done.stderr.find(log_markers.STANDALONE_POPUP_OPENED.format(title="Installing"))
+        closed = done.stderr.find(log_markers.STANDALONE_POPUP_CLOSED.format(title="Installing"))
+        assert 0 <= opened < closed, done.stderr[-3000:]
