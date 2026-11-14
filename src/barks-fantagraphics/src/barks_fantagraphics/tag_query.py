@@ -122,6 +122,11 @@ def _read_qualifiers(text: str) -> dict[str, tuple[int, int]] | str:
     return ranges
 
 
+def _is_ranges_only(part: str) -> bool:
+    """Return whether a part between separators held ranges and nothing else."""
+    return _RANGE_MARK in part and not part.replace(_RANGE_MARK, "").strip()
+
+
 def parse_tag_query(text: str) -> ParsedTagQuery:
     """Read a typed tag selection. Never raises: bad text comes back as the `error`.
 
@@ -140,8 +145,8 @@ def parse_tag_query(text: str) -> ParsedTagQuery:
     if isinstance(ranges, str):
         return ParsedTagQuery(error=ranges)
     pieces = _TAG_OPERATOR_RE.split(_QUALIFIER_RE.sub(_RANGE_MARK, text).strip())
-    # A range between separators (scrooge + year:1950) is no part of its own.
-    names = [n.replace(_RANGE_MARK, " ") for n in pieces[0::2] if n.strip() != _RANGE_MARK]
+    # Ranges between separators (scrooge + year:1950 vol:3) are no part of their own.
+    names = [n.replace(_RANGE_MARK, " ") for n in pieces[0::2] if not _is_ranges_only(n)]
     operators = set(pieces[1::2])
     if not "".join(names).strip():
         return ParsedTagQuery(error="No tag is named.")

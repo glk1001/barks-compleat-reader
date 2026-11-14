@@ -103,6 +103,15 @@ def test_a_selection_describes_itself_as_typed() -> None:
         ("year:1950 | gyro", TagSelection(("gyro",), (), ANY, (1950, 1950))),
         ("scrooge + vol:7 + gyro", TagSelection(("scrooge", "gyro"), volumes=(7, 7))),
         ("year:1950,vol:7 gyro", TagSelection(("gyro",), years=(1950, 1950), volumes=(7, 7))),
+        # two ranges in one part beside a separator are still no part of their own
+        (
+            "scrooge + year:1950 vol:3",
+            TagSelection(("scrooge",), years=(1950, 1950), volumes=(3, 3)),
+        ),
+        (
+            "year:1950 vol:3 | scrooge",
+            TagSelection(("scrooge",), (), ANY, (1950, 1950), (3, 3)),
+        ),
     ],
 )
 def test_a_typed_selection_takes_years_and_volumes(text: str, selection: TagSelection) -> None:
@@ -118,6 +127,7 @@ def test_a_typed_selection_takes_years_and_volumes(text: str, selection: TagSele
         ("gyro year:1950 year:1951", "year: is given twice"),
         ("year:1950", "No tag is named"),
         ("year:1950 + vol:7", "No tag is named"),
+        ("year:1950 vol:7", "No tag is named"),
         ("year:1950 + + gyro", "A tag name is missing next to"),
     ],
 )
