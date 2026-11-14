@@ -182,8 +182,17 @@ class TestSetOcrFile:
         jf, _ = _make_json_files(volume_dirname="Vol-03")
         jf.set_ocr_file(self._ocr_pair(page="001"))
         jf.set_ocr_file(self._ocr_pair(page="002"))
-        # After second call, lists have exactly 2 entries (not 4)
-        assert len(jf.ocr_prelim_groups_json_file) == 2
-        assert len(jf.ocr_prelim_groups_annotated_file) == 2
-        assert len(jf.ocr_boxes_annotated_file) == 2
+        # After second call, every per-page list has exactly 2 entries (not 4), all for page 002
+        per_page_lists = (
+            jf.ocr_type,
+            jf.ocr_prelim_groups_json_file,
+            jf.ocr_final_groups_json_file,
+            jf.ocr_prelim_groups_annotated_file,
+            jf.ocr_final_groups_annotated_file,
+            jf.ocr_boxes_annotated_file,
+        )
+        for per_page_list in per_page_lists:
+            assert len(per_page_list) == 2
+        for path_list in per_page_lists[1:]:
+            assert all(path.name.startswith("002-") for path in path_list)
         assert jf.page == "002"

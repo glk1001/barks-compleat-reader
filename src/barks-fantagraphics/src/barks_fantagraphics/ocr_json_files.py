@@ -42,7 +42,9 @@ class JsonFiles:
 
         self.ocr_type = []
         self.ocr_prelim_groups_json_file = []
+        self.ocr_final_groups_json_file = []
         self.ocr_prelim_groups_annotated_file = []
+        self.ocr_final_groups_annotated_file = []
         self.ocr_boxes_annotated_file = []
 
         for ocr_type_file in ocr_file:
