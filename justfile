@@ -34,6 +34,30 @@ one-pager-info volume="": (comics::one-pager-info volume)
 [group('comics')]
 cover-info volume="": (comics::cover-info volume)
 
+# Quickly browse a volume page
+[group('comics')]
+show-volume volume page: (comics::show-volume volume page)
+
+# Quickly browse a title page
+[group('comics')]
+show-title title page="1": (comics::show-title title page)
+
+# Quickly edit a volume panel
+[group('comics')]
+edit-volume volume type page-panel: (comics::edit-volume volume type page-panel)
+
+# Quickly edit a title panel from a volume page number
+[group('comics')]
+edit-title title type page-panel: (comics::edit-title title type page-panel)
+
+# Quickly edit a title panel from a comic page number
+[group('comics')]
+edit-comic title type comic-page-panel: (comics::edit-comic title type comic-page-panel)
+
+# Show panel bounds
+[group('comics')]
+show-panel-bounds volume page: (comics::show-panel-bounds volume page)
+
 # Fire up the Compleat Barks Reader
 reader win_left="-1" win_height="0":
     {{uv_run}} "{{source_dir()}}/main.py" --win-left {{win_left}} --win-height {{win_height}}
