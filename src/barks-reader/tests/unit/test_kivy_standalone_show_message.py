@@ -22,10 +22,11 @@ from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KE
 from barks_reader.core.popup_frame import FrameButton, PopupSize
 from barks_reader.ui import kivy_standalone_show_message
 from barks_reader.ui.kivy_standalone_show_message import divider_line, show_standalone_popup
-from barks_reader.ui.popup_frame import PopupFrame
+from barks_reader.ui.popup_frame import CARD_SCRIM, CARD_SCRIM_OVER_LIGHT_ART, PopupFrame
 from kivy.animation import Animation
 from kivy.config import Config
 from kivy.core.window import Window
+from kivy.graphics import Color
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.image import Image
@@ -103,6 +104,17 @@ def _open(loop: _Loop, **kwargs: Any) -> ModalView:  # noqa: ANN401
     loop.run_scheduled()
     loop.finish_opening()
     return loop.popup
+
+
+def _scrim_colours(popup: ModalView) -> list[tuple[float, ...]]:
+    """Return the colours a scrim is drawn in: a widget's only Color, sized to the card."""
+    colours = []
+    for widget in popup.walk():
+        instructions = widget.canvas.before.children if widget.canvas.before else []
+        drawn = [i for i in instructions if isinstance(i, Color)]
+        if type(widget) is Widget and len(drawn) == 1:
+            colours.append(tuple(round(v, 4) for v in drawn[0].rgba))
+    return [c for c in colours if c[:3] == tuple(round(v, 4) for v in CARD_SCRIM[:3])]
 
 
 def _closes_the_boot_splash(loop: _Loop) -> None:
@@ -275,6 +287,18 @@ class TestWithTheApp:
         art = tmp_path / "background.png"
         popup = _open(app, background_image_file=art)
         assert [w.source for w in popup.walk() if isinstance(w, Image)] == [str(art)]
+
+    def test_art_is_under_the_usual_scrim(self, app: _Loop, tmp_path: Path) -> None:
+        popup = _open(app, background_image_file=tmp_path / "background.png")
+
+        assert _scrim_colours(popup) == [CARD_SCRIM]
+
+    def test_light_art_is_under_a_darker_scrim(self, app: _Loop, tmp_path: Path) -> None:
+        popup = _open(app, background_image_file=tmp_path / "paper.png", light_background=True)
+
+        assert _scrim_colours(popup) == [CARD_SCRIM_OVER_LIGHT_ART]
+        assert CARD_SCRIM_OVER_LIGHT_ART[3] > CARD_SCRIM[3]
+        assert CARD_SCRIM_OVER_LIGHT_ART[:3] == CARD_SCRIM[:3]  # the same dark, more of it
 
     def test_no_art_draws_no_image(self, app: _Loop) -> None:
         popup = _open(app)

@@ -76,6 +76,10 @@ CLOSE_BUTTON_WIDTH = dp(44)
 # The card: a solid warm dark, and over any art a scrim dark enough for cream text.
 CARD_BACKING = (0.14, 0.12, 0.10, 1.0)
 CARD_SCRIM = (0.10, 0.09, 0.08, 0.62)
+# The scrim over light art (a line drawing on white paper): the usual one leaves its paper
+# mid grey, under small cream text and gold headings (about 4:1 and 3.5:1); this takes
+# them to about 9:1 and 7.5:1.
+CARD_SCRIM_OVER_LIGHT_ART = (*CARD_SCRIM[:3], 0.84)
 # A box set into the card (a path, a number to type): a darker well in it.
 CARD_WELL = (0.0, 0.0, 0.0, 0.35)
 CARD_PADDING = dp(18)
@@ -152,6 +156,7 @@ class PopupFrame(ModalView):
         size: PopupSize = PopupSize.MEDIUM,
         buttons: Sequence[FrameButton] = (),
         art_file: str = "",
+        scrim: tuple[float, float, float, float] = CARD_SCRIM,
         on_closed: Callable[[], None] | None = None,
         fill_window: bool = False,
         title_markup: bool = False,
@@ -171,6 +176,8 @@ class PopupFrame(ModalView):
             buttons: The row's buttons, left to right, the last being the cancel; none
                 puts a close X in the title bar.
             art_file: Art to show beneath the card's scrim, or "" for none.
+            scrim: The colour laid over the art, under the body: `CARD_SCRIM`, or
+                `CARD_SCRIM_OVER_LIGHT_ART` for art too light for it.
             on_closed: Called once the frame has left the window, however it closed.
             fill_window: Whether the frame fills the window, as a popup does that is its
                 own window's only content, rather than being sized by its class.
@@ -225,7 +232,7 @@ class PopupFrame(ModalView):
         self._button_widgets = [self._button(b, fonts.button) for b in self._frame_buttons]
         root = BoxLayout(orientation="vertical")
         root.add_widget(self._title_bar(title_markup, title_font_name))
-        root.add_widget(self._card(body, art_file))
+        root.add_widget(self._card(body, art_file, scrim))
         self.add_widget(root)
 
         self.fit_to_window()
@@ -353,7 +360,9 @@ class PopupFrame(ModalView):
             self._close_button = close
         return bar
 
-    def _card(self, body: Widget, art_file: str) -> FloatLayout:
+    def _card(
+        self, body: Widget, art_file: str, scrim_colour: tuple[float, float, float, float]
+    ) -> FloatLayout:
         card = FloatLayout()
         # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
         with card.canvas.before:  # ty: ignore[missing-union-attribute]
@@ -368,7 +377,7 @@ class PopupFrame(ModalView):
         scrim = Widget(pos_hint=whole)
         # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
         with scrim.canvas.before:  # ty: ignore[missing-union-attribute]
-            Color(*CARD_SCRIM)
+            Color(*scrim_colour)
             scrim_rect = Rectangle()
         scrim.bind(pos=lambda _w, pos: setattr(scrim_rect, "pos", pos))
         scrim.bind(size=lambda _w, size: setattr(scrim_rect, "size", size))

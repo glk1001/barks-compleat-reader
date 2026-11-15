@@ -93,6 +93,21 @@ def test_the_report_scrolls_where_the_window_is_shorter_than_it() -> None:
     assert content.scroll_view is scroll_view  # where the popup finds it, for Up and Down
 
 
+def test_a_path_box_grows_with_a_path_that_wraps() -> None:
+    """A long path wraps onto more lines; its box must hold them all, not clip them."""
+    long_dir = Path("/home/someone/" + "a-very-long-folder-name/" * 8 + "Fantagraphics Library")
+    content = _content(fanta_dir=long_dir)
+    by_text = {w.text: w for w in content.walk() if isinstance(w, Label)}
+    short, long = by_text[f'"{_CONFIG}"'], by_text[f'"{long_dir}"']
+    for label in (short, long):
+        label.width = 600
+        label.texture_update()
+
+    assert long.texture_size[1] > 2 * short.texture_size[1]  # it did wrap
+    assert long.parent.height >= long.texture_size[1] + 12  # and its box holds it
+    assert short.parent.height == first_run_installer_show_message._PATH_BOX_MIN_HEIGHT  # noqa: SLF001
+
+
 def test_it_draws_no_card_and_no_button_of_its_own_on_the_frames() -> None:
     content = _content()
     assert not content.canvas.before.children
@@ -124,6 +139,7 @@ def test_show_installer_message_places_the_window_and_shows_the_screen(tmp_path:
     assert kwargs == {
         "fill_window": True,
         "background_image_file": background,
+        "light_background": True,  # the success art is a drawing on white paper
         "on_dismiss": None,
         "in_running_loop": False,
     }

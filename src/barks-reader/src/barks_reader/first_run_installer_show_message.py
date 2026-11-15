@@ -10,6 +10,10 @@ from barks_reader.ui.kivy_standalone_show_message import place_window, show_stan
 
 DEFAULT_INSTALLER_POPUP_SIZE = (800, 1000)
 _WARNING_COLOR = [0.95, 0.55, 0.2, 1]
+# The report's text against the other popups' message text.
+_TEXT_SCALE = 1.15
+# A path's box, at its shortest: one line of path.
+_PATH_BOX_MIN_HEIGHT = 50
 
 
 def show_installer_message(
@@ -38,6 +42,8 @@ def show_installer_message(
         fill_window=True,
         buttons=(FrameButton("Start Barks Reader", lambda: None),),  # closing it starts it
         background_image_file=background_image_file,
+        # The success art is a drawing on white paper, under a report of small text.
+        light_background=True,
         on_dismiss=on_dismiss,
         in_running_loop=in_running_loop,
     )
@@ -61,12 +67,13 @@ def _get_installer_success_content(
     from barks_reader.ui.popup_frame import CARD_WELL, popup_fonts
 
     # The banner and the headings are its own; the rest is the popups' message text,
-    # sized, as the frame's title and buttons are, by the window (set before this).
-    banner_header_font_size = sp(19)
-    section_header_font_size = sp(16)
-    file_path_font_size = sp(13)
-    warning_text_font_size = popup_fonts().text
-    info_text_font_size = popup_fonts().text
+    # sized, as the frame's title and buttons are, by the window (set before this). All
+    # a size up from the other popups': the report is read over art, at arm's length.
+    banner_header_font_size = sp(21)
+    section_header_font_size = sp(18)
+    file_path_font_size = sp(15)
+    warning_text_font_size = popup_fonts().text * _TEXT_SCALE
+    info_text_font_size = popup_fonts().text * _TEXT_SCALE
 
     class _InstallerSuccessContent(BoxLayout):
         """The installer's report, on the frame's dark card; its Start button is the frame's."""
@@ -166,7 +173,7 @@ def _get_installer_success_content(
                 bold=True,
                 color=list(theme().text_title),
                 size_hint_y=None,
-                height=28,
+                height=32,
                 halign="left",
                 valign="middle",
             )
@@ -196,7 +203,8 @@ def _get_installer_success_content(
 
         @staticmethod
         def _add_paths_box(parent: Widget, paths: list[Path]) -> None:
-            card = BoxLayout(size_hint_y=None, height=45, padding=[10, 6])
+            # As tall as its text: a long path wraps onto more lines, and the box with it.
+            card = BoxLayout(size_hint_y=None, height=_PATH_BOX_MIN_HEIGHT, padding=[10, 6])
             with card.canvas.before:  # ty: ignore[missing-union-attribute]
                 Color(*CARD_WELL)  # a path's box
                 card.bg = RoundedRectangle(size=card.size, pos=card.pos, radius=[dp(5)])
@@ -214,7 +222,13 @@ def _get_installer_success_content(
                 halign="center",
                 valign="middle",
             )
-            lbl.bind(size=lambda i, v: setattr(i, "text_size", (v[0] - 15, None)))
+            lbl.bind(width=lambda i, w: setattr(i, "text_size", (w - 15, None)))
+            vertical_padding = card.padding[1] + card.padding[3]
+            lbl.bind(
+                texture_size=lambda _i, size: setattr(
+                    card, "height", max(_PATH_BOX_MIN_HEIGHT, size[1] + vertical_padding + 12)
+                )
+            )
             card.add_widget(lbl)
             parent.add_widget(card)
 

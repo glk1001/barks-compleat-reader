@@ -146,6 +146,7 @@ def show_standalone_popup(
     buttons: Sequence[FrameButton] = (),
     timeout: float = 0,
     background_image_file: Path | None = None,
+    light_background: bool = False,
     on_dismiss: Callable[[], None] | None = None,
     in_running_loop: bool = False,
 ) -> None:
@@ -167,6 +168,8 @@ def show_standalone_popup(
         buttons: The frame's buttons; none puts a close X in the title bar.
         timeout: Auto-dismiss after this many seconds (0 = wait for the user).
         background_image_file: Optional art drawn behind the content, under the scrim.
+        light_background: Whether that art is light (a line drawing on white paper), so
+            needs a darker scrim for the text over it to read.
         on_dismiss: Called once the popup has closed and left the window, however
             it was closed.
         in_running_loop: Whether the caller is in a Kivy loop with no app (an
@@ -179,7 +182,7 @@ def show_standalone_popup(
     from kivy.clock import Clock
     from kivy.core.window import Window
 
-    from .popup_frame import PopupFrame
+    from .popup_frame import CARD_SCRIM, CARD_SCRIM_OVER_LIGHT_ART, PopupFrame
 
     app_already_running = in_running_loop or (
         (App.get_running_app() is not None) and (EventLoop.status == "started")
@@ -204,6 +207,7 @@ def show_standalone_popup(
             size=size,
             buttons=buttons,
             art_file=str(background_image_file) if background_image_file else "",
+            scrim=CARD_SCRIM_OVER_LIGHT_ART if light_background else CARD_SCRIM,
             on_closed=on_closed,
             fill_window=fill_window,
             fit_body_height=fit_body_height,
