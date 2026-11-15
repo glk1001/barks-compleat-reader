@@ -36,7 +36,7 @@ _WINDOW_SIZE = (800, 950)
 _PROGRESS_TITLE = "Installing the Barks Reader"
 _PROGRESS_MESSAGE = (
     "[b]Setting up the Barks Reader.[/b]\n\n"
-    "Its pictures and other files are being unpacked beside the app. This happens"
+    "Images and other files are being unpacked beside the app. This happens"
     " once, and takes a minute or so."
 )
 
