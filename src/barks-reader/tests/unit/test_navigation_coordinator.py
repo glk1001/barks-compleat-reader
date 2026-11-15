@@ -628,7 +628,7 @@ class TestNavigateToSearchResult:
         loguru_sink: list[str],
     ) -> None:
         # Listed by Title search, but in no Fantagraphics volume.
-        title = Titles.JINXED_JALOPY_RACE_THE
+        title = Titles.ATTIC_ANTICS
         assert title not in ALL_FANTA_COMIC_BOOK_INFO
 
         assert nav_coord.navigate_to_search_result(f"({ENUM_TO_STR_TITLE[title]})")
@@ -637,7 +637,7 @@ class TestNavigateToSearchResult:
         assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
         assert error_info.title is title
         assert error_info.file_volume == -1
-        assert 'Title "The Jinxed Jalopy Race" not in Fanta info.' in loguru_sink
+        assert 'Title "Attic Antics" not in Fanta info.' in loguru_sink
 
 
 ANDES = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]

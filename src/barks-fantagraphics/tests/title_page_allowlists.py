@@ -50,6 +50,7 @@ PLAIN_BYLINE_ALLOWED: dict[Titles, str] = {
     Titles.LEMONADE_FLING_THE: "Barks drew it all and probably rewrote the script he was given.",
     Titles.BOXED_IN: "Barks drew it all and rewrote the script he was given.",
     Titles.DUCK_LUCK: "Barks drew it all and rewrote the script he was given.",
+    Titles.MATTER_OF_FACTORY_A: "Barks drew it all and co-wrote the script with Bob Gregory.",
 }
 
 

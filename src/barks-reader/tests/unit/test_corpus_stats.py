@@ -114,7 +114,7 @@ class TestCorpusSection:
             ("Stories", "683"),
             ("One-pagers", "161"),
             ("Covers", "264"),
-            ("Fantagraphics Volumes", "30"),
+            ("Fantagraphics Volumes", "31"),
             ("Submitted to Western", "1942–1973"),  # noqa: RUF001
         ],
     )
@@ -172,7 +172,7 @@ class TestAttributionSection:
     def test_is_barks_title_would_have_given_a_different_answer(self) -> None:
         # Guards the trap the module docstring warns about: is_barks_title means
         # "Barks titled it", not "Barks made it", and is nowhere near 558.
-        assert sum(1 for info in get_stories() if info.is_barks_title) == 326
+        assert sum(1 for info in get_stories() if info.is_barks_title) == 330
 
 
 class TestLengthSection:

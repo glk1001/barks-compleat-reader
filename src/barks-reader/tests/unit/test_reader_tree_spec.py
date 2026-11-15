@@ -262,18 +262,18 @@ STORY_GROUP text='[b]Chronological[/b]' dest=ChronologicalDestination() press=TO
   YEAR_RANGE text='[b]1951-1954[/b] [i](74)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None lazy=True repopulate=False
   YEAR_RANGE text='[b]1955-1957[/b] [i](76)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None lazy=True repopulate=False
   YEAR_RANGE text='[b]1958-1961[/b] [i](138)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None lazy=True repopulate=False
-  YEAR_RANGE text='[b]1962-1971[/b] [i](35)[/i]' dest=YearRangeDestination(start=1962, end=1971, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None lazy=True repopulate=False
+  YEAR_RANGE text='[b]1962-1971[/b] [i](44)[/i]' dest=YearRangeDestination(start=1962, end=1971, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None lazy=True repopulate=False
 """  # noqa: E501
 
 _SERIES_SNAPSHOT = """
 STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY register=None lazy=False repopulate=False
-  STORY_GROUP text='[b]Comics and Stories[/b] [i](227)[/i]' dest=SeriesDestination(series_name='Comics and Stories') press=TOGGLE_ONLY register=None lazy=False repopulate=False
+  STORY_GROUP text='[b]Comics and Stories[/b] [i](234)[/i]' dest=SeriesDestination(series_name='Comics and Stories') press=TOGGLE_ONLY register=None lazy=False repopulate=False
     YEAR_RANGE text='[b]1942-1946[/b] [i](WDCS 31-79)[/i]' dest=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None lazy=True repopulate=False
     YEAR_RANGE text='[b]1947-1950[/b] [i](WDCS 80-130)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None lazy=True repopulate=False
     YEAR_RANGE text='[b]1951-1954[/b] [i](WDCS 131-179)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None lazy=True repopulate=False
     YEAR_RANGE text='[b]1955-1957[/b] [i](WDCS 180-217)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None lazy=True repopulate=False
     YEAR_RANGE text='[b]1958-1961[/b] [i](WDCS 218-263)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None lazy=True repopulate=False
-    YEAR_RANGE text='[b]1962-1966[/b] [i](WDCS 264-265)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None lazy=True repopulate=False
+    YEAR_RANGE text='[b]1962-1966[/b] [i](WDCS 264-272)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]Donald Duck Adventures[/b] [i](39)[/i]' dest=SeriesDestination(series_name='Donald Duck Adventures') press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]Uncle Scrooge Adventures[/b] [i](51)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Adventures') press=TOGGLE_ONLY register=None lazy=False repopulate=False
     YEAR_RANGE text='[b]1951-1954[/b] [i](US 1-10)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None lazy=True repopulate=False
@@ -283,7 +283,7 @@ STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY r
   STORY_GROUP text='[b]Donald Duck Short Stories[/b] [i](14)[/i]' dest=SeriesDestination(series_name='Donald Duck Short Stories') press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]Uncle Scrooge Short Stories[/b] [i](29)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Short Stories') press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]Gyro Gearloose[/b] [i](45)[/i]' dest=SeriesDestination(series_name='Gyro Gearloose') press=TOGGLE_ONLY register=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Misc[/b] [i](53)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Misc[/b] [i](55)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]One Pagers[/b] [i](147)[/i]' dest=SeriesDestination(series_name='One Pagers') press=TOGGLE_ONLY register=None lazy=False repopulate=False
     YEAR_RANGE text='[b]1946-1952[/b] [i](43)[/i]' dest=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None lazy=True repopulate=False
     YEAR_RANGE text='[b]1953-1956[/b] [i](49)[/i]' dest=YearRangeDestination(start=1953, end=1956, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None lazy=True repopulate=False
@@ -300,7 +300,7 @@ STORY_GROUP text='[b]Favourites[/b]' dest=CategoryDestination(category='Favourit
   STORY_GROUP text="[b]Barks' Picks[/b] [i](14)[/i]" dest=TagDestination(tag=Tags.BARKS_FAVOURITES) press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]everygeek.net[/b] [i](7)[/i]' dest=TagDestination(tag=Tags.EVERY_GEEK_FAVOURITES) press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]My Picks[/b] [i](0)[/i]' dest=TagDestination(tag=Tags.PERSONAL_FAVOURITES) press=TOGGLE_ONLY register=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Peter Schilling[/b] [i](12)[/i]' dest=TagDestination(tag=Tags.PETER_SCHILLING_FAVOURITES) press=TOGGLE_ONLY register=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Peter Schilling[/b] [i](13)[/i]' dest=TagDestination(tag=Tags.PETER_SCHILLING_FAVOURITES) press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]Wiki Notable Stories[/b] [i](21)[/i]' dest=TagDestination(tag=Tags.WIKI_NOTABLE_STORIES) press=TOGGLE_ONLY register=None lazy=True repopulate=False
   STORY_GROUP text='[b]The Classics[/b] [i](16)[/i]' dest=TagDestination(tag=Tags.CLASSICS) press=TOGGLE_ONLY register=None lazy=True repopulate=False
 """  # noqa: E501

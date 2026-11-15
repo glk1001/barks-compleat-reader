@@ -1273,9 +1273,9 @@ def test_a_bubble_goto_to_a_title_in_no_volume_is_a_notice_not_a_crash(
     speech_index_screen: SpeechIndexScreen, mock_user_error_handler: MagicMock
 ) -> None:
     """The bubble goto runs on the Kivy clock: uncaught there, the error ended the app."""
-    title = Titles.JINXED_JALOPY_RACE_THE
+    title = Titles.ATTIC_ANTICS
     assert title not in _speech_module.ALL_FANTA_COMIC_BOOK_INFO
-    speech_index_screen.on_goto_title = MagicMock(side_effect=TitleNotInFantaInfoError("Jalopy"))
+    speech_index_screen.on_goto_title = MagicMock(side_effect=TitleNotInFantaInfoError("Attic"))
     hand_off = MagicMock()
     speech_index_screen.on_after_popup_goto_title = hand_off
     with patch.object(Clock, "schedule_once") as schedule:
@@ -1293,7 +1293,7 @@ def test_a_background_word_spoken_only_outside_the_volumes_does_not_raise(
     speech_index_screen: SpeechIndexScreen,
 ) -> None:
     """Every title has a name; only those in a Fantagraphics volume have an info."""
-    title = Titles.JINXED_JALOPY_RACE_THE
+    title = Titles.ATTIC_ANTICS
     assert title not in _speech_module.ALL_FANTA_COMIC_BOOK_INFO
     item = IndexItem("term", "term")
     speech_index_screen._selected_letter_button = MagicMock(text="T")
