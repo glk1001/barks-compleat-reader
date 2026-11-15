@@ -340,6 +340,26 @@ class TestAppConfigDir:
         cfg.app_config_path.touch()
         assert cfg.is_app_installed()
 
+    def test_a_new_config_info_knows_its_build_and_its_folder(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("KIVY_HOME", "-")  # put back after the test, whatever it sets
+        with (
+            patch.object(config_info, "IS_COMPILED", new=True),
+            patch.object(config_info, "get_app_exe_dir", return_value=tmp_path / "app"),
+            patch.object(ConfigInfo, "_get_app_config_dir", return_value=tmp_path / "config"),
+            patch.object(ConfigInfo, "_get_app_data_dir", return_value=tmp_path / "data"),
+            patch.object(config_info, "_assert_kivy_not_yet_imported"),
+        ):
+            cfg = ConfigInfo()
+
+        assert cfg.is_running_compiled is True
+        assert cfg.app_dir == tmp_path / "app"
+        assert cfg.app_config_dir == tmp_path / "config"
+        # Not among the folders laid out here: main.py sets it once the data is found,
+        # and until then nothing may take it for a path.
+        assert cfg.error_background_path is None
+
     def test_the_config_dir_is_laid_out_and_kivy_is_pointed_at_it(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

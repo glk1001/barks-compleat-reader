@@ -2662,3 +2662,65 @@ change = """
 """
 reason = "At 0 both return 0: `left` itself, or the else's 0."
 
+[[equivalent]]
+module = "barks_reader.core.config_info"
+function = "ConfigInfo.__init__"
+change = """
+- self.app_config_dir: Path = None  # ty: ignore[invalid-assignment]
++ self.app_config_dir: Path = ""  # ty: ignore[invalid-assignment]
+"""
+reason = "Assigned by _setup_app_config_dir before any read; __init__ then only asserts it for truth, and it is a path by then."
+
+[[equivalent]]
+module = "barks_reader.core.config_info"
+function = "ConfigInfo.__init__"
+change = """
+- self.app_config_path: Path = None  # ty: ignore[invalid-assignment]
++ self.app_config_path: Path = ""  # ty: ignore[invalid-assignment]
+"""
+reason = "Assigned by _setup_app_config_dir before any read; __init__ then only asserts it for truth, and it is a path by then."
+
+[[equivalent]]
+module = "barks_reader.core.config_info"
+function = "ConfigInfo.__init__"
+change = """
+- self.app_data_dir: Path = None  # ty: ignore[invalid-assignment]
++ self.app_data_dir: Path = ""  # ty: ignore[invalid-assignment]
+"""
+reason = "Assigned by _setup_app_config_dir before any read; __init__ then only asserts it for truth, and it is a path by then."
+
+[[equivalent]]
+module = "barks_reader.core.config_info"
+function = "ConfigInfo.__init__"
+change = """
+- self.kivy_config_dir: Path = None  # ty: ignore[invalid-assignment]
++ self.kivy_config_dir: Path = ""  # ty: ignore[invalid-assignment]
+"""
+reason = "Assigned by _setup_app_config_dir before any read; __init__ then only asserts it for truth, and it is a path by then."
+
+[[equivalent]]
+module = "barks_reader.core.config_info"
+function = "ConfigInfo.__init__"
+change = """
+- self.app_log_path: Path = None  # ty: ignore[invalid-assignment]
++ self.app_log_path: Path = ""  # ty: ignore[invalid-assignment]
+"""
+reason = "Assigned by _setup_app_config_dir before any read; __init__ then only asserts it for truth, and it is a path by then."
+
+[[equivalent]]
+module = "barks_reader.core.minimal_config_info"
+function = "get_minimal_config_options"
+change = """
+- barks_config.read(cfg_info.app_config_path, encoding="utf-8-sig")
++ barks_config.read(cfg_info.app_config_path, encoding="UTF-8-SIG")
+"""
+reason = "Codec names are case-insensitive: \"UTF-8-SIG\" is \"utf-8-sig\"."
+
+[[equivalent]]
+module = "barks_fantagraphics.whoosh_search_engine"
+function = "SearchEngineCreator._get_least_common_ai_text_terms"
+change = """
+- top_n, term_generator, key=lambda term_count: (term_count[1], term_count[0])
++ top_n, term_generator, key=lambda term_count: (term_count[1], term_count[1])
+"""
+reason = "heapq.nsmallest is stable and the index reader yields a field's terms in order, so words of one frequency come out alphabetically with or without the text in the key."
