@@ -1088,3 +1088,55 @@ class TestLogScreenMetrics:
             "  -> Calculated DPI: 40.00.",
             "  -> Primary: True.",
         ]
+
+
+def _pair_wide(
+    size: tuple[int, int], pos: tuple[int, int]
+) -> tuple[tuple[int, int], tuple[int, int]]:
+    """Stand in for the layout's reshape: twice as wide, moved left by the growth."""
+    return (2 * size[0], size[1]), (pos[0] - size[0] // 2, pos[1])
+
+
+class TestReshapeSavedWindow:
+    """A layout changed in fullscreen reshapes the rectangle the exit will restore."""
+
+    def test_the_exit_restores_the_reshaped_rectangle(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+        loguru_sink: list[str],
+    ) -> None:
+        wm, callbacks, *_ = manager
+        fake_window.fullscreen = True
+        wm.save_state_now()  # the fake backend saves 1200x1800 at (100, 50)
+
+        assert wm.reshape_saved_window(_pair_wide) is True
+
+        wm.goto_windowed_mode(callbacks)
+        restored = backend.restore_calls[-1]
+        assert (restored.size, restored.pos) == ((2400, 1800), (-500, 50))
+        assert backend.move_calls[-1].size == (2400, 1800)
+        assert (
+            "Reshaped the saved window state: size = (1200, 1800) -> (2400, 1800),"
+            " pos = (100, 50) -> (-500, 50)."
+        ) in loguru_sink
+
+    def test_nothing_saved_is_nothing_reshaped(self, manager: ManagerFixture) -> None:
+        """Started fullscreen, the app saved no rectangle: the refit waits for the exit."""
+        wm, *_ = manager
+        reshape = MagicMock()
+
+        assert wm.reshape_saved_window(reshape) is False
+        reshape.assert_not_called()
+        assert wm._saved_window_state.is_unsaved()
+
+    def test_a_restore_under_way_keeps_the_rectangle_it_took(self, manager: ManagerFixture) -> None:
+        wm, *_ = manager
+        wm.save_state_now()
+        wm._pending_restores = 1
+        reshape = MagicMock()
+
+        assert wm.reshape_saved_window(reshape) is False
+        reshape.assert_not_called()
+        assert wm._saved_window_state.size == (1200, 1800)

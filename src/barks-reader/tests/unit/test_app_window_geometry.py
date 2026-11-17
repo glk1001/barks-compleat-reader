@@ -1666,6 +1666,123 @@ def test_the_refit_waits_for_a_window_still_settling_out_of_fullscreen(
     assert len(fake_clock.calls) == scheduled_before + 3
 
 
+class _SavedWindow:
+    """Stands in for `WindowManager.reshape_saved_window`: the rectangle saved going fullscreen."""
+
+    def __init__(self, size: tuple[int, int], pos: tuple[int, int], *, saved: bool = True) -> None:
+        self.size = size
+        self.pos = pos
+        self.saved = saved
+        self.reshapes = 0
+
+    def __call__(self, reshape: geometry_module.RectReshape) -> bool:
+        if not self.saved:
+            return False
+        self.size, self.pos = reshape(self.size, self.pos)
+        self.reshapes += 1
+        return True
+
+
+def _layout_changed_in_fullscreen_with(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    saved_window: _SavedWindow,
+) -> AppWindowGeometryHelper:
+    """Single page windowed, then fullscreen, then the spread: the saved window passed in."""
+    fake_window.fullscreen = True
+    h, _ = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), SINGLE_PAGE
+    )
+    h.set_main_screen_callbacks(MagicMock(), MagicMock(), reshape_saved_window=saved_window)
+    cast("MagicMock", geometry_module.SCREEN_METRICS).refresh.return_value = False
+    h.set_window_ready()
+    h.set_layout_setting(TWO_PAGE_SPREAD)
+    return h
+
+
+def test_a_change_of_layout_in_fullscreen_reshapes_the_window_it_will_come_back_to(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """The saved height, the spread's width, centred: what a refit after the exit would give.
+
+    Left to that refit, the window came back single-page shaped and the aspect-ratio
+    correction got to it first: on Windows each correction came back the frame bigger,
+    and the window grew past the screen (greg-dell, 2026-11-17).
+    """
+    saved_window = _SavedWindow((686, 1080), (937, 50))
+    scheduled_before = len(fake_clock.calls)
+
+    h = _layout_changed_in_fullscreen_with(
+        monkeypatch, constraints, fake_window, fake_clock, saved_window
+    )
+
+    assert saved_window.reshapes == 1
+    expected_width, _ = get_win_dimensions(
+        1080 - CHROME, 2560, content_aspect_ratio(MainLayoutMode.SPREAD)
+    )
+    assert saved_window.size == (expected_width, 1080)
+    assert saved_window.pos == ((2560 - expected_width) // 2, 50)
+    assert h._refit_pending is False  # noqa: SLF001
+    # set_window_ready's fonts and nothing more: the fullscreen window is left alone.
+    assert len(fake_clock.calls) == scheduled_before
+
+
+def test_a_reshaped_window_takes_the_layouts_minimum_in_fullscreen_and_nothing_after(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """The new minimum before the exit: left to after it, X11 held the window to the old one.
+
+    Restored below the single page's minimum, the window was enlarged to it by SDL with no
+    resize event, and Kivy laid the screen out for the reshaped size it did not have.
+    """
+    fake_window.size = (2560, 1440)  # fullscreen
+    saved_window = _SavedWindow((686, 1080), (937, 50))
+    h = _layout_changed_in_fullscreen_with(
+        monkeypatch, constraints, fake_window, fake_clock, saved_window
+    )
+
+    spread_minimum = geometry_module.minimum_window_size(
+        2560, 1440, CHROME, content_aspect_ratio(MainLayoutMode.SPREAD)
+    )
+    assert (fake_window.minimum_width, fake_window.minimum_height) == spread_minimum
+    assert fake_window.size == (2560, 1440)  # the fullscreen window is not resized
+
+    fake_window.fullscreen = False
+    fake_window.size = saved_window.size  # restored at the reshaped rectangle
+    scheduled_before = len(fake_clock.calls)
+    h._check_for_rotation(0.0)  # noqa: SLF001
+
+    assert len(fake_clock.calls) == scheduled_before  # no refit's guarded resize
+    assert fake_window.size == saved_window.size
+
+
+def test_with_no_window_saved_the_refit_still_waits_for_the_exit(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """Started fullscreen, the app saved no rectangle: the window is refit once it is back."""
+    saved_window = _SavedWindow((0, 0), (-1, -1), saved=False)
+    h = _layout_changed_in_fullscreen_with(
+        monkeypatch, constraints, fake_window, fake_clock, saved_window
+    )
+    assert h._refit_pending is True  # noqa: SLF001
+
+    fake_window.fullscreen = False
+    scheduled_before = len(fake_clock.calls)
+    h._check_for_rotation(0.0)  # noqa: SLF001
+    assert len(fake_clock.calls) == scheduled_before + 3  # a guarded resize's three steps
+
+
 def test_a_rotation_out_of_fullscreen_is_the_refit_it_missed(
     layout_changed_in_fullscreen: AppWindowGeometryHelper,
     fake_window: MagicMock,

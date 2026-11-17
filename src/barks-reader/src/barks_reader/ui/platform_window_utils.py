@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
     from kivy.uix.widget import Widget
 
+    from .app_window_geometry import RectReshape
+
 # Small timeout for non-Windows platforms to let the window system settle.
 _RESTORE_GEOMETRY_TIMEOUT = 0.05
 
@@ -315,6 +317,31 @@ class WindowManager:
             f"Saved window state: size = {self._saved_window_state.size}, "
             f"pos = {self._saved_window_state.pos}"
         )
+
+    def reshape_saved_window(self, reshape: RectReshape) -> bool:
+        """Give the windowed rectangle saved for the return from fullscreen a new shape.
+
+        For a change of the main screen's layout made in fullscreen: the exit then
+        restores the window in the layout's shape, with nothing left to correct.
+
+        Args:
+            reshape: Takes the saved size and position, and returns the new ones.
+
+        Returns:
+            True when the saved rectangle was reshaped; False when nothing is saved, or a
+            restore of it is already under way (it was taken as it stood).
+
+        """
+        state = self._saved_window_state
+        if state.is_unsaved() or self._pending_restores > 0:
+            return False
+        old_size, old_pos = state.size, state.pos
+        state.size, state.pos = reshape(state.size, state.pos)
+        logger.info(
+            f"Reshaped the saved window state: size = {old_size} -> {state.size},"
+            f" pos = {old_pos} -> {state.pos}."
+        )
+        return True
 
     def goto_fullscreen_mode(self, callbacks: WindowModeCallbacks) -> None:
         """Enter fullscreen mode, saving the windowed geometry first.

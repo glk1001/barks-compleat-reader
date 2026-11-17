@@ -147,6 +147,7 @@ class BarksReaderApp(App):
         self._document_reader_screen: DocumentReaderScreen | None = None
         self._wiki_reader_screen: WikiReaderScreen | None = None
         self._corpus_stats_screen: CorpusStatsScreen | None = None
+        self._window_manager: WindowManager | None = None
         self._on_stop_done = False
 
         self._window_geometry = AppWindowGeometryHelper(
@@ -293,10 +294,12 @@ class BarksReaderApp(App):
         root = self._build_screens()
 
         assert self._main_screen is not None
+        assert self._window_manager is not None
         self._set_layout_mode(self._window_geometry.layout_mode)
         self._window_geometry.set_main_screen_callbacks(
             update_fonts=self._main_screen.update_fonts,
             layout_mode_changed=self._set_layout_mode,
+            reshape_saved_window=self._window_manager.reshape_saved_window,
         )
 
         logger.debug("Building the main tree view...")
@@ -368,6 +371,8 @@ class BarksReaderApp(App):
         # main screen and the comic reader so the saved windowed geometry lives in
         # one place (no cross-screen seeding of restore geometry).
         window_manager = WindowManager()
+        # And the layout's: a layout changed in fullscreen reshapes the saved geometry.
+        self._window_manager = window_manager
 
         screens = ScreenBundle(
             tree_view=tree_view_screen,

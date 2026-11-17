@@ -21,6 +21,11 @@ from barks_reader.core.window_minimum import minimum_window_size
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    # A window's ``(size, position)``, in ``Window.system_size`` units.
+    type WindowRect = tuple[tuple[int, int], tuple[int, int]]
+    # Takes a saved windowed rectangle's size and position, gives its new rectangle.
+    type RectReshape = Callable[[tuple[int, int], tuple[int, int]], WindowRect]
+
 MOVE_SETTLE_DELAY = 4.0
 RESIZE_CORRECTION_DELAY = 0.1
 ROTATION_POLL_INTERVAL = 2.0
@@ -73,6 +78,7 @@ class AppWindowGeometryHelper:
         # position on a second monitor of another shape, 2026-10-30).
         self._layout_mode = self._decide_layout_on(SCREEN_METRICS.get_primary_screen_info())
         self._layout_mode_changed: Callable[[MainLayoutMode], None] | None = None
+        self._reshape_saved_window: Callable[[RectReshape], bool] | None = None
         self._refit_pending = False
         self._resize_event: Any = None
         self._resize_steps: tuple[Any, Any] | None = None
@@ -90,16 +96,21 @@ class AppWindowGeometryHelper:
         self,
         update_fonts: Callable[[int], None],
         layout_mode_changed: Callable[[MainLayoutMode], None] | None = None,
+        reshape_saved_window: Callable[[RectReshape], bool] | None = None,
     ) -> None:
         """Set callbacks that require the main screen to be built first.
 
         Args:
             update_fonts: Callback to update font sizes for a given window height.
             layout_mode_changed: Callback for a change of the main screen's layout.
+            reshape_saved_window: Gives the windowed rectangle saved for the return
+                from fullscreen a new shape, through the function it is passed; False
+                when there is none to reshape (`WindowManager.reshape_saved_window`).
 
         """
         self._update_fonts = update_fonts
         self._layout_mode_changed = layout_mode_changed
+        self._reshape_saved_window = reshape_saved_window
 
     def set_window_ready(self) -> None:
         """Mark the window as ready to accept resize corrections, and set its minimum size."""
@@ -172,10 +183,49 @@ class AppWindowGeometryHelper:
             self._layout_mode_changed(mode)
         if refit:
             if Window.fullscreen:
-                self._refit_pending = True  # the window's own shape waits till it is back
+                self._refit_saved_window()
             else:
                 self._refit_to_layout()
         return True
+
+    def _refit_saved_window(self) -> None:
+        """Give the windowed rectangle saved for the return from fullscreen the new layout.
+
+        Left to a refit after the exit, the window came back in the old layout's shape,
+        and the aspect-ratio correction took it from there first: on Windows each
+        correction came back 16x39 (the frame) bigger and the next was worked out from
+        that height, until the window stood taller than the screen with its top above
+        it (a greg-dell soak, 2026-11-17). With nothing saved to reshape (the app
+        started fullscreen), the refit still waits for the window to be back.
+
+        The layout's minimum goes on now, not after the exit: a restored window below
+        the old layout's minimum was enlarged to it by SDL with no resize event (on
+        X11), and Kivy laid the screen out for a size the window did not have. The
+        fullscreen window fills its monitor, so no minimum resizes it.
+        """
+        if self._reshape_saved_window is not None and self._reshape_saved_window(
+            self._windowed_rect_for_layout
+        ):
+            self._refit_pending = False
+            self.apply_minimum_size()
+        else:
+            self._refit_pending = True  # the window's own shape waits till it is back
+
+    def _windowed_rect_for_layout(self, size: tuple[int, int], pos: tuple[int, int]) -> WindowRect:
+        """Return a windowed rectangle reshaped for the layout, as `_refit_to_layout` would."""
+        new_width, new_height, left = self._layout_fit_at(size[1])
+        return (new_width, new_height), (left, pos[1])
+
+    def _layout_fit_at(self, height: int) -> tuple[int, int, int]:
+        """Return the layout's width and height at ``height``, and its left, centred."""
+        monitor = self._current_monitor
+        chrome = self._chrome_in_size_units()
+        new_width, content_h = get_win_dimensions(
+            height - chrome, monitor.width_pixels, self.content_aspect_ratio
+        )
+        new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
+        left = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
+        return new_width, new_height, left
 
     def _decide_layout(self) -> MainLayoutMode:
         return self._decide_layout_on(self._current_monitor)
@@ -193,13 +243,7 @@ class AppWindowGeometryHelper:
         """Give the window the layout's width at its height, centred on its monitor."""
         self._refit_pending = False
         monitor = self._current_monitor
-        chrome = self._chrome_in_size_units()
-        height = Window.system_size[1]
-        new_width, content_h = get_win_dimensions(
-            height - chrome, monitor.width_pixels, self.content_aspect_ratio
-        )
-        new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
-        left = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
+        new_width, new_height, left = self._layout_fit_at(Window.system_size[1])
         logger.info(
             f"Layout refit: ({new_width}, {new_height}) at ({left}, {Window.top})"
             f" on monitor {monitor.display} ({monitor.width_pixels}x{monitor.height_pixels})."

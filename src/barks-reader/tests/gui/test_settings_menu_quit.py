@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from contextlib import nullcontext
 from typing import TYPE_CHECKING
 
 import pytest
@@ -295,10 +296,11 @@ DOWNS_TO_LAYOUT = 1
 EXPLICIT_LAYOUTS = (SINGLE_PAGE, TWO_PAGE_SPREAD)
 
 
-def _set_layout_from(d: Driver, current: str) -> str:
+def _set_layout_from(d: Driver, current: str, *, window_resizes: bool = True) -> str:
     """From the tree, set the main screen's layout to the other one; return its name.
 
     The window takes the new layout's shape, and the screen must take the window's.
+    In fullscreen (``window_resizes`` False) the window keeps the screen's size.
     """
     step, picked = ("Down", TWO_PAGE_SPREAD) if current == SINGLE_PAGE else ("Up", SINGLE_PAGE)
     _open_dots_menu(d, downs=0)
@@ -306,7 +308,8 @@ def _set_layout_from(d: Driver, current: str) -> str:
     d.move_focus(*["Down"] * DOWNS_TO_LAYOUT)
     d.key_then_wait(d.FOCUS_MOVED, "Return")  # the options, the current one focused
     d.move_focus(step)
-    with d.expect(pattern(markers.WINDOW_RESIZED)):
+    resized = d.expect(pattern(markers.WINDOW_RESIZED)) if window_resizes else nullcontext()
+    with resized:
         d.key_then_wait(
             pattern(markers.SETTING_OPTION_SET, key=LAYOUT_SETTING, value=picked), "Return"
         )
@@ -383,6 +386,57 @@ def test_a_layout_changed_after_a_comic_read_fullscreen_fills_its_window(
     _assert_the_screen_fills_the_window(d, other)
     assert _set_layout_from(d, other) == layout
     _assert_the_screen_fills_the_window(d, layout)
+
+
+MAIN_FULLSCREEN = pattern(markers.ENTERED_FULLSCREEN, screen="MainScreen")
+MAIN_WINDOWED = pattern(markers.ENTERED_WINDOWED, screen="MainScreen")
+_FULLSCREEN_GEOMETRY_RE = re.compile(
+    pattern(markers.WINDOW_GEOMETRY, reason="MainScreen fullscreen", width=_NUMBER, height=_NUMBER)
+)
+# In either mode: the main screen takes the new layout's shape in fullscreen already, so
+# a window that comes back at that shape leaves it nothing to change, or log, windowed.
+_ANY_LAYOUT_SIZE_RE = re.compile(pattern(markers.MAIN_LAYOUT_SIZE, width=_NUMBER, height=_NUMBER))
+
+
+def test_a_layout_changed_in_fullscreen_comes_back_windowed_on_the_screen(
+    boot: AppBoot,
+) -> None:
+    """Fullscreen, the other layout, windowed again: the window keeps its height, on screen.
+
+    The window saved going fullscreen has the old layout's shape, so the exit restores
+    a window the aspect-ratio correction then reshapes. On Windows each correction came
+    back the frame (16x39) bigger, and the next was worked out from that height: the
+    window grew to 1891x1499 on a 1440-high screen, its top at -21 (greg-dell soak,
+    seed 3211, 2026-11-17).
+    """
+    boot.expect_boot_size = False  # the window takes the new layout's shape
+    ini = boot.scratch / "barks-reader.ini"
+    d = boot(nodes.GHOST_OF_THE_GROTTO)
+    layout = harness.read_ini_value(ini, LAYOUT_SETTING)
+    assert layout in EXPLICIT_LAYOUTS, f"the run's layout is {layout!r}"
+    _, boot_height, _, _ = d.window_geometry()
+
+    with d.expect(MAIN_FULLSCREEN, FULLSCREEN_TIMEOUT):
+        d.main_menu_button("fullscreen")
+    d.settle()
+    screen_width, screen_height = _last_size(d, _FULLSCREEN_GEOMETRY_RE)
+    other = _set_layout_from(d, layout, window_resizes=False)
+    with d.expect(MAIN_WINDOWED, FULLSCREEN_TIMEOUT):
+        d.main_menu_button("fullscreen")
+    d.settle()
+
+    width, height, x, y = d.window_geometry()
+    where = f"on {other!r} the window came back at {width}x{height}+{x}+{y}"
+    assert 0 <= x <= screen_width - width, f"{where}, off the {screen_width} wide screen"
+    assert 0 <= y <= screen_height - height, f"{where}, off the {screen_height} high screen"
+    assert height <= boot_height, (
+        f"on {other!r} the window came back {height} high, more than the {boot_height} it had"
+    )
+    screen = _last_size(d, _ANY_LAYOUT_SIZE_RE)
+    assert screen == (width, height), (
+        f"on {other!r} the main screen is laid out {screen[0]}x{screen[1]}"
+        f" in a {width}x{height} window"
+    )
 
 
 VIRTUAL_KEYBOARD_SETTING = "use_virtual_keyboard"
