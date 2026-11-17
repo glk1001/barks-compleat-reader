@@ -55,7 +55,7 @@ class CorpusStatsDestination(Destination):
 
 @dataclass(frozen=True, slots=True)
 class IllustratedHistoryDestination(Destination):
-    """The Introduction's 'An Illustrated History' node, parent of its chapters."""
+    """The Introduction's 'A Short Illustrated History' node, parent of its chapters."""
 
 
 @dataclass(frozen=True, slots=True)

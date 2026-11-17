@@ -339,7 +339,7 @@ Three types carry the whole model:
   `PlaylistDestination(playlist_id=…)`, `TitleDestination(fanta_info=…)` (the
   leaf), `ArticleDestination(view_state, article_title)`,
   `DocumentDestination(view_state, doc_dir, title)` (a folder of page images for
-  the document reader, an Illustrated History chapter; §7.1), and
+  the document reader, a Short Illustrated History chapter; §7.1), and
   `RandomTitlesDestination` (the *Choose for me* filter nodes; see below).
   Payloads live on destinations, *not* on widget subclasses — that's the key
   design move.
