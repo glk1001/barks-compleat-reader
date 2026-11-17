@@ -154,6 +154,7 @@ mtdev
 navigations
 nbytes
 NCCALCSIZE
+NCPAINT
 neighbour
 nodeid
 nonexistentword

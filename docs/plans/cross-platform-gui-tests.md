@@ -101,6 +101,15 @@
 >    size (977x1520 on the laptop), SDL no longer pads the window: delete `move_now`
 >    (the Win32 backend's, the Kivy backend's no-op and its call in
 >    `WindowManager.goto_windowed_mode`). Still 16x39 bigger (993x1559): keep it.
+>    Recheck the titlebar flash then too: on greg-dell on 2026-11-17, watching a soak (seed
+>    3211, its fullscreen switches in "Christmas in Duckburg"), the user saw the native
+>    Windows titlebar for a moment during a switch, and in the identical walk after it did
+>    not. Every switch logs a `WM_NCPAINT` in its "Frame messages while ..." line, before and
+>    after, so the log cannot tell a seen flash from an unseen one: whether it shows is a
+>    matter of compositor timing (`quiet_frame_for_fullscreen` and the exit's hold cover
+>    most of it). Left as is. To look again, first record a few switches at a high frame
+>    rate to learn how often it shows and on which way (into fullscreen or out of it),
+>    before touching the Win32 frame code.
 
 ## Context
 
