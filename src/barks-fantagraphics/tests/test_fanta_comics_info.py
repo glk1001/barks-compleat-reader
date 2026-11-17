@@ -1,14 +1,17 @@
 from collections import Counter
 
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     ALL_LISTS,
+    EXTRAS_FIRST_CHRONOLOGICAL_NUMBER,
     FANTA_OVERRIDE_ZIPS,
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
     SERIES_COVERS,
     SERIES_CS,
+    SERIES_EXTRAS,
     SERIES_ONE_PAGERS,
     get_filtered_title_lists,
     get_num_comic_book_titles,
@@ -52,12 +55,13 @@ class TestSeriesInfo:
         assert len(ALL_FANTA_COMIC_BOOK_INFO) == len(SERIES_INFO)
 
     def test_chronological_numbers_are_contiguous(self) -> None:
-        """Tests that the three chronological sequences are gap-free and start at 1.
+        """Tests that the four chronological sequences are gap-free.
 
-        Regular titles, one-pagers, and covers are numbered independently; each
-        sequence must be exactly 1..N with no gaps or duplicates.
+        Regular titles, one-pagers, covers and the Extras are numbered independently;
+        the first three must be exactly 1..N, the Extras 901..900+N, with no gaps or
+        duplicates.
         """
-        own_sequence_series = (SERIES_ONE_PAGERS, SERIES_COVERS)
+        own_sequence_series = (SERIES_ONE_PAGERS, SERIES_COVERS, SERIES_EXTRAS)
         main_numbers = sorted(
             info.fanta_chronological_number
             for info in ALL_FANTA_COMIC_BOOK_INFO.values()
@@ -71,7 +75,33 @@ class TestSeriesInfo:
                 for info in ALL_FANTA_COMIC_BOOK_INFO.values()
                 if info.series_name == series_name
             )
-            assert series_numbers == list(range(1, len(series_numbers) + 1))
+            first = EXTRAS_FIRST_CHRONOLOGICAL_NUMBER if series_name == SERIES_EXTRAS else 1
+            assert series_numbers == list(range(first, first + len(series_numbers)))
+
+    def test_the_extras_numbers_are_fixed(self) -> None:
+        """The Extras' built comics are named by these: a new volume must not move them."""
+        extras = {
+            title: info.fanta_chronological_number
+            for title, info in ALL_FANTA_COMIC_BOOK_INFO.items()
+            if info.series_name == SERIES_EXTRAS
+        }
+        assert extras == {
+            Titles.ALL_ONE_PAGERS: 901,
+            Titles.ALL_COVERS: 902,
+            Titles.GEORGE_LUCAS___AN_APPRECIATION: 903,
+            Titles.RICH_TOMMASO___ON_COLORING_BARKS: 904,
+            Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION: 905,
+            Titles.DON_AULT___LIFE_AMONG_THE_DUCKS: 906,
+            Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD: 907,
+        }
+
+    def test_the_stories_sort_before_the_extras(self) -> None:
+        last_story = max(
+            info.fanta_chronological_number
+            for info in ALL_FANTA_COMIC_BOOK_INFO.values()
+            if info.series_name not in (SERIES_ONE_PAGERS, SERIES_COVERS, SERIES_EXTRAS)
+        )
+        assert last_story < EXTRAS_FIRST_CHRONOLOGICAL_NUMBER
 
 
 class TestOverrideZipNames:

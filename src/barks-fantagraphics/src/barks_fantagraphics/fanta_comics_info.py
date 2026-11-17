@@ -91,6 +91,12 @@ class FantaComicBookInfo:
 
 FantaComicBookInfoDict = OrderedDict[Titles, FantaComicBookInfo]
 
+# The Extras (the articles and the "All One-Pagers" and "All Covers" collections) have
+# no place in the story chronology. Numbered after the last story, they moved whenever a
+# new volume added stories, renaming their built comics. They are numbered from here
+# instead: past any story's number, so they still sort after the stories, and fixed.
+EXTRAS_FIRST_CHRONOLOGICAL_NUMBER = 901
+
 
 def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
     current_number_in_series = SERIES_INFO_START_NUMBERS.copy()
@@ -102,6 +108,7 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
     fanta_chronological_number = 1
     one_pager_chronological_number = 1
     cover_chronological_number = 1
+    extras_chronological_number = EXTRAS_FIRST_CHRONOLOGICAL_NUMBER
     for title_info in chrono_sorted_series_info:
         # if title not in SERIES_INFO:
         #     logger.debug(f'Title "{title}" not in SERIES_INFO.')
@@ -112,7 +119,7 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
         # One-pagers are not part of the main chronological sequence: they must not
         # consume numbers there and shift the regular comics. They get their own
         # independent ordering instead. (The synthetic "All One-Pagers" collection is
-        # in SERIES_EXTRAS, not here, so it is numbered with the regular comics.)
+        # in SERIES_EXTRAS, numbered with the other Extras below.)
         if title_info.series_name == SERIES_ONE_PAGERS:
             chrono_num = one_pager_chronological_number
             one_pager_chronological_number += 1
@@ -121,6 +128,10 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
             # so they never shift the regular comics' chronological numbers.
             chrono_num = cover_chronological_number
             cover_chronological_number += 1
+        elif title_info.series_name == SERIES_EXTRAS:
+            # The Extras keep fixed numbers, whatever stories a new volume adds.
+            chrono_num = extras_chronological_number
+            extras_chronological_number += 1
         else:
             chrono_num = fanta_chronological_number
             fanta_chronological_number += 1
@@ -141,6 +152,9 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
     # A duplicate title in SERIES_INFO would silently consume a chronological number
     # and a number-in-series, shifting every later title's numbering.
     assert len(all_fanta_info) == len(SERIES_INFO), "Duplicate title in SERIES_INFO."
+    assert fanta_chronological_number <= EXTRAS_FIRST_CHRONOLOGICAL_NUMBER, (
+        "The stories have reached the Extras' chronological numbers."
+    )
 
     return all_fanta_info
 
