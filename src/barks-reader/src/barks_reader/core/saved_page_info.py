@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Self
 
-from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.comics_consts import BACK_MATTER_SINGLE_PAGES, PageType
 
 from .reader_consts_and_types import FIRST_BODY_PAGE
 
@@ -23,6 +23,15 @@ class SavedPageInfo:
             FIRST_BODY_PAGE,
             self.last_body_page,
         )
+
+    def is_at_end(self) -> bool:
+        """Return whether the page is the story's last body page or one after it.
+
+        A blank page is not counted: it pads the front of a comic as well as the back.
+        """
+        if self.page_type == PageType.BODY:
+            return self.display_page_num == self.last_body_page
+        return self.page_type in BACK_MATTER_SINGLE_PAGES
 
     def to_json(self) -> JsonSavedPageInfo:
         """Return the page as a JSON-ready dict, its page type by name."""

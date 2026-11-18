@@ -296,7 +296,9 @@ class ComicReaderManager:
         self._tracking = False
         assert self._comic_book_reader
         last_read_page = self._last_read_page_tracker.end(self._comic_book_reader)
-        self._reading_history_tracker.end(last_read_page)
+        self._reading_history_tracker.end(
+            last_read_page, finished=self._last_read_page_tracker.reached_end
+        )
         return last_read_page
 
     def get_last_read_page(self, title_str: str) -> SavedPageInfo | None:

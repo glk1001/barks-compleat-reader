@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core.reader_consts_and_types import FIRST_BODY_PAGE
 from barks_reader.core.saved_page_info import SavedPageInfo
@@ -86,3 +87,42 @@ class TestIsInsideBody:
         )
 
         assert info.is_inside_body() is False
+
+
+class TestIsAtEnd:
+    @pytest.mark.parametrize(
+        ("display_page_num", "page_type", "expected"),
+        [
+            ("32", PageType.BODY, True),  # the last body page
+            ("31", PageType.BODY, False),
+            (FIRST_BODY_PAGE, PageType.BODY, False),
+            ("33", PageType.BACK_MATTER, True),
+            ("33", PageType.BACK_NO_PANELS, True),
+            ("33", PageType.BACK_PAINTING, True),
+            ("i", PageType.COVER, False),
+            ("i", PageType.FRONT_MATTER, False),
+            # A blank page pads the front as well as the back: it proves nothing.
+            ("33", PageType.BLANK_PAGE, False),
+        ],
+    )
+    def test_the_last_body_page_and_the_pages_after_it(
+        self, display_page_num: str, page_type: PageType, expected: bool
+    ) -> None:
+        info = SavedPageInfo(
+            page_index=0,
+            display_page_num=display_page_num,
+            page_type=page_type,
+            last_body_page="32",
+        )
+
+        assert info.is_at_end() is expected
+
+    def test_a_one_page_story_is_at_its_end_on_its_first_page(self) -> None:
+        info = SavedPageInfo(
+            page_index=0,
+            display_page_num=FIRST_BODY_PAGE,
+            page_type=PageType.BODY,
+            last_body_page=FIRST_BODY_PAGE,
+        )
+
+        assert info.is_at_end()

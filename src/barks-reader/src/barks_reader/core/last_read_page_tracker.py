@@ -32,6 +32,16 @@ class LastReadPageTracker:
         self._save_enabled = False
         self._current_title: str | None = None
         self._current_layout: ComicLayout | None = None
+        self._reached_end = False
+
+    @property
+    def reached_end(self) -> bool:
+        """Whether the session `end()` last closed stopped on the story's last page or after it.
+
+        The page `end()` returns cannot say: a finished comic's page and one closed on
+        its cover are both sent back to ``COMIC_BEGIN_PAGE``.
+        """
+        return self._reached_end
 
     def begin(self, title: str, layout: ComicLayout, *, save_enabled: bool) -> None:
         """Note the comic being opened; ``end()`` will save its progress."""
@@ -55,6 +65,7 @@ class LastReadPageTracker:
         self._save_enabled = False
         self._current_title = None
         self._current_layout = None
+        self._reached_end = False
 
         if not save_enabled:
             return None
@@ -73,6 +84,7 @@ class LastReadPageTracker:
             comic_book_reader.double_page_mode,
         )
 
+        self._reached_end = last_read_page.is_at_end()
         self._json_settings_manager.save_last_read_page(title, last_read_page)
         logger.debug(
             log_markers.LAST_READ_PAGE_SAVED.format(

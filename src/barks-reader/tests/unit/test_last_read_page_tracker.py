@@ -234,3 +234,70 @@ class TestGetLastReadPage:
 
         assert result is not None
         assert result.display_page_num == COMIC_BEGIN_PAGE
+
+
+class TestReachedEnd:
+    """The page `end()` returns is the same for a finished comic and one closed on its cover."""
+
+    @staticmethod
+    def _end_on(tracker: LastReadPageTracker, page: str, last_body_page: str = "10") -> None:
+        reader = MagicMock()
+        reader.get_last_read_page.return_value = page
+        reader.double_page_mode = False
+        reader.get_current_display_unit.return_value = None
+        layout = _make_layout(
+            OrderedDict([(page, _body_page(int(page) - 1, page))]), last_body_page=last_body_page
+        )
+        tracker.begin("My Title", layout, save_enabled=True)
+        tracker.end(reader)
+
+    def test_false_before_any_session(self, tracker: LastReadPageTracker) -> None:
+        assert not tracker.reached_end
+
+    def test_true_when_closed_on_the_last_body_page(self, tracker: LastReadPageTracker) -> None:
+        self._end_on(tracker, "10")
+        assert tracker.reached_end
+
+    def test_false_when_closed_mid_body(self, tracker: LastReadPageTracker) -> None:
+        self._end_on(tracker, "5")
+        assert not tracker.reached_end
+
+    def test_false_when_closed_on_the_first_body_page(self, tracker: LastReadPageTracker) -> None:
+        self._end_on(tracker, "1")
+        assert not tracker.reached_end
+
+    def test_true_for_back_matter_after_the_last_body_page(
+        self, tracker: LastReadPageTracker
+    ) -> None:
+        back_matter_page = PageInfo(
+            page_index=9,
+            display_page_num="10",
+            page_type=PageType.BACK_MATTER,
+            srce_page=MagicMock(),
+            dest_page=MagicMock(),
+        )
+        reader = MagicMock()
+        reader.get_last_read_page.return_value = "9"
+        reader.double_page_mode = True
+        reader.get_current_display_unit.return_value = DisplayUnit(
+            left_page_index=8, right_page_index=9
+        )
+        layout = _make_layout(
+            OrderedDict([("9", _body_page(8, "9")), ("10", back_matter_page)]), last_body_page="9"
+        )
+        tracker.begin("My Title", layout, save_enabled=True)
+
+        tracker.end(reader)
+
+        assert tracker.reached_end
+
+    def test_a_session_that_saves_nothing_forgets_the_one_before(
+        self, tracker: LastReadPageTracker
+    ) -> None:
+        self._end_on(tracker, "10")
+        layout = _make_layout(OrderedDict([("1", _body_page(0, "1"))]))
+        tracker.begin("An Article", layout, save_enabled=False)
+
+        tracker.end(MagicMock())
+
+        assert not tracker.reached_end

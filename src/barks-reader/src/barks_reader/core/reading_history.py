@@ -42,6 +42,10 @@ class ReadEvent:
     closed_at: datetime | None = None
     last_display_page: str = ""
     last_body_page: str = ""
+    # Whether the session closed on the story's last page or after it. None for an
+    # event recorded before this was kept, and for one never closed: `read_state`
+    # then judges by the page.
+    finished: bool | None = None
 
     @staticmethod
     def new_event_id() -> str:
@@ -50,7 +54,7 @@ class ReadEvent:
 
     def to_json(self) -> JsonReadEvent:
         """Serialize this event to a JSON-compatible dict."""
-        return {
+        json_event: JsonReadEvent = {
             "id": self.event_id,
             "title": self.title_str,
             "opened_at": self.opened_at.isoformat(timespec="seconds"),
@@ -60,6 +64,10 @@ class ReadEvent:
             "last_display_page": self.last_display_page,
             "last_body_page": self.last_body_page,
         }
+        # Left out while unknown, so an event from before it was kept is written as it was.
+        if self.finished is not None:
+            json_event["finished"] = self.finished
+        return json_event
 
     @classmethod
     def from_json(cls, json_event: JsonReadEvent) -> Self:
@@ -72,6 +80,7 @@ class ReadEvent:
             closed_at=None if closed_at is None else datetime.fromisoformat(closed_at),
             last_display_page=json_event["last_display_page"],
             last_body_page=json_event["last_body_page"],
+            finished=json_event.get("finished"),
         )
 
 
@@ -206,12 +215,20 @@ class ReadingHistoryTracker:
         self._store.add_event(self._open_event)
         logger.debug(log_markers.HISTORY_OPEN_RECORDED.format(title=title_str))
 
-    def end(self, last_read_page: SavedPageInfo | None) -> None:
-        """Record the close of the current session (no-op without an open one)."""
+    def end(self, last_read_page: SavedPageInfo | None, *, finished: bool = False) -> None:
+        """Record the close of the current session (no-op without an open one).
+
+        Args:
+            last_read_page: The page the reader closed on, a finished comic's sent back
+                to ``COMIC_BEGIN_PAGE``; None when there was no valid page.
+            finished: Whether the reader closed on the story's last page or after it.
+
+        """
         if self._open_event is None:
             return
 
         self._open_event.closed_at = self._now()
+        self._open_event.finished = finished
         if last_read_page is not None:
             self._open_event.last_display_page = last_read_page.display_page_num
             self._open_event.last_body_page = last_read_page.last_body_page

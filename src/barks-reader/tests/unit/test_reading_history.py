@@ -56,6 +56,19 @@ class TestReadEventJson:
         assert restored == event
         assert restored.closed_at is None
 
+    @pytest.mark.parametrize("finished", [True, False])
+    def test_round_trip_keeps_whether_the_story_was_finished(self, finished: bool) -> None:
+        event = _make_event(closed_at=datetime(2026, 7, 17, 15, 0))
+        event.finished = finished
+
+        assert ReadEvent.from_json(event.to_json()).finished is finished
+
+    def test_an_event_from_before_finished_was_kept_reads_as_unknown(self) -> None:
+        json_event = _make_event(closed_at=datetime(2026, 7, 17, 15, 0)).to_json()
+
+        assert "finished" not in json_event  # written as it always was
+        assert ReadEvent.from_json(json_event).finished is None
+
 
 class TestReadingHistoryStore:
     def test_missing_file_starts_empty(self, tmp_path: Path) -> None:
@@ -250,6 +263,28 @@ class TestReadingHistoryTracker:
         # The GUI harness pairs the profile's events with these lines at every teardown.
         assert log_markers.HISTORY_OPEN_RECORDED.format(title=event.title_str) in loguru_sink
         assert log_markers.HISTORY_CLOSE_RECORDED.format(title=event.title_str) in loguru_sink
+
+    @pytest.mark.parametrize("finished", [True, False])
+    def test_end_records_whether_the_story_was_finished(
+        self, tmp_path: Path, finished: bool
+    ) -> None:
+        opened = datetime(2026, 7, 17, 14, 0)
+        tracker, store = self._make_tracker(tmp_path, _FixedClock(opened, opened))
+
+        tracker.begin("Lost in the Andes!")
+        tracker.end(None, finished=finished)
+
+        (event,) = store.get_events()
+        assert event.finished is finished
+        assert ReadingHistoryStore(tmp_path / "history.json").get_events() == [event]
+
+    def test_an_open_session_has_not_said_whether_it_finished(self, tmp_path: Path) -> None:
+        opened = datetime(2026, 7, 17, 14, 0)
+        tracker, store = self._make_tracker(tmp_path, _FixedClock(opened))
+
+        tracker.begin("Lost in the Andes!")
+
+        assert store.get_events()[0].finished is None
 
     def test_end_with_no_page_still_records_close_time(self, tmp_path: Path) -> None:
         opened = datetime(2026, 7, 17, 14, 0)

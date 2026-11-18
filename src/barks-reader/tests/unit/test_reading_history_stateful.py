@@ -96,9 +96,9 @@ class ReadingHistoryMachine(RuleBasedStateMachine):
         self.model.append(replace(self.open_event))
         self.writes += 1
 
-    @rule(page=_PAGES)
-    def end(self, page: SavedPageInfo | None) -> None:
-        self.tracker.end(page)
+    @rule(page=_PAGES, finished=st.booleans())
+    def end(self, page: SavedPageInfo | None, finished: bool) -> None:
+        self.tracker.end(page, finished=finished)
         if self.open_event is None:
             return
         closed = replace(
@@ -106,6 +106,7 @@ class ReadingHistoryMachine(RuleBasedStateMachine):
             closed_at=self.now,
             last_display_page="" if page is None else page.display_page_num,
             last_body_page="" if page is None else page.last_body_page,
+            finished=finished,
         )
         self.open_event = None
         # A session whose event was deleted meanwhile has nothing to update.

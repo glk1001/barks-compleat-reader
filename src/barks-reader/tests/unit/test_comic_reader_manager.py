@@ -342,11 +342,15 @@ class TestComicReaderManager:
 
         sentinel = MagicMock()
         mock_dependencies["last_read_page_tracker"].end.return_value = sentinel
+        mock_dependencies["last_read_page_tracker"].reached_end = True
 
         result = manager.comic_closed()
 
         mock_dependencies["last_read_page_tracker"].end.assert_called_once_with(mock_reader)
-        mock_dependencies["reading_history_tracker"].end.assert_called_once_with(sentinel)
+        # The history is told whether the story was finished: the page alone cannot say.
+        mock_dependencies["reading_history_tracker"].end.assert_called_once_with(
+            sentinel, finished=True
+        )
         assert result is sentinel
 
     def test_get_last_read_page_delegates_to_tracker(
@@ -609,6 +613,7 @@ class TestTrackingBeginsOnlyWhenTheComicOpened:
         fanta_info.comic_book_info.get_title_str.return_value = "Title"
         sentinel = MagicMock()
         mock_dependencies["last_read_page_tracker"].end.return_value = sentinel
+        mock_dependencies["last_read_page_tracker"].reached_end = False
 
         with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
             manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
@@ -617,7 +622,9 @@ class TestTrackingBeginsOnlyWhenTheComicOpened:
         assert manager.comic_closed() is sentinel
         assert manager.comic_closed() is None
         mock_dependencies["last_read_page_tracker"].end.assert_called_once()
-        mock_dependencies["reading_history_tracker"].end.assert_called_once_with(sentinel)
+        mock_dependencies["reading_history_tracker"].end.assert_called_once_with(
+            sentinel, finished=False
+        )
 
 
 class TestMissingPrebuiltComic:
