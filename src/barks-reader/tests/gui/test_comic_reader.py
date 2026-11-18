@@ -187,6 +187,32 @@ def test_opening_a_story_records_a_history_event(boot: AppBoot) -> None:
     assert events[-1]["last_body_page"] == layout.last_body_page
 
 
+def test_a_story_read_to_its_end_is_recorded_as_finished_and_its_row_marked(
+    boot: AppBoot,
+) -> None:
+    """The close tells the history the story was finished, and the tree marks its rows again."""
+    d = _open_ghost_of_the_grotto(boot)
+    with d.expect(pattern(markers.GOTO_LAST_PAGE)), d.expect(SHOWED_PAGE):
+        d.press_menu_button("goto_end")
+    with d.expect(pattern(markers.READ_STATES_SHOWN)):
+        d.close_reader()
+    d.settle()
+    history = json.loads((boot.scratch / "barks-reader-history.json").read_text(encoding="utf-8"))
+    assert history["events"][-1]["finished"] is True
+    assert int(last_field(d, markers.READ_STATES_SHOWN, "finished")) >= 1, (
+        "the story's own row is on the tree, and it is finished now"
+    )
+
+
+def test_a_story_closed_part_way_is_not_recorded_as_finished(boot: AppBoot) -> None:
+    d = _open_ghost_of_the_grotto(boot)
+    d.read_pages(Pick(pages=TURNS_BEFORE_GOTO_START + 1, dwell=0.0))
+    d.close_reader()
+    d.settle()
+    history = json.loads((boot.scratch / "barks-reader-history.json").read_text(encoding="utf-8"))
+    assert history["events"][-1]["finished"] is False
+
+
 def test_comic_round_trips_leave_no_pages_behind(boot: AppBoot) -> None:
     """Open a story, read, close: again and again, and the reader keeps no old pages."""
     d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)

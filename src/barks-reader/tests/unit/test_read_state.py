@@ -4,19 +4,26 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
+from unittest.mock import patch
 
+import barks_reader.core.read_state
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.comic_book_info import COVERS, ONE_PAGERS
 from barks_reader.core.read_state import (
     ReadState,
     ReadStates,
+    ReadStateSource,
     get_read_states,
     is_finished_event,
     is_single_page_title,
 )
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
-from barks_reader.core.reading_history import ReadEvent
+from barks_reader.core.reading_history import ReadEvent, ReadingHistoryStore
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _OPENED = datetime(2026, 11, 1, 20, 0)
 _ANDES = "Lost in the Andes!"
@@ -153,3 +160,38 @@ class TestGetReadStates:
 
         assert states.finished == frozenset({_ANDES})
         assert states.left_mid_way == ()
+
+
+class TestReadStateSource:
+    def test_it_follows_the_store(self, tmp_path: Path) -> None:
+        store = ReadingHistoryStore(tmp_path / "history.json")
+        source = ReadStateSource(store)
+        assert source.states() == ReadStates()
+
+        store.add_event(_event(page=COMIC_BEGIN_PAGE, finished=True))
+        assert source.states().state_of(_ANDES) is ReadState.FINISHED
+
+        store.delete_events_for_title(_ANDES)
+        assert source.states().state_of(_ANDES) is ReadState.UNREAD
+
+    def test_an_unchanged_store_is_not_worked_out_again(self, tmp_path: Path) -> None:
+        store = ReadingHistoryStore(tmp_path / "history.json")
+        store.add_event(_event(page="12", finished=False))
+        source = ReadStateSource(store)
+
+        with patch.object(
+            barks_reader.core.read_state,
+            "get_read_states",
+            wraps=barks_reader.core.read_state.get_read_states,
+        ) as worked_out:
+            first = source.states()
+            second = source.states()
+            store.add_event(_event(_VACATION, day=1, page="3", finished=False))
+            third = source.states()
+
+        assert worked_out.call_count == 2  # noqa: PLR2004
+        assert second is first
+        assert third.left_mid_way == (_VACATION, _ANDES)
+
+    def test_the_values_are_the_names_the_tree_s_kv_reads(self) -> None:
+        assert [state.value for state in ReadState] == ["unread", "part_read", "finished"]

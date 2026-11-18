@@ -327,6 +327,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         components = build_main_screen_components(self, window_manager)
         self._random_title_images = components.random_title_images
         self._json_settings_manager = components.json_settings_manager
+        self._reading_history_store = components.reading_history_store
+        self._read_state_source = components.read_state_source
         self._special_fanta_overrides = components.special_fanta_overrides
         self._comic_reader_manager = components.comic_reader_manager
         self._window_helper = components.window_helper
@@ -773,13 +775,22 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._tree_view_manager,
             self._title_lists,
             include_one_pagers_in_chrono=self._include_one_pagers_in_chrono,
+            read_states=self._read_state_source.states,
         )
+        # The rows already made get their marks again whenever the history changes: a
+        # comic opened or closed, an entry deleted on the History screen.
+        self._reading_history_store.add_listener(self._show_read_states)
 
         self._nav_coord.set_year_range_nodes(tree_builder.chrono_year_range_nodes)
         self._nav_coord.set_one_pager_year_range_nodes(tree_builder.one_pager_year_range_nodes)
         self._nav_coord.set_cover_year_range_nodes(tree_builder.cover_year_range_nodes)
         self._nav_coord.set_series_nodes(tree_builder.series_nodes)
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
+
+    def _show_read_states(self) -> None:
+        self._tree_view_screen.ids.reader_tree_view.show_read_states(
+            self._read_state_source.states()
+        )
 
     def _on_tree_build_finished(self) -> None:
         self.check_for_data_pack_update(at_boot=True)

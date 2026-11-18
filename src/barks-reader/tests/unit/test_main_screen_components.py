@@ -38,6 +38,7 @@ _STOOD_IN_CLASSES = (
     "NavigationCoordinator",
     "NavigationModel",
     "ReaderFilePathsResolver",
+    "ReadStateSource",
     "ReadingHistoryStore",
     "ReadingHistoryTracker",
     "SettingsManager",
@@ -76,6 +77,8 @@ def test_the_bundle_holds_each_collaborator_that_was_built(built: _Built) -> Non
     made_by = {
         "random_title_images": "ImageSelector",
         "json_settings_manager": "SettingsManager",
+        "reading_history_store": "ReadingHistoryStore",
+        "read_state_source": "ReadStateSource",
         "special_fanta_overrides": "SpecialFantaOverrides",
         "comic_reader_manager": "ComicReaderManager",
         "window_helper": "MainScreenWindowHelper",
@@ -89,6 +92,13 @@ def test_the_bundle_holds_each_collaborator_that_was_built(built: _Built) -> Non
 
     for field_name, class_name in made_by.items():
         assert getattr(built.components, field_name) is built.classes[class_name].return_value
+
+
+def test_the_read_states_come_from_the_one_history_store(built: _Built) -> None:
+    store = built.classes["ReadingHistoryStore"].return_value
+
+    built.classes["ReadStateSource"].assert_called_once_with(store)
+    assert built.classes["ReadingHistoryTracker"].call_args.args == (store,)
 
 
 def test_everyone_shares_the_hosts_one_error_handler(built: _Built) -> None:

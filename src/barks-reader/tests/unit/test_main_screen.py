@@ -76,6 +76,8 @@ def mock_components() -> MainScreenComponents:
     return MainScreenComponents(
         random_title_images=MagicMock(),
         json_settings_manager=MagicMock(**{"get_read_cue_opens_left.return_value": 0}),
+        reading_history_store=MagicMock(),
+        read_state_source=MagicMock(),
         special_fanta_overrides=MagicMock(),
         comic_reader_manager=MagicMock(),
         window_helper=MagicMock(**{"box_size.return_value": (0, ACTION_BAR_SIZE_Y)}),
@@ -1490,6 +1492,22 @@ class TestWhatTheMainScreenHandsOn:
             "How To Use the Barks Reader",
         )
 
+    def test_a_change_to_the_history_marks_the_tree_s_rows_again(
+        self, main_screen: MainScreen
+    ) -> None:
+        with patch.object(barks_reader.ui.main_screen, "ReaderTreeBuilder"):
+            main_screen.build_tree_view()
+        [added] = main_screen._reading_history_store.add_listener.call_args_list
+        [history_changed] = added.args
+        tree_view = main_screen._tree_view_screen.ids.reader_tree_view
+        tree_view.show_read_states.assert_not_called()
+
+        history_changed()
+
+        tree_view.show_read_states.assert_called_once_with(
+            main_screen._read_state_source.states.return_value
+        )
+
     def test_building_the_tree_gives_the_coordinator_its_nodes_and_starts_the_app(
         self, main_screen: MainScreen
     ) -> None:
@@ -1504,6 +1522,7 @@ class TestWhatTheMainScreenHandsOn:
             main_screen._tree_view_manager,
             main_screen._title_lists,
             include_one_pagers_in_chrono=main_screen._include_one_pagers_in_chrono,
+            read_states=main_screen._read_state_source.states,
         )
         coordinator = main_screen._nav_coord
         coordinator.set_year_range_nodes.assert_called_once_with(builder.chrono_year_range_nodes)

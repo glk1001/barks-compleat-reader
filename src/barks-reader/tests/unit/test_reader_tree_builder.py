@@ -20,6 +20,7 @@ from barks_reader.core.navigation import (
     YearRangeDestination,
     YearRangeKind,
 )
+from barks_reader.core.read_state import ReadState, ReadStates
 from barks_reader.core.reader_formatter import hyphenate_text
 from barks_reader.ui.reader_tree_builder import _YEAR_RANGE_KIND_TO_WIDTH, ReaderTreeBuilder
 from barks_reader.ui.tree_view_nodes import (
@@ -319,3 +320,48 @@ class TestDeferredPopulation:
         assert node.repopulate_on_expand is True
         assert node.populate_callback is not None
         assert node.is_leaf is False
+
+
+class TestReadMarks:
+    def test_a_title_row_is_made_with_its_story_s_read_state(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        read_states = ReadStates(finished=frozenset({"Lost in the Andes!"}))
+        builder = ReaderTreeBuilder(**mock_dependencies, read_states=lambda: read_states)
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Lost in the Andes!"
+        title_node = MagicMock()
+
+        with patch.object(TitleTreeViewNode, "create_from_fanta_info", return_value=title_node):
+            _build_with_spec(builder, NodeSpec(kind=NodeKind.TITLE_ROW, fanta_info=fanta_info))
+
+        assert title_node.read_state == ReadState.FINISHED.value
+
+    def test_the_states_are_asked_for_when_the_row_is_made_not_when_the_builder_is(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        # A lazy node's rows are made long after boot: they show the history as it is then.
+        states = [ReadStates()]
+        builder = ReaderTreeBuilder(**mock_dependencies, read_states=lambda: states[0])
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Vacation Time"
+        title_node = MagicMock()
+        states[0] = ReadStates(left_mid_way=("Vacation Time",))
+
+        with patch.object(TitleTreeViewNode, "create_from_fanta_info", return_value=title_node):
+            _build_with_spec(builder, NodeSpec(kind=NodeKind.TITLE_ROW, fanta_info=fanta_info))
+
+        assert title_node.read_state == ReadState.PART_READ.value
+
+    def test_with_no_states_given_a_row_keeps_the_state_it_was_made_with(
+        self, tree_builder: ReaderTreeBuilder
+    ) -> None:
+        title_node = MagicMock()
+        title_node.read_state = "as made"
+
+        with patch.object(TitleTreeViewNode, "create_from_fanta_info", return_value=title_node):
+            _build_with_spec(
+                tree_builder, NodeSpec(kind=NodeKind.TITLE_ROW, fanta_info=MagicMock())
+            )
+
+        assert title_node.read_state == "as made"

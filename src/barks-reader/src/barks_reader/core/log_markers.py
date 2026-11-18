@@ -313,6 +313,10 @@ LAST_READ_PAGE_SAVED: Final = '"{title}": Saved last read page "{page}".'
 # prebuilt collection can hold fewer pages than the collection's data lists).
 COMIC_IMAGES_LOADED: Final = 'Loaded {count} images from "{comic}".'
 HISTORY_OPEN_RECORDED: Final = 'History: Recorded open of "{title}".'
+# The tree's title rows given their read marks again, after any change to the history.
+READ_STATES_SHOWN: Final = (
+    "Tree: read marks shown on {rows} rows: {finished} finished, {part_read} part-read."
+)
 HISTORY_CLOSE_RECORDED: Final = 'History: Recorded close of "{title}".'
 
 # --------------------------------------------------------- the comic reader --

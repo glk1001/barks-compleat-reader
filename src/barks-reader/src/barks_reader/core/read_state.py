@@ -13,7 +13,7 @@ reading it.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
@@ -25,17 +25,17 @@ from .reading_history import summarize_titles
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .reading_history import ReadEvent
+    from .reading_history import ReadEvent, ReadingHistoryStore
 
 _SINGLE_PAGE_TITLES = COVERS_SET | frozenset(ONE_PAGERS)
 
 
 class ReadState(Enum):
-    """How far the user has got with a story."""
+    """How far the user has got with a story. The values are what a tree row's kv reads."""
 
-    UNREAD = auto()
-    PART_READ = auto()
-    FINISHED = auto()
+    UNREAD = "unread"
+    PART_READ = "part_read"
+    FINISHED = "finished"
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,3 +115,25 @@ def get_read_states(
         and not is_single_page(summary.title_str)
     )
     return ReadStates(finished, left_mid_way)
+
+
+class ReadStateSource:
+    """The read states of a history store, worked out again only when the store has changed."""
+
+    def __init__(self, store: ReadingHistoryStore) -> None:
+        """Start with nothing worked out.
+
+        Args:
+            store: The reading history's event log.
+
+        """
+        self._store = store
+        self._revision: int | None = None
+        self._states = ReadStates()
+
+    def states(self) -> ReadStates:
+        """Return the store's read states as of now."""
+        if self._revision != self._store.revision:
+            self._states = get_read_states(self._store.get_events())
+            self._revision = self._store.revision
+        return self._states

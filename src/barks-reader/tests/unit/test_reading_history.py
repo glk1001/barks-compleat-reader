@@ -198,6 +198,31 @@ class TestReadingHistoryStore:
 
         assert store.revision == before
 
+    def test_a_listener_is_told_of_every_change_after_it_is_saved(self, tmp_path: Path) -> None:
+        store_path = tmp_path / "history.json"
+        store = ReadingHistoryStore(store_path)
+        seen: list[tuple[int, int]] = []
+        store.add_listener(
+            lambda: seen.append((store.revision, len(ReadingHistoryStore(store_path).get_events())))
+        )
+
+        store.add_event(_make_event(event_id="one"))
+        store.add_event(_make_event(event_id="two"))
+        store.delete_event("one")
+        store.get_events()  # a read is no change
+
+        assert seen == [(1, 1), (2, 2), (3, 1)]
+
+    def test_every_listener_is_told(self, tmp_path: Path) -> None:
+        store = ReadingHistoryStore(tmp_path / "history.json")
+        told: list[str] = []
+        store.add_listener(lambda: told.append("first"))
+        store.add_listener(lambda: told.append("second"))
+
+        store.clear()
+
+        assert told == ["first", "second"]
+
     def test_delete_event(self, tmp_path: Path) -> None:
         store = ReadingHistoryStore(tmp_path / "history.json")
         keep = _make_event(event_id="keep")

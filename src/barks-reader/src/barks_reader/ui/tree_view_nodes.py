@@ -15,10 +15,12 @@ from kivy.properties import (  # ty: ignore[import-not-found]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.treeview import TreeView, TreeViewNode
+from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.navigation import TitleDestination
+from barks_reader.core.read_state import ReadState
 from barks_reader.core.reader_formatter import (
     ReaderFormatter,
     get_clean_text_without_extra,
@@ -37,6 +39,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
     from barks_reader.core.navigation import Destination
+    from barks_reader.core.read_state import ReadStates
 
     from .font_manager import FontManager
 
@@ -63,6 +66,27 @@ class ReaderTreeView(TreeView):
     def set_back_node(self, node: BaseTreeViewNode | None) -> None:
         """Set the node that 'go back' will return to."""
         self._current_selection_tracker = node
+
+    def show_read_states(self, read_states: ReadStates) -> None:
+        """Give every title row made so far its read mark.
+
+        Args:
+            read_states: The read state of every story in the reading history.
+
+        """
+        counts = dict.fromkeys(ReadState, 0)
+        for node in self.iterate_all_nodes():
+            if isinstance(node, TitleTreeViewNode):
+                state = read_states.state_of(node.get_title_str())
+                node.read_state = state.value
+                counts[state] += 1
+        logger.debug(
+            log_markers.READ_STATES_SHOWN.format(
+                rows=sum(counts.values()),
+                finished=counts[ReadState.FINISHED],
+                part_read=counts[ReadState.PART_READ],
+            )
+        )
 
     def on_selected_node(self, _instance: ReaderTreeView, new_node: BaseTreeViewNode) -> None:
         """Triggered automatically when 'selected_node' changes."""
@@ -210,8 +234,20 @@ class IntroTextTreeViewNode(BoxLayout, BaseTreeViewNode):
         return "<playlist-intro>"
 
 
+class ReadStateDot(Widget):
+    """A title row's read mark: a disc for a finished story, half a disc for a part-read one.
+
+    Drawn, not typed: the app's font has no such glyphs.
+    """
+
+    DOT_RADIUS = dp(6)
+
+    # One of the `ReadState` values.
+    state = StringProperty(ReadState.UNREAD.value)
+
+
 class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
-    """A story's row: its chronological number, its title and its issue."""
+    """A story's row: its chronological number, its title, its read mark and its issue."""
 
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
@@ -221,6 +257,10 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     NUM_LABEL_WIDTH = dp(40)
     TITLE_LABEL_WIDTH = dp(400)
     ISSUE_LABEL_WIDTH = TITLE_LABEL_WIDTH
+    READ_DOT_WIDTH = dp(20)
+
+    # One of the `ReadState` values; `ReaderTreeView.show_read_states` keeps it current.
+    read_state = StringProperty(ReadState.UNREAD.value)
 
     NUM_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
     ISSUE_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
@@ -237,6 +277,10 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     def get_title(self) -> Titles:
         """Return the story's title."""
         return self.fanta_info.comic_book_info.title
+
+    def get_title_str(self) -> str:
+        """Return the story's title as the reading history records it."""
+        return self.fanta_info.comic_book_info.get_title_str()
 
     @classmethod
     def create_from_fanta_info(

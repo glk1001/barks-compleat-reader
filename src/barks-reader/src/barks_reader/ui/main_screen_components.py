@@ -26,6 +26,7 @@ from barks_reader.core.json_settings_manager import SettingsManager
 from barks_reader.core.last_read_page_tracker import LastReadPageTracker
 from barks_reader.core.navigation import NavigationModel
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
+from barks_reader.core.read_state import ReadStateSource
 from barks_reader.core.reader_colors import FixedColorSource
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_palette import FIXED_SCRIMS
@@ -53,6 +54,8 @@ class MainScreenComponents:
 
     random_title_images: ImageSelector
     json_settings_manager: SettingsManager
+    reading_history_store: ReadingHistoryStore
+    read_state_source: ReadStateSource
     special_fanta_overrides: SpecialFantaOverrides
     comic_reader_manager: ComicReaderManager
     window_helper: MainScreenWindowHelper
@@ -188,6 +191,8 @@ def build_main_screen_components(
     return MainScreenComponents(
         random_title_images=random_title_images,
         json_settings_manager=json_settings_manager,
+        reading_history_store=reading_history_store,
+        read_state_source=ReadStateSource(reading_history_store),
         special_fanta_overrides=special_fanta_overrides,
         comic_reader_manager=comic_reader_manager,
         window_helper=window_helper,

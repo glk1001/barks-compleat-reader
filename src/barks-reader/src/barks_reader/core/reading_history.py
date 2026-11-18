@@ -98,6 +98,7 @@ class ReadingHistoryStore:
         self._events: list[ReadEvent] = []
         self._revision = 0
         self._can_write = True
+        self._listeners: list[Callable[[], None]] = []
 
         if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
             try:
@@ -129,8 +130,17 @@ class ReadingHistoryStore:
         """A counter bumped on every mutation, so views can detect staleness cheaply."""
         return self._revision
 
+    def add_listener(self, listener: Callable[[], None]) -> None:
+        """Call *listener* after every change to the events, for as long as the store lives."""
+        self._listeners.append(listener)
+
     def _sync(self) -> None:
         self._revision += 1
+        self._write()
+        for listener in self._listeners:
+            listener()
+
+    def _write(self) -> None:
         if not self._can_write:
             return
         json_data = {"version": _STORE_VERSION, "events": [e.to_json() for e in self._events]}

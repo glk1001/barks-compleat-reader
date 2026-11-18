@@ -57,6 +57,21 @@
         text_size: (self.width, None)
         halign: "justify"
 
+<ReadStateDot>:
+    size_hint: (None, None)
+    canvas:
+        Color:
+            rgba: reader_palette.theme().text_secondary if self.state != "unread" else (0, 0, 0, 0)
+        Line:
+            circle: (self.center_x, self.center_y, self.DOT_RADIUS)
+            width: dp(1)
+        # The whole disc for a finished story, its left half for a part-read one.
+        Ellipse:
+            pos: (self.center_x - self.DOT_RADIUS, self.center_y - self.DOT_RADIUS)
+            size: (2 * self.DOT_RADIUS, 2 * self.DOT_RADIUS)
+            angle_start: 0 if self.state == "finished" else 180
+            angle_end: 360
+
 <TitleTreeViewNode>:
     orientation: "vertical"
     color: root.TEXT_COLOR
@@ -114,6 +129,12 @@
             halign: "left"
             valign: "middle"
             text_size: (self.width, self.height)
+
+        ReadStateDot:
+            id: read_dot
+            state: root.read_state
+            width: root.READ_DOT_WIDTH
+            height: root.ROW_HEIGHT
 
     TreeViewRowNode:
         TitleTreeViewLabel:

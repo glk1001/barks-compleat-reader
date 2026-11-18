@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
     from barks_reader.core.navigation import NodeSpec
+    from barks_reader.core.read_state import ReadStates
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .tree_view_manager import TreeViewManager
@@ -71,7 +72,9 @@ class ReaderTreeBuilder:
         title_lists: dict[str, list[FantaComicBookInfo]],
         *,
         include_one_pagers_in_chrono: bool = False,
+        read_states: Callable[[], ReadStates] | None = None,
     ) -> None:
+        self._read_states = read_states
         self._reader_settings = reader_settings
         self._reader_tree_view = reader_tree_view
         self._reader_tree_events = reader_tree_events
@@ -136,6 +139,10 @@ class ReaderTreeBuilder:
             title_node = TitleTreeViewNode.create_from_fanta_info(
                 spec.fanta_info, self._tree_view_manager.on_title_row_button_pressed
             )
+            if self._read_states is not None:
+                # A row made after the history last changed: no later change marks it.
+                title_str = spec.fanta_info.comic_book_info.get_title_str()
+                title_node.read_state = self._read_states().state_of(title_str).value
             self._reader_tree_view.add_node(title_node, parent=parent)
             return
 

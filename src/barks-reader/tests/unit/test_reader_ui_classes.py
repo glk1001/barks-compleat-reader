@@ -10,7 +10,9 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.tree_view_nodes
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core import log_markers
 from barks_reader.core.navigation import TitleDestination
+from barks_reader.core.read_state import ReadState, ReadStates
 from barks_reader.core.reader_formatter import ReaderFormatter
 from barks_reader.ui.tree_view_nodes import (
     BaseTreeViewNode,
@@ -18,6 +20,7 @@ from barks_reader.ui.tree_view_nodes import (
     IntroTextTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
     ReaderTreeView,
+    ReadStateDot,
     TitleTreeViewNode,
 )
 from kivy.lang.parser import Parser
@@ -199,6 +202,55 @@ class TestATitleNodeBuiltForReal:
         assert node.get_name() == "LOST_IN_THE_ANDES"
 
 
+class TestReadMarks:
+    @staticmethod
+    def _node(title: Titles, title_str: str) -> TitleTreeViewNode:
+        info = _fanta_info(title)
+        info.comic_book_info.get_title_str.return_value = title_str
+        return TitleTreeViewNode(info)
+
+    def test_a_row_is_unread_until_told_otherwise(self) -> None:
+        assert TitleTreeViewNode(_fanta_info()).read_state == ReadState.UNREAD.value
+
+    def test_a_row_is_keyed_by_the_title_the_history_records(self) -> None:
+        node = self._node(Titles.LOST_IN_THE_ANDES, "Lost in the Andes!")
+
+        assert node.get_title_str() == "Lost in the Andes!"
+
+    def test_every_title_row_gets_its_state_and_the_log_counts_them(
+        self, loguru_sink: list[str]
+    ) -> None:
+        andes = self._node(Titles.LOST_IN_THE_ANDES, "Lost in the Andes!")
+        vacation = self._node(Titles.VACATION_TIME, "Vacation Time")
+        unread = self._node(Titles.CHRISTMAS_ON_BEAR_MOUNTAIN, "Christmas on Bear Mountain")
+        unread.read_state = ReadState.FINISHED.value  # its history entry was deleted since
+        group = MagicMock()  # a node that is not a title row has no mark
+        tree = ReaderTreeView()
+        read_states = ReadStates(
+            finished=frozenset({"Lost in the Andes!"}), left_mid_way=("Vacation Time",)
+        )
+
+        with patch.object(tree, "iterate_all_nodes", return_value=[group, andes, vacation, unread]):
+            tree.show_read_states(read_states)
+
+        assert andes.read_state == ReadState.FINISHED.value
+        assert vacation.read_state == ReadState.PART_READ.value
+        assert unread.read_state == ReadState.UNREAD.value
+        # A GUI test waits on this line after a comic closes.
+        assert log_markers.READ_STATES_SHOWN.format(rows=3, finished=1, part_read=1) in loguru_sink
+
+    def test_the_dot_s_states_are_the_ones_its_kv_rule_draws(self) -> None:
+        kv_file = Path(barks_reader.ui.tree_view_nodes.__file__).parent / "reader-tree-view.kv"
+        kv = kv_file.read_text(encoding="utf-8")
+        [dot_rule] = kv.split("<ReadStateDot>:")[1:]
+        dot_rule = dot_rule.split("\n<")[0]
+
+        assert ReadStateDot().state == ReadState.UNREAD.value
+        assert f'"{ReadState.UNREAD.value}"' in dot_rule
+        assert f'"{ReadState.FINISHED.value}"' in dot_rule
+        assert "state: root.read_state" in kv
+
+
 class TestATitleNodesRow:
     """What `create_from_fanta_info` writes into the row, and what a press reaches."""
 
@@ -271,7 +323,13 @@ class TestTitleTreeViewNode:
         kv_file = Path(barks_reader.ui.tree_view_nodes.__file__).parent / "reader-tree-view.kv"
         parsed = Parser(content=kv_file.read_text(encoding="utf-8"), filename=str(kv_file))
         [node_rule] = [rule for _sel, rule in parsed.rules if rule.name == "<TitleTreeViewNode>"]
-        widgets = [widget for row in node_rule.children for widget in row.children]
+        # The read mark is drawn, not pressed: it names no node.
+        widgets = [
+            widget
+            for row in node_rule.children
+            for widget in row.children
+            if widget.name != "ReadStateDot"
+        ]
 
         assert len(widgets) == 6  # noqa: PLR2004  # two rows of three
         assert all(widget.properties["node"].value == "root" for widget in widgets)
