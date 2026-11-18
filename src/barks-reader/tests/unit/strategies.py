@@ -43,6 +43,7 @@ from barks_reader.core.navigation.destinations import (
     CensorshipFixesDocDestination,
     ChooseForMeDestination,
     ChronologicalDestination,
+    ContinueReadingDestination,
     CorpusStatsDestination,
     Destination,
     DocumentDestination,
@@ -121,6 +122,7 @@ NO_PAYLOAD_DESTINATION_TYPES: tuple[type[Destination], ...] = (
     TagSearchDestination,
     WordSearchDestination,
     ReadingDestination,
+    ContinueReadingDestination,
     HistoryDestination,
     ChooseForMeDestination,
     PlaylistsDestination,
@@ -236,6 +238,7 @@ def random_titles_destinations() -> st.SearchStrategy[RandomTitlesDestination]:
         year_range=st.none() | year_ranges(),
         tag=st.none() | tags(),
         category=st.none() | tag_categories(),
+        unread_only=st.booleans(),
     )
 
 

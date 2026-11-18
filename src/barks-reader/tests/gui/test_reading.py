@@ -1,4 +1,4 @@
-"""The Reading node: random picks that redraw on every expand, and the playlists."""
+"""The Reading node: the stories left mid-way, random picks that redraw, and the playlists."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
 
 RANDOM_PICKS = 5
+CANNED_LEFT_MID_WAY = 3
 PLAYLIST = "The Bravery Stories"
 PLAYLIST_INTRO_NODE = "<playlist-intro>"
 ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)
@@ -28,6 +29,27 @@ def test_surprise_me_redraws_on_every_expand(boot: AppBoot) -> None:
         d.open_branch("Surprise me")
     d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="Surprise me"), "Left")
     with d.expect(_repopulated("Surprise me")):
+        d.key("Return")
+
+
+def test_continue_reading_lists_the_stories_left_mid_way_newest_first(boot: AppBoot) -> None:
+    """The canned history's three titles each stopped inside the story at their latest read."""
+    d = boot(nodes.READING)
+    with d.expect(
+        pattern(markers.REPOPULATED_NODE, name="Continue reading", count=CANNED_LEFT_MID_WAY)
+    ):
+        d.open_branch("Continue reading")
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")
+    assert d.current_node() == nodes.GHOST_OF_THE_GROTTO[0], "the newest read comes first"
+
+
+def test_not_yet_read_redraws_on_every_expand(boot: AppBoot) -> None:
+    d = boot(nodes.READING)
+    d.open_branch("Choose for me")
+    with d.expect(_repopulated("Not yet read")):
+        d.open_branch("Not yet read")
+    d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="Not yet read"), "Left")
+    with d.expect(_repopulated("Not yet read")):
         d.key("Return")
 
 

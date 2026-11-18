@@ -100,7 +100,12 @@ class WordSearchDestination(Destination):
 
 @dataclass(frozen=True, slots=True)
 class ReadingDestination(Destination):
-    """The 'Reading' parent node (History + Choose for me)."""
+    """The 'Reading' parent node (Continue reading, Choose for me, Playlists, History)."""
+
+
+@dataclass(frozen=True, slots=True)
+class ContinueReadingDestination(Destination):
+    """The 'Continue reading' node under Reading: the stories left mid-way."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,12 +245,14 @@ class RandomTitlesDestination(Destination):
     The sample is scoped by `year_range` (inclusive submitted-year range, the
     decade nodes), `tag` (the 'With <character>' nodes), or `category` (the
     'From favourites' node, aggregating every tag in the category). All None
-    means all titles ('Surprise me').
+    means all titles ('Surprise me'). `unread_only` keeps to the stories never
+    finished ('Not yet read'); it changes the sample, not the node's view.
     """
 
     year_range: tuple[int, int] | None = None
     tag: Tags | None = None
     category: TagCategories | None = None
+    unread_only: bool = False
 
 
 @dataclass(frozen=True, slots=True)

@@ -365,3 +365,18 @@ class TestReadMarks:
             )
 
         assert title_node.read_state == "as made"
+
+    def test_the_spec_is_built_with_the_same_states(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        def read_states() -> ReadStates:
+            return ReadStates()
+
+        builder = ReaderTreeBuilder(**mock_dependencies, read_states=read_states)
+
+        with patch.object(
+            barks_reader.ui.reader_tree_builder, "build_reader_tree_spec", return_value=()
+        ) as build_spec:
+            builder.build_main_screen_tree()
+
+        assert build_spec.call_args.kwargs["read_states"] is read_states

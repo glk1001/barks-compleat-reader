@@ -25,7 +25,7 @@ from barks_fantagraphics.barks_tags import (
     get_sorted_tagged_titles,
     special_case_personal_favourites_tag_update,
 )
-from barks_fantagraphics.barks_titles import US_ISSUE_AS_FC_ISSUE, Titles
+from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, US_ISSUE_AS_FC_ISSUE, Titles
 from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME, Issues
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
@@ -45,6 +45,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_reader.core.document_chapters import find_document_chapters
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.playlists import PLAYLISTS, Playlist, get_playlist_title_infos
+from barks_reader.core.read_state import ReadStates
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_NODE_TEXT,
@@ -54,6 +55,7 @@ from barks_reader.core.reader_consts_and_types import (
     CHOOSE_FOR_ME_NODE_TEXT,
     CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
+    CONTINUE_READING_NODE_TEXT,
     COVER_YEAR_RANGES,
     CS_YEAR_RANGES,
     FROM_FAVOURITES_NODE_TEXT,
@@ -72,6 +74,9 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_ILLUSTRATED_HISTORY_TEXT,
     INTRO_NODE_TEXT,
+    NOT_YET_READ_NODE_TEXT,
+    NOTHING_TO_CONTINUE_TEXT,
+    NOTHING_UNREAD_TEXT,
     ONE_PAGER_YEAR_RANGES,
     PLAYLISTS_NODE_TEXT,
     RANDOM_TITLE_YEAR_RANGES,
@@ -109,6 +114,7 @@ from .destinations import (
     CensorshipFixesDocDestination,
     ChooseForMeDestination,
     ChronologicalDestination,
+    ContinueReadingDestination,
     CorpusStatsDestination,
     DocumentDestination,
     HistoryDestination,
@@ -219,6 +225,7 @@ def build_reader_tree_spec(
     title_lists: dict[str, list[FantaComicBookInfo]],
     *,
     include_one_pagers_in_chrono: bool = False,
+    read_states: Callable[[], ReadStates] | None = None,
 ) -> tuple[NodeSpec, ...]:
     """Compose the full reader navigation tree as `NodeSpec`s.
 
@@ -228,13 +235,18 @@ def build_reader_tree_spec(
             (series names, chrono years, and CS/US year keys).
         include_one_pagers_in_chrono: Whether `title_lists`' chrono year lists
             include one-pagers (checked against the expected title counts).
+        read_states: Returns which stories are finished and which were left mid-way,
+            asked each time 'Continue reading' or 'Not yet read' opens. Without it
+            every story is unread.
 
     Returns:
         The top-level specs in display order: Intro, The Stories, Search,
         Reading, Appendix, Index.
 
     """
-    builder = _SpecBuilder(reader_settings, title_lists, include_one_pagers_in_chrono)
+    builder = _SpecBuilder(
+        reader_settings, title_lists, include_one_pagers_in_chrono, read_states or ReadStates
+    )
     return (
         builder.intro_spec(),
         builder.stories_spec(),
@@ -275,6 +287,29 @@ def _random_title_rows(title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec,
     sample = random.sample(title_infos, min(len(title_infos), NUM_RANDOM_TITLES))
     sample.sort(key=lambda info: info.fanta_chronological_number)
     return _title_rows(sample)
+
+
+def _unread_random_title_rows(
+    title_infos: list[FantaComicBookInfo], read_states: Callable[[], ReadStates]
+) -> tuple[NodeSpec, ...]:
+    """Make title rows for a fresh random sample of the stories never finished."""
+    finished = read_states().finished
+    unread = [info for info in title_infos if info.comic_book_info.get_title_str() not in finished]
+    if not unread:
+        return (NodeSpec(kind=NodeKind.INTRO_TEXT, text=NOTHING_UNREAD_TEXT),)
+    return _random_title_rows(unread)
+
+
+def _continue_reading_rows(read_states: Callable[[], ReadStates]) -> tuple[NodeSpec, ...]:
+    """Make title rows for the stories left mid-way, the most recently opened first."""
+    title_infos = _fanta_infos(
+        title
+        for title_str in read_states().left_mid_way
+        if (title := STR_TITLE_TO_ENUM.get(title_str)) is not None
+    )
+    if not title_infos:
+        return (NodeSpec(kind=NodeKind.INTRO_TEXT, text=NOTHING_TO_CONTINUE_TEXT),)
+    return _title_rows(title_infos)
 
 
 def _playlist_rows(intro_text: str, title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec, ...]:
@@ -413,7 +448,9 @@ class _SpecBuilder:
         reader_settings: ReaderSettings,
         title_lists: dict[str, list[FantaComicBookInfo]],
         include_one_pagers_in_chrono: bool,
+        read_states: Callable[[], ReadStates] = ReadStates,
     ) -> None:
+        self._read_states = read_states
         self._reader_settings = reader_settings
         self._title_lists = title_lists
         self._include_one_pagers_in_chrono = include_one_pagers_in_chrono
@@ -555,10 +592,18 @@ class _SpecBuilder:
             children=(
                 NodeSpec(
                     kind=NodeKind.STORY_GROUP,
+                    text=CONTINUE_READING_NODE_TEXT,
+                    destination=ContinueReadingDestination(),
+                    lazy_children=partial(_continue_reading_rows, self._read_states),
+                    repopulate_on_expand=True,
+                ),
+                NodeSpec(
+                    kind=NodeKind.STORY_GROUP,
                     text=CHOOSE_FOR_ME_NODE_TEXT,
                     destination=ChooseForMeDestination(),
                     children=(
                         self._random_titles_spec(SURPRISE_ME_NODE_TEXT, None),
+                        self._not_yet_read_spec(),
                         self._random_titles_spec(
                             FROM_THE_1940S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[0]
                         ),
@@ -618,6 +663,17 @@ class _SpecBuilder:
             text=text,
             destination=RandomTitlesDestination(year_range=year_range),
             lazy_children=partial(_random_title_rows, title_list),
+            repopulate_on_expand=True,
+        )
+
+    def _not_yet_read_spec(self) -> NodeSpec:
+        all_years = (CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1])
+        title_list = self._year_range_titles(all_years, str)
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=NOT_YET_READ_NODE_TEXT,
+            destination=RandomTitlesDestination(unread_only=True),
+            lazy_children=partial(_unread_random_title_rows, title_list, self._read_states),
             repopulate_on_expand=True,
         )
 

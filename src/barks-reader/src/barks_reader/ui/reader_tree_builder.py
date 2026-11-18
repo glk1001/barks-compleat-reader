@@ -122,6 +122,7 @@ class ReaderTreeBuilder:
             self._reader_settings,
             self._title_lists,
             include_one_pagers_in_chrono=self._include_one_pagers_in_chrono,
+            read_states=self._read_states,
         )
         for spec in specs:
             self._add_node(spec, parent=None)

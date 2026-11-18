@@ -44,6 +44,7 @@ from barks_reader.core.navigation import (
     ArticleDestination,
     CategoryDestination,
     ChooseForMeDestination,
+    ContinueReadingDestination,
     DocumentDestination,
     HistoryDestination,
     IllustratedHistoryDestination,
@@ -74,11 +75,13 @@ from barks_reader.core.navigation.tree_spec import (
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.playlists import PLAYLISTS
+from barks_reader.core.read_state import ReadStates
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     ARTICLE_TITLE_TEXTS,
     CHOOSE_FOR_ME_NODE_TEXT,
     CHRONO_YEAR_RANGES,
+    CONTINUE_READING_NODE_TEXT,
     COVER_YEAR_RANGES,
     CS_YEAR_RANGES,
     FROM_FAVOURITES_NODE_TEXT,
@@ -89,6 +92,9 @@ from barks_reader.core.reader_consts_and_types import (
     INDEX_NODE_TEXT,
     INTRO_ILLUSTRATED_HISTORY_TEXT,
     INTRO_NODE_TEXT,
+    NOT_YET_READ_NODE_TEXT,
+    NOTHING_TO_CONTINUE_TEXT,
+    NOTHING_UNREAD_TEXT,
     ONE_PAGER_YEAR_RANGES,
     PLAYLISTS_NODE_TEXT,
     RANDOM_TITLE_YEAR_RANGES,
@@ -132,7 +138,9 @@ def _without_history(settings: MagicMock, tmp_path: Path) -> None:
 
 
 def _build_specs(
-    settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    settings: MagicMock,
+    title_lists: dict[str, list[FantaComicBookInfo]],
+    read_states: Callable[[], ReadStates] | None = None,
 ) -> tuple[NodeSpec, ...]:
     """Build the tree from `settings` with no favourites.
 
@@ -146,7 +154,9 @@ def _build_specs(
             "special_case_personal_favourites_tag_update",
         ),
     ):
-        return build_reader_tree_spec(settings, title_lists, include_one_pagers_in_chrono=False)
+        return build_reader_tree_spec(
+            settings, title_lists, include_one_pagers_in_chrono=False, read_states=read_states
+        )
 
 
 @pytest.fixture
@@ -644,7 +654,7 @@ def test_from_favourites_draws_on_the_reader_s_own_picks(
         patch.dict(barks_tags.BARKS_TAG_GROUPS_TITLES),
     ):
         reading = build_reading(reader_settings, title_lists)
-    choose_for_me = reading.children[0]
+    choose_for_me = reading.children[1]
     from_favourites = next(
         c
         for c in choose_for_me.children
@@ -688,6 +698,123 @@ class TestCharacterRandomNodes:
             _build_specs(reader_settings, title_lists)
 
 
+class TestContinueReading:
+    """The stories whose latest read stopped inside them, asked for at each expansion."""
+
+    @staticmethod
+    def _rows_of(specs: tuple[NodeSpec, ...]) -> tuple[NodeSpec, ...]:
+        node = specs[3].children[0]
+        assert node.text == CONTINUE_READING_NODE_TEXT
+        assert node.destination == ContinueReadingDestination()
+        assert node.lazy_children is not None
+        return node.lazy_children()
+
+    def test_it_is_made_again_on_every_expansion(self, specs: tuple[NodeSpec, ...]) -> None:
+        node = specs[3].children[0]
+
+        assert node.kind is NodeKind.STORY_GROUP
+        assert node.repopulate_on_expand
+        assert not node.children
+
+    def test_with_nothing_left_mid_way_it_says_so(self, specs: tuple[NodeSpec, ...]) -> None:
+        assert self._rows_of(specs) == (
+            NodeSpec(kind=NodeKind.INTRO_TEXT, text=NOTHING_TO_CONTINUE_TEXT),
+        )
+
+    def test_it_lists_the_stories_left_mid_way_in_the_order_given(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        states = [ReadStates()]
+        specs = _build_specs(reader_settings, title_lists, lambda: states[0])
+        # Asked for when the node opens, not when the tree is built.
+        states[0] = ReadStates(left_mid_way=("Vacation Time", "Lost in the Andes!"))
+
+        rows = self._rows_of(specs)
+
+        assert [row.kind for row in rows] == [NodeKind.TITLE_ROW, NodeKind.TITLE_ROW]
+        assert [row.fanta_info.comic_book_info.title for row in rows if row.fanta_info] == [
+            Titles.VACATION_TIME,
+            Titles.LOST_IN_THE_ANDES,
+        ]
+
+    def test_a_title_the_app_does_not_know_is_left_out(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        read_states = ReadStates(left_mid_way=("No Such Story", "Vacation Time"))
+        specs = _build_specs(reader_settings, title_lists, lambda: read_states)
+
+        rows = self._rows_of(specs)
+
+        assert [row.fanta_info.comic_book_info.title for row in rows if row.fanta_info] == [
+            Titles.VACATION_TIME
+        ]
+
+
+class TestNotYetRead:
+    """'Choose for me' from the stories never finished."""
+
+    @staticmethod
+    def _rows_of(specs: tuple[NodeSpec, ...]) -> tuple[NodeSpec, ...]:
+        node = specs[3].children[1].children[1]
+        assert node.text == NOT_YET_READ_NODE_TEXT
+        assert node.destination == RandomTitlesDestination(unread_only=True)
+        assert node.lazy_children is not None
+        return node.lazy_children()
+
+    @staticmethod
+    def _all_title_strs(title_lists: dict[str, list[FantaComicBookInfo]]) -> list[str]:
+        all_years = range(CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1] + 1)
+        return [
+            info.comic_book_info.get_title_str()
+            for year in all_years
+            for info in title_lists[str(year)]
+        ]
+
+    def test_it_never_offers_a_finished_story(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        all_titles = self._all_title_strs(title_lists)
+        unread = set(all_titles[:3])
+        read_states = ReadStates(finished=frozenset(all_titles) - unread)
+        specs = _build_specs(reader_settings, title_lists, lambda: read_states)
+
+        rows = self._rows_of(specs)
+
+        # Fewer unread than a sample holds: all of them, and nothing else.
+        assert {
+            row.fanta_info.comic_book_info.get_title_str() for row in rows if row.fanta_info
+        } == unread
+        assert len(rows) == len(unread)
+
+    def test_a_story_left_mid_way_is_still_unread(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        all_titles = self._all_title_strs(title_lists)
+        read_states = ReadStates(finished=frozenset(all_titles[1:]), left_mid_way=(all_titles[0],))
+        specs = _build_specs(reader_settings, title_lists, lambda: read_states)
+
+        [row] = self._rows_of(specs)
+
+        assert row.fanta_info is not None
+        assert row.fanta_info.comic_book_info.get_title_str() == all_titles[0]
+
+    def test_with_every_story_finished_it_says_so(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        read_states = ReadStates(finished=frozenset(self._all_title_strs(title_lists)))
+        specs = _build_specs(reader_settings, title_lists, lambda: read_states)
+
+        assert self._rows_of(specs) == (
+            NodeSpec(kind=NodeKind.INTRO_TEXT, text=NOTHING_UNREAD_TEXT),
+        )
+
+    def test_with_no_history_it_samples_like_surprise_me(self, specs: tuple[NodeSpec, ...]) -> None:
+        rows = self._rows_of(specs)
+
+        assert len(rows) == NUM_RANDOM_TITLES
+        assert all(row.kind is NodeKind.TITLE_ROW for row in rows)
+
+
 class TestReadingSubtree:
     def test_reading_has_choose_for_me_playlists_and_history(
         self, specs: tuple[NodeSpec, ...]
@@ -697,13 +824,14 @@ class TestReadingSubtree:
         assert isinstance(reading.destination, ReadingDestination)
         assert all(child.kind is NodeKind.STORY_GROUP for child in reading.children)
         assert [child.text for child in reading.children] == [
+            CONTINUE_READING_NODE_TEXT,
             CHOOSE_FOR_ME_NODE_TEXT,
             PLAYLISTS_NODE_TEXT,
             HISTORY_NODE_TEXT,
         ]
 
     def test_history_registration_and_press_action(self, specs: tuple[NodeSpec, ...]) -> None:
-        history = specs[3].children[2]
+        history = specs[3].children[3]
         assert history.text == HISTORY_NODE_TEXT
         assert isinstance(history.destination, HistoryDestination)
         assert history.register_as is NodeRegistration.HISTORY
@@ -712,12 +840,13 @@ class TestReadingSubtree:
         assert history.lazy_children is None
 
     def test_choose_for_me_filter_nodes(self, specs: tuple[NodeSpec, ...]) -> None:
-        choose_for_me = specs[3].children[0]
+        choose_for_me = specs[3].children[1]
         assert choose_for_me.text == CHOOSE_FOR_ME_NODE_TEXT
         assert isinstance(choose_for_me.destination, ChooseForMeDestination)
 
         expected = [
             (SURPRISE_ME_NODE_TEXT, RandomTitlesDestination()),
+            (NOT_YET_READ_NODE_TEXT, RandomTitlesDestination(unread_only=True)),
             (FROM_THE_1940S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[0])),
             (FROM_THE_1950S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[1])),
             (FROM_THE_1960S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[2])),
@@ -745,7 +874,7 @@ class TestReadingSubtree:
     ) -> None:
         all_years = (CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1])
 
-        for spec in specs[3].children[0].children:
+        for spec in specs[3].children[1].children:
             assert isinstance(spec.destination, RandomTitlesDestination)
             if spec.destination.tag is not None:
                 continue  # Character nodes are covered by the tagged-rows test.
@@ -771,7 +900,7 @@ class TestReadingSubtree:
     def test_character_random_title_rows_are_tagged(self, specs: tuple[NodeSpec, ...]) -> None:
         character_specs = [
             spec
-            for spec in specs[3].children[0].children
+            for spec in specs[3].children[1].children
             if isinstance(spec.destination, RandomTitlesDestination)
             and spec.destination.tag is not None
         ]
@@ -797,7 +926,7 @@ class TestReadingSubtree:
             assert chrono_numbers == sorted(chrono_numbers)
 
     def test_each_expansion_resamples(self, specs: tuple[NodeSpec, ...]) -> None:
-        surprise_me = specs[3].children[0].children[0]
+        surprise_me = specs[3].children[1].children[0]
         assert surprise_me.lazy_children is not None
 
         tree_spec_module = barks_reader.core.navigation.tree_spec
@@ -812,7 +941,7 @@ class TestReadingSubtree:
 
 class TestPlaylistsSubtree:
     def test_playlists_node_has_one_child_per_playlist(self, specs: tuple[NodeSpec, ...]) -> None:
-        playlists = specs[3].children[1]
+        playlists = specs[3].children[2]
         assert playlists.text == PLAYLISTS_NODE_TEXT
         assert isinstance(playlists.destination, PlaylistsDestination)
         assert len(playlists.children) == len(PLAYLISTS)
@@ -829,7 +958,7 @@ class TestPlaylistsSubtree:
     def test_playlist_rows_start_with_the_hyphenated_intro(
         self, specs: tuple[NodeSpec, ...]
     ) -> None:
-        for spec, playlist in zip(specs[3].children[1].children, PLAYLISTS, strict=True):
+        for spec, playlist in zip(specs[3].children[2].children, PLAYLISTS, strict=True):
             assert spec.lazy_children is not None
             intro_row = spec.lazy_children()[0]
 
@@ -840,7 +969,7 @@ class TestPlaylistsSubtree:
             assert SOFT_HYPHEN in intro_row.text
 
     def test_playlist_titles_keep_their_curated_order(self, specs: tuple[NodeSpec, ...]) -> None:
-        for spec, playlist in zip(specs[3].children[1].children, PLAYLISTS, strict=True):
+        for spec, playlist in zip(specs[3].children[2].children, PLAYLISTS, strict=True):
             assert spec.lazy_children is not None
             title_rows = spec.lazy_children()[1:]
 
@@ -1019,7 +1148,7 @@ def test_random_titles_sample_from_the_whole_chronological_span(
         specs = build_reader_tree_spec(
             reader_settings, title_lists, include_one_pagers_in_chrono=False
         )
-        surprise_me = specs[3].children[0].children[0]
+        surprise_me = specs[3].children[1].children[0]
         assert surprise_me.lazy_children is not None
         surprise_me.lazy_children()
 

@@ -34,6 +34,7 @@ from .destinations import (
     CensorshipFixesDocDestination,
     ChooseForMeDestination,
     ChronologicalDestination,
+    ContinueReadingDestination,
     CorpusStatsDestination,
     Destination,
     DocumentDestination,
@@ -100,6 +101,8 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
     WordSearchDestination: ViewStates.ON_WORD_SEARCH_NODE,
     ReadingDestination: ViewStates.ON_READING_NODE,
     HistoryDestination: ViewStates.ON_HISTORY_NODE,
+    # A list of title rows and nothing else: it keeps the view of the node it is under.
+    ContinueReadingDestination: ViewStates.ON_READING_NODE,
     ChooseForMeDestination: ViewStates.ON_CHOOSE_FOR_ME_NODE,
     PlaylistsDestination: ViewStates.ON_PLAYLISTS_NODE,
     CorpusStatsDestination: ViewStates.ON_INTRO_BY_THE_NUMBERS_NODE,
