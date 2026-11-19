@@ -16,10 +16,10 @@
 
 # Project-specific
 build/
-# Intermediate pages from scripts/generate_how_to_pages.py (PNGs) and
-# generate_intro_pdf.py (PDFs), fed into GIMP.
+# The pages scripts/generate_how_to_pages.py writes for GIMP (PNGs), and the finished
+# page from scripts/generate_intro_page.py.
 docs/how-to-pages/
-docs/intro-pdf/
+docs/intro-pages/
 # Standalone executables produced by scripts/build.sh (Nuitka output:
 # onefile binaries on Linux/Windows, zipped .app bundles on macOS).
 /barks-reader-linux

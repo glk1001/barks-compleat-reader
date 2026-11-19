@@ -1,0 +1,96 @@
+/* Theme for the Reader's introduction page (scripts/generate_intro_page.py).
+ *
+ * The text renders on a transparent background and the script lays it over
+ * docs/intro-to-barks-reader-bgnd.png, the art at full colour. The sheet below is what
+ * keeps the words readable: the art shows at full strength round it and faintly through
+ * it. Every visual choice lives here — edit freely; no Python changes needed.
+ *
+ * Page size 2120x3200 px matches the background. The text must fit one page: the script
+ * refuses a second.
+ */
+
+/* The app's own faces: its title script for the drop cap, its notes serif for text. */
+@font-face {
+    font-family: "Barks Script";
+    src: url("../src/barks-fantagraphics/data/fonts/Carl Barks Script.ttf");
+}
+
+@font-face {
+    font-family: "Source Serif";
+    src: url("../src/barks-fantagraphics/data/fonts/SourceSerif4SmText-Regular.ttf");
+}
+
+@font-face {
+    font-family: "Source Serif";
+    font-weight: bold;
+    src: url("../src/barks-fantagraphics/data/fonts/SourceSerif4SmText-Bold.ttf");
+}
+
+@font-face {
+    font-family: "Source Serif";
+    font-style: italic;
+    src: url("../src/barks-fantagraphics/data/fonts/SourceSerif4SmText-It.ttf");
+}
+
+@font-face {
+    font-family: "Source Serif";
+    font-weight: bold;
+    font-style: italic;
+    src: url("../src/barks-fantagraphics/data/fonts/SourceSerif4SmText-BoldIt.ttf");
+}
+
+@page {
+    size: 2120px 3200px;
+    margin: 400px 290px 330px;    /* top  left/right  bottom: where the text sits */
+}
+
+html,
+body {
+    background: transparent;
+    color: #000000;
+    font-family: "Source Serif", "Liberation Serif", "DejaVu Serif", Georgia, serif;
+    font-size: 44px;
+    line-height: 1.5;
+}
+
+/* The paper: a pale sheet behind the text, reaching past it on every side. Its last
+ * number is how solid it is: 0 is no sheet at all, 1 hides the art behind the text. */
+body::before {
+    content: "";
+    position: fixed;
+    top: -130px;
+    right: -130px;
+    bottom: -90px;
+    left: -130px;
+    z-index: -1;
+    background: rgba(255, 250, 235, 0.84);
+    border: 6px solid rgba(179, 38, 30, 0.85);
+    border-radius: 40px;
+}
+
+p {
+    margin: 0 0 40px;
+    text-align: justify;
+    hyphens: auto;
+}
+
+/* The drop cap: the markdown's <span class="drop-cap">, three lines deep, in the app's
+ * script and its red. (A float on ::first-letter is not laid out properly, so the
+ * letter is marked in the text.) */
+.drop-cap {
+    float: left;
+    font-family: "Barks Script", "Liberation Serif", serif;
+    font-size: 236px;
+    line-height: 0.82;
+    color: #b3261e;
+    margin: 12px 20px 0 0;
+}
+
+/* The signature. */
+p:last-of-type {
+    font-family: "Barks Script", "Liberation Serif", serif;
+    font-size: 58px;
+    color: #b3261e;
+    text-align: right;
+    margin: 20px 0 0;
+}

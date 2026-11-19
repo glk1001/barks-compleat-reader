@@ -25,13 +25,16 @@ All styling — page size, margins, fonts, colours, boxes, table look — lives 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import pypdfium2
 import typer
 from markdown_it import MarkdownIt
 from weasyprint import CSS, HTML
 from weasyprint.text.fonts import FontConfiguration
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MD = REPO_ROOT / "docs" / "how-to-use.md"
@@ -42,8 +45,10 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "docs" / "how-to-pages"
 # pixel: the stylesheet's 2120x3200 px page comes out 2120x3200.
 _PIXELS_PER_POINT = 96 / 72
 
+# The language is for a stylesheet that hyphenates (`hyphens: auto` needs one to go by).
 _HTML_TEMPLATE = (
-    '<!DOCTYPE html>\n<html><head><meta charset="utf-8"></head>\n<body>\n{body}\n</body></html>\n'
+    '<!DOCTYPE html>\n<html lang="en-GB"><head><meta charset="utf-8"></head>\n'
+    "<body>\n{body}\n</body></html>\n"
 )
 
 
@@ -66,6 +71,41 @@ def render_markdown(md_text: str) -> str:
     return parser.render(md_text)
 
 
+def render_page_images(md_path: Path, css_path: Path) -> list[Image.Image]:
+    """Lay the markdown out in pages and draw each as a transparent-background image.
+
+    Args:
+        md_path: Path to the markdown source. Its directory is used as the base URL
+            so the image references in it resolve.
+        css_path: Path to the stylesheet controlling page size and typography.
+
+    Returns:
+        The pages in order, each an RGBA image of the stylesheet's page size in pixels.
+
+    """
+    html_doc = _HTML_TEMPLATE.format(body=render_markdown(md_path.read_text(encoding="utf-8")))
+
+    # The stylesheet's @font-face rules load only through a shared font configuration.
+    font_config = FontConfiguration()
+    pdf_bytes = HTML(string=html_doc, base_url=str(md_path.parent)).write_pdf(
+        stylesheets=[CSS(filename=str(css_path), font_config=font_config)],
+        font_config=font_config,
+    )
+    assert pdf_bytes is not None  # write_pdf returns the bytes when given no target
+
+    pdf = pypdfium2.PdfDocument(pdf_bytes)
+    try:
+        return [
+            pdf[index]
+            .render(scale=_PIXELS_PER_POINT, fill_color=(0, 0, 0, 0), maybe_alpha=True)
+            .to_pil()
+            .convert("RGBA")
+            for index in range(len(pdf))
+        ]
+    finally:
+        pdf.close()
+
+
 def build_pages(md_path: Path, css_path: Path, output_dir: Path) -> list[Path]:
     """Render the markdown to one transparent-background PNG per paginated page.
 
@@ -80,32 +120,17 @@ def build_pages(md_path: Path, css_path: Path, output_dir: Path) -> list[Path]:
         The written PNG paths, in page order.
 
     """
-    html_doc = _HTML_TEMPLATE.format(body=render_markdown(md_path.read_text(encoding="utf-8")))
-
-    # The stylesheet's @font-face rules load only through a shared font configuration.
-    font_config = FontConfiguration()
-    pdf_bytes = HTML(string=html_doc, base_url=str(md_path.parent)).write_pdf(
-        stylesheets=[CSS(filename=str(css_path), font_config=font_config)],
-        font_config=font_config,
-    )
-    assert pdf_bytes is not None  # write_pdf returns the bytes when given no target
+    pages = render_page_images(md_path, css_path)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for stale in output_dir.glob("page-*.png"):
         stale.unlink()
 
     written: list[Path] = []
-    pdf = pypdfium2.PdfDocument(pdf_bytes)
-    try:
-        for index in range(len(pdf)):
-            out_path = output_dir / f"page-{index + 1}.png"
-            bitmap = pdf[index].render(
-                scale=_PIXELS_PER_POINT, fill_color=(0, 0, 0, 0), maybe_alpha=True
-            )
-            bitmap.to_pil().save(out_path)
-            written.append(out_path)
-    finally:
-        pdf.close()
+    for number, page in enumerate(pages, start=1):
+        out_path = output_dir / f"page-{number}.png"
+        page.save(out_path)
+        written.append(out_path)
     return written
 
 
