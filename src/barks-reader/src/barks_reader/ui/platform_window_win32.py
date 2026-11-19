@@ -211,6 +211,10 @@ class Win32WindowBackend:
         one is never shown or drawn into. With no guard on the window nothing is
         held, and ``move_now`` puts the window right a frame or two later, as it
         did before there was one.
+
+        Args:
+            state: The saved size and position to hold the window at.
+
         """
         if not self._hwnd:
             return
@@ -257,6 +261,10 @@ class Win32WindowBackend:
         Revisit on Kivy 3.0 (SDL3): if the first resize after "Exiting fullscreen
         mode" is already the saved size, SDL no longer pads the window and this
         can go (see docs/plans/cross-platform-gui-tests.md, "What is left").
+
+        Args:
+            state: The saved size and position to put the window at.
+
         """
         if not self._hwnd:
             return
@@ -308,10 +316,17 @@ class Win32WindowBackend:
         rectangle the callbacks run. The delayed move is then only a check: it
         moves a window the exit has since shifted, and calls nothing.
 
-        Returns a cancel that stops whichever stages are still pending: the
-        frame-by-frame look, the delayed move, or the Kivy-sync step between the
-        move and the callbacks. A no-op once the callbacks have run and the
-        delayed move's check is done.
+        Args:
+            state: The saved size and position to restore.
+            on_first_resize: Called once the window has its size.
+            on_done: Called after it, when the restore is over.
+
+        Returns:
+            A cancel that stops whichever stages are still pending: the
+            frame-by-frame look, the delayed move, or the Kivy-sync step between the
+            move and the callbacks. A no-op once the callbacks have run and the
+            delayed move's check is done.
+
         """
         self._restore = _ScheduledRestore(self, state, on_first_resize, on_done)
         return self._restore.cancel

@@ -85,7 +85,16 @@ def clear_stale_failed_flag(config_info: ConfigInfo) -> bool:
 
 
 def subdir_bytes(installer_zip: Path, subdir: str) -> int:
-    """Return how many bytes ``extract_subdir`` writes for ``subdir`` in ``installer_zip``."""
+    """Return how many bytes ``extract_subdir`` writes for ``subdir`` in ``installer_zip``.
+
+    Args:
+        installer_zip: The zip to look in.
+        subdir: The folder in the zip, as the start of its members' names.
+
+    Returns:
+        The uncompressed size of every file under ``subdir``, in bytes.
+
+    """
     with ZipFile(installer_zip, "r") as installer_files:
         return sum(
             member.file_size

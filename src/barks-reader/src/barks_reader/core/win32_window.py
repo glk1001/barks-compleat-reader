@@ -332,6 +332,10 @@ class CaptionGuard:
         For a move the app does not make itself and knows to be wrong: SDL's
         fullscreen exit sizes the window for a frame that the custom title bar
         hides. Held until `release_rect`, and never longer than a couple of seconds.
+
+        Args:
+            rect: Where to keep the window: left, top, width, height.
+
         """
         self._held_rect = rect
         self._held_until = time.monotonic() + _HELD_RECT_SECONDS

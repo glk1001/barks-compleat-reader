@@ -31,6 +31,19 @@ def show_installer_message(
 
     ``in_running_loop`` and ``on_dismiss`` are for the installer's progress window, whose
     Kivy loop this is then shown in (``show_standalone_popup``).
+
+    Args:
+        title: The popup's title.
+        fanta_volumes_dir: The Fantagraphics volumes folder the install found, or None
+            when it found none, which the report then says.
+        data_zips: The data packs that were installed, named in the report.
+        app_config_dir: The app's config folder, named in the report.
+        app_log_path: The app's log file, named in the report.
+        size: The window's width and height.
+        background_image_file: The art behind the report, if there is any.
+        on_dismiss: Called when the popup has closed.
+        in_running_loop: Whether a Kivy loop is already running, to show the popup in.
+
     """
     # Set the window pos and size now to avoid moving window flicker; no larger than
     # the screen has room for, where the report then scrolls.
