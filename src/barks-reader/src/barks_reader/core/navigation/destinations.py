@@ -246,7 +246,7 @@ class RandomTitlesDestination(Destination):
     decade nodes), `tag` (the 'With <character>' nodes), or `category` (the
     'From favourites' node, aggregating every tag in the category). All None
     means all titles ('Surprise me'). `unread_only` keeps to the stories neither
-    finished nor left mid-way ('Not yet read'); it changes the sample, not the node's view.
+    finished nor left mid-way ('From not yet read'); it changes the sample, not the node's view.
     """
 
     year_range: tuple[int, int] | None = None

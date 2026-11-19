@@ -236,7 +236,7 @@ def build_reader_tree_spec(
         include_one_pagers_in_chrono: Whether `title_lists`' chrono year lists
             include one-pagers (checked against the expected title counts).
         read_states: Returns which stories are finished and which were left mid-way,
-            asked each time 'Continue reading' or 'Not yet read' opens. Without it
+            asked each time 'Continue reading' or 'From not yet read' opens. Without it
             every story is unread.
 
     Returns:

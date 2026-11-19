@@ -46,10 +46,10 @@ def test_continue_reading_lists_the_stories_left_mid_way_newest_first(boot: AppB
 def test_not_yet_read_redraws_on_every_expand(boot: AppBoot) -> None:
     d = boot(nodes.READING)
     d.open_branch("Choose for me")
-    with d.expect(_repopulated("Not yet read")):
-        d.open_branch("Not yet read")
-    d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="Not yet read"), "Left")
-    with d.expect(_repopulated("Not yet read")):
+    with d.expect(_repopulated("From not yet read")):
+        d.open_branch("From not yet read")
+    d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="From not yet read"), "Left")
+    with d.expect(_repopulated("From not yet read")):
         d.key("Return")
 
 
