@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
+from functools import partial
 from typing import TYPE_CHECKING
 
-from barks_gui import expected, harness, memory, nodes, tree
+import pytest
+from barks_gui import expected, harness, memory, nodes, persisted, tree
 from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -209,6 +212,40 @@ def test_a_story_taken_to_its_end_is_recorded_as_finished_and_the_rows_marked_ag
     assert int(last_field(d, markers.READ_STATES_SHOWN, "part_read")) >= 1, (
         "the story's own row is on the tree, part-read in the canned history"
     )
+
+
+@pytest.mark.parametrize(
+    ("lasted_secs", "finished_rows"),
+    [(30 * 60, 1), (20, 0)],
+    ids=["a read of half an hour", "a visit of twenty seconds"],
+)
+def test_a_story_read_to_its_end_has_the_full_dot_only_after_a_real_read(
+    boot: AppBoot, lasted_secs: int, finished_rows: int
+) -> None:
+    """A history of one session that reached the end: its length decides the row's mark."""
+    opened_at = datetime(2026, 9, 1, 10, 0, 0)  # noqa: DTZ001  (the history's times are naive)
+    event = {
+        # A canned event's id: the end-of-test check counts every other event as a read
+        # the app made in this run, and looks for its open in the log.
+        "id": min(persisted.canned_history_ids()),
+        "title": nodes.GHOST_OF_THE_GROTTO_TITLE,
+        "opened_at": opened_at.isoformat(),
+        "closed_at": (opened_at + timedelta(seconds=lasted_secs)).isoformat(),
+        "last_display_page": "0",
+        "last_body_page": "26",
+        "finished": True,
+    }
+    (boot.scratch / "barks-reader-history.json").write_text(
+        json.dumps({"version": 1, "events": [event]}), encoding="utf-8"
+    )
+
+    d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
+
+    # The story's row is made as the app opens its year range to land on it.
+    year_range = nodes.CHRONO_RANGE[0]
+    marks = partial(last_field, d, markers.POPULATED_READ_MARKS, name=year_range)
+    assert int(marks("finished")) == finished_rows
+    assert int(marks("part_read")) == 0
 
 
 def test_a_story_closed_part_way_is_not_recorded_as_finished(boot: AppBoot) -> None:

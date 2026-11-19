@@ -289,6 +289,58 @@ class TestDeferredPopulation:
         ]
         assert len(populated) == 1
 
+    def test_populating_logs_the_read_marks_its_rows_were_made_with(
+        self, mock_dependencies: dict[str, MagicMock], loguru_sink: list[str]
+    ) -> None:
+        # A GUI test reads the marks of a list from this line: the dots are only pixels.
+        read_states = ReadStates(
+            finished=frozenset({"Lost in the Andes!", "Vacation Time"}),
+            left_mid_way=("Vacation Time",),
+        )
+        builder = ReaderTreeBuilder(**mock_dependencies, read_states=lambda: read_states)
+        rows = []
+        for title_str in ("Lost in the Andes!", "Vacation Time", "Trick or Treat", "Old Castle"):
+            fanta_info = MagicMock()
+            fanta_info.comic_book_info.get_title_str.return_value = title_str
+            rows.append(NodeSpec(kind=NodeKind.TITLE_ROW, fanta_info=fanta_info))
+        intro = NodeSpec(kind=NodeKind.INTRO_TEXT, text="An intro row has no mark.")
+        spec = NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text="Tag",
+            destination=TagDestination(tag=Tags.AIRPLANES),
+            lazy_children=lambda: (intro, *rows),
+        )
+        _build_with_spec(builder, spec)
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+
+        with patch.object(TitleTreeViewNode, "create_from_fanta_info", return_value=MagicMock()):
+            node.populate_callback()
+
+        assert (
+            log_markers.POPULATED_READ_MARKS.format(name="Tag", finished=1, part_read=1, unread=2)
+            in loguru_sink
+        )
+
+    def test_with_no_read_states_populating_logs_no_read_marks(
+        self,
+        tree_builder: ReaderTreeBuilder,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text="Tag",
+            destination=TagDestination(tag=Tags.AIRPLANES),
+            lazy_children=lambda: (NodeSpec(kind=NodeKind.TITLE_ROW, fanta_info=MagicMock()),),
+        )
+        _build_with_spec(tree_builder, spec)
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+
+        with patch.object(TitleTreeViewNode, "create_from_fanta_info", return_value=MagicMock()):
+            node.populate_callback()
+
+        assert not any(line.startswith("Read marks under") for line in loguru_sink)
+
     def test_repopulate_on_expand_flag_defaults_to_false(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
     ) -> None:

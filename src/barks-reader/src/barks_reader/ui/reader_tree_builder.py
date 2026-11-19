@@ -8,6 +8,7 @@ only instantiates widgets from the specs, binds press handlers, and calls the
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import TYPE_CHECKING, ClassVar
 
 from comic_utils.timing import Timing
@@ -25,6 +26,7 @@ from barks_reader.core.navigation import (
     YearRangeKind,
     build_reader_tree_spec,
 )
+from barks_reader.core.read_state import ReadState
 
 from .tree_view_nodes import (
     ButtonTreeViewNode,
@@ -173,6 +175,25 @@ class ReaderTreeBuilder:
                 node, spec.lazy_children, repopulate_on_expand=spec.repopulate_on_expand
             )
 
+    def _log_read_marks(self, name: str, specs: tuple[NodeSpec, ...]) -> None:
+        """Log how many of a node's new title rows were made with each read mark."""
+        if self._read_states is None:
+            return
+        read_states = self._read_states()
+        counts = Counter(
+            read_states.state_of(spec.fanta_info.comic_book_info.get_title_str())
+            for spec in specs
+            if spec.fanta_info is not None
+        )
+        logger.debug(
+            log_markers.POPULATED_READ_MARKS.format(
+                name=name,
+                finished=counts[ReadState.FINISHED],
+                part_read=counts[ReadState.PART_READ],
+                unread=counts[ReadState.UNREAD],
+            )
+        )
+
     @staticmethod
     def _make_button_node(spec: NodeSpec) -> ButtonTreeViewNode:
         if spec.kind is NodeKind.YEAR_RANGE:
@@ -218,6 +239,7 @@ class ReaderTreeBuilder:
             logger.debug(
                 log_markers.POPULATED_NODE.format(name=node.get_name(), count=len(children_specs))
             )
+            self._log_read_marks(node.get_name(), children_specs)
 
         node.populate_callback = _populate
         node.populated = False

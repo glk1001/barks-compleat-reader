@@ -48,6 +48,7 @@ from barks_reader.core.corpus_stats import (
     TEXT_SECTION_SHAPE,
     compute_static_stats,
     compute_text_stats,
+    count_stories_read,
     with_stories_read,
 )
 from barks_reader.core.keys import KEY_LEFT, KEY_UP, is_escape_key
@@ -178,11 +179,13 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         self.action_bar_title = get_action_bar_title(self._font_manager, INTRO_BY_THE_NUMBERS_TEXT)
         if self._stats is None:
             self._stats = compute_static_stats()
-        self._shown_stats = (
-            self._stats
-            if self._read_states is None
-            else with_stories_read(self._stats, self._read_states().finished)
-        )
+        self._shown_stats = self._stats
+        if self._read_states is not None:
+            finished = self._read_states().finished
+            self._shown_stats = with_stories_read(self._stats, finished)
+            logger.info(
+                log_markers.CORPUS_STATS_STORIES_READ.format(read=count_stories_read(finished))
+            )
         self._set_background()
         self._rebuild()
         self._start_text_scan()

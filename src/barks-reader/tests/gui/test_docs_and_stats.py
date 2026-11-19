@@ -85,6 +85,8 @@ MAIN_FROM_DOCUMENT = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_DOC
 MAIN_FROM_NUMBERS = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_BY_THE_NUMBERS)
 DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
 NUMBERS_ENTERED = pattern(markers.SCREEN_ENTERED, name="corpus_stats")
+# The canned history finished The Ghost of the Grotto once, and nothing else.
+CANNED_STORIES_READ = 1
 MAIN_ENTERED = pattern(markers.SCREEN_ENTERED, name="main_screen")
 
 
@@ -149,6 +151,8 @@ def test_by_the_numbers_opens_and_closes_two_ways(boot: AppBoot) -> None:
         d.expect(markers.BY_THE_NUMBERS_ACTIVE),
         d.expect(markers.CORPUS_STATS_OPENED),
         d.expect(NUMBERS_ENTERED),
+        # 'You have read': the canned history finished one story, in a read of a minute.
+        d.expect(pattern(markers.CORPUS_STATS_STORIES_READ, read=CANNED_STORIES_READ)),
     ):
         d.key("Return")
     # MAIN_FROM_NUMBERS is logged as the transition starts; the main screen's

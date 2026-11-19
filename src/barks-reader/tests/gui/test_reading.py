@@ -37,8 +37,20 @@ def test_surprise_me_redraws_on_every_expand(boot: AppBoot) -> None:
 def test_continue_reading_lists_the_stories_left_mid_way_newest_first(boot: AppBoot) -> None:
     """The canned history's three titles each stopped inside the story at their latest read."""
     d = boot(nodes.READING)
-    with d.expect(
-        pattern(markers.REPOPULATED_NODE, name="Continue reading", count=CANNED_LEFT_MID_WAY)
+    with (
+        d.expect(
+            pattern(markers.REPOPULATED_NODE, name="Continue reading", count=CANNED_LEFT_MID_WAY)
+        ),
+        # Every row has the half dot: The Ghost of the Grotto too, finished in an earlier read.
+        d.expect(
+            pattern(
+                markers.POPULATED_READ_MARKS,
+                name="Continue reading",
+                finished=0,
+                part_read=CANNED_LEFT_MID_WAY,
+                unread=0,
+            )
+        ),
     ):
         d.open_branch("Continue reading")
     d.key_then_wait(ANY_NODE_SELECTED, "Down")
@@ -48,7 +60,19 @@ def test_continue_reading_lists_the_stories_left_mid_way_newest_first(boot: AppB
 def test_not_yet_read_redraws_on_every_expand(boot: AppBoot) -> None:
     d = boot(nodes.READING)
     d.open_branch("Choose for me")
-    with d.expect(_repopulated("From not yet read")):
+    with (
+        d.expect(_repopulated("From not yet read")),
+        # No row it offers has a dot: neither a finished story nor one left mid-way.
+        d.expect(
+            pattern(
+                markers.POPULATED_READ_MARKS,
+                name="From not yet read",
+                finished=0,
+                part_read=0,
+                unread=RANDOM_PICKS,
+            )
+        ),
+    ):
         d.open_branch("From not yet read")
     d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="From not yet read"), "Left")
     with d.expect(_repopulated("From not yet read")):
@@ -75,6 +99,20 @@ def test_this_month_lists_the_stories_submitted_in_it(boot: AppBoot) -> None:
     d.key_then_wait(pattern(markers.NODE_EXPANDED), "Return")
     d.key_then_wait(ANY_NODE_SELECTED, "Down")  # its first story, or a line above it skipped
     assert d.current_node() in {info.title.name for info in submitted}
+
+
+def test_this_month_lists_the_stories_on_sale_in_it(boot: AppBoot) -> None:
+    """The second group opens onto the stories whose issue carries today's month."""
+    month = datetime.now().astimezone().month
+    on_sale = get_stories_in_month(MonthDate.ON_SALE, month)
+    d = boot(nodes.READING)
+    d.open_branch(get_month_node_text(month))
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")  # the Submitted group, closed
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")  # the On sale group
+    d.key_then_wait(pattern(markers.NODE_EXPANDED), "Return")
+    d.settle()
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")
+    assert d.current_node() in {info.title.name for info in on_sale}
 
 
 def test_a_character_pick_opens_a_story(boot: AppBoot) -> None:

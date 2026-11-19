@@ -194,6 +194,19 @@ STORIES_ROW_LABEL: Final = "Stories"
 STORIES_READ_ROW_LABEL: Final = "You have read"
 
 
+def count_stories_read(finished: frozenset[str]) -> int:
+    """Return how many of the stories the reading history has finished.
+
+    Args:
+        finished: The titles the reading history has finished, as it records them.
+
+    Returns:
+        The count, leaving out a finished cover or article: neither is a story.
+
+    """
+    return sum(1 for info in get_stories() if ENUM_TO_STR_TITLE[info.title] in finished)
+
+
 def with_stories_read(stats: CorpusStats, finished: frozenset[str]) -> CorpusStats:
     """Add the user's own count to the corpus section: how many of the stories are read.
 
@@ -208,9 +221,8 @@ def with_stories_read(stats: CorpusStats, finished: frozenset[str]) -> CorpusSta
         The same statistics, the corpus section's "Stories" row followed by the count.
 
     """
-    stories = get_stories()
-    num_read = sum(1 for info in stories if ENUM_TO_STR_TITLE[info.title] in finished)
-    read_row = StatRow(STORIES_READ_ROW_LABEL, f"{num_read:,} of {len(stories):,}")
+    num_read = count_stories_read(finished)
+    read_row = StatRow(STORIES_READ_ROW_LABEL, f"{num_read:,} of {len(get_stories()):,}")
 
     corpus, *others = stats.sections
     rows: list[StatRow] = []

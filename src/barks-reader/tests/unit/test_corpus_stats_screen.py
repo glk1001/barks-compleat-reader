@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core import log_markers
 from barks_reader.core.corpus_stats import (
     TEXT_SECTION_HEADING,
     TEXT_SECTION_SHAPE,
@@ -219,6 +220,27 @@ class TestBuildOnOpen:
         assert [row.label for row in corpus.rows] == ["Stories", "You have read"]
         assert corpus.rows[1].value.startswith("1 of ")
         assert screen._stats is _STATS  # the cached statistics stay as computed
+
+    def test_an_open_logs_the_count_it_shows(
+        self, screen: CorpusStatsScreen, loguru_sink: list[str]
+    ) -> None:
+        # A cover is finished here too, and is not a story: the row and the line leave it out.
+        screen.set_read_states(
+            lambda: ReadStates(
+                finished=frozenset({"Lost in the Andes!", "Vacation Time", "No Such Story"})
+            )
+        )
+
+        _open(screen)
+
+        assert log_markers.CORPUS_STATS_STORIES_READ.format(read=2) in loguru_sink
+
+    def test_without_a_history_an_open_logs_no_count(
+        self, screen: CorpusStatsScreen, loguru_sink: list[str]
+    ) -> None:
+        _open(screen)
+
+        assert not any("stories read" in line for line in loguru_sink)
 
     def test_every_open_asks_the_history_again(self, screen: CorpusStatsScreen) -> None:
         finished = [frozenset[str]()]

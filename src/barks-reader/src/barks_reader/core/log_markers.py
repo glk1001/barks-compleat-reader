@@ -40,6 +40,10 @@ GOING_BACK_TO_NODE: Final = 'Going back to previous node "{name}".'
 REPOPULATED_NODE: Final = "Repopulated '{name}' with {count} children."
 # A lazy node's children made, once for each node (each expansion for a random-title node).
 POPULATED_NODE: Final = "Populated '{name}' with {count} children."
+# The read marks those children were made with, logged after the line above.
+POPULATED_READ_MARKS: Final = (
+    "Read marks under '{name}': {finished} finished, {part_read} part-read, {unread} unread."
+)
 ARTICLE_NODE_PRESSED: Final = "Article node pressed: Reading '{name}'."
 UPDATING_BACKGROUND_VIEW_STATE: Final = "Updating background view state to {state}."
 # A view's top and bottom (fun) images, each logged when one is picked for it.
@@ -268,6 +272,8 @@ DOCUMENT_CHAPTER_UNTITLED: Final = (
 )
 DOCUMENT_FOLDER_UNREADABLE: Final = 'Document folder "{path}" cannot be listed ({error}): left out.'
 CORPUS_STATS_OPENED: Final = "CorpusStats: opened."
+# The 'You have read' row's count, logged at each open that shows the row.
+CORPUS_STATS_STORIES_READ: Final = "CorpusStats: showing {read} stories read."
 CORPUS_STATS_CLOSING: Final = "CorpusStats: closing."
 
 # ---------------------------------------------------------- the title view --
