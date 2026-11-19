@@ -426,11 +426,7 @@ class AppWindowGeometryHelper:
 
         new_max_height = get_best_window_height_fit(monitor.height_pixels)
         new_height = min(round(scale_factor * new_max_height), new_max_height)
-        chrome = self._chrome_in_size_units()
-        new_width, content_h = get_win_dimensions(
-            new_height - chrome, monitor.width_pixels, self.content_aspect_ratio
-        )
-        new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
+        new_width, new_height, _ = self._layout_fit_at(new_height)
 
         # A new layout wants its own width, at the same height too.
         if layout_changed:
@@ -650,21 +646,14 @@ class AppWindowGeometryHelper:
         self._refit_pending = False  # the resize below is the refit
         self.evaluate_layout("rotation", refit=False)
 
-        chrome = self._chrome_in_size_units()
-        aspect_ratio = self.content_aspect_ratio
         new_height = calculate_fitted_window_height(
             screen_width=monitor.width_pixels,
             screen_height=monitor.height_pixels,
-            aspect_ratio=aspect_ratio,
-            action_bar_height=chrome,
+            aspect_ratio=self.content_aspect_ratio,
+            action_bar_height=self._chrome_in_size_units(),
             fit_fraction=ROTATION_FIT_FRACTION,
         )
-        new_width, content_h = get_win_dimensions(
-            new_height - chrome, monitor.width_pixels, aspect_ratio
-        )
-        new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
-
-        center_x = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
+        new_width, new_height, center_x = self._layout_fit_at(new_height)
         center_y = monitor.monitor_y + (monitor.height_pixels - new_height) // 2
 
         logger.info(
