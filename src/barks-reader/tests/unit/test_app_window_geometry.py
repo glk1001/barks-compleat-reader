@@ -1917,6 +1917,42 @@ def test_with_no_window_saved_the_refit_still_waits_for_the_exit(
     assert len(fake_clock.calls) == scheduled_before + 3  # a guarded resize's three steps
 
 
+def test_a_window_waiting_for_its_refit_is_not_corrected_first(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """Back from fullscreen single-page shaped, with the spread decided meanwhile.
+
+    The correction to the spread's shape came 0.1 s after the exit's resize, up to two
+    seconds before the refit: on Windows each one came back the frame bigger and the
+    next was worked out from that (greg-dell, 2026-11-17).
+    """
+    saved_window = _SavedWindow((0, 0), (-1, -1), saved=False)
+    h = _layout_changed_in_fullscreen_with(
+        monkeypatch, constraints, fake_window, fake_clock, saved_window
+    )
+    update_fonts = cast("MagicMock", h._update_fonts)  # noqa: SLF001
+    update_fonts.reset_mock()
+    fake_window.fullscreen = False
+    fake_window.size = (686, 1080)  # the single page's shape
+    scheduled_before = len(fake_clock.calls)
+
+    h.on_window_resize(fake_window, 686, 1080)
+
+    assert len(fake_clock.calls) == scheduled_before  # no correction
+    assert h._correction_event is None  # noqa: SLF001
+    update_fonts.assert_called_once_with(1080)
+
+    h._check_for_rotation(0.0)  # noqa: SLF001  # the refit
+    h._cancel_guarded_resize()  # noqa: SLF001  # and its guard over
+    scheduled_before = len(fake_clock.calls)
+    h.on_window_resize(fake_window, 686, 1080)
+
+    assert len(fake_clock.calls) == scheduled_before + 1  # corrected as ever
+
+
 def test_a_rotation_out_of_fullscreen_is_the_refit_it_missed(
     layout_changed_in_fullscreen: AppWindowGeometryHelper,
     fake_window: MagicMock,

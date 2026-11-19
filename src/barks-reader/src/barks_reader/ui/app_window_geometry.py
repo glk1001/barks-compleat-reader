@@ -199,7 +199,8 @@ class AppWindowGeometryHelper:
         correction came back 16x39 (the frame) bigger and the next was worked out from
         that height, until the window stood taller than the screen with its top above
         it (a greg-dell soak, 2026-11-17). With nothing saved to reshape (the app
-        started fullscreen), the refit still waits for the window to be back.
+        started fullscreen), the refit still waits for the window to be back, and the
+        correction waits for the refit (`_enforce_aspect_ratio`).
 
         The layout's minimum goes on now, not after the exit: a restored window below
         the old layout's minimum was enlarged to it by SDL with no resize event (on
@@ -531,6 +532,16 @@ class AppWindowGeometryHelper:
             height: Current window height reported by the resize event, in pixels.
 
         """
+        if self._refit_pending:
+            # A layout decided in fullscreen with no saved window to reshape: the window
+            # is back in the old layout's shape, and the refit at the next poll gives it
+            # the new one. A correction to the new shape before that is worked out from
+            # a size the refit is about to replace, and on Windows each one came back
+            # the frame bigger (see `_refit_saved_window`).
+            assert self._update_fonts is not None
+            self._update_fonts(height)
+            return
+
         chrome = self._chrome_in_size_units()
 
         # Bail out on degenerate transient sizes (e.g. ``(0, 45)`` events that fire during
