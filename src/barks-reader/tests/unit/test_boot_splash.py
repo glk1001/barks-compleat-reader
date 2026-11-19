@@ -16,14 +16,23 @@ if TYPE_CHECKING:
 
 _PARENT_PID = "4242"
 _ENV = "NUITKA_ONEFILE_PARENT"
+_SPLASH_NAME = f"onefile_{_PARENT_PID}_splash_feedback.tmp"
 
 
 @pytest.fixture
 def splash_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    """Give the file an unpacking program with `_PARENT_PID` would be watching."""
+    """Give the file an unpacking program with `_PARENT_PID` would be watching.
+
+    Python's temp folder is the only one: TMP and TEMP are unset, as they are off Windows.
+    """
     monkeypatch.setenv(_ENV, _PARENT_PID)
-    with patch.object(tempfile, "gettempdir", return_value=str(tmp_path)):
-        yield tmp_path / f"onefile_{_PARENT_PID}_splash_feedback.tmp"
+    monkeypatch.delenv("TMP", raising=False)
+    monkeypatch.delenv("TEMP", raising=False)
+    with (
+        patch.object(tempfile, "gettempdir", return_value=str(tmp_path)),
+        patch.object(boot_splash, "_settled", set()),
+    ):
+        yield tmp_path / _SPLASH_NAME
 
 
 class TestBootSplashFile:
@@ -58,10 +67,67 @@ class TestCloseBootSplash:
     def test_a_splash_already_down_is_left_in_silence(
         self, splash_file: Path, loguru_sink: list[str]
     ) -> None:
+        splash_file.write_bytes(b"")
+        close_boot_splash()
+        taken_down = len(loguru_sink)
+
         close_boot_splash()
 
         assert not splash_file.exists()
-        assert not any("boot splash" in s for s in loguru_sink)
+        assert len(loguru_sink) == taken_down
+
+    def test_the_first_look_that_finds_no_file_says_where_it_looked_and_no_later_one(
+        self, splash_file: Path, loguru_sink: list[str]
+    ) -> None:
+        """A splash left up over the reader used to leave nothing in the log to go on."""
+        close_boot_splash()
+        close_boot_splash()
+
+        lines = [s for s in loguru_sink if "boot splash" in s]
+        assert len(lines) == 1
+        assert f'No boot splash file to delete in "{splash_file.parent}": ' in lines[0]
+
+    @pytest.mark.parametrize("windows_folder", ["TMP", "TEMP"])
+    def test_a_file_in_the_temp_folder_windows_chose_is_found_there(
+        self,
+        splash_file: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        loguru_sink: list[str],
+        windows_folder: str,
+    ) -> None:
+        """The unpacking program asks Windows, which reads TMP first; Python reads TEMP first.
+
+        With the two set to different folders (or TMPDIR set by the shell that started
+        the app) the file was looked for in one and made in the other.
+        """
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.setenv(windows_folder, str(elsewhere))
+        made_by_the_unpacker = elsewhere / _SPLASH_NAME
+        made_by_the_unpacker.write_bytes(b"")
+
+        close_boot_splash()
+
+        assert not made_by_the_unpacker.exists()
+        assert not splash_file.exists()
+        assert any("Took down the boot splash." in s for s in loguru_sink)
+
+    def test_the_folders_looked_in_are_each_named_once(
+        self,
+        splash_file: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        loguru_sink: list[str],
+    ) -> None:
+        elsewhere = tmp_path / "elsewhere"
+        monkeypatch.setenv("TMP", str(elsewhere))
+        monkeypatch.setenv("TEMP", str(splash_file.parent))  # Python's own: not twice
+
+        close_boot_splash()
+
+        (line,) = [s for s in loguru_sink if "No boot splash file" in s]
+        assert f'in "{splash_file.parent}", "{elsewhere}": ' in line
 
     def test_with_no_splash_nothing_is_touched(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -84,3 +150,4 @@ class TestCloseBootSplash:
             close_boot_splash()
 
         assert any("Could not take down the boot splash" in s for s in loguru_sink)
+        assert not any("No boot splash file" in s for s in loguru_sink)
