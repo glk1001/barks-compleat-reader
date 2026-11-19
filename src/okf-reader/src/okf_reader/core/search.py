@@ -31,6 +31,14 @@ BREADCRUMB_SEP = " › "  # noqa: RUF001 — display glyph, not a greater-than
 # bundle for headings must stay fast enough to run without freezing the UI.
 _ATX_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
 
+# A query's phrase marks: straight double quotes and the curly pair a phone or a
+# word processor's paste gives. They are operators, so a quote is never matched.
+_QUOTE_MARKS = re.compile('["\u201c\u201d]')
+# The wiki writes apostrophes curly and a keyboard types them straight: both sides
+# fold the curly ones to "'" so "scrooge's" finds the wiki's curly spelling.
+_CURLY_APOSTROPHES = str.maketrans({"\u2018": "'", "\u2019": "'"})
+_WHITESPACE_RUN = re.compile(r"\s+")
+
 # Score tiers, best first. The gaps leave room to interpolate later without
 # reshuffling; ranking is otherwise stable on the curated walk order.
 _SCORE_EXACT_TITLE = 400
@@ -80,6 +88,38 @@ class SearchProvider(Protocol):
     def search(self, query: str) -> list[SearchHit]:
         """Return the pages matching ``query``, best first."""
         ...
+
+
+def _fold(text: str) -> str:
+    """Return ``text`` as matching compares it: lowercased, apostrophes straight, spaces single."""
+    folded = text.lower().translate(_CURLY_APOSTROPHES)
+    return _WHITESPACE_RUN.sub(" ", folded).strip()
+
+
+def parse_query(query: str) -> list[str]:
+    """Split a query into the terms every hit must contain, each folded (see `_fold`).
+
+    Words outside quotes are terms one by one; the words inside a pair of double
+    quotes are one term, matched as that phrase. A quote left open takes the rest
+    of the query as its phrase, so a phrase being typed already narrows the
+    results, and an empty pair (or a lone quote) adds nothing.
+
+    Args:
+        query: The user's search string.
+
+    Returns:
+        The terms, in query order; empty when the query holds no words.
+
+    """
+    terms: list[str] = []
+    for i, part in enumerate(_QUOTE_MARKS.split(_fold(query))):
+        if i % 2:  # inside quotes: the words between them are one phrase
+            phrase = part.strip()
+            if phrase:
+                terms.append(phrase)
+        else:
+            terms.extend(part.split())
+    return terms
 
 
 def _extract_headings(text: str) -> list[str]:
@@ -144,8 +184,8 @@ def build_search_index(bundle: Path, *, include_headings: bool = True) -> Search
                         title=child.title,
                         breadcrumb=BREADCRUMB_SEP.join(crumbs),
                         order=counter,
-                        title_lower=child.title.lower(),
-                        headings_lower=tuple(h.lower() for h in headings),
+                        title_lower=_fold(child.title),
+                        headings_lower=tuple(_fold(h) for h in headings),
                     )
                 )
                 counter += 1
@@ -177,9 +217,11 @@ def search_index(index: SearchIndex, query: str, *, limit: int = 50) -> list[Sea
     """Return the pages matching ``query``, best first.
 
     Case-insensitive, whitespace-tokenized, AND semantics (all words must be
-    present). Ranking: exact title, then title prefix, then all-words-in-title,
-    then all-words across title+headings; ties break on the curated walk order.
-    An empty (or whitespace-only) query returns no hits.
+    present); a double-quoted phrase is one term (see `parse_query`), and curly
+    apostrophes match straight ones. Ranking: exact title, then title prefix,
+    then all-terms-in-title, then all terms across title+headings; ties break on
+    the curated walk order. A query with no words (blank, or only quotes)
+    returns no hits.
 
     Args:
         index: The index to search.
@@ -190,10 +232,10 @@ def search_index(index: SearchIndex, query: str, *, limit: int = 50) -> list[Sea
         Up to ``limit`` `SearchHit`s, ordered best first.
 
     """
-    q = query.strip().lower()
-    terms = q.split()
+    terms = parse_query(query)
     if not terms:
         return []
+    q = " ".join(terms)  # the query without its quotes, for the whole-title tiers
     scored: list[tuple[int, int, SearchHit]] = []
     for entry in index.entries:
         result = _score_entry(entry, terms, q)

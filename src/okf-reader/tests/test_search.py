@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from okf_reader.core.search import (
     BundleSearcher,
     build_search_index,
+    parse_query,
     search_index,
 )
 
@@ -137,6 +139,40 @@ class TestRanking:
         assert search_index(index, "") == []
         assert search_index(index, "   ") == []
 
+    def test_quoted_phrase_matches_its_words_in_order(self, tmp_path: Path) -> None:
+        """The words inside quotes match together, in order, not as separate words."""
+        bundle = tmp_path / "b"
+        bundle.mkdir()
+        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
+        (bundle / "a.md").write_text(_page("Letter to Glen Brown"), encoding="utf-8")
+        (bundle / "z.md").write_text(_page("Brown Glen Walk"), encoding="utf-8")
+        index = build_search_index(bundle)
+        assert [h.title for h in search_index(index, '"glen brown"')] == ["Letter to Glen Brown"]
+        assert len(search_index(index, "glen brown")) == 2  # noqa: PLR2004 — unquoted: both
+
+    def test_quoted_exact_title_ranks_as_exact(self, tmp_path: Path) -> None:
+        """Quotes round a whole title still give the exact-title tier."""
+        index = build_search_index(_make_bundle(tmp_path))
+        hits = search_index(index, '"ten-dollar dither"')
+        assert [h.title for h in hits] == ["Ten-Dollar Dither"]
+        assert hits[0].score == search_index(index, "ten-dollar dither")[0].score
+
+    def test_quotes_alone_find_nothing(self, tmp_path: Path) -> None:
+        """A lone quote, or an empty pair, is no query: it does not match every page."""
+        index = build_search_index(_make_bundle(tmp_path))
+        assert search_index(index, '"') == []
+        assert search_index(index, '""') == []
+
+    def test_apostrophes_match_straight_or_curly(self, tmp_path: Path) -> None:
+        """A typed straight apostrophe finds a curly one, and the other way round."""
+        bundle = tmp_path / "b"
+        bundle.mkdir()
+        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
+        (bundle / "a.md").write_text(_page("Scrooge’s Quest"), encoding="utf-8")  # noqa: RUF001
+        index = build_search_index(bundle)
+        assert [h.title for h in search_index(index, "scrooge's")] == ["Scrooge’s Quest"]  # noqa: RUF001
+        assert [h.title for h in search_index(index, "scrooge’s")] == ["Scrooge’s Quest"]  # noqa: RUF001
+
     def test_limit_respected(self, tmp_path: Path) -> None:
         """No more than ``limit`` hits come back."""
         bundle = tmp_path / "b"
@@ -146,6 +182,26 @@ class TestRanking:
             (bundle / f"p{i}.md").write_text(_page(f"Duck {i}"), encoding="utf-8")
         limit = 3
         assert len(search_index(build_search_index(bundle), "duck", limit=limit)) == limit
+
+
+_OPEN, _CLOSE = "\u201c", "\u201d"  # curly double quotes
+
+
+class TestParseQuery:
+    @pytest.mark.parametrize(
+        ("query", "terms"),
+        [
+            ("gold  rush", ["gold", "rush"]),
+            ('"glen brown"', ["glen brown"]),
+            ('letter "glen brown" 1974', ["letter", "glen brown", "1974"]),
+            ('"glen bro', ["glen bro"]),  # an open quote: the rest is the phrase
+            (f"{_OPEN}glen   brown{_CLOSE}", ["glen brown"]),  # curly quotes, spaces folded
+            ('"" "', []),
+            ("Scrooge’s", ["scrooge's"]),  # noqa: RUF001
+        ],
+    )
+    def test_terms(self, query: str, terms: list[str]) -> None:
+        assert parse_query(query) == terms
 
 
 class TestBundleSearcher:
