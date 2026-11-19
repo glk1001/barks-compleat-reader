@@ -409,13 +409,14 @@ class TestHeldRect:
         self, guard: win32_window.CaptionGuard, guard_user32: MagicMock, loguru_sink: list[str]
     ) -> None:
         """Going fullscreen: nothing is held, but the caption must not flash."""
-        assert win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        quiet = win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        assert quiet
 
         assert guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0) == 0
         guard_user32.CallWindowProcW.assert_not_called()
         assert self._changing(guard) == ASKED
 
-        win32_window.end_window_frame_quiet(HIGH_HWND)
+        win32_window.end_window_frame_quiet(HIGH_HWND, quiet)
 
         lines = [s for s in loguru_sink if "Frame messages while the window's frame" in s]
         assert len(lines) == 1
@@ -437,19 +438,46 @@ class TestHeldRect:
         self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
     ) -> None:
         """Fullscreen and straight back: the entry's late end must not end the exit's hold."""
-        win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        quiet = win32_window.quiet_window_frame(HIGH_HWND, 0.5)
         win32_window.hold_window_rect(HIGH_HWND, HELD)
 
-        win32_window.end_window_frame_quiet(HIGH_HWND)
+        win32_window.end_window_frame_quiet(HIGH_HWND, quiet)
 
         assert self._changing(guard) == HELD
         assert guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0) == 0
         assert not any("Frame messages" in s for s in loguru_sink)
 
+    def test_the_late_end_of_one_quiet_leaves_a_quiet_begun_since_alone(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock, loguru_sink: list[str]
+    ) -> None:
+        """Fullscreen, back, and fullscreen again inside the first quiet's half second.
+
+        The first entry's end came due in the middle of the second's quiet and ended
+        it, and the caption could flash for the rest of that transition.
+        """
+        first = win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        win32_window.hold_window_rect(HIGH_HWND, HELD)  # the exit between them
+        win32_window.release_window_rect(HIGH_HWND)
+        second = win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        assert first
+        assert second not in (0, first)
+
+        win32_window.end_window_frame_quiet(HIGH_HWND, first)
+
+        assert guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0) == 0
+        guard_user32.CallWindowProcW.assert_not_called()
+        assert not any("frame was quiet" in s for s in loguru_sink)
+
+        win32_window.end_window_frame_quiet(HIGH_HWND, second)
+
+        guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
+        guard_user32.CallWindowProcW.assert_called_once()
+        assert any("frame was quiet: +" in s and "WM_NCPAINT" in s for s in loguru_sink)
+
     def test_a_window_with_no_guard_is_not_quieted(self, guard_user32: MagicMock) -> None:
         assert guard_user32 is not None
-        assert not win32_window.quiet_window_frame(HIGH_HWND, 0.5)
-        win32_window.end_window_frame_quiet(HIGH_HWND)  # and nothing to end
+        assert win32_window.quiet_window_frame(HIGH_HWND, 0.5) == 0
+        win32_window.end_window_frame_quiet(HIGH_HWND, 0)  # and nothing to end
 
     def test_letting_go_logs_the_frame_messages_the_held_window_had(
         self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
@@ -513,10 +541,10 @@ class TestHeldRect:
         self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
     ) -> None:
         with patch.object(win32_window.time, "monotonic", return_value=100.0):
-            win32_window.quiet_window_frame(HIGH_HWND, 2.0)
+            quiet = win32_window.quiet_window_frame(HIGH_HWND, 2.0)
         with patch.object(win32_window.time, "monotonic", return_value=101.5):
             guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
-        win32_window.end_window_frame_quiet(HIGH_HWND)
+        win32_window.end_window_frame_quiet(HIGH_HWND, quiet)
 
         assert any(s.endswith("quiet: +1500ms WM_NCPAINT.") for s in loguru_sink)
 
@@ -525,10 +553,10 @@ class TestHeldRect:
     ) -> None:
         """A desktop that floods the window with paints must not grow the log without end."""
         cap = win32_window._MAX_FRAME_MESSAGES_LOGGED
-        win32_window.quiet_window_frame(HIGH_HWND, 60.0)
+        quiet = win32_window.quiet_window_frame(HIGH_HWND, 60.0)
         for _ in range(cap + 1):
             guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
-        win32_window.end_window_frame_quiet(HIGH_HWND)
+        win32_window.end_window_frame_quiet(HIGH_HWND, quiet)
 
         (line,) = [s for s in loguru_sink if "Frame messages while" in s]
         assert line.count("WM_NCPAINT") == cap
@@ -537,9 +565,9 @@ class TestHeldRect:
         self, guard: win32_window.CaptionGuard, loguru_sink: list[str]
     ) -> None:
         """Going fullscreen first thing: no window move has come in yet."""
-        win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        quiet = win32_window.quiet_window_frame(HIGH_HWND, 0.5)
         guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
-        win32_window.end_window_frame_quiet(HIGH_HWND)
+        win32_window.end_window_frame_quiet(HIGH_HWND, quiet)
 
         assert any("Frame messages while the window's frame was quiet" in s for s in loguru_sink)
 
@@ -551,9 +579,9 @@ class TestHeldRect:
             win32_window.hold_window_rect(HIGH_HWND, HELD)
         with patch.object(win32_window.time, "monotonic", return_value=103.0):
             self._changing(guard)
-        win32_window.quiet_window_frame(HIGH_HWND, 0.5)
+        quiet = win32_window.quiet_window_frame(HIGH_HWND, 0.5)
         guard._on_message(HIGH_HWND, win32_window.WM_NCPAINT, 1, 0)
-        win32_window.end_window_frame_quiet(HIGH_HWND)
+        win32_window.end_window_frame_quiet(HIGH_HWND, quiet)
 
         assert any("Frame messages while the window's frame was quiet" in s for s in loguru_sink)
 

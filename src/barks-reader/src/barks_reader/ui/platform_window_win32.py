@@ -132,13 +132,19 @@ class _ScheduledRestore:
         x, y = self._state.pos
         width, height = self._state.size
 
+        # The callbacks of a restore that finished early are gone, and their cancel
+        # with them, so a fullscreen transition since then has to be seen here: the
+        # window is fullscreen again, or out of it once more with a newer restore.
+        # It is that transition's window now, and its quiet or held rectangle is
+        # not this restore's to end.
+        still_this_restores = self._backend._restore is self and not Window.fullscreen  # noqa: SLF001
+
         # The exit is over, or as over as it gets: what moves the window now is the app.
-        self._backend.release_windowed_rect()
+        if still_this_restores:
+            self._backend.release_windowed_rect()
 
         if self._finished:
-            # The callbacks ran early and their cancel is gone with them, so a
-            # fullscreen transition since then has to be seen here.
-            if not Window.fullscreen and not self._backend._is_window_at(self._wanted):  # noqa: SLF001
+            if still_this_restores and not self._backend._is_window_at(self._wanted):  # noqa: SLF001
                 logger.warning("Win32: Window moved after its early restore; moving it back.")
                 self._backend._set_window_rect(x, y, width, height)  # noqa: SLF001
             return
@@ -229,9 +235,12 @@ class Win32WindowBackend:
         logs the frame messages the window had.
         """
         hwnd = self._hwnd
-        if hwnd and quiet_window_frame(hwnd, _FULLSCREEN_ENTRY_QUIET_SECONDS):
+        if not hwnd:
+            return
+        quiet = quiet_window_frame(hwnd, _FULLSCREEN_ENTRY_QUIET_SECONDS)
+        if quiet:
             Clock.schedule_once(
-                lambda _dt: end_window_frame_quiet(hwnd), _FULLSCREEN_ENTRY_QUIET_SECONDS
+                lambda _dt: end_window_frame_quiet(hwnd, quiet), _FULLSCREEN_ENTRY_QUIET_SECONDS
             )
 
     def move_now(self, state: WindowState) -> None:

@@ -263,7 +263,7 @@ def test_going_fullscreen_quiets_the_windows_frame_then_ends_the_quiet() -> None
     seconds = win32_module._FULLSCREEN_ENTRY_QUIET_SECONDS
 
     with (
-        patch.object(win32_module, "quiet_window_frame", return_value=True) as quiet,
+        patch.object(win32_module, "quiet_window_frame", return_value=7) as quiet,
         patch.object(win32_module, "end_window_frame_quiet") as end_quiet,
         patch.object(win32_module, "Clock") as clock,
     ):
@@ -274,14 +274,14 @@ def test_going_fullscreen_quiets_the_windows_frame_then_ends_the_quiet() -> None
         (callback, delay), _ = clock.schedule_once.call_args
         assert delay == seconds
         callback(0)
-        end_quiet.assert_called_once_with(_HWND)
+        end_quiet.assert_called_once_with(_HWND, 7)  # this quiet, not one begun since
 
 
 def test_a_window_with_no_guard_or_no_handle_schedules_no_end_of_quiet() -> None:
     backend = _backend(MagicMock(), MagicMock())
 
     with (
-        patch.object(win32_module, "quiet_window_frame", return_value=False) as quiet,
+        patch.object(win32_module, "quiet_window_frame", return_value=0) as quiet,
         patch.object(win32_module, "Clock") as clock,
     ):
         backend.quiet_frame_for_fullscreen()
@@ -427,6 +427,41 @@ def test_a_window_already_put_right_is_called_back_without_waiting(
         restore.move_window.assert_not_called()
         restore.assert_called_back_once()
         assert restore.clock.live() == []
+
+
+def test_a_restore_that_finished_early_leaves_a_window_gone_fullscreen_since_alone() -> None:
+    """Out of fullscreen and straight back in, before the first exit's delayed move.
+
+    The move let go of the window all the same, which ended the quiet the new entry
+    had just begun, and the caption could flash.
+    """
+    with _Restore(_SAVED) as restore:
+        restore.assert_called_back_once()
+        restore.window.fullscreen = "auto"
+        restore.window_at = (0, 0, 2560, 1440)
+
+        restore.clock.run_delayed_move()
+
+        restore.release.assert_not_called()
+        restore.move_window.assert_not_called()
+
+
+def test_a_restore_that_finished_early_leaves_a_newer_restores_window_alone() -> None:
+    """Out, in and out again: the second exit holds the window, and has its own restore."""
+    with _Restore(_SAVED) as restore:
+        restore.assert_called_back_once()
+        restore.window_at = _ELSEWHERE  # the second exit, on its way
+        restore.backend.schedule_restore(_saved_state(), MagicMock(), MagicMock())
+
+        restore.clock.run_delayed_move()  # the first restore's: the oldest
+
+        restore.release.assert_not_called()  # the held rectangle is the second exit's
+        restore.move_window.assert_not_called()
+
+        restore.clock.run_delayed_move()  # the second's own
+
+        restore.release.assert_called_once_with(_HWND)
+        restore.move_window.assert_called_once_with(_HWND, *_SAVED, True)  # noqa: FBT003
 
 
 def test_a_resize_that_leaves_the_window_right_is_called_back_there(

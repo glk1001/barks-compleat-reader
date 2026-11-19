@@ -304,6 +304,7 @@ class CaptionGuard:
         self._held_until = 0.0
         self._quiet_from = 0.0
         self._quiet_until = 0.0
+        self._quiet_number = 0  # the newest quiet's, from 1: what `end_quiet` is given
         self._frame_messages: list[tuple[int, str]] = []
 
         self._next_proc: int | None = None
@@ -332,7 +333,7 @@ class CaptionGuard:
         self._quiet_until = 0.0
         self._log_frame_messages("while the window was held")
 
-    def quiet_frame(self, seconds: float) -> None:
+    def quiet_frame(self, seconds: float) -> int:
         """Answer the window's requests to paint its frame here, for `seconds`.
 
         For a change of fullscreen, either way: it changes the window's caption
@@ -344,18 +345,33 @@ class CaptionGuard:
 
         The messages that change or paint the frame are kept meanwhile, for
         `end_quiet` or `release_rect` to log.
+
+        Args:
+            seconds: How long the quiet lasts, at most.
+
+        Returns:
+            This quiet's number, never 0, for `end_quiet`.
+
         """
         self._quiet_from = time.monotonic()
         self._quiet_until = self._quiet_from + seconds
+        self._quiet_number += 1
         self._frame_messages = []
+        return self._quiet_number
 
-    def end_quiet(self) -> None:
-        """Log the frame messages of a quiet started by `quiet_frame`, and end it.
+    def end_quiet(self, quiet: int) -> None:
+        """Log the frame messages of the quiet `quiet_frame` numbered `quiet`, and end it.
 
-        Does nothing while a rectangle is held: that quiet is the hold's, which a
-        fullscreen exit started since, and `release_rect` ends it.
+        Does nothing when a quiet has started since: fullscreen, back and fullscreen
+        again inside the first quiet's time, and its late end cut the second short,
+        letting the caption flash. Nor while a rectangle is held: that quiet is the
+        hold's, which a fullscreen exit started since, and `release_rect` ends it.
+
+        Args:
+            quiet: The number `quiet_frame` returned.
+
         """
-        if self._held_rect is not None:
+        if quiet != self._quiet_number or self._held_rect is not None:
             return
         self._quiet_until = 0.0
         self._log_frame_messages("while the window's frame was quiet")
@@ -436,7 +452,7 @@ def hold_window_rect(hwnd: int, rect: tuple[int, int, int, int]) -> bool:
     return False
 
 
-def quiet_window_frame(hwnd: int, seconds: float) -> bool:
+def quiet_window_frame(hwnd: int, seconds: float) -> int:
     """Keep the window `hwnd` from painting a frame for `seconds`: it is changing fullscreen.
 
     Args:
@@ -444,21 +460,27 @@ def quiet_window_frame(hwnd: int, seconds: float) -> bool:
         seconds: How long, at most; `end_window_frame_quiet` ends it sooner.
 
     Returns:
-        Whether the window has a guard to do it; without one nothing changes.
+        The quiet's number, for `end_window_frame_quiet`; 0 when the window has no
+        guard to do it, and nothing changes.
 
     """
     for guard in _caption_guards:
         if guard.hwnd == hwnd:
-            guard.quiet_frame(seconds)
-            return True
-    return False
+            return guard.quiet_frame(seconds)
+    return 0
 
 
-def end_window_frame_quiet(hwnd: int) -> None:
-    """End what `quiet_window_frame` began for the window `hwnd`, logging its frame messages."""
+def end_window_frame_quiet(hwnd: int, quiet: int) -> None:
+    """End the quiet `quiet_window_frame` began for the window `hwnd`, logging its messages.
+
+    Args:
+        hwnd: The window handle.
+        quiet: The number `quiet_window_frame` returned: a quiet begun since is left alone.
+
+    """
     for guard in _caption_guards:
         if guard.hwnd == hwnd:
-            guard.end_quiet()
+            guard.end_quiet(quiet)
 
 
 def release_window_rect(hwnd: int) -> None:
