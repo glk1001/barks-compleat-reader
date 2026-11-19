@@ -341,11 +341,16 @@ stories under *Reading*). The rest, and what those two left behind:
 
 Left over from the read marks and *November in Barks*:
 
-- [ ] **See the rest of the month node in the running app** — the *On sale in* group and
-      the line that names a story submitted on today's date ("Submitted 69 years ago today:
-      The Golden River") have only been run by unit tests. Open the node on a day a story
-      was submitted (in November: the 21st, 23rd, 24th, 26th, 27th and 30th, among others)
-      and look at both.
+- [ ] **See the "submitted today" line in the running app** — the line that names a story
+      submitted on today's date ("Submitted 69 years ago today: The Golden River") has only
+      been run by unit tests: a GUI test would meet it on some days only, unless the app
+      can be told the date. Open the node's *Submitted in* group on a day a story was
+      submitted (in November: the 21st, 23rd, 24th, 26th, 27th and 30th, among others) and
+      look. The *On sale in* group has had a GUI test since 030780a1.
+- [ ] **What the GUI tests of these still leave out** — the dot's drawing and its place at
+      the right edge (pixels: for the eye, or a screenshot check), the month node's top
+      picture, and the order of the nodes under *Reading*. The marks themselves, the read
+      count and the one-minute rule are tested through two log lines (030780a1).
 - [ ] **The read mark on the two-page spread** — the dot sits at the tree's right edge,
       inside the scrollbar (9a8acce0); seen only on the single page. Look at it on the
       spread and at 4K.
