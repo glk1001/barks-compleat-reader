@@ -75,7 +75,7 @@ The tree on the left is the primary way to find stories. Its top-level sections 
   - *Continue reading* — the stories you left part-way through, the most recent first. Open
     one and its title view offers the page you stopped on.
   - *Choose for me* — a fresh random handful of stories, re-rolled each time you open the node:
-    *Surprise me*, *Not yet read* (only stories you have not finished), a decade
+    *Surprise me*, *Not yet read* (only stories with no dot), a decade
     (*From the 1940s/50s/60s*), *From favourites*, or *With Scrooge*, *Gladstone*, *Gyro*,
     *Daisy*, *the Beagle Boys* or *Grandma Duck*.
   - *Playlists* — hand-picked sets of stories, each introduced by a short note.
@@ -91,8 +91,8 @@ A title in parentheses, such as *(The Hypno-Gun)*, is a story Barks left untitle
 one given to it later.
 
 A dot after a story's title says how far you have got with it: a full dot for a story you
-have read to its last page, a half dot for one you left part-way through, and no dot for one
-you have not read. A one-page gag or a cover counts as read once you have opened it. The
+have read to its last page, a half dot for one you are part-way through (a story you
+finished before and are reading again included), and no dot for one you have not read. A one-page gag or a cover counts as read once you have opened it. The
 dots, *Continue reading*, *Not yet read* and the count on *By the Numbers* all come from the
 reading history, so they stop changing while *Record Reading History* is off, and deleting a
 story from the *History* view makes it unread again.

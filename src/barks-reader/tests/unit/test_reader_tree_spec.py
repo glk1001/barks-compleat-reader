@@ -75,7 +75,7 @@ from barks_reader.core.navigation.tree_spec import (
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.playlists import PLAYLISTS
-from barks_reader.core.read_state import ReadStates
+from barks_reader.core.read_state import ReadState, ReadStates
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     ARTICLE_TITLE_TEXTS,
@@ -751,7 +751,7 @@ class TestContinueReading:
 
 
 class TestNotYetRead:
-    """'Choose for me' from the stories never finished."""
+    """'Choose for me' from the stories neither finished nor left mid-way."""
 
     @staticmethod
     def _rows_of(specs: tuple[NodeSpec, ...]) -> tuple[NodeSpec, ...]:
@@ -786,22 +786,39 @@ class TestNotYetRead:
         } == unread
         assert len(rows) == len(unread)
 
-    def test_a_story_left_mid_way_is_still_unread(
+    def test_a_story_left_mid_way_is_not_offered_either(
         self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
     ) -> None:
+        # 'Continue reading' has it, and here it would be the one row with a mark.
         all_titles = self._all_title_strs(title_lists)
-        read_states = ReadStates(finished=frozenset(all_titles[1:]), left_mid_way=(all_titles[0],))
+        read_states = ReadStates(finished=frozenset(all_titles[2:]), left_mid_way=(all_titles[0],))
         specs = _build_specs(reader_settings, title_lists, lambda: read_states)
 
         [row] = self._rows_of(specs)
 
         assert row.fanta_info is not None
-        assert row.fanta_info.comic_book_info.get_title_str() == all_titles[0]
+        assert row.fanta_info.comic_book_info.get_title_str() == all_titles[1]
 
-    def test_with_every_story_finished_it_says_so(
+    def test_no_row_it_offers_has_a_read_mark(
         self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
     ) -> None:
-        read_states = ReadStates(finished=frozenset(self._all_title_strs(title_lists)))
+        all_titles = self._all_title_strs(title_lists)
+        read_states = ReadStates(
+            finished=frozenset(all_titles[::2]), left_mid_way=tuple(all_titles[1::3])
+        )
+        specs = _build_specs(reader_settings, title_lists, lambda: read_states)
+
+        for _roll in range(20):
+            for row in self._rows_of(specs):
+                assert row.fanta_info is not None
+                title_str = row.fanta_info.comic_book_info.get_title_str()
+                assert read_states.state_of(title_str) is ReadState.UNREAD
+
+    def test_with_every_story_finished_or_part_read_it_says_so(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        all_titles = self._all_title_strs(title_lists)
+        read_states = ReadStates(finished=frozenset(all_titles[1:]), left_mid_way=(all_titles[0],))
         specs = _build_specs(reader_settings, title_lists, lambda: read_states)
 
         assert self._rows_of(specs) == (

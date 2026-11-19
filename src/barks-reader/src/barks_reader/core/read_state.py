@@ -45,7 +45,8 @@ class ReadStates:
     Attributes:
         finished: The titles some session finished.
         left_mid_way: The titles whose latest session stopped inside the story, most
-            recently opened first. A finished story being read again is in both.
+            recently opened first. A finished story being read again is in both, and
+            is part-read for as long as it is.
 
     """
 
@@ -53,7 +54,10 @@ class ReadStates:
     left_mid_way: tuple[str, ...] = ()
 
     def state_of(self, title_str: str) -> ReadState:
-        """Return a story's state: finished, once it has been, whatever came after.
+        """Return a story's state as it stands now.
+
+        A story left mid-way is part-read even when an earlier read finished it:
+        'Continue reading' lists it, and its mark there must say why.
 
         Args:
             title_str: The story's title, as the history records it.
@@ -62,10 +66,10 @@ class ReadStates:
             The story's read state.
 
         """
-        if title_str in self.finished:
-            return ReadState.FINISHED
         if title_str in self.left_mid_way:
             return ReadState.PART_READ
+        if title_str in self.finished:
+            return ReadState.FINISHED
         return ReadState.UNREAD
 
 

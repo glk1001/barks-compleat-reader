@@ -47,7 +47,7 @@ NOTHING_TO_CONTINUE_TEXT = "No story is waiting part-way through."
 CHOOSE_FOR_ME_NODE_TEXT = "Choose for me"
 SURPRISE_ME_NODE_TEXT = "Surprise me"
 NOT_YET_READ_NODE_TEXT = "Not yet read"
-# The row under 'Not yet read' when every story has been finished.
+# The row under 'Not yet read' when every story has been finished or is part-read.
 NOTHING_UNREAD_TEXT = "Every story has been read."
 FROM_THE_1940S_NODE_TEXT = "From the 1940s"
 FROM_THE_1950S_NODE_TEXT = "From the 1950s"

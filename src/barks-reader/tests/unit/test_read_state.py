@@ -118,7 +118,9 @@ class TestGetReadStates:
         assert states.state_of(_ANDES) is ReadState.FINISHED
         assert states.left_mid_way == ()
 
-    def test_a_finished_story_being_read_again_is_finished_and_left_mid_way(self) -> None:
+    def test_a_finished_story_being_read_again_is_part_read_until_it_is_finished_again(
+        self,
+    ) -> None:
         states = get_read_states(
             [
                 _event(day=0, page=COMIC_BEGIN_PAGE, finished=True),
@@ -126,8 +128,19 @@ class TestGetReadStates:
             ]
         )
 
-        assert states.state_of(_ANDES) is ReadState.FINISHED
+        # 'Continue reading' lists it, so its mark is the half dot, not the full one.
+        assert states.state_of(_ANDES) is ReadState.PART_READ
         assert states.left_mid_way == (_ANDES,)
+        assert states.finished == frozenset({_ANDES})  # it still counts as read
+
+        again = get_read_states(
+            [
+                _event(day=0, page=COMIC_BEGIN_PAGE, finished=True),
+                _event(day=1, page="7", finished=False),
+                _event(day=2, page=COMIC_BEGIN_PAGE, finished=True),
+            ]
+        )
+        assert again.state_of(_ANDES) is ReadState.FINISHED
 
     def test_left_mid_way_is_most_recently_opened_first(self) -> None:
         states = get_read_states(

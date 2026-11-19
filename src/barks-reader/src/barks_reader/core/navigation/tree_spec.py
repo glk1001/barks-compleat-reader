@@ -45,7 +45,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_reader.core.document_chapters import find_document_chapters
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.playlists import PLAYLISTS, Playlist, get_playlist_title_infos
-from barks_reader.core.read_state import ReadStates
+from barks_reader.core.read_state import ReadState, ReadStates
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_NODE_TEXT,
@@ -292,9 +292,16 @@ def _random_title_rows(title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec,
 def _unread_random_title_rows(
     title_infos: list[FantaComicBookInfo], read_states: Callable[[], ReadStates]
 ) -> tuple[NodeSpec, ...]:
-    """Make title rows for a fresh random sample of the stories never finished."""
-    finished = read_states().finished
-    unread = [info for info in title_infos if info.comic_book_info.get_title_str() not in finished]
+    """Make title rows for a fresh random sample of the unread stories.
+
+    A story left mid-way is not among them: 'Continue reading' has it.
+    """
+    states = read_states()
+    unread = [
+        info
+        for info in title_infos
+        if states.state_of(info.comic_book_info.get_title_str()) is ReadState.UNREAD
+    ]
     if not unread:
         return (NodeSpec(kind=NodeKind.INTRO_TEXT, text=NOTHING_UNREAD_TEXT),)
     return _random_title_rows(unread)
