@@ -78,10 +78,10 @@ The tree on the left is the primary way to find stories. Its top-level sections 
     *Surprise me*, *From not yet read* (only stories with no dot), a decade
     (*From the 1940s/50s/60s*), *From favourites*, or *With Scrooge*, *Gladstone*, *Gyro*,
     *Daisy*, *the Beagle Boys* or *Grandma Duck*.
-  - *Playlists* — hand-picked sets of stories, each introduced by a short note.
   - *November in Barks* (named for the current month) — the stories tied to this month in
     any year: those Barks *submitted* in it and those *on sale* in it, by the month on the
     issue's cover. A story submitted on today's date is named at the top of its list.
+  - *Playlists* — hand-picked sets of stories, each introduced by a short note.
   - *History* — a journal of the comics you've read, grouped by day. The Reader records this
     automatically (it can be turned off with the *Record Reading History* setting), and the
     history can be cleared from within the view.

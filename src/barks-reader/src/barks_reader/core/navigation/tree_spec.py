@@ -659,8 +659,8 @@ class _SpecBuilder:
                         ),
                     ),
                 ),
-                self._playlists_spec(),
                 self._this_month_spec(),
+                self._playlists_spec(),
                 NodeSpec(
                     kind=NodeKind.STORY_GROUP,
                     text=HISTORY_NODE_TEXT,

@@ -855,7 +855,7 @@ class TestThisMonth:
 
     @staticmethod
     def _node_of(specs: tuple[NodeSpec, ...]) -> NodeSpec:
-        return specs[3].children[3]
+        return specs[3].children[2]
 
     @staticmethod
     def _titles_of(group: NodeSpec) -> list[Titles]:
@@ -942,8 +942,8 @@ class TestReadingSubtree:
         assert [child.text for child in reading.children] == [
             CONTINUE_READING_NODE_TEXT,
             CHOOSE_FOR_ME_NODE_TEXT,
-            PLAYLISTS_NODE_TEXT,
             get_month_node_text(_TODAY.month),
+            PLAYLISTS_NODE_TEXT,
             HISTORY_NODE_TEXT,
         ]
 
@@ -1058,7 +1058,7 @@ class TestReadingSubtree:
 
 class TestPlaylistsSubtree:
     def test_playlists_node_has_one_child_per_playlist(self, specs: tuple[NodeSpec, ...]) -> None:
-        playlists = specs[3].children[2]
+        playlists = specs[3].children[3]
         assert playlists.text == PLAYLISTS_NODE_TEXT
         assert isinstance(playlists.destination, PlaylistsDestination)
         assert len(playlists.children) == len(PLAYLISTS)
@@ -1075,7 +1075,7 @@ class TestPlaylistsSubtree:
     def test_playlist_rows_start_with_the_hyphenated_intro(
         self, specs: tuple[NodeSpec, ...]
     ) -> None:
-        for spec, playlist in zip(specs[3].children[2].children, PLAYLISTS, strict=True):
+        for spec, playlist in zip(specs[3].children[3].children, PLAYLISTS, strict=True):
             assert spec.lazy_children is not None
             intro_row = spec.lazy_children()[0]
 
@@ -1086,7 +1086,7 @@ class TestPlaylistsSubtree:
             assert SOFT_HYPHEN in intro_row.text
 
     def test_playlist_titles_keep_their_curated_order(self, specs: tuple[NodeSpec, ...]) -> None:
-        for spec, playlist in zip(specs[3].children[2].children, PLAYLISTS, strict=True):
+        for spec, playlist in zip(specs[3].children[3].children, PLAYLISTS, strict=True):
             assert spec.lazy_children is not None
             title_rows = spec.lazy_children()[1:]
 
