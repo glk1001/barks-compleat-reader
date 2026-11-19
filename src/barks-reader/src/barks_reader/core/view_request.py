@@ -59,6 +59,7 @@ class ViewRequest:
     tag_group: TagGroups | None = None
     tag: Tags | None = None
     playlist_id: str = ""
+    month: int = 0  # 1 to 12 on a '<Month> in Barks' node; 0 elsewhere.
     title_str: str = ""
     fun_image_themes: set[ImageThemes] | None = None
     title_image_file: PanelPath | None = None

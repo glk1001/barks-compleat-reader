@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
+    from barks_reader.core.this_month import MonthDate
+
     from .view_states import ViewStates
 
 
@@ -264,6 +266,19 @@ class PlaylistDestination(Destination):
     """
 
     playlist_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class ThisMonthDestination(Destination):
+    """'<Month> in Barks' under 'Reading', or one of its two groups.
+
+    `dated_by` is None on the month's own node and names the date a group goes by:
+    the stories submitted in the month, or those on sale in it. All three share the
+    month's view.
+    """
+
+    month: int
+    dated_by: MonthDate | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -69,6 +69,7 @@ from barks_reader.core.navigation.destinations import (
     TagGroupDestination,
     TagSearchDestination,
     TagYearRangeDestination,
+    ThisMonthDestination,
     TitleDestination,
     TitleSearchDestination,
     WikiIndexDestination,
@@ -78,6 +79,7 @@ from barks_reader.core.navigation.destinations import (
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.playlists import PLAYLISTS_BY_ID
+from barks_reader.core.this_month import MonthDate
 from hypothesis import strategies as st
 
 if TYPE_CHECKING:
@@ -257,6 +259,11 @@ def payload_destinations() -> st.SearchStrategy[Destination]:
         ),
         random_titles_destinations(),
         st.builds(PlaylistDestination, st.sampled_from(sorted(PLAYLISTS_BY_ID))),
+        st.builds(
+            ThisMonthDestination,
+            st.integers(min_value=1, max_value=12),
+            st.none() | st.sampled_from(list(MonthDate)),
+        ),
         st.builds(TitleDestination, fanta_infos()),
         st.builds(ArticleDestination, st.sampled_from(ARTICLE_VIEW_STATES), article_titles()),
         st.builds(
@@ -286,6 +293,7 @@ DESTINATION_TYPES_BUILT: frozenset[type[Destination]] = frozenset(
         TagYearRangeDestination,
         RandomTitlesDestination,
         PlaylistDestination,
+        ThisMonthDestination,
         TitleDestination,
         ArticleDestination,
         DocumentDestination,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from datetime import date
 from enum import Enum
 from functools import partial
 from typing import TYPE_CHECKING
@@ -59,6 +60,7 @@ from barks_reader.core.navigation import (
     TagDestination,
     TagGroupDestination,
     TagYearRangeDestination,
+    ThisMonthDestination,
     YearRangeKind,
     build_reader_tree_spec,
 )
@@ -111,6 +113,12 @@ from barks_reader.core.reader_consts_and_types import (
     WITH_SCROOGE_NODE_TEXT,
 )
 from barks_reader.core.reader_formatter import get_markup_text_with_num_titles
+from barks_reader.core.this_month import (
+    MonthDate,
+    get_month_group_heading,
+    get_month_node_text,
+    get_stories_in_month,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -137,10 +145,16 @@ def _without_history(settings: MagicMock, tmp_path: Path) -> None:
     settings.sys_file_paths.get_illustrated_history_doc_dir.return_value = tmp_path / "none"
 
 
+# The day every tree here is built on, unless a test names another: a November day on
+# which Barks submitted no story.
+_TODAY = date(2026, 11, 19)
+
+
 def _build_specs(
     settings: MagicMock,
     title_lists: dict[str, list[FantaComicBookInfo]],
     read_states: Callable[[], ReadStates] | None = None,
+    today: date = _TODAY,
 ) -> tuple[NodeSpec, ...]:
     """Build the tree from `settings` with no favourites.
 
@@ -155,7 +169,11 @@ def _build_specs(
         ),
     ):
         return build_reader_tree_spec(
-            settings, title_lists, include_one_pagers_in_chrono=False, read_states=read_states
+            settings,
+            title_lists,
+            include_one_pagers_in_chrono=False,
+            read_states=read_states,
+            today=today,
         )
 
 
@@ -832,6 +850,87 @@ class TestNotYetRead:
         assert all(row.kind is NodeKind.TITLE_ROW for row in rows)
 
 
+class TestThisMonth:
+    """'<Month> in Barks': the month's stories by each of their two dates."""
+
+    @staticmethod
+    def _node_of(specs: tuple[NodeSpec, ...]) -> NodeSpec:
+        return specs[3].children[3]
+
+    @staticmethod
+    def _titles_of(group: NodeSpec) -> list[Titles]:
+        assert group.lazy_children is not None
+        return [
+            row.fanta_info.comic_book_info.title
+            for row in group.lazy_children()
+            if row.fanta_info is not None
+        ]
+
+    def test_it_is_named_for_the_month_the_tree_was_built_in(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        node = self._node_of(_build_specs(reader_settings, title_lists, today=date(2027, 3, 9)))
+
+        assert node.kind is NodeKind.STORY_GROUP
+        assert node.text == "March in Barks"
+        assert node.destination == ThisMonthDestination(month=3)
+        assert node.press_action is PressAction.TOGGLE_ONLY
+
+    def test_it_has_a_group_for_each_date_with_its_count(self, specs: tuple[NodeSpec, ...]) -> None:
+        groups = self._node_of(specs).children
+
+        assert [group.destination for group in groups] == [
+            ThisMonthDestination(month=_TODAY.month, dated_by=MonthDate.SUBMITTED),
+            ThisMonthDestination(month=_TODAY.month, dated_by=MonthDate.ON_SALE),
+        ]
+        for group, dated_by in zip(groups, MonthDate, strict=True):
+            assert group.kind is NodeKind.STORY_GROUP
+            assert not group.repopulate_on_expand
+            assert group.text == get_markup_text_with_num_titles(
+                get_month_group_heading(dated_by, _TODAY.month), len(self._titles_of(group))
+            )
+
+    @pytest.mark.parametrize("dated_by", list(MonthDate))
+    def test_a_group_lists_its_month_s_stories_in_order(
+        self, specs: tuple[NodeSpec, ...], dated_by: MonthDate
+    ) -> None:
+        group = self._node_of(specs).children[list(MonthDate).index(dated_by)]
+
+        expected = [info.title for info in get_stories_in_month(dated_by, _TODAY.month)]
+        assert expected
+        assert self._titles_of(group) == [t for t in expected if get_fanta_info(t)]
+
+    def test_a_story_submitted_on_today_s_date_is_named_above_the_rows(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        andes_info = get_fanta_info(Titles.LOST_IN_THE_ANDES)
+        assert andes_info is not None
+        andes = andes_info.comic_book_info
+        today = date(2027, andes.submitted_month, andes.submitted_day)
+        node = self._node_of(_build_specs(reader_settings, title_lists, today=today))
+        submitted, on_sale = node.children
+        assert submitted.lazy_children is not None
+        assert on_sale.lazy_children is not None
+
+        first, second, *_rest = submitted.lazy_children()
+
+        assert first.kind is NodeKind.INTRO_TEXT
+        years = 2027 - andes.submitted_year
+        assert first.text.replace(SOFT_HYPHEN, "") == (
+            f"Submitted {years} years ago today: Lost in the Andes!"
+        )
+        assert second.kind is NodeKind.TITLE_ROW
+        assert all(row.kind is NodeKind.TITLE_ROW for row in on_sale.lazy_children())
+
+    def test_on_a_day_no_story_was_submitted_there_are_only_title_rows(
+        self, specs: tuple[NodeSpec, ...]
+    ) -> None:
+        submitted = self._node_of(specs).children[0]
+        assert submitted.lazy_children is not None
+
+        assert all(row.kind is NodeKind.TITLE_ROW for row in submitted.lazy_children())
+
+
 class TestReadingSubtree:
     def test_reading_has_choose_for_me_playlists_and_history(
         self, specs: tuple[NodeSpec, ...]
@@ -844,11 +943,12 @@ class TestReadingSubtree:
             CONTINUE_READING_NODE_TEXT,
             CHOOSE_FOR_ME_NODE_TEXT,
             PLAYLISTS_NODE_TEXT,
+            get_month_node_text(_TODAY.month),
             HISTORY_NODE_TEXT,
         ]
 
     def test_history_registration_and_press_action(self, specs: tuple[NodeSpec, ...]) -> None:
-        history = specs[3].children[3]
+        history = specs[3].children[4]
         assert history.text == HISTORY_NODE_TEXT
         assert isinstance(history.destination, HistoryDestination)
         assert history.register_as is NodeRegistration.HISTORY

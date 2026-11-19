@@ -46,6 +46,7 @@ CONTINUE_READING_NODE_TEXT = "Continue reading"
 NOTHING_TO_CONTINUE_TEXT = "No story is waiting part-way through."
 CHOOSE_FOR_ME_NODE_TEXT = "Choose for me"
 SURPRISE_ME_NODE_TEXT = "Surprise me"
+# '<Month> in Barks' is named for the month: `this_month.get_month_node_text`.
 NOT_YET_READ_NODE_TEXT = "From not yet read"
 # The row under 'From not yet read' when every story has been finished or is part-read.
 NOTHING_UNREAD_TEXT = "Every story has been read."

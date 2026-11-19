@@ -55,6 +55,7 @@ from .playlists import PLAYLISTS_BY_ID
 from .ports import CancelHandle, ColorSource, PaletteId, Scheduler
 from .reader_file_paths import ALL_TYPES, FileTypes
 from .reader_formatter import get_formatted_color
+from .this_month import get_titles_in_month
 from .view_request import ImageThemes, ViewRequest
 from .view_snapshot import (
     FunViewSnapshot,
@@ -249,6 +250,7 @@ class ViewPipeline:
         self._current_tag_group: TagGroups | None = None
         self._current_tag: Tags | None = None
         self._current_playlist_id = ""
+        self._current_month = 0
         self._current_bottom_view_title = ""
 
         self._search_screen_image_info: ImageInfo = ImageInfo()
@@ -284,6 +286,7 @@ class ViewPipeline:
         self._current_tag_group = request.tag_group
         self._current_tag = request.tag
         self._current_playlist_id = request.playlist_id
+        self._current_month = request.month
         self._current_bottom_view_title = request.title_str
         if force_fresh_fun_image:
             self._bottom_view_fun_image_info = None
@@ -338,6 +341,7 @@ class ViewPipeline:
             tag_group=self._current_tag_group,
             tag=self._current_tag,
             playlist_id=self._current_playlist_id,
+            month=self._current_month,
             title_str=self._current_bottom_view_title,
             fun_image_themes=(
                 None if self._fun_image_themes is None else set(self._fun_image_themes)
@@ -481,6 +485,7 @@ class ViewPipeline:
             ({ViewStates.ON_RANDOM_TITLES_NODE}, self._set_top_view_image_for_random_titles),
             ({ViewStates.ON_PLAYLISTS_NODE}, self._set_top_view_image_for_stories),
             ({ViewStates.ON_PLAYLIST_NODE}, self._set_top_view_image_for_playlist),
+            ({ViewStates.ON_THIS_MONTH_NODE}, self._set_top_view_image_for_month),
             (
                 self._APPENDIX_VIEW_STATES,
                 lambda: self._set_top_view_image_fixed(Titles.FABULOUS_PHILOSOPHERS_STONE_THE),
@@ -577,6 +582,13 @@ class ViewPipeline:
         self._set_top_view_image_from_titles_or_fixed(
             self._current_playlist_id,
             self._get_playlist_fanta_title_list,
+        )
+
+    def _set_top_view_image_for_month(self) -> None:
+        logger.debug(f"Current month: {self._current_month}.")
+        self._set_top_view_image_from_titles_or_fixed(
+            self._current_month,
+            lambda month: self._get_fanta_title_list(get_titles_in_month(month)),
         )
 
     def _get_playlist_fanta_title_list(self, playlist_id: str) -> list[FantaComicBookInfo]:

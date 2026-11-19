@@ -71,7 +71,7 @@ The tree on the left is the primary way to find stories. Its top-level sections 
 - **Search** — find stories by *Titles*, by *Tags*, or by *Words* (speech-bubble text). Words and
   tags can be combined, narrowed to an era, and a word search to who says it or to a tag's
   stories: see [Searching](#searching) below.
-- **Reading** — four ways to pick something to read:
+- **Reading** — five ways to pick something to read:
   - *Continue reading* — the stories you left part-way through, the most recent first. Open
     one and its title view offers the page you stopped on.
   - *Choose for me* — a fresh random handful of stories, re-rolled each time you open the node:
@@ -79,6 +79,9 @@ The tree on the left is the primary way to find stories. Its top-level sections 
     (*From the 1940s/50s/60s*), *From favourites*, or *With Scrooge*, *Gladstone*, *Gyro*,
     *Daisy*, *the Beagle Boys* or *Grandma Duck*.
   - *Playlists* — hand-picked sets of stories, each introduced by a short note.
+  - *November in Barks* (named for the current month) — the stories tied to this month in
+    any year: those Barks *submitted* in it and those *on sale* in it, by the month on the
+    issue's cover. A story submitted on today's date is named at the top of its list.
   - *History* — a journal of the comics you've read, grouped by day. The Reader records this
     automatically (it can be turned off with the *Record Reading History* setting), and the
     history can be cleared from within the view.

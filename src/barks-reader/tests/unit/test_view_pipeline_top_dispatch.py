@@ -42,6 +42,7 @@ from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.playlists import PLAYLISTS
 from barks_reader.core.testing import FakeScheduler, ScriptedColorSource
+from barks_reader.core.this_month import get_titles_in_month
 from barks_reader.core.view_pipeline import ViewPipeline
 from barks_reader.core.view_request import ViewRequest
 from view_pipeline_factory import scheduler_of, selector_of
@@ -64,6 +65,8 @@ _TAG_GROUP_TITLE = Titles.BACK_TO_LONG_AGO
 # first entry carries the marker through the stubbed selector.
 _PLAYLIST = PLAYLISTS[0]
 _PLAYLIST_FIRST_TITLE = _PLAYLIST.titles[0]
+_MONTH = 11
+_MONTH_FIRST_TITLE = get_titles_in_month(_MONTH)[0]
 
 _SERIES_KEY_FOR_STATE: dict[ViewStates, str] = {
     ViewStates.ON_CS_NODE: SERIES_CS,
@@ -148,6 +151,8 @@ _EXPECTED_TOP_VIEW_IMAGE: dict[ViewStates, ImageInfo] = {
     ViewStates.ON_RANDOM_TITLES_NODE: _random_from(f"fanta:{_TAG_TITLE.name}"),
     # A playlist themes its top view from its own (first) title.
     ViewStates.ON_PLAYLIST_NODE: _random_from(f"fanta:{_PLAYLIST_FIRST_TITLE.name}"),
+    # A month themes its top view from the stories either date puts in it.
+    ViewStates.ON_THIS_MONTH_NODE: _random_from(f"fanta:{_MONTH_FIRST_TITLE.name}"),
     # Dedicated selector calls.
     ViewStates.ON_SEARCH_NODE: ImageInfo(Path("search")),
     ViewStates.ON_TITLE_SEARCH_NODE: ImageInfo(Path("search")),
@@ -201,6 +206,7 @@ def _make_dispatch_pipeline() -> ViewPipeline:
     pipeline._current_tag = _TAG
     pipeline._current_tag_group = _TAG_GROUP
     pipeline._current_playlist_id = _PLAYLIST.playlist_id
+    pipeline._current_month = _MONTH
     return pipeline
 
 
@@ -271,6 +277,47 @@ class TestTopViewDispatchTable:
         assert scheduler.active_intervals[0].period_secs == (
             ViewPipeline.TOP_VIEW_EVENT_TIMEOUT_SECS
         )
+
+
+class TestMonthContext:
+    """The month rides the request into the pipeline and out again."""
+
+    def test_a_fresh_pipeline_has_no_month(self) -> None:
+        pipeline = ViewPipeline(
+            reader_settings=MagicMock(),
+            title_lists={ALL_LISTS: []},
+            image_selector=MagicMock(),
+            scheduler=FakeScheduler(),
+            colors=ScriptedColorSource(),
+        )
+        assert pipeline.current_request().month == 0
+
+    def test_the_request_the_pipeline_reports_carries_the_month_it_was_given(
+        self, dispatch_pipeline: ViewPipeline
+    ) -> None:
+        dispatch_pipeline._current_month = 3
+        assert dispatch_pipeline.current_request().month == 3  # noqa: PLR2004
+
+    def test_the_top_view_draws_from_the_month_s_stories(
+        self, dispatch_pipeline: ViewPipeline
+    ) -> None:
+        dispatch_pipeline._view_state = ViewStates.ON_THIS_MONTH_NODE
+        dispatch_pipeline._current_month = 3
+
+        dispatch_pipeline._set_next_top_view_image()
+
+        march = [f"fanta:{title.name}" for title in get_titles_in_month(3)]
+        assert selector_of(dispatch_pipeline).get_random_image.call_args.args == (march,)
+
+    def test_on_the_month_node_with_no_month_the_top_view_falls_back(
+        self, dispatch_pipeline: ViewPipeline
+    ) -> None:
+        dispatch_pipeline._view_state = ViewStates.ON_THIS_MONTH_NODE
+        dispatch_pipeline._current_month = 0
+
+        dispatch_pipeline._set_next_top_view_image()
+
+        assert dispatch_pipeline._top_view_image_info == _fixed(Titles.GOOD_NEIGHBORS)
 
 
 class TestPlaylistContext:

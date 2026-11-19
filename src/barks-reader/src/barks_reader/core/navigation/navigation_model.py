@@ -60,6 +60,7 @@ from .destinations import (
     TagGroupDestination,
     TagSearchDestination,
     TagYearRangeDestination,
+    ThisMonthDestination,
     TitleDestination,
     TitleSearchDestination,
     WikiIndexDestination,
@@ -131,7 +132,7 @@ class NavigationModel:
     """
 
     @staticmethod
-    def view_state_for(dest: Destination) -> ViewRequest:  # noqa: PLR0911
+    def view_state_for(dest: Destination) -> ViewRequest:  # noqa: C901, PLR0911
         """Resolve the `ViewRequest` to render when `dest` is selected.
 
         Only the navigation-context fields are populated here; renderer-owned
@@ -174,6 +175,9 @@ class NavigationModel:
 
         if isinstance(dest, PlaylistDestination):
             return ViewRequest(view_state=ViewStates.ON_PLAYLIST_NODE, playlist_id=dest.playlist_id)
+
+        if isinstance(dest, ThisMonthDestination):
+            return ViewRequest(view_state=ViewStates.ON_THIS_MONTH_NODE, month=dest.month)
 
         if isinstance(dest, ArticleDestination | DocumentDestination):
             return ViewRequest(view_state=dest.view_state)

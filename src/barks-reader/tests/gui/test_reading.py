@@ -1,12 +1,14 @@
-"""The Reading node: the stories left mid-way, random picks that redraw, and the playlists."""
+"""The Reading node: stories left mid-way, random picks, the playlists and this month's."""
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.this_month import MonthDate, get_month_node_text, get_stories_in_month
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -60,6 +62,19 @@ def test_a_playlist_lists_its_stories_after_an_intro(boot: AppBoot) -> None:
         d.open_branch(PLAYLIST)
     d.key_then_wait(ANY_NODE_SELECTED, "Down")
     assert d.current_node() != PLAYLIST_INTRO_NODE, "Down must skip the intro paragraph"
+
+
+def test_this_month_lists_the_stories_submitted_in_it(boot: AppBoot) -> None:
+    """The node is named for today's month, and its first group opens onto title rows."""
+    month = datetime.now().astimezone().month
+    submitted = get_stories_in_month(MonthDate.SUBMITTED, month)
+    d = boot(nodes.READING)
+    with d.expect(pattern(markers.UPDATING_BACKGROUND_VIEW_STATE, state="ON_THIS_MONTH_NODE")):
+        d.open_branch(get_month_node_text(month))
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")  # the Submitted group
+    d.key_then_wait(pattern(markers.NODE_EXPANDED), "Return")
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")  # its first story, or a line above it skipped
+    assert d.current_node() in {info.title.name for info in submitted}
 
 
 def test_a_character_pick_opens_a_story(boot: AppBoot) -> None:

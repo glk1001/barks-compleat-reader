@@ -60,6 +60,7 @@ from barks_reader.core.navigation import (
     TagGroupDestination,
     TagSearchDestination,
     TagYearRangeDestination,
+    ThisMonthDestination,
     TitleDestination,
     TitleSearchDestination,
     WordSearchDestination,
@@ -68,6 +69,7 @@ from barks_reader.core.navigation import (
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.testing import fake_fanta_info
+from barks_reader.core.this_month import MonthDate
 from barks_reader.core.view_request import ViewRequest
 
 
@@ -159,6 +161,15 @@ def test_view_state_for_playlist_destination(model: NavigationModel) -> None:
     request = model.view_state_for(PlaylistDestination(playlist_id="bravery"))
     assert request.view_state is ViewStates.ON_PLAYLIST_NODE
     assert request.playlist_id == "bravery"
+
+
+@pytest.mark.parametrize("dated_by", [None, *MonthDate])
+def test_view_state_for_a_month_node_and_its_groups(
+    model: NavigationModel, dated_by: MonthDate | None
+) -> None:
+    request = model.view_state_for(ThisMonthDestination(month=11, dated_by=dated_by))
+    assert request.view_state is ViewStates.ON_THIS_MONTH_NODE
+    assert request.month == 11  # noqa: PLR2004
 
 
 @pytest.mark.parametrize(

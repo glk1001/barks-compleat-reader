@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum, auto
 from functools import partial
 from typing import TYPE_CHECKING, assert_never
@@ -104,6 +105,13 @@ from barks_reader.core.reader_formatter import (
     hyphenate_text,
 )
 from barks_reader.core.reader_utils import read_title_list
+from barks_reader.core.this_month import (
+    MonthDate,
+    get_month_group_heading,
+    get_month_node_text,
+    get_stories_in_month,
+    get_submitted_on_this_day_text,
+)
 
 from .destinations import (
     AllSeriesDestination,
@@ -139,6 +147,7 @@ from .destinations import (
     TagGroupDestination,
     TagSearchDestination,
     TagYearRangeDestination,
+    ThisMonthDestination,
     TitleSearchDestination,
     WikiIndexDestination,
     WordSearchDestination,
@@ -149,6 +158,7 @@ from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
+    from datetime import date
 
     from barks_reader.core.reader_settings import ReaderSettings
 
@@ -226,6 +236,7 @@ def build_reader_tree_spec(
     *,
     include_one_pagers_in_chrono: bool = False,
     read_states: Callable[[], ReadStates] | None = None,
+    today: date | None = None,
 ) -> tuple[NodeSpec, ...]:
     """Compose the full reader navigation tree as `NodeSpec`s.
 
@@ -238,6 +249,8 @@ def build_reader_tree_spec(
         read_states: Returns which stories are finished and which were left mid-way,
             asked each time 'Continue reading' or 'From not yet read' opens. Without it
             every story is unread.
+        today: The date '<Month> in Barks' is named and filled for: today's, unless
+            given. An app left running into the next month keeps the old one.
 
     Returns:
         The top-level specs in display order: Intro, The Stories, Search,
@@ -245,7 +258,11 @@ def build_reader_tree_spec(
 
     """
     builder = _SpecBuilder(
-        reader_settings, title_lists, include_one_pagers_in_chrono, read_states or ReadStates
+        reader_settings,
+        title_lists,
+        include_one_pagers_in_chrono,
+        read_states or ReadStates,
+        today or datetime.now().astimezone().date(),
     )
     return (
         builder.intro_spec(),
@@ -317,6 +334,17 @@ def _continue_reading_rows(read_states: Callable[[], ReadStates]) -> tuple[NodeS
     if not title_infos:
         return (NodeSpec(kind=NodeKind.INTRO_TEXT, text=NOTHING_TO_CONTINUE_TEXT),)
     return _title_rows(title_infos)
+
+
+def _month_rows(
+    on_this_day: tuple[str, ...], title_infos: list[FantaComicBookInfo]
+) -> tuple[NodeSpec, ...]:
+    """Make a month group's children: a line for each story submitted today, then its titles."""
+    on_this_day_rows = tuple(
+        NodeSpec(kind=NodeKind.INTRO_TEXT, text=hyphenate_text(escape_editorial_brackets(text)))
+        for text in on_this_day
+    )
+    return (*on_this_day_rows, *_title_rows(title_infos))
 
 
 def _playlist_rows(intro_text: str, title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec, ...]:
@@ -456,8 +484,10 @@ class _SpecBuilder:
         title_lists: dict[str, list[FantaComicBookInfo]],
         include_one_pagers_in_chrono: bool,
         read_states: Callable[[], ReadStates] = ReadStates,
+        today: date | None = None,
     ) -> None:
         self._read_states = read_states
+        self._today = today or datetime.now().astimezone().date()
         self._reader_settings = reader_settings
         self._title_lists = title_lists
         self._include_one_pagers_in_chrono = include_one_pagers_in_chrono
@@ -630,6 +660,7 @@ class _SpecBuilder:
                     ),
                 ),
                 self._playlists_spec(),
+                self._this_month_spec(),
                 NodeSpec(
                     kind=NodeKind.STORY_GROUP,
                     text=HISTORY_NODE_TEXT,
@@ -637,6 +668,43 @@ class _SpecBuilder:
                     press_action=PressAction.SET_VIEW_STATE,
                     register_as=NodeRegistration.HISTORY,
                 ),
+            ),
+        )
+
+    def _this_month_spec(self) -> NodeSpec:
+        month = self._today.month
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=get_month_node_text(month),
+            destination=ThisMonthDestination(month=month),
+            children=tuple(self._month_group_spec(dated_by) for dated_by in MonthDate),
+        )
+
+    def _month_group_spec(self, dated_by: MonthDate) -> NodeSpec:
+        month = self._today.month
+        stories = [
+            info
+            for info in get_stories_in_month(dated_by, month)
+            if get_fanta_info(info.title) is not None
+        ]
+        # Only a submission date has a day, so only that group can say "today".
+        on_this_day = (
+            [
+                text
+                for info in stories
+                if (text := get_submitted_on_this_day_text(info, self._today))
+            ]
+            if dated_by is MonthDate.SUBMITTED
+            else []
+        )
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=get_markup_text_with_num_titles(
+                get_month_group_heading(dated_by, month), len(stories)
+            ),
+            destination=ThisMonthDestination(month=month, dated_by=dated_by),
+            lazy_children=partial(
+                _month_rows, tuple(on_this_day), _fanta_infos(info.title for info in stories)
             ),
         )
 

@@ -37,6 +37,8 @@ navigation and a visually engaging interface.
   be toggled via a checkbox for specific titles.
 - **Persistent State**: Remembers the last-read page for each comic and the last selected node on startup, allowing you
   to pick up right where you left off.
+- **This Month in Barks**: Under *Reading*, a node named for the current month lists the stories Barks submitted in
+  that month and those on sale in it, across all his working years.
 - **Read Marks**: A dot beside each story shows whether you have finished it or left it part-way through. *Continue
   reading* lists the stories left part-way, *From not yet read* picks only from stories you have not started, and
   *By the Numbers* counts how many of the stories you have read.
