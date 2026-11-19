@@ -70,6 +70,12 @@ class WindowState:
     size: tuple[int, int] = (0, 0)
     pos: tuple[int, int] = (-1, -1)
 
+    def edges(self) -> tuple[int, int, int, int]:
+        """Return the saved rectangle as its edges: left, top, right, bottom."""
+        x, y = self.pos
+        width, height = self.size
+        return x, y, x + width, y + height
+
     def save_state_now(self) -> None:
         """Take the size and position from Kivy's window as it is now."""
         self.size = tuple(Window.system_size)

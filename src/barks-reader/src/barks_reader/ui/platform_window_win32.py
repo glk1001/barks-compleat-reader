@@ -58,9 +58,7 @@ class _ScheduledRestore:
         self._state = state
         self._on_first_resize = on_first_resize
         self._on_done = on_done
-        x, y = state.pos
-        width, height = state.size
-        self._wanted = (x, y, x + width, y + height)
+        self._wanted = state.edges()
         self._finished = False
         self._looking = True
         self._pending: dict[str, Any] = {}
@@ -264,7 +262,7 @@ class Win32WindowBackend:
             return
         x, y = state.pos
         width, height = state.size
-        wanted = (x, y, x + width, y + height)
+        wanted = state.edges()
 
         found = self._window_rect()
         if found == wanted:

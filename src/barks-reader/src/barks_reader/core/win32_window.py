@@ -36,6 +36,16 @@ class RECT(ctypes.Structure):
 _CLASS_NAME_LENGTH = 256
 
 
+def _load_user32() -> Any:  # noqa: ANN401
+    """Load a fresh ``user32``, leaving the shared ``ctypes.windll.user32`` Kivy calls as it is.
+
+    Raises:
+        OSError: When ``user32`` cannot be loaded (not Windows).
+
+    """
+    return ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
+
+
 def _typed_user32() -> Any:  # noqa: ANN401
     """Load a fresh ``user32`` with the lookup's calls typed for 64-bit handles.
 
@@ -43,7 +53,7 @@ def _typed_user32() -> Any:  # noqa: ANN401
     to a C int) and ``GetActiveWindow`` returns it truncated. A fresh load leaves the
     shared ``ctypes.windll.user32`` that Kivy calls as it is.
     """
-    user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
+    user32 = _load_user32()
 
     user32.GetActiveWindow.argtypes = []
     user32.GetActiveWindow.restype = wintypes.HWND
@@ -145,7 +155,7 @@ class Win32Window:
         """
         self.hwnd = hwnd
 
-        user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
+        user32 = _load_user32()
 
         self.move_window: Any = user32.MoveWindow
         self.move_window.argtypes = [
@@ -190,16 +200,16 @@ _FRAME_MESSAGE_NAMES = {
     0x000C: "WM_SETTEXT",
     0x000F: "WM_PAINT",
     0x0014: "WM_ERASEBKGND",
-    0x0046: "WM_WINDOWPOSCHANGING",
+    WM_WINDOWPOSCHANGING: "WM_WINDOWPOSCHANGING",
     0x0047: "WM_WINDOWPOSCHANGED",
     0x007C: "WM_STYLECHANGING",
     0x007D: "WM_STYLECHANGED",
     0x0080: "WM_SETICON",
     0x0083: "WM_NCCALCSIZE",
-    0x0085: "WM_NCPAINT",
-    0x0086: "WM_NCACTIVATE",
-    0x00AE: "WM_NCUAHDRAWCAPTION",
-    0x00AF: "WM_NCUAHDRAWFRAME",
+    WM_NCPAINT: "WM_NCPAINT",
+    WM_NCACTIVATE: "WM_NCACTIVATE",
+    WM_NCUAHDRAWCAPTION: "WM_NCUAHDRAWCAPTION",
+    WM_NCUAHDRAWFRAME: "WM_NCUAHDRAWFRAME",
     0x031A: "WM_THEMECHANGED",
     0x031E: "WM_DWMCOMPOSITIONCHANGED",
     0x031F: "WM_DWMNCRENDERINGCHANGED",
@@ -277,7 +287,7 @@ class CaptionGuard:
                 would not take the new procedure.
 
         """
-        user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
+        user32 = _load_user32()
         lresult = wintypes.LPARAM
 
         self._call_window_proc: Any = user32.CallWindowProcW
@@ -434,6 +444,14 @@ def guard_against_native_caption(hwnd: int) -> bool:
     return True
 
 
+def _guard_for(hwnd: int) -> CaptionGuard | None:
+    """Return the guard on the window `hwnd`, or None when it has none."""
+    for guard in _caption_guards:
+        if guard.hwnd == hwnd:
+            return guard
+    return None
+
+
 def hold_window_rect(hwnd: int, rect: tuple[int, int, int, int]) -> bool:
     """Hold the window `hwnd` at `rect` through moves the app does not make itself.
 
@@ -445,11 +463,11 @@ def hold_window_rect(hwnd: int, rect: tuple[int, int, int, int]) -> bool:
         Whether the window has a guard to hold it; without one nothing is held.
 
     """
-    for guard in _caption_guards:
-        if guard.hwnd == hwnd:
-            guard.hold_rect(rect)
-            return True
-    return False
+    guard = _guard_for(hwnd)
+    if guard is None:
+        return False
+    guard.hold_rect(rect)
+    return True
 
 
 def quiet_window_frame(hwnd: int, seconds: float) -> int:
@@ -464,10 +482,8 @@ def quiet_window_frame(hwnd: int, seconds: float) -> int:
         guard to do it, and nothing changes.
 
     """
-    for guard in _caption_guards:
-        if guard.hwnd == hwnd:
-            return guard.quiet_frame(seconds)
-    return 0
+    guard = _guard_for(hwnd)
+    return guard.quiet_frame(seconds) if guard is not None else 0
 
 
 def end_window_frame_quiet(hwnd: int, quiet: int) -> None:
@@ -478,13 +494,13 @@ def end_window_frame_quiet(hwnd: int, quiet: int) -> None:
         quiet: The number `quiet_window_frame` returned: a quiet begun since is left alone.
 
     """
-    for guard in _caption_guards:
-        if guard.hwnd == hwnd:
-            guard.end_quiet(quiet)
+    guard = _guard_for(hwnd)
+    if guard is not None:
+        guard.end_quiet(quiet)
 
 
 def release_window_rect(hwnd: int) -> None:
     """Let the window `hwnd` go where it is sent again. Safe when nothing is held."""
-    for guard in _caption_guards:
-        if guard.hwnd == hwnd:
-            guard.release_rect()
+    guard = _guard_for(hwnd)
+    if guard is not None:
+        guard.release_rect()

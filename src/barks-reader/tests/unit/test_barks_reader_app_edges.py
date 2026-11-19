@@ -55,11 +55,13 @@ _HWND = 0x1_0000_0010
 
 
 class TestCustomTitleBar:
-    def _set(self, *, allowed: bool, platform: Platform = Platform.LINUX) -> MagicMock:
+    def _set(
+        self, *, allowed: bool, platform: Platform = Platform.LINUX, hwnd: int = _HWND
+    ) -> MagicMock:
         with (
             patch.object(app_module, "Window") as window,
             patch.object(app_module, "PLATFORM", platform),
-            patch.object(app_module, "find_app_hwnd", return_value=_HWND),
+            patch.object(app_module, "find_app_hwnd", return_value=hwnd),
             patch.object(app_module, "guard_against_native_caption") as guard,
         ):
             window.set_custom_titlebar.return_value = allowed
@@ -70,6 +72,15 @@ class TestCustomTitleBar:
     def test_on_windows_the_window_is_guarded_against_the_desktops_caption(self) -> None:
         """Windows paints the caption it no longer shows when the focus changes."""
         self._set(allowed=True, platform=Platform.WIN).guard.assert_called_once_with(_HWND)
+
+    def test_a_window_that_cannot_be_found_is_said_so_not_guarded(
+        self, loguru_sink: list[str]
+    ) -> None:
+        """Handle 0 went to the guard, and the log blamed Windows for refusing window 0x0."""
+        window = self._set(allowed=True, platform=Platform.WIN, hwnd=0)
+
+        window.guard.assert_not_called()
+        assert "Window: none found to guard against the desktop's caption." in loguru_sink
 
     def test_elsewhere_there_is_no_caption_to_guard_against(self) -> None:
         self._set(allowed=True, platform=Platform.MACOS_ARM64).guard.assert_not_called()

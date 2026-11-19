@@ -500,7 +500,11 @@ class BarksReaderApp(App):
         if PLATFORM == Platform.WIN:
             # Windows keeps the caption it no longer shows, and paints it over the
             # app's own bar when the window loses or gains the focus.
-            guard_against_native_caption(find_app_hwnd())
+            hwnd = find_app_hwnd()
+            if hwnd:
+                guard_against_native_caption(hwnd)
+            else:
+                logger.warning("Window: none found to guard against the desktop's caption.")
 
     def _finalize_window_setup(self) -> None:
         """Finalize window state after the main build process.
