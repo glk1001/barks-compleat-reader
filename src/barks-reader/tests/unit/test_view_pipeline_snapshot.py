@@ -53,6 +53,13 @@ class TestRenderSnapshot:
         assert snap.fun_view.is_visible is True
         assert snap.title_view.is_visible is False
 
+    def test_the_request_s_month_is_the_one_the_pipeline_then_reports(self) -> None:
+        pipeline = make_pipeline()
+
+        pipeline.render(ViewRequest(view_state=ViewStates.INITIAL, month=3))
+
+        assert pipeline.current_request().month == 3  # noqa: PLR2004
+
     def test_title_node_state(self) -> None:
         pipeline = make_pipeline()
         snap = pipeline.render(

@@ -236,7 +236,7 @@ reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
 
 [[equivalent]]
 module = "barks_reader.core.reading_history"
-function = "ReadingHistoryStore._sync"
+function = "ReadingHistoryStore._write"
 change = """
 - temp_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
 + temp_path.write_text(json.dumps(json_data, indent=4), encoding=None)
@@ -245,12 +245,30 @@ reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linu
 
 [[equivalent]]
 module = "barks_reader.core.reading_history"
-function = "ReadingHistoryStore._sync"
+function = "ReadingHistoryStore._write"
 change = """
 - temp_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
 + temp_path.write_text(json.dumps(json_data, indent=4), encoding="UTF-8")
 """
 reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.read_state"
+function = "ReadStateSource.__init__"
+change = """
+- self._revision: int | None = None
++ self._revision: int | None = ""
+"""
+reason = "Only ever compared for inequality with the store's revision, an int: \"\" differs from every int just as None does, so the first states() works them out either way."
+
+[[equivalent]]
+module = "barks_reader.core.read_state"
+function = "ReadStateSource.__init__"
+change = """
+- self._states = ReadStates()
++ self._states = None
+"""
+reason = "Never read before states() replaces it: the starting revision matches no store revision, so the first call always works the states out."
 
 [[equivalent]]
 module = "barks_reader.core.reading_history"

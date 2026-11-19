@@ -252,7 +252,7 @@ class TestReachedEnd:
         tracker.end(reader)
 
     def test_false_before_any_session(self, tracker: LastReadPageTracker) -> None:
-        assert not tracker.reached_end
+        assert tracker.reached_end is False  # a bool, as its type says: never None
 
     def test_true_when_closed_on_the_last_body_page(self, tracker: LastReadPageTracker) -> None:
         self._end_on(tracker, "10")
@@ -300,4 +300,4 @@ class TestReachedEnd:
 
         tracker.end(MagicMock())
 
-        assert not tracker.reached_end
+        assert tracker.reached_end is False

@@ -183,6 +183,13 @@ class TestGetReadStates:
         assert states.left_mid_way == (_ANDES,)
         assert states.finished == frozenset()
 
+    def test_a_session_that_recorded_no_page_leaves_nothing_mid_way(self) -> None:
+        # A close with no valid page: there is no place to continue from.
+        states = get_read_states([_event(page="", finished=False)])
+
+        assert states.left_mid_way == ()
+        assert states.state_of(_ANDES) is ReadState.UNREAD
+
     def test_a_comic_closed_on_its_cover_stays_unread(self) -> None:
         states = get_read_states([_event(page=COMIC_BEGIN_PAGE, finished=False)])
 

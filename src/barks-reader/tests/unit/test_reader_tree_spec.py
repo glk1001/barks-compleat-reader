@@ -805,6 +805,18 @@ class TestNotYetRead:
         } == unread
         assert len(rows) == len(unread)
 
+    def test_it_draws_from_every_year_to_the_last(
+        self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        all_titles = self._all_title_strs(title_lists)
+        read_states = ReadStates(finished=frozenset(all_titles[:-1]))
+        specs = _build_specs(reader_settings, title_lists, lambda: read_states)
+
+        [row] = self._rows_of(specs)
+
+        assert row.fanta_info is not None
+        assert row.fanta_info.comic_book_info.get_title_str() == all_titles[-1]
+
     def test_a_story_left_mid_way_is_not_offered_either(
         self, reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
     ) -> None:

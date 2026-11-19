@@ -303,6 +303,16 @@ class TestReadingHistoryTracker:
         assert event.finished is finished
         assert ReadingHistoryStore(tmp_path / "history.json").get_events() == [event]
 
+    def test_an_end_that_does_not_say_is_not_a_finish(self, tmp_path: Path) -> None:
+        opened = datetime(2026, 7, 17, 14, 0)
+        tracker, store = self._make_tracker(tmp_path, _FixedClock(opened, opened))
+
+        tracker.begin("Lost in the Andes!")
+        tracker.end(None)
+
+        (event,) = store.get_events()
+        assert event.finished is False
+
     def test_an_open_session_has_not_said_whether_it_finished(self, tmp_path: Path) -> None:
         opened = datetime(2026, 7, 17, 14, 0)
         tracker, store = self._make_tracker(tmp_path, _FixedClock(opened))
