@@ -2171,4 +2171,6 @@ SPLASH_EXCEPTIONS: dict[Titles, list[str]] = {
     Titles.STORM_DANCERS: [],
     Titles.HOUND_OF_THE_MOANING_HILLS: [],
     Titles.DAY_THE_MOUNTAIN_SHOOK_THE: [],
+    Titles.GOLD_OF_THE_49ERS: [],
+    Titles.DUCKMADE_DISASTER: [],
 }
