@@ -250,6 +250,22 @@ class TestReadMarks:
         assert f'"{ReadState.FINISHED.value}"' in dot_rule
         assert "state: root.read_state" in kv
 
+    def test_the_dot_is_the_title_row_s_last_but_one_after_a_stretch(self) -> None:
+        """What is left of the row after the title pushes the dot to the tree's right edge."""
+        kv_file = Path(barks_reader.ui.tree_view_nodes.__file__).parent / "reader-tree-view.kv"
+        parsed = Parser(content=kv_file.read_text(encoding="utf-8"), filename=str(kv_file))
+        [node_rule] = [rule for _sel, rule in parsed.rules if rule.name == "<TitleTreeViewNode>"]
+        title_row = node_rule.children[0]
+
+        assert [widget.name for widget in title_row.children[-3:]] == [
+            "Widget",
+            "ReadStateDot",
+            "Widget",
+        ]
+        stretch, _dot, margin = title_row.children[-3:]
+        assert stretch.properties["size_hint"].value == "(1, None)"
+        assert margin.properties["width"].value == "root.READ_DOT_RIGHT_MARGIN"
+
 
 class TestATitleNodesRow:
     """What `create_from_fanta_info` writes into the row, and what a press reaches."""
@@ -323,12 +339,13 @@ class TestTitleTreeViewNode:
         kv_file = Path(barks_reader.ui.tree_view_nodes.__file__).parent / "reader-tree-view.kv"
         parsed = Parser(content=kv_file.read_text(encoding="utf-8"), filename=str(kv_file))
         [node_rule] = [rule for _sel, rule in parsed.rules if rule.name == "<TitleTreeViewNode>"]
-        # The read mark is drawn, not pressed: it names no node.
+        # The read mark and the space that puts it at the tree's right edge are not
+        # pressed: they name no node.
         widgets = [
             widget
             for row in node_rule.children
             for widget in row.children
-            if widget.name != "ReadStateDot"
+            if widget.name not in ("ReadStateDot", "Widget")
         ]
 
         assert len(widgets) == 6  # noqa: PLR2004  # two rows of three

@@ -130,10 +130,22 @@
             valign: "middle"
             text_size: (self.width, self.height)
 
+        # The tree makes the row as wide as itself, so what is left after the title
+        # pushes the read mark to the tree's right edge, in one column at every depth.
+        Widget:
+            size_hint: (1, None)
+            height: root.ROW_HEIGHT
+
         ReadStateDot:
             id: read_dot
             state: root.read_state
             width: root.READ_DOT_WIDTH
+            height: root.ROW_HEIGHT
+
+        # Clear of the scrollbar, which lies over the tree's right edge.
+        Widget:
+            size_hint: (None, None)
+            width: root.READ_DOT_RIGHT_MARGIN
             height: root.ROW_HEIGHT
 
     TreeViewRowNode:

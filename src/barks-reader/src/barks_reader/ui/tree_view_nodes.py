@@ -258,6 +258,7 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     TITLE_LABEL_WIDTH = dp(400)
     ISSUE_LABEL_WIDTH = TITLE_LABEL_WIDTH
     READ_DOT_WIDTH = dp(20)
+    READ_DOT_RIGHT_MARGIN = dp(16)
 
     # One of the `ReadState` values; `ReaderTreeView.show_read_states` keeps it current.
     read_state = StringProperty(ReadState.UNREAD.value)
