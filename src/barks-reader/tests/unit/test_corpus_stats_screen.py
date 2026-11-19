@@ -22,6 +22,7 @@ from barks_reader.core.corpus_stats import (
 )
 from barks_reader.core.keys import KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES
+from barks_reader.core.read_state import ReadStates
 from barks_reader.ui import corpus_stats_screen as corpus_stats_screen_module
 from barks_reader.ui.corpus_stats_screen import CorpusStatsScreen
 from barks_reader.ui.reader_screens import ReaderScreen
@@ -198,6 +199,37 @@ class TestBuildOnOpen:
         assert screen._stats is _STATS
         assert screen.ids["stats_left"].children
         assert screen.ids["stats_right"].children
+
+    def test_without_the_reading_history_the_page_shows_the_statistics_as_computed(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        _open(screen)
+
+        assert screen._shown_stats is _STATS
+
+    def test_with_it_the_corpus_section_counts_the_stories_read(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        screen.set_read_states(lambda: ReadStates(finished=frozenset({"Lost in the Andes!"})))
+
+        _open(screen)
+
+        assert screen._shown_stats is not None
+        corpus = screen._shown_stats.sections[0]
+        assert [row.label for row in corpus.rows] == ["Stories", "You have read"]
+        assert corpus.rows[1].value.startswith("1 of ")
+        assert screen._stats is _STATS  # the cached statistics stay as computed
+
+    def test_every_open_asks_the_history_again(self, screen: CorpusStatsScreen) -> None:
+        finished = [frozenset[str]()]
+        screen.set_read_states(lambda: ReadStates(finished=finished[0]))
+        _open(screen)
+        finished[0] = frozenset({"Lost in the Andes!", "Vacation Time"})
+
+        _open(screen)
+
+        assert screen._shown_stats is not None
+        assert screen._shown_stats.sections[0].rows[1].value.startswith("2 of ")
 
     def test_reopening_reuses_the_cached_stats(self, screen: CorpusStatsScreen) -> None:
         with (

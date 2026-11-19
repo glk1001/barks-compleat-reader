@@ -27,7 +27,7 @@ installed.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Final
 
 from barks_fantagraphics.barks_bibliography import TITLE_TO_BIB_ENTRY, Qualifier
@@ -189,6 +189,38 @@ def compute_static_stats() -> CorpusStats:
     )
 
 
+# The corpus section's row for the user's own reading, and the row it follows.
+STORIES_ROW_LABEL: Final = "Stories"
+STORIES_READ_ROW_LABEL: Final = "You have read"
+
+
+def with_stories_read(stats: CorpusStats, finished: frozenset[str]) -> CorpusStats:
+    """Add the user's own count to the corpus section: how many of the stories are read.
+
+    One row and not a section of its own: the page cannot scroll, and its left column
+    has a row's height to spare.
+
+    Args:
+        stats: The statistics `compute_static_stats` returned.
+        finished: The titles the reading history has finished, as it records them.
+
+    Returns:
+        The same statistics, the corpus section's "Stories" row followed by the count.
+
+    """
+    stories = get_stories()
+    num_read = sum(1 for info in stories if ENUM_TO_STR_TITLE[info.title] in finished)
+    read_row = StatRow(STORIES_READ_ROW_LABEL, f"{num_read:,} of {len(stories):,}")
+
+    corpus, *others = stats.sections
+    rows: list[StatRow] = []
+    for row in corpus.rows:
+        rows.append(row)
+        if row.label == STORIES_ROW_LABEL:
+            rows.append(read_row)
+    return replace(stats, sections=(replace(corpus, rows=tuple(rows)), *others))
+
+
 def _opening(stories: list[ComicBookInfo], total_pages: int, adjusted_per_page: float) -> Opening:
     """Build the page's opening lines from the span, the page count and the rate."""
     submitted_years = [info.submitted_year for info in stories]
@@ -258,7 +290,7 @@ def _corpus_section(stories: list[ComicBookInfo]) -> StatSection:
     return StatSection(
         heading="The corpus",
         rows=(
-            StatRow("Stories", f"{len(stories):,}"),
+            StatRow(STORIES_ROW_LABEL, f"{len(stories):,}"),
             StatRow("One-pagers", f"{len(ONE_PAGERS):,}"),
             StatRow("Covers", f"{len(COVERS_SET):,}"),
             StatRow("Fantagraphics Volumes", f"{len(FANTA_SOURCE_COMICS):,}"),

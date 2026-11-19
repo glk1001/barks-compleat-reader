@@ -1492,6 +1492,9 @@ class TestWhatTheMainScreenHandsOn:
             "How To Use the Barks Reader",
         )
 
+    def test_the_read_states_are_the_history_s_as_of_now(self, main_screen: MainScreen) -> None:
+        assert main_screen.read_states() is main_screen._read_state_source.states.return_value
+
     def test_a_change_to_the_history_marks_the_tree_s_rows_again(
         self, main_screen: MainScreen
     ) -> None:

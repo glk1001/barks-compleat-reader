@@ -456,6 +456,7 @@ class BarksReaderApp(App):
             self.reader_settings.sys_file_paths.get_by_the_numbers_background_path(),
             self._screen_switchers.close_corpus_stats,
         )
+        corpus_stats_screen.set_read_states(self._main_screen.read_states)
         self._corpus_stats_screen = corpus_stats_screen
 
         reader_screens = ReaderScreens(

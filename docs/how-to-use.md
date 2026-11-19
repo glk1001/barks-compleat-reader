@@ -61,7 +61,8 @@ The bar across the top of the main screen contains:
 The tree on the left is the primary way to find stories. Its top-level sections are:
 
 - **Introduction** — introductory articles for the *Compleat Barks Reader* project, plus
-  *By the Numbers*, a one-page statistical portrait of the whole corpus.
+  *By the Numbers*, a one-page statistical portrait of the whole corpus, with a count of
+  how many of the stories you have read.
 - **The Stories** — all Barks stories, browsable in three ways:
   - *Chronological* — organised by Barks' submission dates.
   - *Series* — grouped by the comic series they appeared in (Comics & Stories, Donald Duck Adventures, 
@@ -70,10 +71,13 @@ The tree on the left is the primary way to find stories. Its top-level sections 
 - **Search** — find stories by *Titles*, by *Tags*, or by *Words* (speech-bubble text). Words and
   tags can be combined, narrowed to an era, and a word search to who says it or to a tag's
   stories: see [Searching](#searching) below.
-- **Reading** — three ways to pick something to read:
+- **Reading** — four ways to pick something to read:
+  - *Continue reading* — the stories you left part-way through, the most recent first. Open
+    one and its title view offers the page you stopped on.
   - *Choose for me* — a fresh random handful of stories, re-rolled each time you open the node:
-    *Surprise me*, a decade (*From the 1940s/50s/60s*), *From favourites*, or *With Scrooge*,
-    *Gladstone*, *Gyro*, *Daisy*, *the Beagle Boys* or *Grandma Duck*.
+    *Surprise me*, *Not yet read* (only stories you have not finished), a decade
+    (*From the 1940s/50s/60s*), *From favourites*, or *With Scrooge*, *Gladstone*, *Gyro*,
+    *Daisy*, *the Beagle Boys* or *Grandma Duck*.
   - *Playlists* — hand-picked sets of stories, each introduced by a short note.
   - *History* — a journal of the comics you've read, grouped by day. The Reader records this
     automatically (it can be turned off with the *Record Reading History* setting), and the
@@ -85,6 +89,13 @@ The tree on the left is the primary way to find stories. Its top-level sections 
 
 A title in parentheses, such as *(The Hypno-Gun)*, is a story Barks left untitled; the name is
 one given to it later.
+
+A dot after a story's title says how far you have got with it: a full dot for a story you
+have read to its last page, a half dot for one you left part-way through, and no dot for one
+you have not read. A one-page gag or a cover counts as read once you have opened it. The
+dots, *Continue reading*, *Not yet read* and the count on *By the Numbers* all come from the
+reading history, so they stop changing while *Record Reading History* is off, and deleting a
+story from the *History* view makes it unread again.
 
 Wherever speech bubbles are shown, each bubble names who says it on an italic, coloured line
 above the text (*Scrooge:*, *Narrator:* for a narration box). Sound effects and signs have no
@@ -289,7 +300,7 @@ are:
 | *Color Theme*                                 | Picks the palette for accents, selection bar, and labels (requires restart) |
 | *Layout*                                      | *Single page* (the tree above the view, comics a page at a time), *Two-page spread* (the tree beside it, comics two pages at a time), or *Match the screen*, which picks by the monitor's shape |
 | *Go to Last Selection on App Start*           | Resumes where you left off when the app starts                 |
-| *Record Reading History*                      | Logs every comic you read to the *History* view under *Reading* |
+| *Record Reading History*                      | Logs every comic you read to the *History* view under *Reading*; the read marks come from it |
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |
 | *Go Straight to Fullscreen on App Start*      | Launches the app in fullscreen                                 |
 | *Go Straight to Fullscreen for Comic Reading* | Auto-fullscreen when opening a comic                           |

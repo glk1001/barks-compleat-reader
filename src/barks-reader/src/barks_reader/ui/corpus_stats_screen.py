@@ -48,6 +48,7 @@ from barks_reader.core.corpus_stats import (
     TEXT_SECTION_SHAPE,
     compute_static_stats,
     compute_text_stats,
+    with_stories_read,
 )
 from barks_reader.core.keys import KEY_LEFT, KEY_UP, is_escape_key
 from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES, MainLayoutMode
@@ -65,6 +66,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from barks_reader.core.corpus_stats import CorpusStats, Opening, StatRow, StatSection
+    from barks_reader.core.read_state import ReadStates
 
 CORPUS_STATS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -139,6 +141,9 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         self._background_path = background_path
         self._on_close_screen = on_close_screen
         self._stats: CorpusStats | None = None
+        # The static statistics with the user's own reading added, as of the last open.
+        self._shown_stats: CorpusStats | None = None
+        self._read_states: Callable[[], ReadStates] | None = None
         self._text_section: StatSection | None = None
         self._text_scan_started = False
 
@@ -159,11 +164,25 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         # The bar is the page's width, centred: it takes the window-drag hit test over.
         return self.ids.stats_action_bar.drag_region
 
+    def set_read_states(self, read_states: Callable[[], ReadStates]) -> None:
+        """Give the page the reading history's states, for its count of stories read.
+
+        Args:
+            read_states: Returns which stories are finished, asked at every open.
+
+        """
+        self._read_states = read_states
+
     def open(self) -> None:
         """Show the page, computing the statistics the first time."""
         self.action_bar_title = get_action_bar_title(self._font_manager, INTRO_BY_THE_NUMBERS_TEXT)
         if self._stats is None:
             self._stats = compute_static_stats()
+        self._shown_stats = (
+            self._stats
+            if self._read_states is None
+            else with_stories_read(self._stats, self._read_states().finished)
+        )
         self._set_background()
         self._rebuild()
         self._start_text_scan()
@@ -202,7 +221,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
 
     def _rebuild(self) -> None:
         """Lay the whole page out at the current scale."""
-        if self._stats is None:
+        if self._shown_stats is None:
             return
 
         page = self.ids.stats_page
@@ -218,9 +237,9 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         ]
         self.ids.stats_columns.spacing = layout.COLUMN_GUTTER_FRACTION * page.width
 
-        self._build_opening(self._stats.opening, scale)
+        self._build_opening(self._shown_stats.opening, scale)
 
-        left, right = layout.split_columns(self._stats.sections)
+        left, right = layout.split_columns(self._shown_stats.sections)
         self._build_column(self.ids.stats_left, left, scale)
         self._build_column(self.ids.stats_right, right, scale, words_slot=True)
 

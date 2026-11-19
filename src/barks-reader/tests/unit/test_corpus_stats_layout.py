@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Literal
 from unittest.mock import patch
 
 import pytest
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.search_ports import CorpusTextTotals
 from barks_fantagraphics.testing.fake_search import InMemoryFullTextSearch
 from barks_reader.core import corpus_stats as corpus_stats_module
@@ -24,6 +25,8 @@ from barks_reader.core.corpus_stats import (
     StatSection,
     compute_static_stats,
     compute_text_stats,
+    get_stories,
+    with_stories_read,
 )
 from barks_reader.core.font_sizes import (
     LOW_RES_FONT_SIZES,
@@ -56,7 +59,9 @@ def _columns_scope(fixture_name: str, config: pytest.Config) -> Literal["module"
 
 @pytest.fixture(scope=_columns_scope)
 def columns() -> tuple[list[StatSection], list[StatSection]]:
-    left, right = layout.split_columns(compute_static_stats().sections)
+    # As the app shows the page: with its row for the user's own reading.
+    shown = with_stories_read(compute_static_stats(), frozenset())
+    left, right = layout.split_columns(shown.sections)
     return list(left), list(right)
 
 
@@ -202,7 +207,9 @@ class TestRowsFitTheColumnWidth:
     _MAX_ROW_CHARS = 32
 
     def test_every_row_fits_its_column(self) -> None:
-        sections = list(compute_static_stats().sections)
+        # The reading row at its longest: every story read.
+        all_read = frozenset(ENUM_TO_STR_TITLE[info.title] for info in get_stories())
+        sections = list(with_stories_read(compute_static_stats(), all_read).sections)
         too_long = [
             (section.heading, row.label, row.value)
             for section in sections

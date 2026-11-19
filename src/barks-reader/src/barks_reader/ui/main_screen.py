@@ -82,6 +82,7 @@ if TYPE_CHECKING:
 
     from barks_reader.core.filtered_title_lists import FilteredTitleLists
     from barks_reader.core.image_selector import ImageSelector
+    from barks_reader.core.read_state import ReadStates
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .comic_book_reader import ComicBookReaderScreen
@@ -1239,6 +1240,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def image_selector(self) -> ImageSelector:
         """The app-wide panel image selector (share it so no-repeat memory pools)."""
         return self._random_title_images
+
+    def read_states(self) -> ReadStates:
+        """Return which stories the reading history has finished, and which it left mid-way."""
+        return self._read_state_source.states()
 
     def _count_comic_opened_from_portal(self) -> None:
         """End the first use at the first comic; count down the picture's caption after."""

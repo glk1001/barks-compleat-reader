@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 import pytest
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET, ONE_PAGERS
 from barks_fantagraphics.entity_types import EntityType
 from barks_fantagraphics.search_ports import CorpusTextTotals
@@ -34,6 +34,7 @@ from barks_reader.core.corpus_stats import (
     compute_text_stats,
     get_paid_records,
     get_stories,
+    with_stories_read,
 )
 from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
 
@@ -120,6 +121,48 @@ class TestCorpusSection:
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
         assert _value(stats, "The corpus", label) == expected
+
+
+class TestStoriesRead:
+    """The one row that is the user's own: how many of the stories the history has finished."""
+
+    def test_the_row_follows_the_stories_row(self, stats: CorpusStats) -> None:
+        shown = with_stories_read(stats, frozenset({"Lost in the Andes!", "Vacation Time"}))
+
+        labels = [row.label for row in _section(shown, "The corpus").rows]
+        assert labels[:2] == ["Stories", "You have read"]
+        assert _value(shown, "The corpus", "You have read") == "2 of 683"
+
+    def test_with_nothing_read_the_row_is_still_there(self, stats: CorpusStats) -> None:
+        # The page cannot scroll: its height must not depend on the history.
+        assert _value(with_stories_read(stats, frozenset()), "The corpus", "You have read") == (
+            "0 of 683"
+        )
+
+    def test_only_stories_count(self, stats: CorpusStats) -> None:
+        cover = ENUM_TO_STR_TITLE[next(iter(COVERS_SET))]
+        finished = frozenset({cover, "No Such Story", "Lost in the Andes!"})
+
+        assert _value(with_stories_read(stats, finished), "The corpus", "You have read") == (
+            "1 of 683"
+        )
+
+    def test_a_one_pager_is_a_story(self, stats: CorpusStats) -> None:
+        one_pager = ENUM_TO_STR_TITLE[ONE_PAGERS[0]]
+
+        assert _value(
+            with_stories_read(stats, frozenset({one_pager})), "The corpus", "You have read"
+        ).startswith("1 of")
+
+    def test_nothing_else_changes(self, stats: CorpusStats) -> None:
+        shown = with_stories_read(stats, frozenset({"Lost in the Andes!"}))
+
+        assert shown.opening == stats.opening
+        assert shown.sections[1:] == stats.sections[1:]
+        assert [row for row in shown.sections[0].rows if row.label != "You have read"] == list(
+            stats.sections[0].rows
+        )
+        assert len(stats.sections[0].rows) + 1 == len(shown.sections[0].rows)  # stats untouched
 
 
 class TestAttributionSection:
