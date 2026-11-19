@@ -141,6 +141,11 @@ def intro_document_dir() -> Path:
     return system_paths().get_intro_doc_dir()
 
 
+def how_to_document_dir() -> Path:
+    """Return the directory of the How To document."""
+    return system_paths().get_how_to_doc_dir()
+
+
 def censorship_document_dir() -> Path:
     """Return the directory of the censorship fixes document."""
     return system_paths().get_censorship_fixes_doc_dir()

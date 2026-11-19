@@ -20,6 +20,7 @@ from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
+    INTRO_HOW_TO_TEXT,
 )
 
 from .tree_scroll_pinner import TreeScrollPinner
@@ -489,6 +490,16 @@ class TreeViewManager:
             self._sys_file_paths.get_intro_doc_dir(),
             INTRO_COMPLEAT_BARKS_READER_TEXT,
             ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
+        )
+
+    def on_how_to_doc_pressed(self, _button: Button) -> None:
+        """Open the How To, a page at a time on the two-page spread too (as the dots menu does)."""
+        assert self._sys_file_paths
+        self._nav.open_document(
+            self._sys_file_paths.get_how_to_doc_dir(),
+            INTRO_HOW_TO_TEXT,
+            ViewStates.ON_INTRO_HOW_TO_NODE,
+            single_page=True,
         )
 
     def on_censorship_fixes_doc_pressed(self, _button: Button) -> None:

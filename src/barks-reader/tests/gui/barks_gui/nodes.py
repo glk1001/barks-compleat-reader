@@ -40,6 +40,7 @@ APPENDIX = ["Appendix", "root"]
 # Full-screen leaves (documents, By the Numbers, the wiki) are not boot nodes: a
 # restore opens them straight away, so a test selects them from their parent.
 INTRO_DOCUMENT = "The Compleat Barks Disney Reader"
+HOW_TO_DOCUMENT = "How to Use the Barks Reader"
 CENSORSHIP_DOCUMENT = "Censorship Fixes and Other Changes"
 BY_THE_NUMBERS = "By the Numbers"
 # Under Introduction, before By the Numbers; there only when Reader Files holds chapters.

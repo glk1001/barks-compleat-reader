@@ -51,6 +51,11 @@ class IntroDocDestination(Destination):
 
 
 @dataclass(frozen=True, slots=True)
+class HowToDocDestination(Destination):
+    """The Introduction's How To document (opens the document reader, as the dots menu does)."""
+
+
+@dataclass(frozen=True, slots=True)
 class CorpusStatsDestination(Destination):
     """The Introduction's 'By the Numbers' corpus statistics page."""
 

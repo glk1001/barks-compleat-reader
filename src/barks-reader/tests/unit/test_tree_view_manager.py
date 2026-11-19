@@ -711,6 +711,40 @@ class TestTreeViewManager:
             resume=True,
         )
 
+    def test_the_intro_node_opens_the_introduction_and_comes_back_to_itself(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+    ) -> None:
+        paths = MagicMock()
+        tree_view_manager._sys_file_paths = paths
+
+        tree_view_manager.on_intro_doc_pressed(MagicMock())
+
+        mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
+            paths.get_intro_doc_dir.return_value,
+            "The Compleat Barks Disney Reader",
+            ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
+        )
+
+    def test_the_how_to_node_opens_the_how_to_a_page_at_a_time(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+    ) -> None:
+        """As the dots menu opens it, but closing comes back to the node."""
+        paths = MagicMock()
+        tree_view_manager._sys_file_paths = paths
+
+        tree_view_manager.on_how_to_doc_pressed(MagicMock())
+
+        mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
+            paths.get_how_to_doc_dir.return_value,
+            "How to Use the Barks Reader",
+            ViewStates.ON_INTRO_HOW_TO_NODE,
+            single_page=True,
+        )
+
     def test_on_node_expanded_with_one_title_child_selects_that_title(
         self,
         tree_view_manager: TreeViewManager,

@@ -39,6 +39,7 @@ from barks_reader.core.navigation import (
     ContinueReadingDestination,
     Destination,
     HistoryDestination,
+    HowToDocDestination,
     IndexDestination,
     IntroDestination,
     IntroDocDestination,
@@ -86,6 +87,7 @@ def model() -> NavigationModel:
     [
         (IntroDestination(), ViewStates.ON_INTRO_NODE),
         (IntroDocDestination(), ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE),
+        (HowToDocDestination(), ViewStates.ON_INTRO_HOW_TO_NODE),
         (StoriesDestination(), ViewStates.ON_THE_STORIES_NODE),
         (ChronologicalDestination(), ViewStates.ON_CHRONO_BY_YEAR_NODE),
         (CategoriesDestination(), ViewStates.ON_CATEGORIES_NODE),

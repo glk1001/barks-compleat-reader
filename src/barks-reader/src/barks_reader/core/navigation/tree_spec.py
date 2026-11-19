@@ -73,6 +73,7 @@ from barks_reader.core.reader_consts_and_types import (
     INDEX_WIKI_TEXT,
     INTRO_BY_THE_NUMBERS_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
+    INTRO_HOW_TO_TEXT,
     INTRO_ILLUSTRATED_HISTORY_TEXT,
     INTRO_NODE_TEXT,
     NOT_YET_READ_NODE_TEXT,
@@ -126,6 +127,7 @@ from .destinations import (
     CorpusStatsDestination,
     DocumentDestination,
     HistoryDestination,
+    HowToDocDestination,
     IllustratedHistoryDestination,
     IndexDestination,
     IntroDestination,
@@ -188,6 +190,7 @@ class PressAction(Enum):
     TOGGLE_ONLY = auto()
     SET_VIEW_STATE = auto()
     OPEN_INTRO_DOC = auto()
+    OPEN_HOW_TO_DOC = auto()
     OPEN_ARTICLE = auto()
     OPEN_CENSORSHIP_FIXES_DOC = auto()
     OPEN_WIKI_INDEX = auto()
@@ -518,6 +521,13 @@ class _SpecBuilder:
                     text=INTRO_COMPLEAT_BARKS_READER_TEXT,
                     destination=IntroDocDestination(),
                     press_action=PressAction.OPEN_INTRO_DOC,
+                ),
+                # Second, after the welcome: where a new reader looks for instructions.
+                NodeSpec(
+                    kind=NodeKind.MAIN,
+                    text=INTRO_HOW_TO_TEXT,
+                    destination=HowToDocDestination(),
+                    press_action=PressAction.OPEN_HOW_TO_DOC,
                 ),
                 self._article_spec(
                     ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,

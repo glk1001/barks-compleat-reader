@@ -327,8 +327,8 @@ click from widget to rendered view.
 Three types carry the whole model:
 
 - **`Destination`** (`destinations.py`) — a frozen dataclass base with one
-  subclass per navigable kind (37 of them). Two flavors: 26 no-payload singletons
-  (`IntroDestination`, `IntroDocDestination`, `CorpusStatsDestination`,
+  subclass per navigable kind (40 of them). Two flavors: 28 no-payload singletons
+  (`IntroDestination`, `IntroDocDestination`, `HowToDocDestination`, `CorpusStatsDestination`,
   `IllustratedHistoryDestination`, `StoriesDestination`, `SearchDestination`,
   `ReadingDestination`, `ChooseForMeDestination`, `PlaylistsDestination`,
   `HistoryDestination`, `AppendixDestination`, `CensorshipFixesDocDestination`,

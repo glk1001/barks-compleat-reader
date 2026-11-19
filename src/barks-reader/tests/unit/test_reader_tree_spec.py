@@ -241,6 +241,7 @@ def _assert_snapshot(spec: NodeSpec, expected: str, max_depth: int | None = None
 _INTRO_SNAPSHOT = """
 MAIN text='Introduction' dest=IntroDestination() press=TOGGLE_ONLY register=None lazy=False repopulate=False
   MAIN text='The Compleat Barks Disney Reader' dest=IntroDocDestination() press=OPEN_INTRO_DOC register=None lazy=False repopulate=False
+  MAIN text='How to Use the Barks Reader' dest=HowToDocDestination() press=OPEN_HOW_TO_DOC register=None lazy=False repopulate=False
   MAIN text='Don Ault: Fantagraphics Introduction' dest=ArticleDestination(view_state=ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE, article_title=Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION) press=OPEN_ARTICLE register=None lazy=False repopulate=False
   MAIN text='By the Numbers' dest=CorpusStatsDestination() press=OPEN_CORPUS_STATS register=None lazy=False repopulate=False
 """  # noqa: E501

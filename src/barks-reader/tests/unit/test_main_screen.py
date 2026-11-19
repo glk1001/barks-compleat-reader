@@ -1489,7 +1489,7 @@ class TestWhatTheMainScreenHandsOn:
 
         main_screen._nav_coord.open_document.assert_called_once_with(
             main_screen._reader_settings.sys_file_paths.get_how_to_doc_dir.return_value,
-            "How To Use the Barks Reader",
+            "How to Use the Barks Reader",
             single_page=True,
         )
 

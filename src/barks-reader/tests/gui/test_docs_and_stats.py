@@ -126,6 +126,21 @@ def test_the_intro_document_opens_and_closes(boot: AppBoot) -> None:
     _close_document(d)
 
 
+def test_the_how_to_opens_from_its_node_a_page_at_a_time_and_closes_onto_it(
+    boot: AppBoot,
+) -> None:
+    """The node under Introduction opens the document the dots menu opens, the same way."""
+    d = boot(nodes.INTRODUCTION)
+    with d.expect(pattern(markers.DOCUMENT_ONE_PAGE_AT_A_TIME)):
+        _open_document(d, nodes.HOW_TO_DOCUMENT)
+    pages = _pages_opened(d, nodes.HOW_TO_DOCUMENT)
+    assert pages == expected.document_page_count(expected.how_to_document_dir())
+    d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=2), "Right")
+    assert fields_of(d, markers.DOCUMENT_RIGHT_PAGE, "page") == []
+    _close_document(d)
+    assert d.current_node() == nodes.HOW_TO_DOCUMENT
+
+
 def test_the_censorship_document_turns_pages(boot: AppBoot) -> None:
     """Right turns a page, or on the two-page spread a pair (pages 1 and 2, then 3 and 4)."""
     d = boot(nodes.APPENDIX)

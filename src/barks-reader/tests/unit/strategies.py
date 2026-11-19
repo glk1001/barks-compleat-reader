@@ -48,6 +48,7 @@ from barks_reader.core.navigation.destinations import (
     Destination,
     DocumentDestination,
     HistoryDestination,
+    HowToDocDestination,
     IllustratedHistoryDestination,
     IndexDestination,
     IntroDestination,
@@ -112,6 +113,7 @@ ARTICLE_VIEW_STATES = (
 # The destinations that carry nothing: one instance each is every value they have.
 NO_PAYLOAD_DESTINATION_TYPES: tuple[type[Destination], ...] = (
     IntroDestination,
+    HowToDocDestination,
     IntroDocDestination,
     CorpusStatsDestination,
     IllustratedHistoryDestination,

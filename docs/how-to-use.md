@@ -108,7 +108,8 @@ The bar across the top of the main screen contains:
 
 The tree on the left is the primary way to find stories. Its top-level sections are:
 
-- **Introduction** — introductory articles for the *Compleat Barks Reader* project, plus
+- **Introduction** — introductory articles for the *Compleat Barks Reader* project, this
+  guide (*How to Use the Barks Reader*, which the menu's *How To* also opens), and
   *By the Numbers*, a one-page statistical portrait of the whole corpus, with a count of
   how many of the stories you have read.
 - **The Stories** — all Barks stories, browsable in three ways:

@@ -39,6 +39,7 @@ from .destinations import (
     Destination,
     DocumentDestination,
     HistoryDestination,
+    HowToDocDestination,
     IllustratedHistoryDestination,
     IndexDestination,
     IntroDestination,
@@ -92,6 +93,7 @@ _SERIES_TO_VIEW_STATE: dict[str, ViewStates] = {
 _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
     IntroDestination: ViewStates.ON_INTRO_NODE,
     IntroDocDestination: ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
+    HowToDocDestination: ViewStates.ON_INTRO_HOW_TO_NODE,
     StoriesDestination: ViewStates.ON_THE_STORIES_NODE,
     ChronologicalDestination: ViewStates.ON_CHRONO_BY_YEAR_NODE,
     AllSeriesDestination: ViewStates.ON_SERIES_NODE,

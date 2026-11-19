@@ -30,6 +30,7 @@ class ViewStates(IntEnum):
     ON_PLAYLIST_NODE = auto()
     ON_THIS_MONTH_NODE = auto()
     ON_INTRO_BY_THE_NUMBERS_NODE = auto()
+    ON_INTRO_HOW_TO_NODE = auto()
     ON_APPENDIX_NODE = auto()
     ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE = auto()
     ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE = auto()

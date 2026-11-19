@@ -93,6 +93,7 @@ class ReaderTreeBuilder:
             PressAction.TOGGLE_ONLY: None,
             PressAction.SET_VIEW_STATE: tree_view_manager.set_view_state_for_node,
             PressAction.OPEN_INTRO_DOC: tree_view_manager.on_intro_doc_pressed,
+            PressAction.OPEN_HOW_TO_DOC: tree_view_manager.on_how_to_doc_pressed,
             PressAction.OPEN_ARTICLE: tree_view_manager.on_article_node_pressed,
             PressAction.OPEN_CENSORSHIP_FIXES_DOC: (
                 tree_view_manager.on_censorship_fixes_doc_pressed

@@ -28,6 +28,9 @@ CLOSE_TO_ZERO = 0.001
 # fmt: off
 INTRO_NODE_TEXT = "Introduction"
 INTRO_COMPLEAT_BARKS_READER_TEXT = "The Compleat Barks Disney Reader"
+# The How To: its node under Introduction and the title in its reader's bar (the dots
+# menu opens the same document).
+INTRO_HOW_TO_TEXT = "How to Use the Barks Reader"
 INTRO_DON_AULT_FANTA_INTRO_TEXT = "Don Ault: Fantagraphics Introduction"
 INTRO_ILLUSTRATED_HISTORY_TEXT = "A Short Illustrated History"
 INTRO_BY_THE_NUMBERS_TEXT = "By the Numbers"

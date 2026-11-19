@@ -38,7 +38,11 @@ from barks_reader.core.keys import (
 from barks_reader.core.main_layout import MainLayoutMode, content_aspect_ratio, page_width
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.read_cue import READ_CUE_OPENS, is_read_cue_shown
-from barks_reader.core.reader_consts_and_types import APP_TITLE, COMIC_BEGIN_PAGE
+from barks_reader.core.reader_consts_and_types import (
+    APP_TITLE,
+    COMIC_BEGIN_PAGE,
+    INTRO_HOW_TO_TEXT,
+)
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, READ_CUE
 from barks_reader.core.reader_utils import (
@@ -979,7 +983,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """Open the How To document in the document reader."""
         doc_dir = self._reader_settings.sys_file_paths.get_how_to_doc_dir()
         # A page at a time on the spread too: its first page is made to stand alone.
-        self._nav_coord.open_document(doc_dir, "How To Use the Barks Reader", single_page=True)
+        self._nav_coord.open_document(doc_dir, INTRO_HOW_TO_TEXT, single_page=True)
 
     def open_about(self) -> None:
         """Open the About box, putting the keys back on the menu if they opened it."""
