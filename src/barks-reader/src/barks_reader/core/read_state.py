@@ -8,11 +8,15 @@ before that was kept does not, and is judged by its page: closed back at the com
 beginning, it is taken as finished, which is also what a comic closed on its cover
 looks like. A one-pager or a cover is one page of a collection, so opening it is
 reading it.
+
+A session shorter than `MIN_READ_SESSION` is a glance, not a read, and counts for
+nothing here: it finishes no story and leaves none mid-way. The history still lists it.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -28,6 +32,10 @@ if TYPE_CHECKING:
     from .reading_history import ReadEvent, ReadingHistoryStore
 
 _SINGLE_PAGE_TITLES = COVERS_SET | frozenset(ONE_PAGERS)
+
+# The shortest session that counts as reading. Opening a story to look at it, as
+# happens all day on a development machine, takes seconds.
+MIN_READ_SESSION = timedelta(minutes=1)
 
 
 class ReadState(Enum):
@@ -78,6 +86,24 @@ def is_single_page_title(title_str: str) -> bool:
     return STR_TITLE_TO_ENUM.get(title_str) in _SINGLE_PAGE_TITLES
 
 
+def is_read_session(event: ReadEvent) -> bool:
+    """Return whether a session lasted long enough to count as reading.
+
+    Args:
+        event: One reading session.
+
+    Returns:
+        False for a session never closed or shorter than `MIN_READ_SESSION`. True for
+        one that closed "before" it opened: the times are naive local ones, so a session
+        across the autumn clock change cannot say how long it was.
+
+    """
+    if event.closed_at is None:
+        return False
+    duration = event.closed_at - event.opened_at
+    return duration < timedelta(0) or duration >= MIN_READ_SESSION
+
+
 def is_finished_event(event: ReadEvent) -> bool:
     """Return whether a session reached its story's end.
 
@@ -104,17 +130,19 @@ def get_read_states(
         is_single_page: Whether a title is read by being opened.
 
     Returns:
-        The finished titles and those left mid-way.
+        The finished titles and those left mid-way, from the sessions long enough to
+        count as reading.
 
     """
+    read_sessions = [event for event in events if is_read_session(event)]
     finished = frozenset(
         event.title_str
-        for event in events
+        for event in read_sessions
         if is_single_page(event.title_str) or is_finished_event(event)
     )
     left_mid_way = tuple(
         summary.title_str
-        for summary in summarize_titles(events)
+        for summary in summarize_titles(read_sessions)
         if summary.last_display_page not in ("", COMIC_BEGIN_PAGE)
         and not is_single_page(summary.title_str)
     )

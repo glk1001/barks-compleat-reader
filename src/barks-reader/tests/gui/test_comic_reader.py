@@ -187,10 +187,14 @@ def test_opening_a_story_records_a_history_event(boot: AppBoot) -> None:
     assert events[-1]["last_body_page"] == layout.last_body_page
 
 
-def test_a_story_read_to_its_end_is_recorded_as_finished_and_its_row_marked(
+def test_a_story_taken_to_its_end_is_recorded_as_finished_and_the_rows_marked_again(
     boot: AppBoot,
 ) -> None:
-    """The close tells the history the story was finished, and the tree marks its rows again."""
+    """The close tells the history the story was finished, and the tree marks its rows again.
+
+    The visit lasts seconds, under the minute that counts as reading, so no row turns
+    finished for it: the rows are marked as the canned history alone has them.
+    """
     d = _open_ghost_of_the_grotto(boot)
     with d.expect(pattern(markers.GOTO_LAST_PAGE)), d.expect(SHOWED_PAGE):
         d.press_menu_button("goto_end")
@@ -199,8 +203,11 @@ def test_a_story_read_to_its_end_is_recorded_as_finished_and_its_row_marked(
     d.settle()
     history = json.loads((boot.scratch / "barks-reader-history.json").read_text(encoding="utf-8"))
     assert history["events"][-1]["finished"] is True
-    assert int(last_field(d, markers.READ_STATES_SHOWN, "finished")) >= 1, (
-        "the story's own row is on the tree, and it is finished now"
+    assert int(last_field(d, markers.READ_STATES_SHOWN, "finished")) == 0, (
+        "a visit of seconds is a glance: it finishes no story"
+    )
+    assert int(last_field(d, markers.READ_STATES_SHOWN, "part_read")) >= 1, (
+        "the story's own row is on the tree, part-read in the canned history"
     )
 
 

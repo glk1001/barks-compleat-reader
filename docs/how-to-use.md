@@ -92,7 +92,8 @@ one given to it later.
 
 A dot after a story's title says how far you have got with it: a full dot for a story you
 have read to its last page, a half dot for one you are part-way through (a story you
-finished before and are reading again included), and no dot for one you have not read. A one-page gag or a cover counts as read once you have opened it. The
+finished before and are reading again included), and no dot for one you have not read. A one-page gag or a cover counts as read once you have opened it. A
+visit of under a minute counts for nothing: it is taken as a look, not a read. The
 dots, *Continue reading*, *Not yet read* and the count on *By the Numbers* all come from the
 reading history, so they stop changing while *Record Reading History* is off, and deleting a
 story from the *History* view makes it unread again.

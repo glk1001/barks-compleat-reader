@@ -12,11 +12,13 @@ import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.comic_book_info import COVERS, ONE_PAGERS
 from barks_reader.core.read_state import (
+    MIN_READ_SESSION,
     ReadState,
     ReadStates,
     ReadStateSource,
     get_read_states,
     is_finished_event,
+    is_read_session,
     is_single_page_title,
 )
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
@@ -38,13 +40,14 @@ def _event(
     finished: bool | None = None,
     closed: bool = True,
     event_id: str = "",
+    lasted: timedelta = timedelta(minutes=20),
 ) -> ReadEvent:
     opened_at = _OPENED + timedelta(days=day)
     return ReadEvent(
         event_id or f"{title_str}-{day}",
         title_str,
         opened_at,
-        closed_at=opened_at + timedelta(minutes=20) if closed else None,
+        closed_at=opened_at + lasted if closed else None,
         last_display_page=page,
         last_body_page="32",
         finished=finished,
@@ -68,6 +71,84 @@ class TestIsFinishedEvent:
 
     def test_a_session_never_closed_is_not(self) -> None:
         assert not is_finished_event(_event(page=COMIC_BEGIN_PAGE, closed=False))
+
+
+class TestIsReadSession:
+    def test_the_floor_is_a_minute(self) -> None:
+        assert timedelta(minutes=1) == MIN_READ_SESSION
+
+    @pytest.mark.parametrize(
+        ("lasted", "expected"),
+        [
+            (timedelta(seconds=7), False),
+            (MIN_READ_SESSION - timedelta(seconds=1), False),
+            (MIN_READ_SESSION, True),
+            (timedelta(minutes=25), True),
+            (timedelta(0), False),
+        ],
+    )
+    def test_a_session_counts_from_the_floor_up(self, lasted: timedelta, expected: bool) -> None:
+        assert is_read_session(_event(lasted=lasted)) is expected
+
+    def test_a_session_never_closed_does_not_count(self) -> None:
+        assert not is_read_session(_event(closed=False))
+
+    def test_a_session_across_the_autumn_clock_change_counts(self) -> None:
+        # It closed "before" it opened: its length is unknown, so its page is believed.
+        assert is_read_session(_event(lasted=timedelta(minutes=-40)))
+
+
+class TestGlances:
+    """A session under the floor finishes nothing and leaves nothing mid-way."""
+
+    _GLANCE = timedelta(seconds=7)
+
+    def test_a_glance_that_reached_the_end_finishes_nothing(self) -> None:
+        states = get_read_states(
+            [_event(page=COMIC_BEGIN_PAGE, finished=True, lasted=self._GLANCE)]
+        )
+
+        assert states == ReadStates()
+
+    def test_an_old_glance_closed_at_the_beginning_finishes_nothing(self) -> None:
+        states = get_read_states([_event(page=COMIC_BEGIN_PAGE, lasted=self._GLANCE)])
+
+        assert states.state_of(_ANDES) is ReadState.UNREAD
+
+    def test_a_glance_that_turned_some_pages_leaves_nothing_mid_way(self) -> None:
+        states = get_read_states([_event(page="5", finished=False, lasted=self._GLANCE)])
+
+        assert states == ReadStates()
+
+    def test_a_glance_at_a_one_pager_does_not_read_it(self) -> None:
+        one_pager = ENUM_TO_STR_TITLE[ONE_PAGERS[0]]
+
+        states = get_read_states([_event(one_pager, page="17", lasted=self._GLANCE)])
+
+        assert states.state_of(one_pager) is ReadState.UNREAD
+
+    def test_a_glance_after_a_read_changes_nothing(self) -> None:
+        read_to_page_12 = _event(day=0, page="12", finished=False)
+        glance_at_the_start = _event(
+            day=1, page=COMIC_BEGIN_PAGE, finished=False, lasted=self._GLANCE
+        )
+        glance_to_the_end = _event(day=2, page=COMIC_BEGIN_PAGE, finished=True, lasted=self._GLANCE)
+
+        states = get_read_states([read_to_page_12, glance_at_the_start, glance_to_the_end])
+
+        assert states.state_of(_ANDES) is ReadState.PART_READ
+        assert states.left_mid_way == (_ANDES,)
+
+    def test_a_glance_does_not_reorder_what_was_left_mid_way(self) -> None:
+        states = get_read_states(
+            [
+                _event(_ANDES, day=0, page="12", finished=False),
+                _event(_VACATION, day=1, page="3", finished=False),
+                _event(_ANDES, day=2, page="12", finished=False, lasted=self._GLANCE),
+            ]
+        )
+
+        assert states.left_mid_way == (_VACATION, _ANDES)
 
 
 class TestIsSinglePageTitle:
