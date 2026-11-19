@@ -62,6 +62,9 @@ class _ScheduledRestore:
         self._finished = False
         self._looking = True
         self._pending: dict[str, Any] = {}
+        # The backend's newest restore from here on, before anything is scheduled: the
+        # delayed move asks whether it still is, and a clock may run it at once.
+        backend._restore = self  # noqa: SLF001
 
         # Lambdas, not bound methods: Kivy's Clock holds a bound method weakly, and
         # nothing else holds this object once the callbacks have run.
@@ -328,8 +331,7 @@ class Win32WindowBackend:
             delayed move's check is done.
 
         """
-        self._restore = _ScheduledRestore(self, state, on_first_resize, on_done)
-        return self._restore.cancel
+        return _ScheduledRestore(self, state, on_first_resize, on_done).cancel
 
     # --- Private helpers ---
 

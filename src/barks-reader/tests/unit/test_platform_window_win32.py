@@ -516,6 +516,27 @@ def test_a_restore_that_finished_early_leaves_a_window_gone_fullscreen_since_alo
         restore.move_window.assert_not_called()
 
 
+def test_a_delayed_move_run_as_it_is_scheduled_still_lets_go_of_the_window() -> None:
+    """A clock that runs a callback at once: the restore is the backend's newest by then.
+
+    The live Windows tests run the clock so, and the move, asking whether its restore
+    was still the newest before the backend had been given it, held on to the window.
+    """
+    release = MagicMock()
+    backend = _backend(MagicMock(return_value=True), _window_at(*_SAVED))
+    clock = MagicMock()
+    clock.schedule_once.side_effect = lambda callback, _delay=0: callback(0)
+
+    with (
+        patch.object(win32_module, "release_window_rect", release),
+        patch.object(win32_module, "Clock", clock),
+        patch.object(win32_module, "Window", MagicMock(fullscreen=False)),
+    ):
+        backend.schedule_restore(_saved_state(), MagicMock(), MagicMock())
+
+    release.assert_called_once_with(_HWND)
+
+
 def test_a_restore_that_finished_early_leaves_a_newer_restores_window_alone() -> None:
     """Out, in and out again: the second exit holds the window, and has its own restore."""
     with _Restore(_SAVED) as restore:
