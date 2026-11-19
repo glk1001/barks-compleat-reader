@@ -201,6 +201,11 @@ SEARCH_FIELD_BG = (0.16, 0.16, 0.16, 1)
 SEARCH_FIELD_BORDER = (1.0, 1.0, 1.0, 0.25)
 SEARCH_FIELD_BORDER_WIDTH = 1  # px
 SEARCH_RESULT_HEIGHT = 48  # dp — two lines: title over a dim breadcrumb
+# A text hit's row: its title over two lines of snippet. The label's text height
+# is held to the row's, so a snippet that wraps further loses its later lines
+# rather than running into the next row (max_lines is not honored with markup).
+SEARCH_SNIPPET_RESULT_HEIGHT = 66  # dp
+SEARCH_SNIPPET_TEXT_INSET = 4  # dp — the text box sits this far inside the row, top and bottom
 SEARCH_ERROR_TEXT = "Search unavailable"  # shown if the index build failed
 SEARCH_CLEAR_BTN_WIDTH = 28  # dp — the "clear search" button inside the field's right end
 SEARCH_CLEAR_GLYPH_SIZE = 22  # dp — big/bold enough to read in the small button
@@ -279,6 +284,28 @@ def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
 def _markup_escape(text: str) -> str:
     """Escape the characters special to Kivy markup, for text shown in a markup label."""
     return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
+
+
+def _result_markup(hit: SearchHit, title_hex: str, dim_hex: str) -> str:
+    """Return a results row's markup: the title over a dim breadcrumb, or a text hit's snippet.
+
+    A hit found in a page's text shows the words round the match in place of the
+    breadcrumb, the match itself bold in the title's color, so the row says why
+    the page matched.
+    """
+    title = f"[color={title_hex}]{_markup_escape(hit.title)}[/color]"
+    if hit.snippet:
+        start, end = hit.snippet_match
+        before, match, after = (
+            _markup_escape(part)
+            for part in (hit.snippet[:start], hit.snippet[start:end], hit.snippet[end:])
+        )
+        second = f"{before}[b][color={title_hex}]{match}[/color][/b]{after}"
+    elif hit.breadcrumb:
+        second = _markup_escape(hit.breadcrumb)
+    else:
+        return title
+    return f"{title}\n[size=11][color={dim_hex}]{second}[/color][/size]"
 
 
 def _ref_under(lbl: Label, wx: float, wy: float) -> str | None:
@@ -511,10 +538,10 @@ class OKFViewer(RelativeLayout):
         self._table_rewriter = table_rewriter
         self._action_provider = action_provider
         self._state_path = state_path
-        # Title/heading search over the bundle. The built-in searcher needs no app
-        # knowledge (unlike the image/table/action providers) and builds its index
-        # lazily on the first query, so defaulting it here costs nothing up front;
-        # an embedding app may inject a different backend (e.g. full-text).
+        # Title, heading and text search over the bundle. The built-in searcher
+        # needs no app knowledge (unlike the image/table/action providers) and
+        # builds its index lazily on the first query, so defaulting it here costs
+        # nothing up front; an embedding app may inject a different backend.
         self._searcher: SearchProvider = search_provider or BundleSearcher(bundle)
         self._body_max_width: float = BODY_MAX_WIDTH  # dp
         self._content_padding: tuple[float, ...] = (CONTENT_PADDING,) * 4  # l, t, r, b
@@ -1160,26 +1187,23 @@ class OKFViewer(RelativeLayout):
             btn.background_color = self._theme.selection if active else SEARCH_RESULT_INACTIVE_COLOR
 
     def _result_button(self, hit: SearchHit) -> Button:
-        """Build one result row: gold title over a dim breadcrumb, opening the page."""
-        title = _markup_escape(hit.title)
-        crumb = (
-            f"\n[size=11][color={self._theme.crumb_hex}]"
-            f"{_markup_escape(hit.breadcrumb)}[/color][/size]"
-            if hit.breadcrumb
-            else ""
-        )
+        """Build one result row: gold title over a dim breadcrumb or snippet, opening the page."""
         btn = Button(
-            text=f"[color={self._theme.title_hex}]{title}[/color]{crumb}",
+            text=_result_markup(hit, self._theme.title_hex, self._theme.crumb_hex),
             font_size=sp(TREE_PANEL_FONT_SIZE),
             markup=True,
             halign="left",
-            valign="middle",
+            # Top, for a snippet: a clipped label drops lines from both ends when centered.
+            valign="top" if hit.snippet else "middle",
             size_hint_y=None,
-            height=dp(SEARCH_RESULT_HEIGHT),
+            height=dp(SEARCH_SNIPPET_RESULT_HEIGHT if hit.snippet else SEARCH_RESULT_HEIGHT),
             background_color=SEARCH_RESULT_INACTIVE_COLOR,
             background_normal="",
         )
-        btn.bind(width=lambda inst, w: inst.setter("text_size")(inst, (w - dp(12), None)))
+        text_height = (
+            btn.height - 2 * dp(SEARCH_SNIPPET_TEXT_INSET) if hit.snippet else None
+        )  # a snippet's lines past the row's are dropped
+        btn.bind(width=lambda inst, w: inst.setter("text_size")(inst, (w - dp(12), text_height)))
         btn.bind(on_release=lambda *_: self._open_search_hit(hit))
         return btn
 

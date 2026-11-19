@@ -287,6 +287,9 @@ In the **Wiki Reader** (opened by the *Goto wiki page* link or from the *Carl Ba
 contents tree and the page. **Esc** lifts focus to the reader's top bar, where **Left | Right**
 move between its buttons and **Enter** on **Back** returns to the previous page (and at the first
 page, leaves the reader). Opening a story's wiki page lands focus straight in the reading pane.
+The **search box** above the contents tree (**Up** off the tree's top reaches it) finds pages by
+their titles, headings and text, title matches first; a page found by its text shows the words
+round the match. Put words in double quotes to find them as a phrase: `"glen brown"`.
 
 ---
 

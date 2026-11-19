@@ -625,6 +625,29 @@ class TestSidebarWhileSearching:
 
         assert [path for path, _btn in viewer._result_rows] == [a_page]
 
+    def test_a_text_hit_shows_its_snippet_with_the_match_bold(self, viewer: OKFViewer) -> None:
+        a_page = viewer.bundle / "concept" / "a.md"
+        text_hit = SearchHit(
+            path=a_page,
+            title="Carl Barks",
+            breadcrumb="Topics",
+            matched_on="text",
+            score=1,
+            snippet="…to the artist Glen Brown, Barks",
+            snippet_match=(15, 25),
+        )
+        viewer._searcher = _Hits([text_hit, _hit(a_page, "Glen [Brown]")])
+        viewer._mark_search_ready(failed=False)
+
+        self._type(viewer, "glen brown")
+
+        (_, text_row), (_, title_row) = viewer._result_rows
+        assert "…to the artist [b][color=" in text_row.text
+        assert "]Glen Brown[/color][/b], Barks" in text_row.text
+        assert "Topics" not in text_row.text  # the snippet takes the breadcrumb's line
+        assert text_row.height > title_row.height  # room for two lines of snippet
+        assert "Glen &bl;Brown&br;" in title_row.text  # markup in a title is escaped
+
     def test_the_clear_button_puts_the_tree_back(self, viewer: OKFViewer) -> None:
         self._type(viewer, "grotto")
         viewer._clear_search()
