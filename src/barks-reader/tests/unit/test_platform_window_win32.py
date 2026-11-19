@@ -145,6 +145,76 @@ def test_a_move_now_left_where_it_was_tries_again_next_frame() -> None:
     clock.schedule_once.assert_called_once()
 
 
+class _MoveNow:
+    """A `move_now` on a window that takes the move only from a given attempt on."""
+
+    def __init__(self, *, lands_on_attempt: int | None) -> None:
+        self.window_at: tuple[int, ...] = _ELSEWHERE
+        self.attempts = 0
+        self.lands_on_attempt = lands_on_attempt
+        self.clock = _Clock()
+        self.window = MagicMock(fullscreen=False)
+
+        def move(_hwnd: int, *rect_and_repaint: int) -> bool:
+            self.attempts += 1
+            if self.lands_on_attempt is not None and self.attempts >= self.lands_on_attempt:
+                self.window_at = (*rect_and_repaint[:4],)
+            return True
+
+        def fill(_hwnd: int, rect: RECT) -> bool:
+            left, top, width, height = self.window_at
+            rect.left, rect.top, rect.right, rect.bottom = left, top, left + width, top + height
+            return True
+
+        self.backend = _backend(MagicMock(side_effect=move), MagicMock(side_effect=fill))
+
+    def run(self) -> None:
+        """Call `move_now`, then run each frame's attempt until none is scheduled."""
+        with (
+            patch.object(win32_module, "Window", self.window),
+            patch.object(win32_module, "Clock", self.clock),
+        ):
+            self.backend.move_now(_saved_state())
+            while self.clock.live():
+                self.clock.run_frame()
+
+
+def test_a_window_that_never_takes_the_move_is_tried_a_few_frames_and_left() -> None:
+    """Not every frame for good: the scheduled restore settles what this could not."""
+    move_now = _MoveNow(lands_on_attempt=None)
+
+    move_now.run()
+
+    assert move_now.attempts == win32_module._MOVE_NOW_ATTEMPTS
+
+
+def test_a_move_that_holds_on_a_later_frame_stops_there_and_tells_the_restore() -> None:
+    """The first move straight after the exit is lost; the next frame's holds."""
+    move_now = _MoveNow(lands_on_attempt=2)
+    restore = MagicMock()
+    move_now.backend._restore = restore
+
+    move_now.run()
+
+    assert move_now.attempts == 2  # noqa: PLR2004
+    assert move_now.window_at == _SAVED
+    restore.look_now.assert_called_once_with()
+
+
+def test_a_window_gone_fullscreen_again_is_not_moved_on_the_next_frame() -> None:
+    move_now = _MoveNow(lands_on_attempt=None)
+    with (
+        patch.object(win32_module, "Window", move_now.window),
+        patch.object(win32_module, "Clock", move_now.clock),
+    ):
+        move_now.backend.move_now(_saved_state())
+        move_now.window.fullscreen = "auto"
+        move_now.clock.run_frame()
+
+    assert move_now.attempts == 1
+    assert move_now.clock.live() == []
+
+
 def test_a_restore_left_at_the_wrong_size_recovers_through_kivy_and_moves_again(
     loguru_sink: list[str],
 ) -> None:

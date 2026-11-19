@@ -15,6 +15,7 @@ The fixture returns the bundle alongside its member mocks.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -47,7 +48,11 @@ ManagerFixture = tuple[WindowManager, WindowModeCallbacks, MagicMock, MagicMock,
 
 
 class _FakeBackend:
-    """Records save/restore/cancel calls for test assertions."""
+    """Records save/restore/cancel calls for test assertions.
+
+    A state is recorded as a copy, as it stood at the call: the manager has one state
+    and changes it in place, so the object itself only ever shows its latest values.
+    """
 
     def __init__(self) -> None:
         self.saved_states: list[WindowState] = []
@@ -70,7 +75,7 @@ class _FakeBackend:
         self.saved_states.append(state)
 
     def hold_windowed_rect(self, state: WindowState) -> None:
-        self.hold_calls.append(state)
+        self.hold_calls.append(replace(state))
         if self.window is not None:
             self.fullscreen_at_hold.append(self.window.fullscreen)
 
@@ -83,7 +88,7 @@ class _FakeBackend:
             self.fullscreen_at_quiet.append(self.window.fullscreen)
 
     def move_now(self, state: WindowState) -> None:
-        self.move_calls.append(state)
+        self.move_calls.append(replace(state))
         self.restores_at_move.append(len(self.restore_calls))
         if self.window is not None:
             self.fullscreen_at_move.append(self.window.fullscreen)
@@ -94,7 +99,7 @@ class _FakeBackend:
         on_first_resize: Callable[[], None],
         on_done: Callable[[], None],
     ) -> Callable[[], None]:
-        self.restore_calls.append(state)
+        self.restore_calls.append(replace(state))
         # Simulate immediate restore completion.
         on_first_resize()
         on_done()
@@ -440,6 +445,12 @@ class TestStaticHelpers:
 
 
 class TestWindowState:
+    def test_the_saved_rectangle_as_its_edges(self) -> None:
+        state = WindowState()
+        state.size, state.pos = (700, 500), (150, 120)
+
+        assert state.edges() == (150, 120, 850, 620)
+
     def test_save_state_now(self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(window_utils_module, "Window", fake_window)
         state = WindowState()
@@ -1150,8 +1161,10 @@ class TestReshapeSavedWindow:
         assert wm.reshape_saved_window(_pair_wide) is True
 
         wm.goto_windowed_mode(callbacks)
+        wm._saved_window_state.size = (1, 1)  # what the calls were given, not what is there now
         restored = backend.restore_calls[-1]
         assert (restored.size, restored.pos) == ((2400, 1800), (-500, 50))
+        assert backend.hold_calls[-1].size == (2400, 1800)
         assert backend.move_calls[-1].size == (2400, 1800)
         assert (
             "Reshaped the saved window state: size = (1200, 1800) -> (2400, 1800),"

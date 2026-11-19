@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core import win32_window
 from barks_reader.core.win32_window import (
     NO_FRAME_REPAINT,
     RECT,
@@ -169,6 +170,11 @@ def live_window() -> Iterator[int]:
     user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
     user32.UnregisterClassW.argtypes = [wintypes.LPCWSTR, wintypes.HINSTANCE]
 
+    # This window's guards, kept out of the module's list: left there, a later test's
+    # window given the same handle had its hold sent to a dead window's guard. Held
+    # here until the window is gone, as the window calls into them until then.
+    guards: list[Any] = []
+
     hwnd = user32.CreateWindowExW(
         0,
         _CLASS_NAME,
@@ -185,7 +191,8 @@ def live_window() -> Iterator[int]:
             raise ctypes.WinError(ctypes.get_last_error())  # ty: ignore[missing-attribute]
         user32.ShowWindow(hwnd, _SW_SHOWNOACTIVATE)
         _messages_seen.clear()
-        yield hwnd
+        with patch.object(win32_window, "_caption_guards", guards):
+            yield hwnd
     finally:
         if hwnd:
             user32.DestroyWindow(hwnd)
