@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-import re
 import time
 from contextlib import nullcontext
 from typing import TYPE_CHECKING
 
 import pytest
 from barks_gui import harness, nodes, taps
-from barks_gui.logs import fields_of, last_field
+from barks_gui.logs import fields_of, last_field, last_size
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import MATCH_THE_SCREEN, SINGLE_PAGE, TWO_PAGE_SPREAD
@@ -326,24 +325,9 @@ def _set_layout_from(d: Driver, current: str, *, window_resizes: bool = True) ->
     return picked
 
 
-_NUMBER = re.compile(r"(\d+)")
-_WINDOW_RESIZED_RE = re.compile(pattern(markers.WINDOW_RESIZED, width=_NUMBER, height=_NUMBER))
-_LAYOUT_SIZE_RE = re.compile(
-    pattern(markers.MAIN_LAYOUT_SIZE, width=_NUMBER, height=_NUMBER, mode="windowed")
-)
-
-
-def _last_size(d: Driver, regex: re.Pattern[str]) -> tuple[int, int]:
-    """Return the width and height of the last line of `regex` the app logged."""
-    found = regex.findall(d.log_path.read_text(encoding="utf-8", errors="replace"))
-    assert found, f"the app has not logged /{regex.pattern}/"
-    width, height = found[-1]
-    return int(width), int(height)
-
-
 def _assert_the_screen_fills_the_window(d: Driver, layout: str) -> None:
-    window = _last_size(d, _WINDOW_RESIZED_RE)
-    screen = _last_size(d, _LAYOUT_SIZE_RE)
+    window = last_size(d, markers.WINDOW_RESIZED)
+    screen = last_size(d, markers.MAIN_LAYOUT_SIZE, mode="windowed")
     assert screen == window, (
         f"on {layout!r} the main screen is laid out {screen[0]}x{screen[1]}"
         f" in a {window[0]}x{window[1]} window"
@@ -397,12 +381,6 @@ def test_a_layout_changed_after_a_comic_read_fullscreen_fills_its_window(
 
 MAIN_FULLSCREEN = pattern(markers.ENTERED_FULLSCREEN, screen="MainScreen")
 MAIN_WINDOWED = pattern(markers.ENTERED_WINDOWED, screen="MainScreen")
-_FULLSCREEN_GEOMETRY_RE = re.compile(
-    pattern(markers.WINDOW_GEOMETRY, reason="MainScreen fullscreen", width=_NUMBER, height=_NUMBER)
-)
-# In either mode: the main screen takes the new layout's shape in fullscreen already, so
-# a window that comes back at that shape leaves it nothing to change, or log, windowed.
-_ANY_LAYOUT_SIZE_RE = re.compile(pattern(markers.MAIN_LAYOUT_SIZE, width=_NUMBER, height=_NUMBER))
 
 
 def test_a_layout_changed_in_fullscreen_comes_back_windowed_on_the_screen(
@@ -426,7 +404,9 @@ def test_a_layout_changed_in_fullscreen_comes_back_windowed_on_the_screen(
     with d.expect(MAIN_FULLSCREEN, FULLSCREEN_TIMEOUT):
         d.main_menu_button("fullscreen")
     d.settle()
-    screen_width, screen_height = _last_size(d, _FULLSCREEN_GEOMETRY_RE)
+    screen_width, screen_height = last_size(
+        d, markers.WINDOW_GEOMETRY, reason="MainScreen fullscreen"
+    )
     other = _set_layout_from(d, layout, window_resizes=False)
     with d.expect(MAIN_WINDOWED, FULLSCREEN_TIMEOUT):
         d.main_menu_button("fullscreen")
@@ -439,7 +419,9 @@ def test_a_layout_changed_in_fullscreen_comes_back_windowed_on_the_screen(
     assert height <= boot_height, (
         f"on {other!r} the window came back {height} high, more than the {boot_height} it had"
     )
-    screen = _last_size(d, _ANY_LAYOUT_SIZE_RE)
+    # In either mode: the main screen takes the new layout's shape in fullscreen already,
+    # so a window that comes back at that shape leaves it nothing to change, or log, windowed.
+    screen = last_size(d, markers.MAIN_LAYOUT_SIZE)
     assert screen == (width, height), (
         f"on {other!r} the main screen is laid out {screen[0]}x{screen[1]}"
         f" in a {width}x{height} window"

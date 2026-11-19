@@ -751,6 +751,41 @@ class TestLogMessages:
         assert logs.messages(line) == "... - Index item pressed: IndexItem(id='a-1')"
 
 
+class TestLastSize:
+    class _Driver:
+        def __init__(self, tmp_path: Path, *lines: str) -> None:
+            self.log_path = tmp_path / "app.log"
+            self.log_path.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+
+    def test_the_most_recent_line_gives_its_width_and_height(self, tmp_path: Path) -> None:
+        resized = markers.WINDOW_RESIZED
+        d = self._Driver(
+            tmp_path,
+            f"... - {resized.format(width=700, height=1080)} Window.fullscreen = False.  [m:f:1]",
+            f"... - {resized.format(width=1406, height=1080)} Window.fullscreen = False.  [m:f:1]",
+        )
+
+        assert logs.last_size(d, resized) == (1406, 1080)  # ty: ignore[invalid-argument-type]
+
+    def test_another_field_can_be_pinned(self, tmp_path: Path) -> None:
+        """The last windowed layout size, with a fullscreen one logged after it."""
+        size = markers.MAIN_LAYOUT_SIZE
+        d = self._Driver(
+            tmp_path,
+            f"... - {size.format(width=700, height=1080, mode='windowed')}  [m:f:1]",
+            f"... - {size.format(width=2560, height=1440, mode='auto')}  [m:f:1]",
+        )
+
+        assert logs.last_size(d, size, mode="windowed") == (700, 1080)  # ty: ignore[invalid-argument-type]
+        assert logs.last_size(d, size) == (2560, 1440)  # ty: ignore[invalid-argument-type]
+
+    def test_a_line_the_app_never_logged_fails_naming_it(self, tmp_path: Path) -> None:
+        d = self._Driver(tmp_path, "... - Something else.  [m:f:1]")
+
+        with pytest.raises(AssertionError, match=r"the app has not logged /Main.*window.*resize"):
+            logs.last_size(d, markers.WINDOW_RESIZED)  # ty: ignore[invalid-argument-type]
+
+
 class TestImageExists:
     def test_a_file_on_disk(self, tmp_path: Path) -> None:
         image = tmp_path / "072-5.png"

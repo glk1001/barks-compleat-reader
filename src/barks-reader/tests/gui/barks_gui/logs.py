@@ -57,6 +57,29 @@ def last_field(d: gd.Driver, template: str, field: str, **fields: object) -> str
     return values[-1]
 
 
+_NUMBER = re.compile(r"(\d+)")
+
+
+def last_size(d: gd.Driver, template: str, **fields: object) -> tuple[int, int]:
+    """Return the width and height of the most recent line of `template` the app logged.
+
+    Args:
+        d: The driver, for the app log.
+        template: A marker from ``barks_reader.core.log_markers`` with a ``width``
+            and a ``height`` field.
+        **fields: Values to pin for the other fields, as for ``pattern``.
+
+    Raises:
+        AssertionError: If the app has not logged that line.
+
+    """
+    regex = re.compile(pattern(template, width=_NUMBER, height=_NUMBER, **fields))
+    found = regex.findall(messages(d.log_path.read_text(encoding="utf-8", errors="replace")))
+    assert found, f"the app has not logged /{pattern(template, **fields)}/"
+    width, height = found[-1]
+    return int(width), int(height)
+
+
 def image_exists(path: Path) -> bool:
     """Return whether an image path the app logged names a real image.
 
