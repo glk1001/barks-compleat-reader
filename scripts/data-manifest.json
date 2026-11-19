@@ -36,9 +36,9 @@
       "md5": "37019e50c3b25e36bc00e8035fcc89d9"
     },
     "Various": {
-      "bytes": 238223985,
-      "files": 267,
-      "md5": "92d465b722138e1d39d1275795775935"
+      "bytes": 250125741,
+      "files": 270,
+      "md5": "2db4d1ca1d9684e7bd40cc3d8da23a9d"
     },
     "prebuilt comics": {
       "bytes": 9754127402,
@@ -46,6 +46,6 @@
       "md5": "ce51c75f0a2abe0daa81a81aa6ac5adc"
     }
   },
-  "written_at": "2026-11-19T08:13:20+00:00",
+  "written_at": "2026-11-19T11:36:33+00:00",
   "written_on": "gregspc2"
 }
