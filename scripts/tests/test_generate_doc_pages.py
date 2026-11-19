@@ -1,8 +1,8 @@
 """The how-to and introduction generators: markdown to page images.
 
 WeasyPrint needs system libraries (Pango) that a Windows or macOS machine may not
-have, and the documents are only ever generated on Linux: without them the module
-is skipped.
+have, and pypdfium2 is installed on Linux alone (``pyproject.toml``), where the
+documents are only ever generated: without either the module is skipped.
 """
 
 # cspell:ignore getbbox getcolors maxcolors
@@ -18,8 +18,8 @@ from PIL import Image
 try:
     import generate_how_to_pages as how_to
     import generate_intro_page as intro
-except OSError as error:  # the import of WeasyPrint's libraries, not of the scripts
-    pytest.skip(f"WeasyPrint cannot load its libraries: {error}", allow_module_level=True)
+except (ImportError, OSError) as error:  # pypdfium2 absent, or WeasyPrint's libraries
+    pytest.skip(f"The document generators cannot be imported: {error}", allow_module_level=True)
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -110,7 +110,9 @@ dev = [
     # through matplotlib and weasyprint.
     "fonttools>=4.62",
     # scripts/generate_how_to_pages.py: turns the pages WeasyPrint lays out into PNGs.
-    "pypdfium2>=5.15",
+    # Linux only, where the documents are generated: its macOS wheel needs macOS 13, and
+    # on the macOS 12 overnight machine the failed build stopped every `uv run`.
+    "pypdfium2>=5.15; sys_platform == 'linux'",
 ]
 
 [tool.pytest.ini_options]
