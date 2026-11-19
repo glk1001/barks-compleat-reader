@@ -1,19 +1,19 @@
 {
   "entries": {
     "Barks Panels.zip": {
-      "bytes": 1400720574,
+      "bytes": 1405257881,
       "files": 1,
-      "md5": "8d2b5a1b6475b92a5adda945f09e8999"
+      "md5": "416f6bfd0adf3ac3311169c1488247b8"
     },
     "Fantagraphics Volumes Overrides": {
-      "bytes": 1362427196,
-      "files": 30,
-      "md5": "0725b82249422291cf4a5bd947ebc504"
+      "bytes": 1362427218,
+      "files": 31,
+      "md5": "375eaa8c44e39cd48ed78d22e882a02b"
     },
     "Fantagraphics-panel-segments": {
-      "bytes": 5463089,
-      "files": 5751,
-      "md5": "5f02856d94200602918e7ac03db0795b"
+      "bytes": 5548657,
+      "files": 5845,
+      "md5": "8afe2fa78fde2188a591388aa40ad46b"
     },
     "Indexes": {
       "bytes": 45545676,
@@ -21,9 +21,9 @@
       "md5": "b6338432c4f0a8253b81b313c916df4f"
     },
     "PNG panels": {
-      "bytes": 4430213738,
-      "files": 3881,
-      "md5": "66c74afe7fae5d3b66be4afe47a4417e"
+      "bytes": 4437467026,
+      "files": 3909,
+      "md5": "567f914ab0053213f6c95fae298ad711"
     },
     "Reader Icons": {
       "bytes": 11851407,
@@ -31,21 +31,21 @@
       "md5": "5a29b3d045ca8d2d06404b5c3ead2f03"
     },
     "Statistics": {
-      "bytes": 4065039,
+      "bytes": 4065033,
       "files": 17,
-      "md5": "8bd48948f034d206d60c3da81736a5c5"
+      "md5": "37019e50c3b25e36bc00e8035fcc89d9"
     },
     "Various": {
-      "bytes": 107004638,
-      "files": 128,
-      "md5": "ba093cb6e7b8590f67c51770bd88f245"
+      "bytes": 238223985,
+      "files": 267,
+      "md5": "92d465b722138e1d39d1275795775935"
     },
     "prebuilt comics": {
-      "bytes": 9596844658,
-      "files": 465,
-      "md5": "7f81ef48e23ae761e9a2f923c84157ac"
+      "bytes": 9754127402,
+      "files": 474,
+      "md5": "ce51c75f0a2abe0daa81a81aa6ac5adc"
     }
   },
-  "written_at": "2026-11-11T12:21:31+00:00",
+  "written_at": "2026-11-19T08:13:20+00:00",
   "written_on": "gregspc2"
 }
