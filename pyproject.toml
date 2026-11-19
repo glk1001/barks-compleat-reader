@@ -109,6 +109,8 @@ dev = [
     # The font tests read the speech font's character map; until now it came only
     # through matplotlib and weasyprint.
     "fonttools>=4.62",
+    # scripts/generate_how_to_pages.py: turns the pages WeasyPrint lays out into PNGs.
+    "pypdfium2>=5.15",
 ]
 
 [tool.pytest.ini_options]
