@@ -43,9 +43,15 @@ CORPUS_STATS_SCREEN = "corpus_stats"
 
 
 class SwitchToDocumentReader(Protocol):
-    """Open a folder of page images in the document reader, with `resume` at its last page."""
+    """Open a folder of page images in the document reader.
 
-    def __call__(self, doc_dir: Path, title: str, *, resume: bool = False) -> None: ...
+    With `resume` it opens at its last page; with `single_page` it shows one page at a
+    time on the two-page spread as well.
+    """
+
+    def __call__(
+        self, doc_dir: Path, title: str, *, resume: bool = False, single_page: bool = False
+    ) -> None: ...
 
 
 class _ReleasesFrameBuffers(ShaderTransition):
@@ -333,7 +339,7 @@ class ReaderScreenManager:
         logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=origin))
 
     def _switch_to_document_reader(
-        self, doc_dir: Path, title: str, *, resume: bool = False
+        self, doc_dir: Path, title: str, *, resume: bool = False, single_page: bool = False
     ) -> None:
         logger.debug(log_markers.SWITCHING_TO_DOCUMENT_READER.format(title=title))
         assert self._reader_screens
@@ -341,7 +347,9 @@ class ReaderScreenManager:
         self._reader_screens.document_reader_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
-        self._reader_screens.document_reader_screen.open_document(doc_dir, title, resume=resume)
+        self._reader_screens.document_reader_screen.open_document(
+            doc_dir, title, resume=resume, single_page=single_page
+        )
         self._hand_window_drag_to(self._reader_screens.document_reader_screen)
         self._screen_manager.current = DOCUMENT_READER_SCREEN
         logger.info(log_markers.DOCUMENT_READER_ACTIVE.format(title=title))

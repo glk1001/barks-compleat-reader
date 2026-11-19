@@ -978,7 +978,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def open_how_to(self) -> None:
         """Open the How To document in the document reader."""
         doc_dir = self._reader_settings.sys_file_paths.get_how_to_doc_dir()
-        self._nav_coord.open_document(doc_dir, "How To Use the Barks Reader")
+        # A page at a time on the spread too: its first page is made to stand alone.
+        self._nav_coord.open_document(doc_dir, "How To Use the Barks Reader", single_page=True)
 
     def open_about(self) -> None:
         """Open the About box, putting the keys back on the menu if they opened it."""

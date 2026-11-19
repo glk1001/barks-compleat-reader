@@ -84,7 +84,9 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
     document has no cover: ``core.display_unit.build_document_units``), in a box twice a
     page wide with the bar over it, and Go to Story offers both pages' stories; a turn
     moves a pair. An odd last page sits alone in the middle of the box, as the comic
-    reader's does.
+    reader's does. A document opened with ``single_page`` (the How To, whose first page
+    is made to stand alone) shows one page at a time there too, in a box and under a bar
+    one page wide.
 
     The bar's Fullscreen works as the comic reader's: fullscreen hides the bar, and the
     pages take its room; a tap on the top margin, or Escape, brings it back. A document
@@ -101,8 +103,10 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
     app_icon_filepath = StringProperty()
     is_fullscreen = BooleanProperty(defaultvalue=False)
     # The main screen's layout ("single" or "spread"); the app sets it, the kv file
-    # widens the page box to the pair for the spread (`pages_across`).
+    # widens the page box to the pair for the spread (`pages_across`), unless the
+    # document on show was opened to read a page at a time (`single_page`).
     layout_mode = StringProperty(MainLayoutMode.SINGLE.value)
+    single_page = BooleanProperty(defaultvalue=False)
     pages_across = NumericProperty(1)
     page_source = StringProperty()
     right_page_source = StringProperty()
@@ -166,15 +170,19 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         # The bar is the page's width, centred: it takes the window-drag hit test over.
         return self.ids.doc_action_bar.drag_region
 
-    def open_document(self, doc_dir: Path, title: str, *, resume: bool = False) -> None:
+    def open_document(
+        self, doc_dir: Path, title: str, *, resume: bool = False, single_page: bool = False
+    ) -> None:
         """Open a folder of page images at its first page, or with `resume` at its last one.
 
         Args:
             doc_dir: The folder of page images.
             title: The title shown in the action bar.
             resume: Open at the page the document was last left on in this session.
+            single_page: Show one page at a time on the two-page spread as well.
 
         """
+        self.single_page = single_page
         self.action_bar_title = get_action_bar_title(self._font_manager, title)
         # The screen outlives its documents: each opens with Close the menu's default,
         # not the button last used in the one before.
@@ -188,6 +196,8 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
         self._current_page_index = max(0, min(last_index, len(self._page_paths) - 1))
         logger.info(log_markers.DOCUMENT_OPENED.format(title=title, pages=len(self._page_paths)))
+        if single_page:
+            logger.info(log_markers.DOCUMENT_ONE_PAGE_AT_A_TIME.format(title=title))
         self._update_page_source()
 
         # The mode the window is in, to come back to on close; a document never goes
@@ -208,7 +218,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
 
     def _current_unit(self) -> DisplayUnit:
         """Return what the current page shows: itself alone, or its pair on the spread."""
-        if self.layout_mode == MainLayoutMode.SPREAD.value:
+        if self.layout_mode == MainLayoutMode.SPREAD.value and not self.single_page:
             return self._units[self._unit_idx_for_index[self._current_page_index]]
         return DisplayUnit(self._current_page_index, None)
 

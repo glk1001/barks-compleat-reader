@@ -1,7 +1,8 @@
 <DocumentReaderScreen>:
     pos_hint: {"center_x": 0.5, "center_y": 0.5}
-    # Two pages across on the spread, paired from the first (core.display_unit); one otherwise.
-    pages_across: 2 if root.layout_mode == 'spread' else 1
+    # Two pages across on the spread, paired from the first (core.display_unit); one
+    # otherwise, and for a document opened to read a page at a time.
+    pages_across: 2 if root.layout_mode == 'spread' and not root.single_page else 1
 
     # Shared skeleton (ui/action_bar.kv). Close sits alone behind the fence, as in the
     # comic reader, so an overshoot on Go to Story can't close the document.

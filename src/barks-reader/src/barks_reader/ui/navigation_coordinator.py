@@ -505,11 +505,23 @@ class NavigationCoordinator:
         return_view_state: ViewStates | None = None,
         *,
         resume: bool = False,
+        single_page: bool = False,
     ) -> None:
-        """Open a document in the document reader, with `resume` at the page last left on."""
+        """Open a document in the document reader.
+
+        Args:
+            doc_dir: The folder of page images.
+            title: The title shown in the reader's bar.
+            return_view_state: The view to come back to when the document closes.
+            resume: Open at the page last left on.
+            single_page: Show one page at a time on the two-page spread as well.
+
+        """
         self._on_active_changed(False)  # noqa: FBT003
         self._doc_reader_close_view_state = return_view_state
-        self._screen_switchers.switch_to_document_reader(doc_dir, title, resume=resume)
+        self._screen_switchers.switch_to_document_reader(
+            doc_dir, title, resume=resume, single_page=single_page
+        )
 
     def open_wiki(self) -> None:
         """Open the Carl Barks Wiki screen on the configured bundle.

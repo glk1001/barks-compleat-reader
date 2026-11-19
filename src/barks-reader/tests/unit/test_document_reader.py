@@ -85,13 +85,18 @@ def _write_links(page: Path, *figures: dict[str, object]) -> None:
 
 
 def _open(
-    screen: DocumentReaderScreen, doc_dir: Path, title: str = "How To", *, resume: bool = False
+    screen: DocumentReaderScreen,
+    doc_dir: Path,
+    title: str = "How To",
+    *,
+    resume: bool = False,
+    single_page: bool = False,
 ) -> None:
     with (
         patch.object(document_reader_module, "Window"),
         patch.object(document_reader_module, "get_action_bar_title", return_value=title),
     ):
-        screen.open_document(doc_dir, title, resume=resume)
+        screen.open_document(doc_dir, title, resume=resume, single_page=single_page)
 
 
 class TestDocumentReaderMarkers:
@@ -497,6 +502,34 @@ class TestTheSpread:
         screen.next_page()
         assert _shown(screen) == ("page-002.png", "")
         assert not [line for line in loguru_sink if "Document right page" in line]
+
+    def test_a_single_page_document_shows_one_at_a_time_on_the_spread(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        for name in SEVEN_PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _spread(screen)
+        _open(screen, tmp_path, single_page=True)
+        assert _shown(screen) == ("page-001.png", "")
+        screen.next_page()
+        assert _shown(screen) == ("page-002.png", "")
+        screen.next_page()
+        screen.prev_page()
+        assert _shown(screen) == ("page-002.png", "")
+        assert 'Document "How To" shows one page at a time.' in loguru_sink
+        assert not [line for line in loguru_sink if "Document right page" in line]
+
+    def test_the_document_after_a_single_page_one_pairs_again(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        for name in SEVEN_PAGES:
+            (tmp_path / name).write_bytes(b"")
+        _spread(screen)
+        _open(screen, tmp_path, single_page=True)
+        loguru_sink.clear()
+        _open(screen, tmp_path)
+        assert _shown(screen) == ("page-001.png", "page-002.png")
+        assert not [line for line in loguru_sink if "one page at a time" in line]
 
     def test_a_layout_change_under_an_open_document_pairs_the_current_page(
         self, screen: DocumentReaderScreen, tmp_path: Path

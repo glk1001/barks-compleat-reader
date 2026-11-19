@@ -262,6 +262,8 @@ DOCUMENT_OPENED: Final = 'Document reader opened "{title}" with {pages} pages.'
 DOCUMENT_PAGE: Final = 'Document page {page}/{pages}: "{filename}".'
 # On the two-page spread, the page shown beside DOCUMENT_PAGE's (the unit's first page).
 DOCUMENT_RIGHT_PAGE: Final = 'Document right page {page}/{pages}: "{filename}".'
+# A document opened to show one page at a time on the two-page spread as well (the How To).
+DOCUMENT_ONE_PAGE_AT_A_TIME: Final = 'Document "{title}" shows one page at a time.'
 DOCUMENT_CLOSING: Final = "Document reader closing."
 DOCUMENT_LINKS_UNREADABLE: Final = 'Document story links "{path}" unreadable: {error}.'
 DOCUMENT_LINK_SKIPPED: Final = 'Document story links "{path}": skipped {entry}.'

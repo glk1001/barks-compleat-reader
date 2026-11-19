@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_gui import harness, nodes, taps
-from barks_gui.logs import last_field
+from barks_gui.logs import fields_of, last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import MATCH_THE_SCREEN, SINGLE_PAGE, TWO_PAGE_SPREAD
@@ -154,10 +154,17 @@ def test_matching_the_screen_boots_on_the_layout_its_shape_gives(boot: AppBoot) 
 
 
 def test_dots_menu_how_to_opens_the_document_reader(boot: AppBoot) -> None:
+    """The How To reads a page at a time, on the two-page spread as well."""
     d = boot(nodes.THE_STORIES)
     _open_dots_menu(d, downs=HOW_TO_DOWNS)
-    with d.expect(DOCUMENT_ENTERED):  # the transition has finished before any key is sent
+    with (
+        d.expect(DOCUMENT_ENTERED),  # the transition has finished before any key is sent
+        d.expect(pattern(markers.DOCUMENT_ONE_PAGE_AT_A_TIME)),
+        d.expect(pattern(markers.DOCUMENT_PAGE, page=1)),
+    ):
         _pick(d, pattern(markers.SWITCHING_TO_DOCUMENT_READER))
+    d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=2), "Right")
+    assert fields_of(d, markers.DOCUMENT_RIGHT_PAGE, "page") == []
     # Escape opens the document reader's menu on its only button, Close.
     d.key_then_wait(d.MENU_ENTERED, "Escape")
     d.key_then_wait(pattern(markers.MAIN_SCREEN_ACTIVE), "Return")
