@@ -1,6 +1,48 @@
-<h1  style="margin-top: 0; margin-bottom: 40px; line-height: 1;text-align: center;">How to Use the Barks Reader</h1>
+# How to Use the Barks Reader
 
-The Barks Reader is designed to be easy to use and intuitive, but this guide is just in case.
+Most of the Reader explains itself. Two things do not, so they come first.
+
+<div class="must-know">
+<img class="shot" src="how-to-press-the-picture.jpg" alt="A story's title view, with the picture at its bottom right marked 'Press here'">
+
+### Press the story's picture to read it
+
+Choosing a story in the tree does not open the comic: it brings up the story's title view.
+**The comic opens when you press the picture at the bottom right of that view**, the
+*title portal*.
+
+On a new install the picture says *PRESS TO READ ME!*, and on the next three stories
+*Read this story*. After that it says nothing, and it is still the way in.
+
+By keyboard: <kbd>Enter</kbd> on the story, then <kbd>Enter</kbd> again on the picture.
+
+</div>
+
+<div class="must-know">
+
+### In fullscreen, tap near the top for the menu bar
+
+A comic read in fullscreen fills the screen, and the reader's menu bar is hidden.
+**Tap or click anywhere in the top tenth of the screen to bring the bar down.** Its
+<img src="icon-close-orig.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
+button, at the far right, takes you back to the main screen. Tap just below the bar to put it
+away again.
+
+By keyboard: <kbd>Up</kbd> or <kbd>Esc</kbd> shows the bar, <kbd>Left</kbd> <kbd>Right</kbd>
+move along it, <kbd>Enter</kbd> presses a button, and <kbd>Esc</kbd> hides it.
+
+<div class="shots">
+<figure>
+<img class="shot" src="how-to-reader-bar-hidden.jpg" alt="A comic in fullscreen, with the strip across the top of the screen marked 'Tap anywhere in this strip'">
+<figcaption>Fullscreen: no bar. Tap the top strip…</figcaption>
+</figure>
+<figure>
+<img class="shot" src="how-to-reader-bar-shown.jpg" alt="The same comic with the menu bar shown and its buttons ringed">
+<figcaption>…and the bar comes down, with its buttons.</figcaption>
+</figure>
+</div>
+
+</div>
 
 ---
 
@@ -14,26 +56,32 @@ then you can flip and fold it into a portrait screen and get a great Barks readi
 On a wide monitor the main screen opens out instead, like a book: the navigation tree on the
 left page and the current view on the right.
 
+<div class="note">
+
 **No censorship.** Where Fantagraphics made alterations to Barks's original artwork — replacing
 or modifying panels for editorial reasons — the Reader includes override image files that
 restore the original artwork. These are applied automatically. However, some of the controversial fixes
 (like 'Larkies' to 'Harpies') can be turned off individually in Settings if you prefer the
 Fantagraphics versions.
 
+</div>
+
 ---
 
 ## Layout
 
-The main screen has two layouts, and the *Layout* setting chooses between them.
-On a portrait screen it is a single page: the navigation tree above, the current view below.
-On a landscape screen it is a two-page spread: the tree is the left page, the current view —
-a story's title view, the fun view, an index or a search — is the right page, and the menu
-bar runs across both. Each page of the spread is as wide as the single page would be on the
-same screen, so nothing gets smaller. The default, *Match the screen*, picks whichever fits
-the monitor; *Single page* and *Two-page spread* fix one or the other. The comic reader
-follows: on the spread a comic opens two pages at a time, on the single page one, and the
-reader's *Double Page* button switches the comic at hand. The sections below describe the
-single page: on the spread, what sits *below* the tree sits *beside* it.
+The main screen has two layouts, and the *Layout* setting chooses between them:
+
+- **Single page** — for a portrait screen: the navigation tree above, the current view below.
+- **Two-page spread** — for a landscape screen: the tree is the left page, the current view —
+  a story's title view, the fun view, an index or a search — is the right page, and the menu
+  bar runs across both. Each page of the spread is as wide as the single page would be on the
+  same screen, so nothing gets smaller.
+- **Match the screen** — the default: picks whichever of the two fits the monitor.
+
+The comic reader follows: on the spread a comic opens two pages at a time, on the single page
+one, and the reader's *Double Page* button switches the comic at hand. The sections below
+describe the single page: on the spread, what sits *below* the tree sits *beside* it.
 
 ### Top Menu Bar
 
@@ -93,10 +141,16 @@ The tree on the left is the primary way to find stories. Its top-level sections 
 A title in parentheses, such as *(The Hypno-Gun)*, is a story Barks left untitled; the name is
 one given to it later.
 
-A dot after a story's title says how far you have got with it: a full dot for a story you
-have read to its last page, a half dot for one you are part-way through (a story you
-finished before and are reading again included), and no dot for one you have not read. A one-page gag or a cover counts as read once you have opened it. A
-visit of under a minute counts for nothing: it is taken as a look, not a read. The
+A dot after a story's title says how far you have got with it:
+
+- **A full dot**
+  <img src="icon-read-dot-full.png" alt="[b]Full dot[/b]" style="position: relative; top: 3px;" width="15" height="15"> — a story you have read to its last page.
+- **A half dot**
+  <img src="icon-read-dot-half.png" alt="[b]Half dot[/b]" style="position: relative; top: 3px;" width="15" height="15"> — one you are part-way through (a story you finished before and are reading
+  again included).
+- **No dot** — one you have not read.
+
+A one-page gag or a cover counts as read once you have opened it. A visit of under a minute counts for nothing: it is taken as a look, not a read. The
 dots, *Continue reading*, *From not yet read* and the count on *By the Numbers* all come from the
 reading history, so they stop changing while *Record Reading History* is off, and deleting a
 story from the *History* view makes it unread again.
@@ -109,7 +163,9 @@ speaker line.
 
 A large background image sits behind the navigation tree. It is decorative but also interactive:
 
-- A **goto-title button** (an open book) at the top right navigates to the story associated with that image.
+- A **goto-title button**
+  <img src="icon-goto-title-button.png" alt="[b]Goto title[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  (an open book) at the top right navigates to the story associated with that image.
 - Click **Refresh** in the menu bar to pick a new random image.
 
 ### Bottom Panel
@@ -117,7 +173,7 @@ A large background image sits behind the navigation tree. It is decorative but a
 The bottom half below the main tree content (the right page, on the two-page spread) switches
 between two modes:
 
-**Comic View** — shown when a story is selected in the tree. Displays the story's title,
+**Title View** — shown when a story is selected in the tree. Displays the story's title,
 publication info, and a favorite panel. A story Barks left untitled is headed by the issue it
 first appeared in, as long-time readers know it, with its later name in parentheses underneath;
 the comic reader's top bar shows the same two lines. Contains:
@@ -130,7 +186,7 @@ the comic reader's top bar shows the same two lines. Contains:
   off in this story, or when you reached the story through a tag that marks particular pages; tick
   it to have the portal button reopen the comic at that page instead of the first page. When a tag
   marks several pages the label reads *Goto page N (2 of 5):* and two small arrows beside it (or
-  **Left | Right** while the row is focused) step through them.
+  <kbd>Left</kbd> <kbd>Right</kbd> while the row is focused) step through them.
 - A **"Goto wiki page" link** (optional) — appears when the story has a page in the Carl Barks
   Wiki; opens that story's page in the Wiki Reader.
 - An **override toggle** (optional) — lets you turn off the censorship fix for this specific story.
@@ -144,9 +200,13 @@ the comic reader's top bar shows the same two lines. Contains:
 
 **Fun View** — shown when no specific story is selected. Displays a random comic panel.
 
-- A **category filter button** at the bottom left of the fun view lets you control which panel
+- A **category filter button**
+  <img src="icon-filter-button.png" alt="[b]Filter[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  at the bottom left of the fun view lets you control which panel
   categories are shown.
-- A **goto-title button** (an open book) at the top right of the fun image navigates to the story
+- A **goto-title button**
+  <img src="icon-goto-title-button.png" alt="[b]Goto title[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  (an open book) at the top right of the fun image navigates to the story
   associated with the currently displayed panel. On the two-page spread, where two panels stack,
   the lower one carries its own.
 - **Click left/right** of fun image or use **left/right keys** to step through the panel history.
@@ -159,7 +219,12 @@ the comic reader's top bar shows the same two lines. Contains:
 
 ## Reading the Comics
 
-Open a comic by clicking its **title portal button** in the bottom comic view panel.
+<div class="remember">
+
+**Press the story's picture.** Open a comic by clicking its **title portal button**, the picture
+at the bottom right of the title view.
+
+</div>
 
 ### Navigation
 
@@ -168,11 +233,16 @@ Open a comic by clicking its **title portal button** in the bottom comic view pa
 
 ### Top Menu Bar (in the Reader)
 
-In fullscreen mode the reader's menu bar is hidden. **Click near the top of the screen** to
-show it, and click just below it, or press **Esc**, to hide it again. From the keyboard, the
-**up arrow key** or **Esc** shows the bar with a button highlighted: **Left | Right** move
-between the buttons, **Enter** presses one, and **Esc** puts the bar away again. In windowed
-mode the bar is always shown. It contains:
+<div class="remember">
+
+**In fullscreen the reader's menu bar is hidden. Click near the top of the screen** to
+show it, and click just below it, or press <kbd>Esc</kbd>, to hide it again.
+
+</div>
+
+From the keyboard, the **up arrow key** or <kbd>Esc</kbd> shows the bar with a button highlighted:
+<kbd>Left</kbd> <kbd>Right</kbd> move between the buttons, <kbd>Enter</kbd> presses one, and <kbd>Esc</kbd> puts the bar
+away again. In windowed mode the bar is always shown. It contains:
 
 - <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggles between windowed and fullscreen mode.
@@ -200,8 +270,10 @@ is listed under it, and the stories on the right.
 
 Typing lists the words the stories use that match what you type: the word itself first, then
 words starting with it, then (from three letters) words with it inside (*irline* finds *airline*).
-Pick a word — **Enter**, or a click — to list the stories that use it, each with the pages it is
-on; the speech-bubble button at the end of a story's row shows its matching bubbles, the words
+Pick a word — <kbd>Enter</kbd>, or a click — to list the stories that use it, each with the pages it is
+on; the speech-bubble button
+<img src="icon-speech-bubble.png" alt="[b]Speech bubbles[/b]" style="position: relative; top: 3px;" width="15" height="15">
+at the end of a story's row shows its matching bubbles, the words
 highlighted.
 
 **Several words.** Each word in the list has a **+** beside it. Picking it adds the word to a row
@@ -209,7 +281,7 @@ under the search box, **[ALL] [gold ×] [mine ×]**, and the stories listed are 
 picked word (**ALL**) or any of them (**ANY** — press the ALL chip to switch). Press a word's
 chip, or its **–**, to take it out.
 
-**Typed queries.** Type a query and press **Enter** (or pick the *Search for:* row):
+**Typed queries.** Type a query and press <kbd>Enter</kbd> (or pick the *Search for:* row):
 
 | Type | Finds stories with |
 |---|---|
@@ -238,7 +310,7 @@ its members beneath it. Pick a tag to list its stories. Each tag has a **+** too
 under the box, **[ALL] [Gyro Gearloose] [not Christmas]**. Pressing a picked tag steps it from
 included, to *not* (its stories left out), to taken out. Tags can be typed as well —
 `scrooge + gyro -christmas stories` (use `+` or `,` for ALL, `|` for ANY, not both), with
-`year:1950-55` or `vol:7` to keep only the stories of those years or that volume — and **Enter**
+`year:1950-55` or `vol:7` to keep only the stories of those years or that volume — and <kbd>Enter</kbd>
 puts them in place of the tags picked (a range shows as a chip of its own: *years 1950-55*).
 
 ### Narrowing the results
@@ -252,10 +324,10 @@ puts them in place of the tags picked (a range shows as a chip of its own: *year
 
 The **×** beside the search box clears it, the picked words or tags, and the era.
 
-**By keyboard:** **Down** from the box goes to the picked row (if any) and on to the list, and
-**Right** at the end of the text to the **×**; **Right** from a word or tag moves to its **+**, and
-again to the rows above the results; **Down | Up** move between those rows and the results.
-**Enter** picks, and on a filter row stays put so you can try another.
+**By keyboard:** <kbd>Down</kbd> from the box goes to the picked row (if any) and on to the list, and
+<kbd>Right</kbd> at the end of the text to the **×**; <kbd>Right</kbd> from a word or tag moves to its **+**, and
+again to the rows above the results; <kbd>Down</kbd> <kbd>Up</kbd> move between those rows and the results.
+<kbd>Enter</kbd> picks, and on a filter row stays put so you can try another.
 
 ---
 
@@ -266,28 +338,28 @@ also navigate almost everything using the keyboard (some small esoteric buttons 
 Keyboard navigation is great if you're on a big screen TV and using a TV remote.
 Keyboard navigation includes:
  
-- **Left | Right arrow keys** — things like turning pages or moving focus to the left or right.
-- **Up | Down arrow keys** — things like scrolling lists or moving focus up or down.
-- **Enter key** — activates the highlighted item. In the navigation tree, Enter opens or closes a
+- <kbd>Left</kbd> <kbd>Right</kbd> **arrow keys** — things like turning pages or moving focus to the left or right.
+- <kbd>Up</kbd> <kbd>Down</kbd> **arrow keys** — things like scrolling lists or moving focus up or down.
+- <kbd>Enter</kbd> **key** — activates the highlighted item. In the navigation tree, Enter opens or closes a
   highlighted branch in place; on a highlighted **story** it moves focus down into the bottom title
   panel (onto the title portal), and a second Enter there opens the comic reader.
-- **Esc key** — moving to a previous focus.
+- <kbd>Esc</kbd> **key** — moving to a previous focus.
 
-On the bottom title panel, press **Right** to move focus into the panel; **Up | Down** then
+On the bottom title panel, press <kbd>Right</kbd> to move focus into the panel; <kbd>Up</kbd> <kbd>Down</kbd> then
 cycle through its widgets — the title portal, the *Goto page* and censorship-fixes
-checkboxes, the *Goto wiki page* link, and the peek eye — with **Enter** activating the
-focused one and **Esc** returning to the tree.
+checkboxes, the *Goto wiki page* link, and the peek eye — with <kbd>Enter</kbd> activating the
+focused one and <kbd>Esc</kbd> returning to the tree.
 
-In the **comic reader**, **Left | Right** turn the pages, and **Up** or **Esc** lift focus to the
-top menu bar, where **Left | Right** move between its buttons, **Enter** presses one and **Esc**
+In the **comic reader**, <kbd>Left</kbd> <kbd>Right</kbd> turn the pages, and <kbd>Up</kbd> or <kbd>Esc</kbd> lift focus to the
+top menu bar, where <kbd>Left</kbd> <kbd>Right</kbd> move between its buttons, <kbd>Enter</kbd> presses one and <kbd>Esc</kbd>
 returns to the page.
 
 In the **Wiki Reader** (opened by the *Goto wiki page* link or from the *Carl Barks Wiki* index),
-**Up | Down** read the page and step through its links while **Left | Right** move between the
-contents tree and the page. **Esc** lifts focus to the reader's top bar, where **Left | Right**
-move between its buttons and **Enter** on **Back** returns to the previous page (and at the first
+<kbd>Up</kbd> <kbd>Down</kbd> read the page and step through its links while <kbd>Left</kbd> <kbd>Right</kbd> move between the
+contents tree and the page. <kbd>Esc</kbd> lifts focus to the reader's top bar, where <kbd>Left</kbd> <kbd>Right</kbd>
+move between its buttons and <kbd>Enter</kbd> on **Back** returns to the previous page (and at the first
 page, leaves the reader). Opening a story's wiki page lands focus straight in the reading pane.
-The **search box** above the contents tree (**Up** off the tree's top reaches it) finds pages by
+The **search box** above the contents tree (<kbd>Up</kbd> off the tree's top reaches it) finds pages by
 their titles, headings and text, title matches first; a page found by its text shows the words
 round the match. Put words in double quotes to find them as a phrase: `"glen brown"`.
 
@@ -295,7 +367,7 @@ round the match. Put words in double quotes to find them as a phrase: `"glen bro
 
 ## Settings
 
-Open *Settings* from the **⋮** menu on the top action bar. Close it with **Escape** or the
+Open *Settings* from the **⋮** menu on the top action bar. Close it with <kbd>Escape</kbd> or the
 **✕** in the top-right corner. Settings are grouped into sections — *Folders*, *Reading*,
 *Appearance*, *Startup*, *Window*, *Controls*, *Controversial Censorship Fixes*, and
 *Advanced* — with the power-user options gathered under *Advanced* at the bottom. Key options
@@ -311,7 +383,7 @@ are:
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |
 | *Go Straight to Fullscreen on App Start*      | Launches the app in fullscreen                                 |
 | *Go Straight to Fullscreen for Comic Reading* | Auto-fullscreen when opening a comic                           |
-| *Say 'Read this story' on the Story Picture*  | Captions the Comic View's picture, which opens the comic: *For the first few stories*, *Always* or *Never* |
+| *Say 'Read this story' on the Story Picture*  | Captions the Title View's picture, which opens the comic: *For the first few stories*, *Always* or *Never* |
 | *Decode Pages Whole*                          | Decodes every page whole for the sharpest page; comics open more slowly |
 | *Show Title Info in Top View*                 | Toggles story title display above the tree                     |
 | *Show Title Info in Bottom View*              | Toggles story title display in the bottom panel                |

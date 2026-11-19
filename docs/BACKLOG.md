@@ -286,7 +286,13 @@ in the OCR repo, which is read-only from here:
         spread lost it the same day). Regenerate the text pages (`uv run scripts/generate_how_to_pages.py`, which writes
         transparent PNGs to `docs/how-to-pages`),
         export the composited `page-N.png` files from the GIMP how-to project to
-        `Various/documents/how-to`, and ship them in the next data pack.
+        `Various/documents/how-to`, and ship them in the next data pack. Since 2026-11-19
+        the pages are restyled (`scripts/how-to-style.css`: coloured section bands, boxes,
+        the two things a new reader cannot guess alone on page 1 with marked-up
+        screenshots) and there are seven of them, so the GIMP project needs one more
+        background than the six shipped. The three `docs/how-to-*.jpg` screenshots are
+        cut from `website/screenshot-title-view-single-page.jpg` and
+        `website/screenshot-reading-a-story.jpg`: remake them when those are re-shot.
   - [ ] **The README screenshots** — `website/screenshot-selecting-a-title.jpg` and
         `website/screenshot-reading-a-story.jpg` if they show an untitled story or the
         spread's title page; `website/screenshot-main-window.jpg` if a title is selected.
