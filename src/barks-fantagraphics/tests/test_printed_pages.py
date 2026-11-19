@@ -5,6 +5,7 @@ The expected numbers here were read off the scans themselves: image 040 of volum
 """
 
 import pytest
+from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 from barks_fantagraphics.printed_pages import get_printed_page
 
 
@@ -16,6 +17,7 @@ class TestAScanWithAPrintedPage:
             (18, "161", "154"),
             (6, "213", "208"),
             (1, "116", "109"),
+            (31, "008", "1"),
         ],
     )
     def test_it_is_the_image_less_the_volume_offset(
@@ -61,7 +63,7 @@ class TestAnImageWithNoPrintedPage:
             pytest.param(1, "500", id="a slot in a collection's own numbering"),
             pytest.param(18, "empty_page", id="a page that is not a scan"),
             pytest.param(18, "", id="a row with no image"),
-            pytest.param(31, "040", id="a volume that does not exist"),
+            pytest.param(32, "040", id="a volume that does not exist"),
         ],
     )
     def test_it_is_none(self, volume: int, image: str) -> None:
@@ -72,4 +74,7 @@ class TestAnImageWithNoPrintedPage:
 
 
 def test_every_volume_has_an_offset() -> None:
-    assert all(get_printed_page(volume, "100") is not None for volume in range(1, 31))
+    assert all(
+        get_printed_page(volume, "100") is not None
+        for volume in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+    )

@@ -50,6 +50,7 @@ _PRINTED_PAGE_OFFSETS: Final[dict[int, int]] = {
     28: 7,
     29: 7,
     30: 7,
+    31: 7,
 }
 
 # Volume to (first image, new offset), where a volume's offset changes part way through.
