@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import generate_stats_images as gen
@@ -15,7 +16,7 @@ from barks_reader.core.statistics_series import (
 from PIL import Image
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    import pytest
 
 
 class TestMain:
@@ -28,6 +29,18 @@ class TestMain:
             with Image.open(tmp_path / name) as image:
                 assert image.size[0] > 1000  # noqa: PLR2004
         assert load_series((tmp_path / CHART_DATA_FILE).read_text(encoding="utf-8")) == all_series()
+
+    def test_a_quoted_tilde_is_the_home_folder(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+        monkeypatch.chdir(tmp_path)
+
+        gen.main(Path("~/Statistics"), None)
+
+        assert (tmp_path / "Statistics" / CHART_DATA_FILE).is_file()
+        assert not (tmp_path / "~").exists()
 
     def test_the_word_table_needs_the_index(self, tmp_path: Path) -> None:
         gen.gen_word_statistics(tmp_path, tmp_path / "no-such-indexes")

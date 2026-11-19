@@ -395,6 +395,9 @@ def main(
     ] = None,
 ) -> None:
     """Generate pre-rendered statistics PNG images for the Barks Reader."""
+    # A quoted "~/..." reaches us unexpanded; without this it becomes a folder named "~" here.
+    output_dir = output_dir.expanduser()
+    indexes_dir = indexes_dir.expanduser() if indexes_dir is not None else None
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Generating statistics PNGs in: {output_dir}")
