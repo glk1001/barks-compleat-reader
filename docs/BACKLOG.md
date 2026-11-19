@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-11-12.
+Last updated: 2026-11-19.
 
 **Other to-do lists** (counts as of 2026-11-12; each list is the source of truth):
 
@@ -308,6 +308,58 @@ in the OCR repo, which is read-only from here:
       running app. If it is to go, the change is small: `_close_siblings` also closes each
       sibling's open descendants. The rule itself has mock-only unit tests, and any change
       should come with a GUI test.
+
+## Reading features (suggested 2026-11-19)
+
+Six features were suggested on 2026-11-19. Two are done: read and unread state (a dot on
+each story's row, *Continue reading*, *From not yet read*, the count on *By the Numbers*;
+a visit of under a minute counts for nothing) and *November in Barks* (the current month's
+stories under *Reading*). The rest, and what those two left behind:
+
+- [ ] **Offer the next story at the last page** — at a comic's last page, offer the story
+      that follows it (in the list it was opened from, or chronologically), so a reader with
+      a remote need not go back to the tree. The smallest of these. The read state
+      (`core/read_state.py`) lets it skip stories already finished.
+- [ ] **Panel-by-panel reading** — step through a page one panel at a time in the comic
+      reader, each panel filling the screen, for a TV seen from across the room. The biggest
+      job. Not yet checked: how well the panel-segment data orders the panels of an
+      irregular page (splash panels, insets, panels that span rows).
+- [ ] **Your own lists** — a "My list" node under *Reading*, with add and remove on the
+      title view, beside the curated *Playlists*. Needs a stored list, and a way to add
+      with the remote's six keys.
+- [ ] **Idle picture show** — after a time with no key pressed, show a slow run of panels
+      and splash pictures full screen, for a TV left on; any key returns.
+- [ ] **Browse by original issue** — the tree groups stories by series, then year range,
+      then title; it never shows one comic book as it was sold. A node per issue would
+      matter most for *Uncle Scrooge*, the *Donald Duck* issues and the giants, where an
+      issue holds several stories. Not yet checked: whether the data records the printed
+      order of the stories within an issue.
+- [ ] **Does a word-search hit open at the bubble's page?** — a question, not yet looked
+      at: choosing a story from a *Words* search should open the comic at the page that
+      holds the matched speech, not at the story's start or its saved page. Check what
+      happens now before deciding there is anything to do.
+
+Left over from the read marks and *November in Barks*:
+
+- [ ] **See the rest of the month node in the running app** — the *On sale in* group and
+      the line that names a story submitted on today's date ("Submitted 69 years ago today:
+      The Golden River") have only been run by unit tests. Open the node on a day a story
+      was submitted (in November: the 21st, 23rd, 24th, 26th, 27th and 30th, among others)
+      and look at both.
+- [ ] **The read mark on the two-page spread** — the dot sits at the tree's right edge,
+      inside the scrollbar (9a8acce0); seen only on the single page. Look at it on the
+      spread and at 4K.
+- [ ] **A list that is open goes stale** — a story read from *Continue reading* or *From
+      not yet read* keeps its row, with its new dot, until the node is closed and reopened.
+      Left on purpose: rebuilding the list would move or re-roll the rows just looked at.
+      Revisit if it reads as a fault on the TV.
+- [ ] **The month node over a month's end** — it is named and filled when the tree is
+      built, so an app left running into the next month shows the old one until restarted.
+- [ ] **The in-app How To pages** — `docs/how-to-use.md` gained passages on the read
+      marks, *Continue reading*, *From not yet read*, the one-minute rule and the month
+      node. Regenerate the pages as under "Pictures and pages that show the old title
+      view" above.
+- [ ] **The website** — `website/app.html` mentions none of these.
 
 ## Architecture / testability
 
