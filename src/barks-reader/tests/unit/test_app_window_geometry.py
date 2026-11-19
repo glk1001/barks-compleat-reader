@@ -27,6 +27,7 @@ from barks_reader.core.main_layout import (
     MainLayoutMode,
     content_aspect_ratio,
 )
+from barks_reader.core.platform_info import Platform
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.screen_metrics import ScreenInfo
 from barks_reader.core.testing import FakeClock
@@ -1762,6 +1763,139 @@ def test_a_reshaped_window_takes_the_layouts_minimum_in_fullscreen_and_nothing_a
 
     assert len(fake_clock.calls) == scheduled_before  # no refit's guarded resize
     assert fake_window.size == saved_window.size
+
+
+@pytest.mark.parametrize(
+    ("platform", "told_again"), [(Platform.LINUX, True), (Platform.WIN, False)]
+)
+def test_a_minimum_set_in_fullscreen_is_given_to_the_desktop_once_fullscreen_is_left(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    platform: Platform,
+    told_again: bool,
+) -> None:
+    """SDL keeps a minimum set in fullscreen and leaves the X11 size hint as it was.
+
+    Read from the window on the SDL the app ships (2026-11-20): the hint stayed the old
+    minimum through the exit, until the minimum was set again in a window. Windows asks
+    SDL for the minimum it keeps, so nothing is set there, in the middle of the exit.
+    """
+    monkeypatch.setattr(geometry_module, "PLATFORM", platform)
+    fake_window.size = (2560, 1440)  # fullscreen
+    saved_window = _SavedWindow((686, 1080), (937, 50))
+    h = _layout_changed_in_fullscreen_with(
+        monkeypatch, constraints, fake_window, fake_clock, saved_window
+    )
+    spread_minimum = (fake_window.minimum_width, fake_window.minimum_height)
+    set_in_fullscreen = fake_window._set_minimum_size.call_count  # noqa: SLF001
+    scheduled_before = len(fake_clock.calls)
+
+    fake_window.fullscreen = False
+    h.on_fullscreen_left()
+
+    set_again = fake_window._set_minimum_size.call_count - set_in_fullscreen  # noqa: SLF001
+    assert set_again == (1 if told_again else 0)
+    assert (fake_window.minimum_width, fake_window.minimum_height) == spread_minimum
+    assert fake_window.size == (2560, 1440)  # the restore sizes the window, not this
+    assert len(fake_clock.calls) == scheduled_before
+
+    h.on_fullscreen_left()  # the next exit, with no minimum set since
+    assert fake_window._set_minimum_size.call_count - set_in_fullscreen == set_again  # noqa: SLF001
+
+
+@pytest.mark.usefixtures("helper")
+def test_leaving_fullscreen_with_no_minimum_set_in_it_sets_none(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock
+) -> None:
+    set_in_a_window = fake_window._set_minimum_size.call_count  # noqa: SLF001
+
+    helper.on_fullscreen_left()
+
+    assert fake_window._set_minimum_size.call_count == set_in_a_window  # noqa: SLF001
+
+
+def test_a_minimum_set_again_in_a_window_leaves_nothing_for_the_exit(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """With no window saved the refit after the exit sets the minimum, in a window."""
+    monkeypatch.setattr(geometry_module, "PLATFORM", Platform.LINUX)
+    saved_window = _SavedWindow((0, 0), (-1, -1), saved=False)
+    h = _layout_changed_in_fullscreen_with(
+        monkeypatch, constraints, fake_window, fake_clock, saved_window
+    )
+    fake_window.fullscreen = False
+    h.apply_minimum_size()
+    set_in_a_window = fake_window._set_minimum_size.call_count  # noqa: SLF001
+
+    h.on_fullscreen_left()
+
+    assert fake_window._set_minimum_size.call_count == set_in_a_window  # noqa: SLF001
+
+
+def test_a_reshape_in_fullscreen_drops_a_guarded_resize_for_the_old_layout(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+) -> None:
+    """A layout change in a window, then fullscreen and another inside the guard's seconds.
+
+    The guard was armed again at the new minimum and its resize set the size of the
+    fullscreen window; still armed at the exit, it forced the old layout's size over
+    the reshaped rectangle.
+    """
+    fake_window.size = (686, 1080)
+    h, _ = _make_helper_on(
+        monkeypatch, constraints, fake_window, fake_clock, _landscape_screen(), TWO_PAGE_SPREAD
+    )
+    saved_window = _SavedWindow((686, 1080), (937, 50))
+    h.set_main_screen_callbacks(MagicMock(), MagicMock(), reshape_saved_window=saved_window)
+    h.set_window_ready()
+    h.set_layout_setting(SINGLE_PAGE)  # in a window: a guarded resize, still armed
+    guard, steps = h._resize_event, h._resize_steps  # noqa: SLF001
+    assert guard is not None
+    assert steps is not None
+
+    fake_window.fullscreen = True
+    fake_window.size = (2560, 1440)
+    scheduled_before = len(fake_clock.calls)
+    h.set_layout_setting(TWO_PAGE_SPREAD)
+
+    assert saved_window.reshapes == 1
+    assert len(fake_clock.calls) == scheduled_before  # no guard armed again
+    assert h._resize_event is None  # noqa: SLF001
+    assert h._resize_steps is None  # noqa: SLF001
+    assert h._resize_requested_size == (0, 0)  # noqa: SLF001
+    assert guard.cancelled
+    assert all(step.cancelled for step in steps)
+
+    fake_window.fullscreen = False
+    fake_window.size = saved_window.size  # restored at the reshaped rectangle
+    h.on_window_resize(fake_window, *saved_window.size)
+    assert fake_window.size == saved_window.size
+
+
+def test_a_guard_still_armed_is_not_armed_again_by_a_minimum_set_in_fullscreen(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    fake_metrics: MagicMock,
+) -> None:
+    h = _helper_with_metrics(monkeypatch, constraints, fake_window, fake_clock, fake_metrics)
+    h._schedule_guarded_resize(600, 950)  # noqa: SLF001  # below the minimum
+    fake_window.fullscreen = True
+    scheduled_before = len(fake_clock.calls)
+
+    h.apply_minimum_size()
+
+    assert len(fake_clock.calls) == scheduled_before
+    assert h._resize_requested_size == (600, 950)  # noqa: SLF001
 
 
 def test_with_no_window_saved_the_refit_still_waits_for_the_exit(

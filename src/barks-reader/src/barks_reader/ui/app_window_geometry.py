@@ -9,6 +9,7 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.main_layout import MainLayoutMode, choose_main_layout, content_aspect_ratio
+from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
@@ -80,6 +81,8 @@ class AppWindowGeometryHelper:
         self._layout_mode_changed: Callable[[MainLayoutMode], None] | None = None
         self._reshape_saved_window: Callable[[RectReshape], bool] | None = None
         self._refit_pending = False
+        # A minimum set in fullscreen, which the desktop has still to be told of.
+        self._minimum_hint_due = False
         self._resize_event: Any = None
         self._resize_steps: tuple[Any, Any] | None = None
         self._resize_requested_size = 0, 0
@@ -202,11 +205,15 @@ class AppWindowGeometryHelper:
         the old layout's minimum was enlarged to it by SDL with no resize event (on
         X11), and Kivy laid the screen out for a size the window did not have. The
         fullscreen window fills its monitor, so no minimum resizes it.
+
+        A guarded resize still on its way was for the old layout's window: left armed,
+        it forced that size over the reshaped rectangle on the way out of fullscreen.
         """
         if self._reshape_saved_window is not None and self._reshape_saved_window(
             self._windowed_rect_for_layout
         ):
             self._refit_pending = False
+            self._cancel_guarded_resize()
             self.apply_minimum_size()
         else:
             self._refit_pending = True  # the window's own shape waits till it is back
@@ -256,10 +263,18 @@ class AppWindowGeometryHelper:
 
         A 1080p screen's window, or this monitor's largest when it is smaller (see
         `minimum_window_size`); in ``Window.system_size`` units, as SDL takes them.
+
+        A fullscreen window fills its monitor and is not raised. SDL only keeps a
+        minimum it is given in fullscreen, and does not tell the desktop: that waits
+        for `on_fullscreen_left`.
         """
         monitor = self._current_monitor
         width, height = self._minimum_size()
-        self._raise_to_minimum(width, height)
+        if Window.fullscreen:
+            self._minimum_hint_due = True
+        else:
+            self._minimum_hint_due = False
+            self._raise_to_minimum(width, height)
         _set_window_minimum_size(width, height)
         logger.info(
             log_markers.WINDOW_MINIMUM_SET.format(
@@ -268,6 +283,28 @@ class AppWindowGeometryHelper:
                 screen=f"{monitor.width_pixels}x{monitor.height_pixels}",
             )
         )
+
+    def on_fullscreen_left(self) -> None:
+        """Tell the desktop of a minimum set while the window was fullscreen.
+
+        To be called as soon as the window is no longer fullscreen, before it is
+        restored. SDL kept the minimum but left the desktop the one before (seen in
+        the X11 size hint, which stayed as it was until the minimum was set again in a
+        window): after a change from the spread to the single page, the desktop would
+        hold the restored window to the spread's width, with no resize event, and Kivy
+        laid the screen out for a size the window did not have.
+
+        Not on Windows: SDL answers the desktop from the minimum it keeps there, and
+        setting one resizes a window that is still in the middle of its exit.
+        """
+        if not self._minimum_hint_due:
+            return
+        self._minimum_hint_due = False
+        if PLATFORM == Platform.WIN:
+            return
+        width, height = self._minimum_size()
+        _set_window_minimum_size(width, height)
+        logger.debug(f"Gave the desktop the minimum set in fullscreen: ({width}, {height}).")
 
     def _raise_to_minimum(self, min_width: int, min_height: int) -> None:
         """Raise the window, or the guarded resize on its way, to the minimum.
@@ -661,11 +698,7 @@ class AppWindowGeometryHelper:
         """
         # An earlier guard's reset would otherwise drop this guard before its time, and its
         # resize and move, still to come, undo this one's.
-        if self._resize_event is not None:
-            self._resize_event.cancel()
-        if self._resize_steps is not None:
-            for step in self._resize_steps:
-                step.cancel()
+        self._cancel_guarded_resize()
         self._resize_requested_size = new_width, new_height
 
         def do_resize(_dt: float) -> None:
@@ -687,6 +720,17 @@ class AppWindowGeometryHelper:
             Clock.schedule_once(do_reposition, RESIZE_CORRECTION_DELAY),
         )
         self._resize_event = Clock.schedule_once(do_reset_resize, MOVE_SETTLE_DELAY)
+
+    def _cancel_guarded_resize(self) -> None:
+        """Drop a guarded resize still on its way or still guarding, if there is one."""
+        if self._resize_event is not None:
+            self._resize_event.cancel()
+            self._resize_event = None
+        if self._resize_steps is not None:
+            for step in self._resize_steps:
+                step.cancel()
+            self._resize_steps = None
+        self._resize_requested_size = 0, 0
 
 
 def _move_window(position: tuple[int, int]) -> None:

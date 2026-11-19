@@ -278,6 +278,20 @@ class WindowManager:
         self._saved_window_state = WindowState()
         self._backend: WindowBackend = _create_window_backend()
 
+        # Called as soon as the window is no longer fullscreen, before its restore.
+        self._on_fullscreen_left: Callable[[], None] | None = None
+
+    def set_on_fullscreen_left(self, on_fullscreen_left: Callable[[], None]) -> None:
+        """Have a function called each time the window has just stopped being fullscreen.
+
+        Args:
+            on_fullscreen_left: Called in the frame fullscreen ends, before the saved
+                size and position are restored
+                (`AppWindowGeometryHelper.on_fullscreen_left`).
+
+        """
+        self._on_fullscreen_left = on_fullscreen_left
+
     @staticmethod
     def is_fullscreen_now() -> bool:
         """Whether Kivy's window is fullscreen now."""
@@ -415,6 +429,8 @@ class WindowManager:
             Window.borderless = False  # safest thing to do for MS Windows
             Window.fullscreen = False
             self._end_transition(seq)
+            if self._on_fullscreen_left is not None:
+                self._on_fullscreen_left()
             # At once, not a frame later: frames are slow while fullscreen ends
             # (about 80ms each on a Windows 11 desktop), and until the restore
             # finishes the screen is laid out for fullscreen in a windowed window.

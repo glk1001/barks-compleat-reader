@@ -301,6 +301,7 @@ class BarksReaderApp(App):
             layout_mode_changed=self._set_layout_mode,
             reshape_saved_window=self._window_manager.reshape_saved_window,
         )
+        self._window_manager.set_on_fullscreen_left(self._window_geometry.on_fullscreen_left)
 
         logger.debug("Building the main tree view...")
         self._main_screen.build_tree_view()

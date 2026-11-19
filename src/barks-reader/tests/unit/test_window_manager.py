@@ -379,6 +379,42 @@ class TestGotoWindowedMode:
         fake_logger.warning.assert_called_once()
 
 
+class TestOnFullscreenLeft:
+    """The geometry helper is told the moment the window is no longer fullscreen."""
+
+    def test_it_is_called_out_of_fullscreen_and_before_the_restore(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        wm, callbacks, *_ = manager
+        fake_window.fullscreen = True
+        wm.save_state_now()
+        seen: list[tuple[object, int]] = []
+        wm.set_on_fullscreen_left(
+            lambda: seen.append((fake_window.fullscreen, len(backend.restore_calls)))
+        )
+
+        wm.goto_windowed_mode(callbacks)
+
+        assert seen == [(False, 0)]
+        assert len(backend.restore_calls) == 1
+
+    def test_it_is_not_called_going_fullscreen_or_when_already_windowed(
+        self, manager: ManagerFixture, fake_window: MagicMock
+    ) -> None:
+        wm, callbacks, *_ = manager
+        on_fullscreen_left = MagicMock()
+        wm.set_on_fullscreen_left(on_fullscreen_left)
+
+        wm.goto_windowed_mode(callbacks)  # already windowed
+        wm.goto_fullscreen_mode(callbacks)
+
+        assert fake_window.fullscreen == "auto"
+        on_fullscreen_left.assert_not_called()
+
+
 class TestStaticHelpers:
     def test_is_fullscreen_now(
         self,
