@@ -254,14 +254,12 @@ def _run_installer(config_info: ConfigInfo, pack: DataPackInfo) -> tuple[Path | 
     progress = ByteProgress(
         sum(subdir_bytes(zip_path, ZIP_READER_FILES_SUBDIR) for zip_path in installer_zip_paths)
     )
-    installed: list[Path | None] = []
 
     def install_data() -> Path | None:
         logger.info(f'Installing Barks Reader support files to directory "{reader_files_dir}".')
         install_reader_files(pack, _barks_reader_exe_dir, reader_files_dir, progress.add)
         fanta_volumes_dir = _install_app_config(config_info, installer_zip_paths[0])
         logger.info("Finished installing config and data files.")
-        installed.append(fanta_volumes_dir)
         return fanta_volumes_dir
 
     def show_success(fanta_volumes_dir: Path | None, end_loop: Callable[[], None]) -> None:
@@ -269,23 +267,15 @@ def _run_installer(config_info: ConfigInfo, pack: DataPackInfo) -> tuple[Path | 
             config_info, fanta_volumes_dir, on_dismiss=end_loop, in_running_loop=True
         )
 
-    try:
-        return run_showing_progress(
-            install_data,
-            progress,
-            title=_PROGRESS_TITLE,
-            message=_PROGRESS_MESSAGE,
-            window_size=_WINDOW_SIZE,
-            show_next=show_success,
-        )
-    except Exception:
-        if not installed:
-            raise
-        # The work is done, and the report that followed it in the window failed. The
-        # app is installed, so this is not a failed install; nor is the report tried
-        # again outside a window loop that has just died.
-        logger.exception(_REPORT_NOT_SHOWN)
-        return installed[0], True
+    return run_showing_progress(
+        install_data,
+        progress,
+        title=_PROGRESS_TITLE,
+        message=_PROGRESS_MESSAGE,
+        window_size=_WINDOW_SIZE,
+        show_next=show_success,
+        report_not_shown=_REPORT_NOT_SHOWN,
+    )
 
 
 def _install_app_config(config_info: ConfigInfo, installer_zip: Path) -> Path | None:

@@ -106,6 +106,9 @@ def loop() -> Iterator[_Loop]:
             Window.remove_widget(widget)
 
 
+_REPORT_NOT_SHOWN = "The work is done, but its report could not be shown:"
+
+
 def _run(
     work: Callable[[], Any],
     in_loop: Callable[[], None],
@@ -123,6 +126,7 @@ def _run(
             message="Working.",
             window_size=_SIZE,
             show_next=show_next or MagicMock(),
+            report_not_shown=_REPORT_NOT_SHOWN,
             borderless=borderless,
         )
 
@@ -367,10 +371,14 @@ class TestRunShowingProgress:
         show_next.assert_not_called()
         assert any("Could not show the installer's progress window" in s for s in loguru_sink)
 
-    def test_what_follows_failing_is_raised_not_taken_for_a_missing_window(
-        self, loop: _Loop
+    def test_what_follows_failing_is_logged_not_taken_for_a_missing_window_or_a_failure(
+        self, loop: _Loop, loguru_sink: list[str]
     ) -> None:
-        """The data is installed by then: running the work again would install it twice."""
+        """The data is installed by then: running the work again would install it twice.
+
+        Nor is it a failed install, or a report to try again outside the dead loop: the
+        caller is told the report is dealt with.
+        """
         work = MagicMock(return_value="the result")
 
         def show_next(_result: object, _end_loop: object) -> None:
@@ -381,10 +389,11 @@ class TestRunShowingProgress:
             popup = _work_until_done(loop)
             loop.finish_closing(popup)
 
-        with pytest.raises(RuntimeError, match="the report could not be drawn"):
-            _run(work, in_loop, show_next)
+        assert _run(work, in_loop, show_next) == ("the result", True)
 
         work.assert_called_once_with()
+        assert any(s.startswith(_REPORT_NOT_SHOWN) for s in loguru_sink)
+        assert not any("Could not show the installer's progress window" in s for s in loguru_sink)
 
 
 # What `TestTheRealLoop` runs, in a Python of its own: this process's Kivy clock holds
@@ -430,7 +439,7 @@ def show_next(result, end_loop):
 Clock.schedule_interval(refused_then_released, 0)
 outcome = run_showing_progress(
     work, progress, title="Installing", message="Working.", window_size=(800, 950),
-    show_next=show_next,
+    show_next=show_next, report_not_shown="The report could not be shown:",
 )
 popups_left = len([w for w in Window.children if isinstance(w, PopupFrame)])
 print("RESULT " + json.dumps({"outcome": outcome, "seen": seen, "popups_left": popups_left}))

@@ -200,13 +200,24 @@ class TestMain:
     def test_a_success_popup_that_fails_in_the_window_is_not_a_failed_update(
         self, update: _Update
     ) -> None:
-        """As `run_showing_progress` does: the work done, it raises what `show_next` raised."""
+        """As `run_showing_progress` does: the work done, a failed `show_next` is logged."""
         update.install_old_data()
         update.write_packs()
         update.success.side_effect = RuntimeError("no font")
 
-        def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
-            show_next(work(), MagicMock())
+        def with_a_window(
+            work: Any,  # noqa: ANN401
+            *_args: Any,  # noqa: ANN401
+            show_next: Any,  # noqa: ANN401
+            report_not_shown: str,
+            **_kwargs: Any,  # noqa: ANN401
+        ) -> Any:  # noqa: ANN401
+            result = work()
+            try:
+                show_next(result, MagicMock())
+            except RuntimeError:
+                logger.exception(report_not_shown)
+            return result, True
 
         update.progress.side_effect = with_a_window
 

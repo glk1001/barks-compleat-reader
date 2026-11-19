@@ -581,12 +581,23 @@ class TestMain:
     def test_a_report_that_fails_in_the_progress_window_does_not_fail_the_install(
         self, install: _Install
     ) -> None:
-        """As `run_showing_progress` does: the work done, it raises what `show_next` raised."""
+        """As `run_showing_progress` does: the work done, a failed `show_next` is logged."""
         install.write_packs()
         install.success_message.side_effect = RuntimeError("no font")
 
-        def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
-            show_next(work(), MagicMock())
+        def with_a_window(
+            work: Any,  # noqa: ANN401
+            *_args: Any,  # noqa: ANN401
+            show_next: Any,  # noqa: ANN401
+            report_not_shown: str,
+            **_kwargs: Any,  # noqa: ANN401
+        ) -> Any:  # noqa: ANN401
+            result = work()
+            try:
+                show_next(result, MagicMock())
+            except RuntimeError:
+                logger.exception(report_not_shown)
+            return result, True
 
         install.progress.side_effect = with_a_window
 
@@ -596,6 +607,8 @@ class TestMain:
         assert not install.failed_flag.exists()
         install.error_popup.assert_not_called()
         install.success_message.assert_called_once()  # not tried again with no window
+        log = (install.exe_dir / "installer.log").read_text()
+        assert "The install is complete, but its report could not be shown:" in log
 
 
 def test_an_uncaught_exception_gets_the_installers_popup() -> None:

@@ -178,34 +178,25 @@ def _install_behind_a_window(config_info: ConfigInfo, exe_dir: Path) -> tuple[Da
             for pack_name in DATA_PACK_FILE_NAMES
         )
     )
-    done: list[DataPackInfo] = []
 
     def install() -> DataPackInfo:
         install_reader_files(available, pack_dir, reader_files, progress.add)
         logger.info(f"Installed {available.display()}.")
-        done.append(available)
         return available
 
     def show_success(installed: DataPackInfo, end_loop: Callable[[], None]) -> None:
         _show_success_message(config_info, installed, on_dismiss=end_loop, in_running_loop=True)
 
-    try:
-        return run_showing_progress(
-            install,
-            progress,
-            title=_PROGRESS_TITLE,
-            message=_PROGRESS_MESSAGE,
-            window_size=_POPUP_SIZE,
-            show_next=show_success,
-            borderless=True,
-        )
-    except Exception:
-        if not done:
-            raise
-        # The data is installed, and the popup that followed in the window failed: not
-        # a failed update, and not tried again outside a window loop that has just died.
-        logger.exception(_REPORT_NOT_SHOWN)
-        return done[0], True
+    return run_showing_progress(
+        install,
+        progress,
+        title=_PROGRESS_TITLE,
+        message=_PROGRESS_MESSAGE,
+        window_size=_POPUP_SIZE,
+        show_next=show_success,
+        report_not_shown=_REPORT_NOT_SHOWN,
+        borderless=True,
+    )
 
 
 def _find_update(config_info: ConfigInfo, exe_dir: Path) -> tuple[DataPackInfo, Path, Path]:

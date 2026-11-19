@@ -116,6 +116,7 @@ def run_showing_progress[T](
     message: str,
     window_size: tuple[int, int],
     show_next: Callable[[T, Callable[[], None]], None],
+    report_not_shown: str,
     borderless: bool = False,
 ) -> tuple[T, bool]:
     """Run `work` on another thread behind a window that shows its progress.
@@ -123,6 +124,11 @@ def run_showing_progress[T](
     The window cannot be closed while the work runs. When the work is done the window
     is handed to `show_next`; if the work raised, the window's loop is stopped and the
     error is raised here, for the caller's own error popup.
+
+    If what follows the work fails (`show_next`, or the window's loop under it), the
+    work is done all the same: the failure is logged under `report_not_shown` and the
+    work's result returned as if its report had been shown. It is not a failed
+    install, and the report is not to be tried again outside a loop that has just died.
 
     Args:
         work: The installer's work; it counts what it writes on `progress`.
@@ -133,12 +139,15 @@ def run_showing_progress[T](
         show_next: Called in the window's Kivy loop with what `work` returned and a
             function that ends the loop: it shows what follows (a popup opened with
             ``in_running_loop``), and ends the loop when that has closed.
+        report_not_shown: The log line for a failure after the work is done, such as
+            "The install is complete, but its report could not be shown:".
         borderless: Whether the window has no frame of the desktop's, as one has
             whose popup's own title bar is its top.
 
     Returns:
-        What `work` returned, and whether `show_next` was called. False means the
-        window could not be opened, and the work ran with nothing showing.
+        What `work` returned, and whether its report has been dealt with: `show_next`
+        was called, or failed and was logged. False means the window could not be
+        opened, and the work ran with nothing showing.
 
     Raises:
         BaseException: Whatever `work` raised.
@@ -147,9 +156,12 @@ def run_showing_progress[T](
     run = _Run(work)
     try:
         _run_window_loop(run, progress, title, message, window_size, show_next, borderless)
-    except Exception as e:  # any Kivy failure: the install matters more than its window
+    # Any Kivy failure: the install matters more than its window.
+    except Exception as e:  # noqa: BLE001
         if run.error is None and run.finished:
-            raise  # the work is done and what followed it failed: the caller's to report
+            # Not run again without a window either: the data is installed by now.
+            logger.opt(exception=e).error(report_not_shown)
+            return run.result, True
         logger.opt(exception=e).warning(f"Could not show the installer's progress window: {e!r}.")
 
     if not run.started:
