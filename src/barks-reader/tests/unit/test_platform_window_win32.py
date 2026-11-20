@@ -8,6 +8,7 @@ tests are for what the backend does around them, which no platform otherwise ran
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from typing import TYPE_CHECKING, Self
 from unittest.mock import MagicMock, patch
 
@@ -443,16 +444,18 @@ class _Restore:
         return True
 
     def __enter__(self) -> Self:
-        for patcher in self._patches:
-            patcher.start()
-        self.cancel = self.backend.schedule_restore(
-            _saved_state(), self.on_first_resize, self.on_done
-        )
+        with ExitStack() as patches:
+            for patcher in self._patches:
+                patches.enter_context(patcher)
+            self.cancel = self.backend.schedule_restore(
+                _saved_state(), self.on_first_resize, self.on_done
+            )
+            # Kept only now: a schedule_restore that raises has undone its patches.
+            self._undo = patches.pop_all()
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        for patcher in self._patches:
-            patcher.stop()
+        self._undo.close()
 
     def assert_called_back_once(self) -> None:
         self.on_first_resize.assert_called_once_with()
@@ -705,3 +708,90 @@ def test_cancelling_after_the_move_stops_the_callbacks_still_to_come() -> None:
 
         assert restore.clock.live() == []
         restore.assert_not_called_back()
+
+
+# --- The fallbacks no Linux run reached ---
+
+
+def test_a_window_with_no_guard_to_hold_it_is_said_so(loguru_sink: list[str]) -> None:
+    backend = _backend(MagicMock(), MagicMock())
+
+    with patch.object(win32_module, "hold_window_rect", return_value=False):
+        backend.hold_windowed_rect(_saved_state())
+
+    assert "Win32: The window has no guard to hold it through the exit." in loguru_sink
+    assert not any("Holding the window" in line for line in loguru_sink)
+
+
+def test_with_no_window_handle_the_rectangle_is_not_read_and_nothing_is_moved() -> None:
+    move_window, get_window_rect = MagicMock(), MagicMock()
+    backend = _backend(move_window, get_window_rect)
+    backend._hwnd = None
+
+    assert backend._window_rect() is None
+    assert backend._is_window_at(_ELSEWHERE) is False
+    with patch.object(win32_module, "Clock") as clock:
+        backend._set_window_rect(*_SAVED)
+
+    get_window_rect.assert_not_called()
+    move_window.assert_not_called()
+    clock.schedule_once.assert_not_called()
+
+
+def test_a_restore_s_move_that_raises_is_logged_not_raised(loguru_sink: list[str]) -> None:
+    """Raised from a Clock callback, it would take the app down mid fullscreen exit."""
+    backend = _backend(MagicMock(side_effect=OSError("access violation")), MagicMock())
+
+    with patch.object(win32_module, "Clock") as clock:
+        backend._set_window_rect(*_SAVED)
+
+    assert "Win32 MoveWindow failed: access violation" in loguru_sink
+    clock.schedule_once.assert_not_called()  # no recovery from a move that never happened
+
+
+class _WindowThatWillNotResize:
+    """Kivy's Window, refusing the size the recovery sets."""
+
+    fullscreen = False
+
+    @property
+    def size(self) -> tuple[int, int]:
+        return (136, 45)
+
+    @size.setter
+    def size(self, _size: tuple[int, int]) -> None:
+        msg = "no GL context"
+        raise RuntimeError(msg)
+
+
+def test_a_recovery_kivy_refuses_is_logged_and_the_move_still_tried_again(
+    loguru_sink: list[str],
+) -> None:
+    move_window = MagicMock(return_value=True)
+    backend = _backend(move_window, _window_at(150, 120, 136, 45))
+
+    with (
+        patch.object(win32_module, "Window", _WindowThatWillNotResize()),
+        patch.object(win32_module, "Clock") as clock,
+    ):
+        backend._set_window_rect(*_SAVED)
+        clock.schedule_once.call_args.args[0](0)
+
+    assert "Window.size recovery failed: no GL context" in loguru_sink
+    assert move_window.call_count == 2  # noqa: PLR2004
+
+
+def test_a_window_gone_by_the_next_frame_is_not_moved_again(loguru_sink: list[str]) -> None:
+    move_window = MagicMock(return_value=True)
+    backend = _backend(move_window, _window_at(150, 120, 136, 45))
+
+    with (
+        patch.object(win32_module, "Window", MagicMock(fullscreen=False)),
+        patch.object(win32_module, "Clock") as clock,
+    ):
+        backend._set_window_rect(*_SAVED)
+        backend._hwnd = None  # the app is closing
+        clock.schedule_once.call_args.args[0](0)
+
+    move_window.assert_called_once()
+    assert not any(line.startswith("Win32 retry:") for line in loguru_sink)

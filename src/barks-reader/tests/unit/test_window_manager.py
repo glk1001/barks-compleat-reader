@@ -1189,3 +1189,60 @@ class TestReshapeSavedWindow:
         assert wm.reshape_saved_window(reshape) is False
         reshape.assert_not_called()
         assert wm._saved_window_state.size == (1200, 1800)
+
+
+class TestASecondRequestWhileOneIsPending:
+    """Asked twice before the frame that switches: one switch, and both callers finish after it."""
+
+    @pytest.fixture
+    def clock(self, monkeypatch: pytest.MonkeyPatch) -> FakeClock:
+        """Hold what is scheduled until the test runs it, as a frame does."""
+        clock = FakeClock()
+        monkeypatch.setattr(window_utils_module, "Clock", clock)
+        return clock
+
+    def test_fullscreen(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+        clock: FakeClock,
+    ) -> None:
+        wm, first, _, _, first_finished = manager
+        mode_at_second_finish: list[object] = []
+        second = WindowModeCallbacks(
+            MagicMock(), MagicMock(), lambda: mode_at_second_finish.append(fake_window.fullscreen)
+        )
+        fake_window.fullscreen = False
+        backend.window = fake_window
+
+        wm.goto_fullscreen_mode(first)
+        wm.goto_fullscreen_mode(second)
+
+        assert len(backend.saved_states) == 1  # the second saved no geometry of its own
+        assert mode_at_second_finish == []  # and does not finish before the switch
+        clock.drain()
+        assert mode_at_second_finish == ["auto"]
+        first_finished.assert_called_once_with()
+        assert backend.fullscreen_at_release == [False]  # one switch, not two
+
+    def test_windowed(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        clock: FakeClock,
+    ) -> None:
+        wm, first, _, first_finished, _ = manager
+        mode_at_second_finish: list[object] = []
+        second = WindowModeCallbacks(
+            MagicMock(), lambda: mode_at_second_finish.append(fake_window.fullscreen), MagicMock()
+        )
+        fake_window.fullscreen = True
+
+        wm.goto_windowed_mode(first)
+        wm.goto_windowed_mode(second)
+
+        assert mode_at_second_finish == []
+        clock.drain()
+        assert mode_at_second_finish == [False]
+        first_finished.assert_called_once_with()

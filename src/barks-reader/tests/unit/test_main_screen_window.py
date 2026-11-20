@@ -163,6 +163,42 @@ class TestOnFinishedGotoFullscreenMode:
             assert hf.helper._fullscreen_button.icon == "exit_fullscreen.png"
             hf.helper._update_fonts.assert_called_with(1080)  # ty: ignore[missing-attribute]
 
+    def test_a_switch_that_did_not_take_is_logged_as_an_error(
+        self, hf: HelperFixture, loguru_sink: list[str]
+    ) -> None:
+        with (
+            patch.object(window_module, "Window") as mock_window,
+            patch.object(window_module, "log_window_geometry"),
+        ):
+            mock_window.height = 1080
+            mock_window.width = 1920
+            hf.helper._host.height = 1080
+            hf.mock_wm_cls.is_fullscreen_now.return_value = False
+            hf.mock_wm_cls.get_screen_mode_now.return_value = "windowed"
+
+            hf.helper._on_finished_goto_fullscreen_mode()
+
+        assert (
+            "Finishing goto fullscreen on MainScreen but Window fullscreen = 'windowed'. "
+            in loguru_sink
+        )
+
+    def test_a_switch_that_took_logs_no_error(
+        self, hf: HelperFixture, loguru_sink: list[str]
+    ) -> None:
+        with (
+            patch.object(window_module, "Window") as mock_window,
+            patch.object(window_module, "log_window_geometry"),
+        ):
+            mock_window.height = 1080
+            mock_window.width = 1920
+            hf.helper._host.height = 1080
+            hf.mock_wm_cls.is_fullscreen_now.return_value = True
+
+            hf.helper._on_finished_goto_fullscreen_mode()
+
+        assert not any("but Window fullscreen" in line for line in loguru_sink)
+
     def test_adjusts_host_height_when_too_small(self, hf: HelperFixture) -> None:
         with patch.object(window_module, "Window") as mock_window:
             mock_window.height = 1080
