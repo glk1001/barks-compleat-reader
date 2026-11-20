@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, cast
+from unittest.mock import patch
 
 import pytest
 from barks_fantagraphics.comics_consts import PageType
@@ -93,6 +94,25 @@ class TestCorruptStore:
         SettingsManager(store_path)
 
         assert (tmp_path / f"store.json{CORRUPT_SUFFIX}").exists()
+
+    def test_a_corrupt_file_that_cannot_be_moved_aside_still_starts_empty(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """A read-only folder, or a file something holds open: the app still boots."""
+        store_path = tmp_path / "store.json"
+        store_path.write_text("[1, 2, 3]", encoding="utf-8")
+
+        with patch.object(Path, "replace", side_effect=PermissionError("read-only folder")):
+            manager = SettingsManager(store_path)
+
+        assert manager.get_last_selected_node_path() == (None, {})
+        assert store_path.read_text(encoding="utf-8") == "[1, 2, 3]"  # left where it was
+        assert not (tmp_path / f"store.json{CORRUPT_SUFFIX}").exists()
+        said = (
+            f'Settings file "{store_path}" is a JSON list, not an object, and could not be'
+            " moved aside: read-only folder. Starting with empty settings."
+        )
+        assert loguru_sink == [said]
 
     def test_a_file_that_cannot_be_read_is_left_in_place(
         self, tmp_path: Path, loguru_sink: list[str]
