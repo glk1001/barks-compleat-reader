@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_gui import expected, nodes
 from barks_gui.logs import fields_of, image_exists, last_field
+from barks_gui.steps import CHANGE_PICS_TRIES
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 
@@ -26,7 +27,6 @@ if TYPE_CHECKING:
 # A non-empty title: an image that comes from a story, not a stock one.
 A_TITLED_IMAGE = pattern(markers.FUN_VIEW_TITLE_SET, title=re.compile(r'[^"]+'))
 ANY_TITLE = pattern(markers.FUN_VIEW_TITLE_SET)
-CHANGE_PICS_TRIES = 6
 
 
 IMAGE_SUFFIXES = {".png", ".jpg"}

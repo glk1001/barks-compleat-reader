@@ -1,8 +1,8 @@
 # GUI path tests
 
 Run with `bash scripts/run_gui_tests.sh`, or `--headless` on Xvfb with no window or desktop
-session, which also runs four workers in parallel on displays :2 to :5, about eight minutes
-for the suite (some 150 tests); on Windows and macOS,
+session, which also runs four workers in parallel on displays :2 to :5, about ten and a half
+minutes for the suite (some 190 tests); on Windows and macOS,
 `uv run python scripts/run_gui_tests.py`, one worker on the real desktop, through
 `scripts/gui_probe.py`'s backend for each, `gui_probe_win32.py` and `gui_probe_darwin.py`;
 macOS plan: `docs/plans/macos-gui-tests.md`.

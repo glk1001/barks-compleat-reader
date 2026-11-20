@@ -10,6 +10,14 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_gui import harness, nodes, taps
 from barks_gui.logs import fields_of, last_field, last_size
+from barks_gui.steps import (
+    ABOUT_DOWNS,
+    ANY_NODE_SELECTED,
+    DOCUMENT_ENTERED,
+    FULLSCREEN_TIMEOUT,
+    HOW_TO_DOWNS,
+    open_dots_menu,
+)
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import MATCH_THE_SCREEN, SINGLE_PAGE, TWO_PAGE_SPREAD
@@ -23,17 +31,7 @@ if TYPE_CHECKING:
     from gui_driver import Driver
 
 # The dropdown opens focused on its first entry: Settings, How To, Update Data, About.
-HOW_TO_DOWNS = 1
-ABOUT_DOWNS = 3
 QUIT_TITLE = "Quit"
-DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
-ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)
-
-
-def _open_dots_menu(d: Driver, downs: int) -> None:
-    """Open the dots menu, which lands focus on its first entry, and step down `downs`."""
-    d.main_menu_button_then_wait("menu", d.FOCUS_MOVED)
-    d.move_focus(*["Down"] * downs)
 
 
 def _pick(d: Driver, marker: str) -> None:
@@ -64,7 +62,7 @@ def test_dots_menu_opens_settings_and_their_close_returns_to_the_menu_button(
     button that opened the settings.
     """
     d = boot(nodes.THE_STORIES)
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.key_then_wait(SETTINGS_X_FOCUSED, "Escape")
     d.key_then_wait(f"{d.FOCUS_MOVED} Setting", "Escape")  # back on the list's item
@@ -84,7 +82,7 @@ FLIPPED = {"0": "1", "1": "0"}
 
 def _toggle_fun_view_title(d: Driver, value: str) -> None:
     """From the tree, open Settings, toggle the fun-view title switch to `value`, close."""
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.move_focus(*["Down"] * DOWNS_TO_FUN_VIEW_TITLE)
     d.key_then_wait(
@@ -127,7 +125,7 @@ def test_opening_the_settings_leaves_the_options_settings_as_the_ini_had_them(
     # the spread.
     assert layout in harness.LAYOUT_MODE_FOR_SETTING
 
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     _close_settings(d)
 
@@ -155,7 +153,7 @@ def test_matching_the_screen_boots_on_the_layout_its_shape_gives(boot: AppBoot) 
 def test_dots_menu_how_to_opens_the_document_reader(boot: AppBoot) -> None:
     """The How To reads a page at a time, on the two-page spread as well."""
     d = boot(nodes.THE_STORIES)
-    _open_dots_menu(d, downs=HOW_TO_DOWNS)
+    open_dots_menu(d, downs=HOW_TO_DOWNS)
     with (
         d.expect(DOCUMENT_ENTERED),  # the transition has finished before any key is sent
         d.expect(pattern(markers.DOCUMENT_ONE_PAGE_AT_A_TIME)),
@@ -175,7 +173,7 @@ def test_dots_menu_about_opens_and_its_close_returns_to_the_menu_button(boot: Ap
     The close puts the keys back on the Menu button, as the settings' does.
     """
     d = boot(nodes.THE_STORIES)
-    _open_dots_menu(d, downs=ABOUT_DOWNS)
+    open_dots_menu(d, downs=ABOUT_DOWNS)
     _pick(d, markers.ABOUT_BOX_OPENED)
     d.key_then_wait(f'{d.FOCUS_MOVED} Button "X"', "Escape")  # on the box's X first
     with d.expect(f'{d.FOCUS_MOVED} ChromeBarButton "Menu"'), d.expect(d.MENU_ENTERED):
@@ -245,7 +243,7 @@ FOLDER_CHOOSER_CLOSED = pattern(markers.FOLDER_CHOOSER_CLOSED)
 def test_a_folder_setting_opens_its_chooser_and_escape_closes_it(boot: AppBoot) -> None:
     """The first setting is the library folder; Return opens its chooser, Escape closes it."""
     d = boot(nodes.THE_STORIES)
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
     d.key_then_wait(FOLDER_CHOOSER_CLOSED, "Escape")
@@ -257,7 +255,7 @@ def test_enter_in_a_folder_chooser_keeps_the_path_it_shows(boot: AppBoot) -> Non
     ini = boot.scratch / "barks-reader.ini"
     d = boot(nodes.THE_STORIES)
     before = harness.read_ini_value(ini, "fanta_dir").strip()
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
     with d.expect(FOLDER_CHOOSER_CLOSED):
@@ -286,7 +284,7 @@ def test_an_options_setting_takes_a_new_value_by_keyboard(boot: AppBoot) -> None
     before = harness.read_ini_value(ini, "color_theme").strip() or DEFAULT_THEME_NAME
     index = THEME_NAMES.index(before)
     step, picked = ("Up", index - 1) if index == len(THEME_NAMES) - 1 else ("Down", index + 1)
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.move_focus(*["Down"] * DOWNS_TO_COLOR_THEME)
     d.key_then_wait(d.FOCUS_MOVED, "Return")  # the options, the current one focused
@@ -309,7 +307,7 @@ def _set_layout_from(d: Driver, current: str, *, window_resizes: bool = True) ->
     In fullscreen (``window_resizes`` False) the window keeps the screen's size.
     """
     step, picked = ("Down", TWO_PAGE_SPREAD) if current == SINGLE_PAGE else ("Up", SINGLE_PAGE)
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.move_focus(*["Down"] * DOWNS_TO_LAYOUT)
     d.key_then_wait(d.FOCUS_MOVED, "Return")  # the options, the current one focused
@@ -340,7 +338,6 @@ def _assert_the_screen_fills_the_window(d: Driver, layout: str) -> None:
 A_TRANSITION_THAT_MOVES_ITS_SCREENS = "CardTransition"
 READER_FULLSCREEN = pattern(markers.ENTERED_FULLSCREEN, screen="ComicBookReaderScreen")
 READER_WINDOWED = pattern(markers.ENTERED_WINDOWED, screen="ComicBookReaderScreen")
-FULLSCREEN_TIMEOUT = 20
 
 
 def test_a_layout_changed_after_a_comic_read_fullscreen_fills_its_window(
@@ -436,7 +433,7 @@ BOX_PRESSED = f"{pattern(markers.TEXT_INPUT_CLICKED)}|{pattern(markers.TEXT_INPU
 
 def _set_virtual_keyboard(d: Driver, value: str) -> None:
     """From the tree, open Settings, flip the virtual keyboard switch to `value`, close."""
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.move_focus(*["Down"] * DOWNS_TO_VIRTUAL_KEYBOARD)
     d.key_then_wait(
@@ -481,7 +478,7 @@ def test_a_number_setting_opens_its_entry_box_and_escape_leaves_it_unchanged(
     ini = boot.scratch / "barks-reader.ini"
     d = boot(nodes.THE_STORIES)
     before = harness.read_ini_value(ini, "main_window_height")
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.move_focus(*["Down"] * DOWNS_TO_WINDOW_HEIGHT)
     opened = pattern(markers.SETTING_NUMBER_OPENED, key="main_window_height")
@@ -494,7 +491,7 @@ def test_a_number_setting_opens_its_entry_box_and_escape_leaves_it_unchanged(
 def test_the_settings_list_stops_at_its_top(boot: AppBoot) -> None:
     """The panel opens on its first item; Up there stays, as the app's lists do."""
     d = boot(nodes.THE_STORIES)
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.key("Up")
     d.expect_no_new(d.FOCUS_MOVED)
@@ -508,7 +505,7 @@ def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> N
     """
     ini = boot.scratch / "barks-reader.ini"
     d = boot(nodes.THE_STORIES)
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.move_focus(*["Down"] * DOWNS_TO_ALT_ESCAPE)
     capture_opened = pattern(markers.ALT_ESCAPE_CAPTURE_OPENED)
@@ -523,7 +520,7 @@ def test_a_captured_alternate_escape_key_then_acts_as_escape(boot: AppBoot) -> N
     d.key_then_wait(markers.SETTINGS_CLOSED, "Return")
     assert harness.read_ini_value(ini, "alt_escape_key").strip() == str(KEY_TAB_CODE)
 
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.move_focus(*["Down"] * DOWNS_TO_ALT_ESCAPE)
     d.key_then_wait(capture_opened, "Return")
@@ -561,7 +558,7 @@ def test_a_folder_chooser_is_browsed_by_remote(boot: AppBoot, tmp_path: Path) ->
     library = _chooser_tree(boot, tmp_path)
     root = library.parent
     d = boot(nodes.THE_STORIES, ini={"fanta_dir": str(library), "use_prebuilt_comics": "0"})
-    _open_dots_menu(d, downs=0)
+    open_dots_menu(d, downs=0)
     _pick(d, markers.DISPLAY_SETTINGS)
     d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
     d.settle()  # the chooser highlights the setting's own folder once its list is in

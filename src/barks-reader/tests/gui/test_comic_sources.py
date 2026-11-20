@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from barks_gui import harness, nodes
+from barks_gui.steps import READ
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from gui_driver import Pick
@@ -27,7 +28,6 @@ from gui_driver import Pick
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
 
-READ = Pick(pages=2, dwell=0.0)
 VOLUMES_LOAD_TIMEOUT = 60
 JPG_PANELS_ZIP = Path("Reader Files") / "Barks Panels.zip"
 

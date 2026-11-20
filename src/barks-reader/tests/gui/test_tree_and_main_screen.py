@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes
+from barks_gui.steps import ANY_NODE_SELECTED, CHANGE_PICS_TRIES
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 
@@ -17,7 +18,6 @@ DOWNS_INTO_THE_RANGE = 3
 # collapse (harmless) or quit (which only asks, since the profile pins
 # confirm_quit) - and the go-back line would never be logged.
 WRAP_STEPS = 3
-ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)
 ANY_TOP_IMAGE = pattern(markers.TOP_VIEW_IMAGE_PICKED)
 ANY_FUN_IMAGE = pattern(markers.FUN_VIEW_IMAGE_PICKED)
 # Long enough for a collapse's render, which picks images at once if at all, to be logged.
@@ -96,7 +96,6 @@ def test_collapse_button_shuts_the_whole_tree(boot: AppBoot) -> None:
         d.main_menu_button("collapse")
 
 
-CHANGE_PICS_TRIES = 6
 # Up on the first node logs one line or the other, depending on the top image.
 ARROW_FOCUSED = markers.ENTERED_TOP_GOTO_ARROW
 UP_OUTCOME = f"{pattern(ARROW_FOCUSED)}|{pattern(markers.TOP_GOTO_ARROW_INACTIVE)}"

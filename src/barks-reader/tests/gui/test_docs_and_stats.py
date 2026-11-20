@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_gui import expected, nodes
 from barks_gui.logs import fields_of, last_field
+from barks_gui.steps import DOCUMENT_ENTERED
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import MainLayoutMode
@@ -83,7 +84,6 @@ def test_an_article_opens_in_the_comic_reader(boot: AppBoot) -> None:
 
 MAIN_FROM_DOCUMENT = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_DOCUMENT_READER)
 MAIN_FROM_NUMBERS = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_BY_THE_NUMBERS)
-DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
 NUMBERS_ENTERED = pattern(markers.SCREEN_ENTERED, name="corpus_stats")
 # The canned history finished The Ghost of the Grotto once, and nothing else.
 CANNED_STORIES_READ = 1

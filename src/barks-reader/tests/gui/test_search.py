@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_gui import expected, harness, memory, nodes, search
 from barks_gui.logs import fields_of, last_field, messages
+from barks_gui.steps import READ
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from gui_driver import Pick
@@ -32,7 +33,6 @@ WORD_RESULT_ROW = 1
 WORD_RESULT_NAME = "Adventure Down Under"
 
 CUES: dict[str, nodes.Cue] = {TITLE_RESULT_NAME: None, WORD_RESULT_NAME: None}
-READ = Pick(pages=2, dwell=0.0)
 ALL_IMAGES_LOADED = pattern(markers.ALL_IMAGES_LOADED)
 
 

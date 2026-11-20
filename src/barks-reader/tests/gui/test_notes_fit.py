@@ -24,6 +24,7 @@ from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_gui import nodes, tree
+from barks_gui.steps import FULLSCREEN_TIMEOUT
 from barks_reader.core import log_markers as markers
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.log_markers import pattern
@@ -35,7 +36,6 @@ if TYPE_CHECKING:
     from gui_driver import Driver
 
 FULLSCREEN = os.environ.get("BARKS_GUI_NOTES_FULLSCREEN") == "1"
-FULLSCREEN_TIMEOUT = 20
 LAID_OUT = pattern(markers.TEXT_LAID_OUT)
 LINES_AND_SHOWN = re.compile(r"Text laid out: (\d+) lines, (\d+) shown")
 CUT = re.compile(pattern(markers.TEXT_CUT_SHORT))

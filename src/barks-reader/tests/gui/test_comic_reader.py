@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_gui import expected, harness, memory, nodes, persisted, tree
 from barks_gui.logs import fields_of, last_field
+from barks_gui.steps import READ, SHOWED_PAGE, open_selected_story_to_its_first_page
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from gui_driver import Pick
@@ -23,25 +24,21 @@ TURNS_BEFORE_GOTO_START = 2
 BROWSE_RANGE = "1947-1950"
 GOTO_PAGE = 12
 GOTO_PAGE_BACK = 3
-READ = Pick(pages=2, dwell=0.0)
-SHOWED_PAGE = pattern(markers.SHOWED_PAGE)
 
 
 def _open_ghost_of_the_grotto(boot: AppBoot) -> Driver:
-    d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
-    d.open_selected_story()
-    d.wait_for(SHOWED_PAGE)
-    return d
-
-
-def _two_up(boot: AppBoot) -> bool:
-    """Whether the run opens comics two-up: it booted on the spread (the matrix does)."""
-    return harness.booted_two_up(boot.scratch)
+    return open_selected_story_to_its_first_page(
+        boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
+    )
 
 
 def _shows(boot: AppBoot, title: str, page_index: int) -> int:
     """Return the page the reader renders for `page_index`: itself, or two-up its unit's left."""
-    return expected.unit_start(title, page_index) if _two_up(boot) else page_index
+    return (
+        expected.unit_start(title, page_index)
+        if harness.booted_two_up(boot.scratch)
+        else page_index
+    )
 
 
 def test_browse_the_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
@@ -63,7 +60,7 @@ def test_browse_the_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
         "the titles walked are the range's titles, in the data's order"
     )
     shown = [int(i) for i in fields_of(d, markers.SHOWED_PAGE, "index")]
-    if _two_up(boot):
+    if harness.booted_two_up(boot.scratch):
         assert shown == expected.unit_starts(nodes.GHOST_OF_THE_GROTTO_TITLE)[: len(shown)], shown
     else:
         assert shown == list(range(len(shown))), shown
@@ -84,7 +81,9 @@ def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
 
     # The toggle goes the other way from wherever the run booted (the matrix boots two-up).
     with (
-        d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=not _two_up(boot))),
+        d.expect(
+            pattern(markers.DOUBLE_PAGE_TOGGLED, mode=not harness.booted_two_up(boot.scratch))
+        ),
         d.expect(SHOWED_PAGE),
     ):
         d.press_menu_button("double_page")
@@ -134,7 +133,7 @@ def test_goto_end_then_right_is_the_last_page(boot: AppBoot) -> None:
     assert d.current_page() == last
     assert int(last_field(d, markers.ALREADY_ON_LAST_PAGE, "index")) == last
     assert last == expected.last_page_index(
-        nodes.GHOST_OF_THE_GROTTO_TITLE, two_up=_two_up(boot)
+        nodes.GHOST_OF_THE_GROTTO_TITLE, two_up=harness.booted_two_up(boot.scratch)
     ), "the last page is the last of the layout the data builds for the story"
     d.close_reader()
 

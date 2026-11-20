@@ -11,29 +11,23 @@ from typing import TYPE_CHECKING
 
 from barks_gui import harness, nodes
 from barks_gui.logs import last_field
+from barks_gui.steps import DOCUMENT_ENTERED, FULLSCREEN_TIMEOUT, SHOWED_PAGE
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
 
-FULLSCREEN_TIMEOUT = 20
 READER = "ComicBookReaderScreen"
 DOCUMENT_READER = "DocumentReaderScreen"
 MAIN = "MainScreen"
 MAIN_FROM_DOCUMENT = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_DOCUMENT_READER)
-SHOWED_PAGE = pattern(markers.SHOWED_PAGE)
 # Pages turned before going two-up, to land on a spread rather than the title page
 # and the full-page splash that open the story, which show alone even two-up.
 PAGES_TO_A_SPREAD = 6
 # Fullscreen on and off this often on the one spread, as a soak walk did when the
 # spread was seen to stand half off the screen until the reader went windowed.
 SPREAD_ROUND_TRIPS = 6
-
-
-def _booted_two_up(boot: AppBoot) -> bool:
-    """Whether the run opens comics two-up: it booted on the spread (the matrix does)."""
-    return harness.booted_two_up(boot.scratch)
 
 
 def test_reader_fullscreen_round_trip(boot: AppBoot) -> None:
@@ -55,7 +49,7 @@ def test_document_reader_fullscreen_round_trip(boot: AppBoot) -> None:
     d.select_node(nodes.CENSORSHIP_DOCUMENT)
     with (
         d.expect(pattern(markers.DOCUMENT_OPENED)),
-        d.expect(pattern(markers.SCREEN_ENTERED, name="document_reader")),
+        d.expect(DOCUMENT_ENTERED),
     ):
         d.key("Return")
     before = d.window_geometry()
@@ -76,7 +70,7 @@ def test_a_document_closed_from_fullscreen_comes_back_windowed(boot: AppBoot) ->
     d.select_node(nodes.CENSORSHIP_DOCUMENT)
     with (
         d.expect(pattern(markers.DOCUMENT_OPENED)),
-        d.expect(pattern(markers.SCREEN_ENTERED, name="document_reader")),
+        d.expect(DOCUMENT_ENTERED),
     ):
         d.key("Return")
     before = d.window_geometry()
@@ -116,7 +110,7 @@ def test_a_spread_stays_centred_through_fullscreen_switches(boot: AppBoot) -> No
         d.key_then_wait(SHOWED_PAGE, "Right")
     # Two-up, unless the run booted two-up already (the matrix does): there the
     # toggle would turn it off.
-    if not _booted_two_up(boot):
+    if not harness.booted_two_up(boot.scratch):
         with d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)), d.expect(SHOWED_PAGE):
             d.press_menu_button("double_page")
     d.settle()
@@ -149,7 +143,7 @@ def test_closing_from_a_window_falls_out_at_the_full_screen_size(boot: AppBoot) 
     d.open_selected_story()
     for _ in range(PAGES_TO_A_SPREAD):
         d.key_then_wait(SHOWED_PAGE, "Right")
-    if not _booted_two_up(boot):
+    if not harness.booted_two_up(boot.scratch):
         with d.expect(pattern(markers.DOUBLE_PAGE_TOGGLED, mode=True)), d.expect(SHOWED_PAGE):
             d.press_menu_button("double_page")
     with d.expect(pattern(markers.ENTERED_WINDOWED, screen=READER), FULLSCREEN_TIMEOUT):

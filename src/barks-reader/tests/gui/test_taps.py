@@ -20,6 +20,13 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import get_fanta_info
 from barks_gui import expected, nodes, search, taps
 from barks_gui.logs import fields_of, last_field
+from barks_gui.steps import (
+    CHANGE_PICS_TRIES,
+    DOCUMENT_ENTERED,
+    FULLSCREEN_TIMEOUT,
+    SHOWED_PAGE,
+    open_selected_story_to_its_first_page,
+)
 from barks_reader.core import log_markers as markers
 from barks_reader.core.index_text import indexable_title
 from barks_reader.core.log_markers import pattern
@@ -32,13 +39,10 @@ if TYPE_CHECKING:
     from barks_reader.core.tap_targets import TapTarget
     from gui_driver import Driver
 
-SHOWED_PAGE = pattern(markers.SHOWED_PAGE)
 READER = "ComicBookReaderScreen"
-FULLSCREEN_TIMEOUT = 20
 # Long enough for a doubled tap's second press to have turned a second page.
 NO_DOUBLE_TAP_SECS = 1.5
 ANY_FUN_TITLE = pattern(markers.FUN_VIEW_TITLE_SET)
-CHANGE_PICS_TRIES = 6
 # Every title the reader can go to, as the main index writes it: to tell a title's
 # entry from a tag's. A title with no Fantagraphics volume (Bubbleweight Champ, Beach
 # Boy) is indexed too, but tapping it opens the volume-not-available popup instead:
@@ -47,7 +51,6 @@ CHANGE_PICS_TRIES = 6
 GOTO_TITLES = frozenset(
     indexable_title(title) for title in Titles if get_fanta_info(title) is not None
 )
-DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
 DOCUMENT_READER = "DocumentReaderScreen"
 ANY_REVEAL = pattern(markers.TREE_CHILDREN_REVEALED)
 # The pinner leaves a drift under half a pixel alone, which a row's rounded top can
@@ -78,10 +81,9 @@ def _pages(d: Driver) -> list[int]:
 
 
 def _open_the_ghost_of_the_grotto(boot: AppBoot) -> Driver:
-    d = _boot(boot, nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
-    d.open_selected_story()
-    d.wait_for(SHOWED_PAGE)
-    return d
+    return open_selected_story_to_its_first_page(
+        _boot(boot, nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
+    )
 
 
 # ------------------------------------------------------------ the tree --

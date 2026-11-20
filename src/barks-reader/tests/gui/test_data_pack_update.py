@@ -14,6 +14,7 @@ from zipfile import ZipFile
 
 import pytest
 from barks_gui import nodes
+from barks_gui.steps import ANY_NODE_SELECTED, UPDATE_DATA_DOWNS, open_dots_menu
 from barks_reader.core import log_markers as markers
 from barks_reader.core.data_pack import (
     DATA_PACK_DIR_ENV_VAR,
@@ -28,15 +29,12 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from barks_gui.harness import AppBoot
-    from gui_driver import Driver
 
-ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)
 OFFERED = pattern(markers.CONFIRM_POPUP_OPENED, title=UPDATE_DATA_PACK_TITLE)
 DECLINED = pattern(markers.CONFIRM_POPUP_CANCELLED, title=UPDATE_DATA_PACK_TITLE)
 NOTHING_TO_INSTALL = pattern(markers.MESSAGE_POPUP_OPENED, title=UPDATE_DATA_PACK_TITLE)
 DISMISSED = pattern(markers.MESSAGE_POPUP_CANCELLED, title=UPDATE_DATA_PACK_TITLE)
 # Settings, How To, Update Data, About: the dots menu opens on its first entry.
-UPDATE_DATA_DOWNS = 2
 
 
 @pytest.fixture
@@ -50,11 +48,6 @@ def fake_packs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             pack.writestr(PACK_MEMBER, info.to_json())
     monkeypatch.setenv(DATA_PACK_DIR_ENV_VAR, str(pack_dir))
     return pack_dir
-
-
-def _open_dots_menu(d: Driver, downs: int) -> None:
-    d.main_menu_button_then_wait("menu", d.FOCUS_MOVED)
-    d.move_focus(*["Down"] * downs)
 
 
 def test_newer_packs_are_offered_at_boot_and_escape_declines(
@@ -72,7 +65,7 @@ def test_newer_packs_are_offered_at_boot_and_escape_declines(
 def test_the_dots_menu_looks_for_packs_and_says_when_there_are_none(boot: AppBoot) -> None:
     """With nowhere to look, Update Data says so, and its close returns to the Menu button."""
     d = boot(nodes.THE_STORIES)
-    _open_dots_menu(d, downs=UPDATE_DATA_DOWNS)
+    open_dots_menu(d, downs=UPDATE_DATA_DOWNS)
     with d.expect(NOTHING_TO_INSTALL), d.expect(d.DROPDOWN_DISMISSED):
         d.key("Return")
     # No wait for the popup to close: a key pressed during its fade must not be lost.

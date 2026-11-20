@@ -5,23 +5,39 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+import pytest
 from barks_gui import nodes
+from barks_gui.steps import ANY_NODE_SELECTED
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.this_month import MonthDate, get_month_node_text, get_stories_in_month
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
+    from gui_driver import Driver
 
 RANDOM_PICKS = 5
 CANNED_LEFT_MID_WAY = 3
 PLAYLIST = "The Bravery Stories"
 PLAYLIST_INTRO_NODE = "<playlist-intro>"
-ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)
 
 
 def _repopulated(name: str) -> str:
     return pattern(markers.REPOPULATED_NODE, name=name, count=RANDOM_PICKS)
+
+
+def _boot_in_one_month(boot: AppBoot) -> tuple[Driver, int]:
+    """Boot onto Reading; return the driver and the month the app named its node for.
+
+    The app reads today's month as it builds the tree. A boot that ran over midnight on
+    a month's last day could have read either month: that one run in thousands is
+    skipped, not failed on a node the test guessed wrong.
+    """
+    before = datetime.now().astimezone().month
+    d = boot(nodes.READING)
+    if datetime.now().astimezone().month != before:
+        pytest.skip("the month changed while the app booted")
+    return d, before
 
 
 def test_surprise_me_redraws_on_every_expand(boot: AppBoot) -> None:
@@ -90,9 +106,8 @@ def test_a_playlist_lists_its_stories_after_an_intro(boot: AppBoot) -> None:
 
 def test_this_month_lists_the_stories_submitted_in_it(boot: AppBoot) -> None:
     """The node is named for today's month, and its first group opens onto title rows."""
-    month = datetime.now().astimezone().month
+    d, month = _boot_in_one_month(boot)
     submitted = get_stories_in_month(MonthDate.SUBMITTED, month)
-    d = boot(nodes.READING)
     with d.expect(pattern(markers.UPDATING_BACKGROUND_VIEW_STATE, state="ON_THIS_MONTH_NODE")):
         d.open_branch(get_month_node_text(month))
     d.key_then_wait(ANY_NODE_SELECTED, "Down")  # the Submitted group
@@ -103,9 +118,8 @@ def test_this_month_lists_the_stories_submitted_in_it(boot: AppBoot) -> None:
 
 def test_this_month_lists_the_stories_on_sale_in_it(boot: AppBoot) -> None:
     """The second group opens onto the stories whose issue carries today's month."""
-    month = datetime.now().astimezone().month
+    d, month = _boot_in_one_month(boot)
     on_sale = get_stories_in_month(MonthDate.ON_SALE, month)
-    d = boot(nodes.READING)
     d.open_branch(get_month_node_text(month))
     d.key_then_wait(ANY_NODE_SELECTED, "Down")  # the Submitted group, closed
     d.key_then_wait(ANY_NODE_SELECTED, "Down")  # the On sale group
