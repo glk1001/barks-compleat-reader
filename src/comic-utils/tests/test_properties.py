@@ -49,7 +49,7 @@ def test_the_first_panel_read_is_on_the_top_tier(panels: list[list[int]]) -> Non
 
 @st.composite
 def panels_with_an_order(draw: st.DrawFn) -> tuple[list[list[int]], list[int]]:
-    panels = draw(st.lists(st.tuples(_COORD, _COORD, _SIZE, _SIZE).map(list), max_size=12))
+    panels = draw(_PANELS)
     order = draw(st.permutations(list(range(1, len(panels) + 1))))
     return panels, order
 

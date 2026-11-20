@@ -1,10 +1,12 @@
-# ruff: noqa: ANN401, PLR2004 - these tests deliberately feed malformed values to the validator.
+# ruff: noqa: ANN401 - these tests deliberately feed malformed values to the validator.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import comic_utils.panel_segmentation as panel_segmentation_module
@@ -24,12 +26,9 @@ from comic_utils.panel_segmentation import (
 )
 from PIL import Image
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 class TestGetKumikoPanelBound:
-    def test_maps_raw_list_positionally(self) -> None:
+    def test_maps_the_raw_bound_positionally(self) -> None:
         assert get_kumiko_panel_bound((1, 2, 3, 4)) == KumikoBound(left=1, top=2, width=3, height=4)
 
 
@@ -71,34 +70,50 @@ def _completed(stdout: str) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr="")
 
 
+def _run_kumiko(
+    seg: KumikoPanelSegmentation, page: Path, kumiko_says: list[dict[str, Any]]
+) -> tuple[dict[str, Any], Any]:
+    """Segment a small page with kumiko's answer set; return the result and the run's call."""
+    answer = _completed(json.dumps(kumiko_says))
+    with patch.object(subprocess, "run", return_value=answer) as run:
+        result = seg.get_panels_segment_info(Image.new("RGB", (4, 4)), page)
+    return result, run.call_args
+
+
 class TestKumikoPanelSegmentation:
     def test_saves_work_image_and_returns_first_segment(self, tmp_path: Path) -> None:
         work_dir = tmp_path / "work"
         work_dir.mkdir()
         seg = KumikoPanelSegmentation(work_dir, tmp_path / "building")
-        image = Image.new("RGB", (4, 4))
-        kumiko_out = json.dumps([{"panels": [[0, 0, 4, 4]], "processing_time": 1.5}])
+        page_info = {"panels": [[0, 0, 4, 4]], "processing_time": 1.5}
 
-        with patch.object(subprocess, "run", return_value=_completed(kumiko_out)) as run:
-            result = seg.get_panels_segment_info(image, tmp_path / "pages" / "007.png")
+        result, call = _run_kumiko(seg, tmp_path / "pages" / "007.png", [page_info])
 
-        assert result == {"panels": [[0, 0, 4, 4]], "processing_time": 1.5}
+        assert result == page_info
         work_file = work_dir / "007_orig.jpg"
         assert work_file.is_file()
-        args = run.call_args.args[0]
-        assert args[:3] == ["uv", "run", "--directory"]
-        assert args[3] == str(tmp_path / "building")
-        assert args[-2:] == ["-i", str(work_file)]
-        assert "--no-panel-expansion" not in args
+        # The whole command: kumiko's own script, run from the building repo's environment.
+        assert call.args == (
+            [
+                "uv",
+                "run",
+                "--directory",
+                str(tmp_path / "building"),
+                str(Path.home() / "Prj/github/kumiko" / "kumiko"),
+                "-i",
+                str(work_file),
+            ],
+        )
+        # check=True is what turns a failed run into the logged error below, not a
+        # JSON error on its empty output.
+        assert call.kwargs == {"capture_output": True, "text": True, "check": True}
 
     def test_no_panel_expansion_flag_is_passed(self, tmp_path: Path) -> None:
         seg = KumikoPanelSegmentation(tmp_path, tmp_path, no_panel_expansion=True)
-        kumiko_out = json.dumps([{"panels": []}])
 
-        with patch.object(subprocess, "run", return_value=_completed(kumiko_out)) as run:
-            seg.get_panels_segment_info(Image.new("RGB", (4, 4)), tmp_path / "p.png")
+        _result, call = _run_kumiko(seg, tmp_path / "p.png", [{"panels": []}])
 
-        assert run.call_args.args[0][-1] == "--no-panel-expansion"
+        assert call.args[0][-3:] == ["-i", str(tmp_path / "p_orig.jpg"), "--no-panel-expansion"]
 
     def test_kumiko_failure_is_logged_and_re_raised(self, tmp_path: Path) -> None:
         seg = KumikoPanelSegmentation(tmp_path, tmp_path)
@@ -112,23 +127,19 @@ class TestKumikoPanelSegmentation:
         ):
             seg.get_panels_segment_info(Image.new("RGB", (4, 4)), tmp_path / "p.png")
 
-        assert any("return code 2" in m for m in logged)
-        assert any("boom" in m for m in logged)
+        assert logged == ["Kumiko failed with return code 2", "STDOUT: out", "STDERR: boom"]
 
     def test_multiple_pages_in_output_is_rejected(self, tmp_path: Path) -> None:
         seg = KumikoPanelSegmentation(tmp_path, tmp_path)
-        kumiko_out = json.dumps([{"panels": []}, {"panels": []}])
 
-        with (
-            patch.object(subprocess, "run", return_value=_completed(kumiko_out)),
-            pytest.raises(AssertionError),
-        ):
-            seg.get_panels_segment_info(Image.new("RGB", (4, 4)), tmp_path / "p.png")
+        with pytest.raises(AssertionError):
+            _run_kumiko(seg, tmp_path / "p.png", [{"panels": []}, {"panels": []}])
 
 
 # ---------------------------------------------------------------------------
 # Reading order
 # ---------------------------------------------------------------------------
+
 
 # Real page geometries (x, y, w, h) from the Fantagraphics segments files.
 JOGGED_2X2_TIERS = [  # Vol 10 p020: kumiko emitted this column-wise.
@@ -231,13 +242,13 @@ class TestApplyPanelOrderOverride:
 class TestReadPanelOrderOverride:
     def test_reads_list(self, tmp_path: Path) -> None:
         f = tmp_path / "012-panel-order.json"
-        f.write_text("[2, 1, 3]")
+        f.write_text("[2, 1, 3]", encoding="utf-8")
         assert read_panel_order_override(f) == [2, 1, 3]
 
     @pytest.mark.parametrize("text", ['{"a": 1}', '["1", 2]', "[1.5, 2]", "[true, 2]"])
     def test_rejects_non_int_list(self, tmp_path: Path, text: str) -> None:
         f = tmp_path / "012-panel-order.json"
-        f.write_text(text)
+        f.write_text(text, encoding="utf-8")
         with pytest.raises(ValueError, match="JSON list of ints"):
             read_panel_order_override(f)
 
@@ -257,8 +268,11 @@ def _segments(
     overall: Any = None,
     numbering: Any = "ltr",
 ) -> dict[str, Any]:
-    if overall is None and panels and all(_is_good_panel(p) for p in panels):
-        overall = list(get_min_max_panel_values({"panels": panels}))
+    if overall is None and panels:
+        # The bounds the panels really have, where they have any: a malformed panel
+        # leaves them unset, and such a test names its own.
+        with contextlib.suppress(ValueError, TypeError):
+            overall = list(get_min_max_panel_values({"panels": panels}))
     return {
         "filename": "x.jpg",
         "size": list(size) if isinstance(size, tuple) else size,
@@ -270,13 +284,13 @@ def _segments(
     }
 
 
-def _is_good_panel(p: Any) -> bool:
-    return isinstance(p, list) and len(p) == 4 and p[2] > 0 and p[3] > 0
+def _findings(info: dict[str, Any], **kwargs: Any) -> list[PanelSegmentsFinding]:
+    kwargs.setdefault("has_overall_bounds_override", False)
+    return validate_panel_segments(info, **kwargs)
 
 
 def _faults(info: dict[str, Any], **kwargs: Any) -> list[PanelSegmentsFault]:
-    kwargs.setdefault("has_overall_bounds_override", False)
-    return [f.fault for f in validate_panel_segments(info, **kwargs)]
+    return [f.fault for f in _findings(info, **kwargs)]
 
 
 class TestValidatePanelSegments:
@@ -285,7 +299,7 @@ class TestValidatePanelSegments:
 
     def test_unsorted_panels(self) -> None:
         info = _segments(JOGGED_2X2_TIERS, size=(2216, 3056))
-        findings = validate_panel_segments(info, has_overall_bounds_override=False)
+        findings = _findings(info)
         assert [f.fault for f in findings] == [PanelSegmentsFault.NOT_IN_READING_ORDER]
         assert findings[0].detail == "[1, 3, 2, 4]"
 
@@ -305,13 +319,18 @@ class TestValidatePanelSegments:
 
     def test_overlap(self) -> None:
         info = _segments([[0, 0, 100, 100], [50, 0, 100, 100]])
-        findings = validate_panel_segments(info, has_overall_bounds_override=False)
+        findings = _findings(info)
         assert [(f.fault, f.panel_nums, f.detail) for f in findings] == [
             (PanelSegmentsFault.PANEL_OVERLAP, (1, 2), "50.0%")
         ]
 
     def test_overlap_at_threshold_is_fine(self) -> None:
         assert _faults(_segments([[0, 0, 100, 100], [90, 0, 100, 100]])) == []
+
+    def test_the_overlap_allowed_is_the_caller_s_to_set(self) -> None:
+        info = _segments([[0, 0, 100, 100], [90, 0, 100, 100]])  # 10% of the smaller panel
+        assert _faults(info, max_overlap_percent=9.9) == [PanelSegmentsFault.PANEL_OVERLAP]
+        assert _faults(info, max_overlap_percent=10.0) == []
 
     def test_no_panels(self) -> None:
         assert _faults(_segments([], overall=[0, 0, 1, 1])) == [PanelSegmentsFault.NO_PANELS]
@@ -341,7 +360,7 @@ class TestValidatePanelSegments:
     )
     def test_panel_outside_page(self, panel: list[int]) -> None:
         info = _segments([panel], overall=[0, 0, 1, 1])
-        findings = validate_panel_segments(info, has_overall_bounds_override=True)
+        findings = _findings(info, has_overall_bounds_override=True)
         assert [(f.fault, f.panel_nums) for f in findings] == [
             (PanelSegmentsFault.PANEL_OUTSIDE_PAGE, (1,))
         ]
@@ -352,14 +371,14 @@ class TestValidatePanelSegments:
 
     def test_bad_panel_shape(self) -> None:
         info = _segments([[0, 0, 10], [0, 20, 10, 10]], overall=[0, 20, 9, 29])
-        findings = validate_panel_segments(info, has_overall_bounds_override=False)
+        findings = _findings(info)
         assert [(f.fault, f.panel_nums) for f in findings] == [
             (PanelSegmentsFault.BAD_PANEL_SHAPE, (1,))
         ]
 
     def test_overall_bounds_mismatch(self) -> None:
         info = _segments(CLEAN_PANELS, overall=[0, 0, 899, 700])
-        findings = validate_panel_segments(info, has_overall_bounds_override=False)
+        findings = _findings(info)
         assert [f.fault for f in findings] == [PanelSegmentsFault.OVERALL_BOUNDS_MISMATCH]
         assert findings[0].detail == "expected [0, 0, 899, 699], got [0, 0, 899, 700]"
 
@@ -406,7 +425,7 @@ class TestValidatePanelSegments:
     def test_missing_size_still_checks_geometry(self) -> None:
         info = _segments([[0, 0, 100, 100], [50, 0, 100, 100]])
         del info["size"]
-        findings = validate_panel_segments(info, has_overall_bounds_override=False)
+        findings = _findings(info)
         assert (findings[0].fault, findings[0].detail) == (PanelSegmentsFault.MISSING_KEY, "size")
         assert PanelSegmentsFault.PANEL_OVERLAP in [f.fault for f in findings]
 
@@ -414,7 +433,7 @@ class TestValidatePanelSegments:
     def test_a_missing_key_is_named_and_is_the_only_finding_on_a_clean_page(self, key: str) -> None:
         info = _segments(CLEAN_PANELS)
         del info[key]
-        findings = validate_panel_segments(info, has_overall_bounds_override=False)
+        findings = _findings(info)
         assert [(f.fault, f.detail) for f in findings] == [(PanelSegmentsFault.MISSING_KEY, key)]
 
     @pytest.mark.parametrize("size", [[0, 100], [100], ["a", 1], [True, 1], "big"])

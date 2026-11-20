@@ -8,7 +8,6 @@ through ``download_all_items``.
 
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -62,10 +61,14 @@ class TestTheTableFile:
         path = tmp_path / "cpi_table.py"
         path.write_text(updater.render_table(table), encoding="utf-8")
         assert updater.read_table(path) == table
-        ast.parse(path.read_text(encoding="utf-8"))  # valid Python
 
     def test_no_table_reads_empty(self, tmp_path: Path) -> None:
         assert updater.read_table(tmp_path / "absent.py") == {}
+
+    def test_a_file_holding_no_table_reads_empty(self, tmp_path: Path) -> None:
+        path = tmp_path / "cpi_table.py"
+        path.write_text("x = 1\n", encoding="utf-8")
+        assert updater.read_table(path) == {}
 
 
 class TestUpdate:
@@ -108,7 +111,9 @@ class TestDownload:
         with patch.object(updater.urllib.request, "urlopen", return_value=response) as urlopen:
             assert updater.download_all_items() == "text"
         request = urlopen.call_args.args[0]
-        assert "gregg.kay@gmail.com" in request.get_header("User-agent")
+        assert request.get_header("User-agent") == updater.DEFAULT_USER_AGENT
+        # A download that hangs must give up, not hold the update for ever.
+        assert urlopen.call_args.kwargs == {"timeout": updater.DOWNLOAD_TIMEOUT_SECONDS}
 
 
 class TestMain:

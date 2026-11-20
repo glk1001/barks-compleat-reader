@@ -28,10 +28,26 @@ def _png(tmp_path: Path, size: tuple[int, int] = (40, 20), mode: str = "RGB") ->
     return path
 
 
-def _png_bytes() -> bytes:
+def _image_bytes(fmt: str, size: tuple[int, int] = (40, 20)) -> bytes:
     data = io.BytesIO()
-    _image().save(data, format="PNG")
+    _image(size).save(data, format=fmt)
     return data.getvalue()
+
+
+def _png_bytes() -> bytes:
+    return _image_bytes("PNG")
+
+
+def _jpg_bytes(size: tuple[int, int]) -> bytes:
+    return _image_bytes("JPEG", size)
+
+
+def _zip_entry(tmp_path: Path, name: str, data: bytes) -> zipfile.Path:
+    """Return the entry `name` of a new zip holding `data` under it."""
+    zip_file = tmp_path / "panels.zip"
+    with zipfile.ZipFile(zip_file, "w") as zf:
+        zf.writestr(name, data)
+    return zipfile.Path(zip_file, name)
 
 
 def _first_pixel_with_the_source_closed(image: Image.Image) -> object:
@@ -58,9 +74,11 @@ def root_at_warning() -> Iterator[None]:
     root = logging.getLogger()
     before = root.level
     root.setLevel(logging.WARNING)
-    yield
-    assert root.level == logging.WARNING
-    root.setLevel(before)
+    try:
+        yield
+        assert root.level == logging.WARNING
+    finally:
+        root.setLevel(before)
 
 
 @pytest.mark.usefixtures("root_at_warning")
@@ -97,18 +115,14 @@ class TestLoading:
             pil_image_utils.load_pil_image_from_bytes(_png_bytes(), ".gif")
 
     def test_from_a_zip_entry(self, tmp_path: Path) -> None:
-        with zipfile.ZipFile(tmp_path / "panels.zip", "w") as zf:
-            zf.writestr("Insets/page.png", _png_bytes())
-        entry = zipfile.Path(tmp_path / "panels.zip", "Insets/page.png")
+        entry = _zip_entry(tmp_path, "Insets/page.png", _png_bytes())
 
         image = pil_image_utils.load_pil_image_from_zip(entry, encrypted=False)
 
         assert image.size == (40, 20)
 
     def test_from_an_encrypted_zip_entry_decrypts_it_first(self, tmp_path: Path) -> None:
-        with zipfile.ZipFile(tmp_path / "panels.zip", "w") as zf:
-            zf.writestr("page.png", b"sealed")
-        entry = zipfile.Path(tmp_path / "panels.zip", "page.png")
+        entry = _zip_entry(tmp_path, "page.png", b"sealed")
 
         with patch.object(
             get_panel_bytes, "get_decrypted_bytes", return_value=_png_bytes()
@@ -119,9 +133,7 @@ class TestLoading:
         assert image.size == (40, 20)
 
     def test_a_decryption_that_gives_nothing_is_an_error(self, tmp_path: Path) -> None:
-        with zipfile.ZipFile(tmp_path / "panels.zip", "w") as zf:
-            zf.writestr("page.png", b"sealed")
-        entry = zipfile.Path(tmp_path / "panels.zip", "page.png")
+        entry = _zip_entry(tmp_path, "page.png", b"sealed")
 
         with (
             patch.object(get_panel_bytes, "get_decrypted_bytes", return_value=b""),
@@ -136,6 +148,12 @@ class TestInMemory:
         data.seek(0)
         with Image.open(data) as image:
             assert (image.format, image.size) == ("PNG", (40, 20))
+
+    def test_png_bytes_take_the_compression_asked_for(self) -> None:
+        gradient = Image.radial_gradient("L")  # not one flat colour, so it can compress
+        stored = pil_image_utils.get_pil_image_as_png_bytes(gradient, compress_level=0)
+        smallest = pil_image_utils.get_pil_image_as_png_bytes(gradient)
+        assert len(smallest.getvalue()) < len(stored.getvalue()) / 2
 
     def test_jpg_bytes(self) -> None:
         data = pil_image_utils.get_pil_image_as_jpg_bytes(_image())
@@ -171,19 +189,26 @@ class TestFiles:
         fmt: str,
         tmp_path: Path,
     ) -> None:
-        srce = _png(tmp_path, size=(400, 200))
+        srce = _png(tmp_path, size=(400, 200), mode="RGBA")
         downscale(100, 100, srce, tmp_path / name)
         with Image.open(tmp_path / name) as image:
-            assert (image.format, image.size) == (fmt, (100, 50))
+            # Without its alpha, whichever the format.
+            assert (image.format, image.mode, image.size) == (fmt, "RGB", (100, 50))
 
-    @pytest.mark.parametrize(("name", "fmt"), [("exact.jpg", "JPEG"), ("exact.png", "PNG")])
+    @pytest.mark.parametrize(
+        ("name", "fmt", "mode"),
+        [
+            ("exact.jpg", "JPEG", "RGB"),
+            ("exact.png", "PNG", "RGBA"),  # a PNG keeps its alpha
+        ],
+    )
     def test_an_exact_resize_takes_the_size_given(
-        self, name: str, fmt: str, tmp_path: Path
+        self, name: str, fmt: str, mode: str, tmp_path: Path
     ) -> None:
         srce = _png(tmp_path, size=(400, 200), mode="RGBA")
         pil_image_utils.downscale_to_exact_size(50, 60, srce, tmp_path / name)
         with Image.open(tmp_path / name) as image:
-            assert (image.format, image.size) == (fmt, (50, 60))
+            assert (image.format, image.mode, image.size) == (fmt, mode, (50, 60))
 
     def test_saving_to_an_unknown_extension_is_refused(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="Unsupported image extension"):
@@ -206,15 +231,31 @@ class TestContainSize:
     def test_the_same_shape_fills_the_box(self) -> None:
         assert pil_image_utils.contain_size((30, 20), (300, 200)) == (300, 200)
 
-    def test_it_agrees_with_pil(self) -> None:
-        """The arithmetic is ImageOps.contain's, so the resize finds the size it expects."""
-        for size, box in (
+    @pytest.mark.parametrize(
+        ("size", "contained"),
+        [
+            pytest.param((1000, 1), (100, 1), id="too thin to have a height"),
+            pytest.param((1, 1000), (1, 100), id="too narrow to have a width"),
+        ],
+    )
+    def test_a_side_that_would_round_to_nothing_is_one_pixel(
+        self, size: tuple[int, int], contained: tuple[int, int]
+    ) -> None:
+        # Where this parts from ImageOps.contain, which gives the side as 0.
+        assert pil_image_utils.contain_size(size, (100, 100)) == contained
+
+    @pytest.mark.parametrize(
+        ("size", "box"),
+        [
             ((2120, 3200), (1920, 1080)),
             ((1000, 333), (640, 480)),
             ((7, 5), (3, 3)),
-        ):
-            expected = ImageOps.contain(Image.new("L", size), box).size
-            assert pil_image_utils.contain_size(size, box) == expected
+        ],
+    )
+    def test_it_agrees_with_pil(self, size: tuple[int, int], box: tuple[int, int]) -> None:
+        """The arithmetic is ImageOps.contain's, so the resize finds the size it expects."""
+        expected = ImageOps.contain(Image.new("L", size), box).size
+        assert pil_image_utils.contain_size(size, box) == expected
 
 
 class TestDecodingWithinABox:

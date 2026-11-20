@@ -45,6 +45,22 @@ class TestGetOsName:
             assert sys_utils.get_os_name() == "Linux"
 
 
+# Every hypervisor each check knows, written here so that dropping one fails a test.
+VM_SIGNATURES = [
+    "vmware",
+    "virtualbox",
+    "qemu",
+    "kvm",
+    "microsoft corporation",
+    "xen",
+    "parallels",
+    "bhyve",
+    "innotek",
+    "virtio",
+]
+WINDOWS_VM_KEYWORDS = ["VirtualBox", "VMware", "Hyper-V", "KVM", "QEMU", "Parallels", "Xen"]
+
+
 def _detect_virt(returncode: int) -> subprocess.CompletedProcess[bytes]:
     return subprocess.CompletedProcess(args=[], returncode=returncode)
 
@@ -57,22 +73,29 @@ class TestIsVirtualMachineOnLinux:
 
     def test_systemd_detect_virt_answers_by_exit_status(self) -> None:
         """--quiet prints nothing either way: a VM was once read as not one."""
-        with patch.object(sys_utils.subprocess, "run", return_value=_detect_virt(0)):
+        with patch.object(sys_utils.subprocess, "run", return_value=_detect_virt(0)) as run:
             assert sys_utils.is_virtual_machine() is True
+        # --vm leaves containers out: without it a container would count as a VM.
+        assert run.call_args.args[0] == ["systemd-detect-virt", "--vm", "--quiet"]
         with patch.object(sys_utils.subprocess, "run", return_value=_detect_virt(1)):
             assert sys_utils.is_virtual_machine() is False
 
     @pytest.mark.parametrize(
         ("product", "vm"),
-        [("VirtualBox\n", True), ("KVM\n", True), ("Precision 7865 Tower\n", False)],
+        [
+            *[(f"{signature.title()} Machine\n", True) for signature in VM_SIGNATURES],
+            ("Precision 7865 Tower\n", False),
+        ],
     )
     def test_without_systemd_the_dmi_strings_decide(
         self, tmp_path: Path, product: str, vm: bool
     ) -> None:
-        (tmp_path / "product_name").write_text(product)
+        (tmp_path / "product_name").write_text(product, encoding="utf-8")
+        # The file that cannot be read comes first: it is passed over, not the end.
+        dmi_files = (tmp_path / "missing", tmp_path / "product_name")
         with (
             patch.object(sys_utils.subprocess, "run", side_effect=FileNotFoundError),
-            patch.object(sys_utils, "DMI_FILES", (tmp_path / "product_name", tmp_path / "missing")),
+            patch.object(sys_utils, "DMI_FILES", dmi_files),
         ):
             assert sys_utils.is_virtual_machine() is vm
 
@@ -81,9 +104,10 @@ class TestIsVirtualMachineElsewhere:
     @pytest.mark.parametrize(
         ("system", "output", "vm"),
         [
-            ("Windows", "System Model: VirtualBox", True),
+            *[("Windows", f"System Model: {keyword}", True) for keyword in WINDOWS_VM_KEYWORDS],
             ("Windows", "System Model: Precision 7865 Tower", False),
             ("Darwin", "machdep.cpu.brand_string: VMware Virtual Platform", True),
+            ("Darwin", "machdep.cpu.brand_string: VirtualBox", True),
             ("Darwin", "machdep.cpu.brand_string: Apple M2", False),
         ],
     )

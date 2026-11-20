@@ -28,6 +28,7 @@ def test_a_new_timing_starts_now(now: MagicMock) -> None:
     now.return_value = START + timedelta(minutes=1)
 
     assert Timing().get_start_time() == START + timedelta(minutes=1)
+    now.assert_called_once_with(UTC)
 
 
 def test_restart_moves_the_start_to_now(now: MagicMock) -> None:
@@ -44,7 +45,10 @@ def test_restart_moves_the_start_to_now(now: MagicMock) -> None:
     [
         (timedelta(seconds=3), 3, "3.0s"),
         (timedelta(seconds=1.5), 1, "1.5s"),
+        (timedelta(seconds=1.96), 2, "2.0s"),  # rounded to a tenth before the fraction goes
         (timedelta(milliseconds=50), 0, "50ms"),
+        (timedelta(milliseconds=90), 0, "90ms"),  # the last time shown in milliseconds
+        (timedelta(milliseconds=100), 0, "0.1s"),
     ],
 )
 def test_elapsed_time(now: MagicMock, elapsed: timedelta, seconds: int, with_unit: str) -> None:
@@ -53,3 +57,4 @@ def test_elapsed_time(now: MagicMock, elapsed: timedelta, seconds: int, with_uni
 
     assert timing.get_elapsed_time_in_seconds() == seconds
     assert timing.get_elapsed_time_with_unit() == with_unit
+    now.assert_called_with(UTC)
