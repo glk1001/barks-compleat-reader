@@ -9,7 +9,9 @@ exact ref shapes the core renderer emits (``render._inline``).
 
 from __future__ import annotations
 
+from okf_reader.core.render import FOOTNOTE_REF_SIZE, LINK_COLOR, Block, render_page
 from okf_reader.ui.keynav import (
+    LINK_FOCUS_COLOR,
     enumerate_refs,
     highlight_ref_occurrence,
     hybrid_link_step,
@@ -17,15 +19,25 @@ from okf_reader.ui.keynav import (
     step_index,
 )
 
-LINK_COLOR = "4ea1ff"
-FOCUS_COLOR = "ffd54a"
+FOCUS_COLOR = LINK_FOCUS_COLOR
+
+
+def _rendered(markdown: str) -> str:
+    """Return the markup the renderer makes of one line of a page: the shapes stay its own."""
+    block = render_page(markdown).blocks[0]
+    assert isinstance(block, Block)
+    return block.markup
+
 
 # The two ref shapes render._inline produces: a page link and a footnote marker.
-PAGE_LINK = f"[ref=concepts/foo-bar.md][color={LINK_COLOR}][u]Foo Bar[/u][/color][/ref]"
-QUOTED_LINK = (
-    f"[ref=stories/lost%20in%20the%20andes.md][color={LINK_COLOR}][u]Andes[/u][/color][/ref]"
-)
-FOOTNOTE_REF = f"[ref=fn:2][color={LINK_COLOR}][sup][size=11]\\[2][/size][/sup][/color][/ref]"
+PAGE_LINK = _rendered("[Foo Bar](concepts/foo-bar.md)")
+QUOTED_LINK = _rendered("[Andes](stories/lost%20in%20the%20andes.md)")
+FOOTNOTE_REF = _rendered("[^2]\n\n[^2]: A note.\n")
+
+
+def test_the_fixtures_are_the_shapes_these_tests_are_about() -> None:
+    assert PAGE_LINK.startswith(f"[ref=concepts/foo-bar.md][color={LINK_COLOR}]")
+    assert FOOTNOTE_REF.startswith(f"[ref=fn:2][color={LINK_COLOR}][sup][size={FOOTNOTE_REF_SIZE}]")
 
 
 class TestScrollStep:

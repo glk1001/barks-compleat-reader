@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import pytest
 from okf_reader.core.session import (
     SessionState,
     load_session_state,
@@ -99,17 +100,34 @@ class TestLoadTolerance:
         state_path.write_text(json.dumps({"page": "../evil.md"}), encoding="utf-8")
         assert load_session_state(state_path, bundle) is None
 
-    def test_bad_scroll_degrades_to_top(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("state", [{"scroll_y": 0.5}, {"page": 3}, {"page": None}])
+    def test_a_state_that_names_no_page_is_no_session(
+        self, tmp_path: Path, state: dict[str, object]
+    ) -> None:
+        bundle = _make_bundle(tmp_path)
+        state_path = tmp_path / "session.json"
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        assert load_session_state(state_path, bundle) is None
+
+    def test_a_file_that_is_not_a_page_is_not_resumed(self, tmp_path: Path) -> None:
+        """A scraped .html inside the bundle is there, but is no page to open."""
+        bundle = _make_bundle(tmp_path)
+        (bundle / "concept" / "scraped.html").write_text("<p>x</p>", encoding="utf-8")
+        state_path = tmp_path / "session.json"
+        state_path.write_text(json.dumps({"page": "concept/scraped.html"}), encoding="utf-8")
+        assert load_session_state(state_path, bundle) is None
+
+    @pytest.mark.parametrize("bad", ["nope", -0.5, 2.0, None])
+    def test_bad_scroll_degrades_to_top(self, tmp_path: Path, bad: object) -> None:
         """A malformed or out-of-range scroll keeps the page, opened at the top."""
         bundle = _make_bundle(tmp_path)
         state_path = tmp_path / "session.json"
-        for bad in ("nope", -0.5, 2.0, None):
-            state_path.write_text(
-                json.dumps({"page": "concept/a.md", "scroll_y": bad}), encoding="utf-8"
-            )
-            loaded = load_session_state(state_path, bundle)
-            assert loaded is not None
-            assert loaded.scroll_y == 1.0
+        state_path.write_text(
+            json.dumps({"page": "concept/a.md", "scroll_y": bad}), encoding="utf-8"
+        )
+        loaded = load_session_state(state_path, bundle)
+        assert loaded is not None
+        assert loaded.scroll_y == 1.0
 
 
 class TestResolveStartPage:
@@ -119,8 +137,8 @@ class TestResolveStartPage:
     def _bundle(tmp_path: Path) -> Path:
         bundle = tmp_path / "bundle"
         (bundle / "stories").mkdir(parents=True)
-        (bundle / "index.md").write_text("# Home")
-        (bundle / "stories" / "andes.md").write_text("# Andes")
+        (bundle / "index.md").write_text("# Home", encoding="utf-8")
+        (bundle / "stories" / "andes.md").write_text("# Andes", encoding="utf-8")
         return bundle
 
     def test_a_caller_page_wins_at_the_top(self, tmp_path: Path) -> None:

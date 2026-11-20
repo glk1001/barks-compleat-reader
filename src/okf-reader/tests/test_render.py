@@ -10,6 +10,7 @@ import subprocess
 import sys
 from typing import TYPE_CHECKING
 
+import pytest
 import yaml
 from okf_reader.core import bundle
 from okf_reader.core import render as okf
@@ -75,6 +76,13 @@ def _text_blocks(page: okf.Page) -> list[okf.Block]:
     return [b for b in page.blocks if isinstance(b, okf.Block)]
 
 
+def _table(markdown: str, **render_options: object) -> okf.TableBlock:
+    """Return the table a page opens with."""
+    table = okf.render_page(markdown, **render_options).blocks[0]  # ty: ignore[invalid-argument-type]
+    assert isinstance(table, okf.TableBlock)
+    return table
+
+
 class TestParseMarkdown:
     def test_the_shared_parser_s_rule_chains_are_compiled_at_import(self) -> None:
         """Compiled lazily, a chain could be read half-built by a parse on a second thread.
@@ -112,6 +120,15 @@ class TestRenderPage:
         assert block.markup == f"[color={okf.HEADING_COLOR}][b]Title[/b][/color]"
         assert block.font_size == okf.HEADING_SIZES["h1"]
         assert block.heading  # headings start a new visual section in consumers
+
+    @pytest.mark.parametrize(
+        ("level", "size"), [(1, 30), (2, 24), (3, 20), (4, 18), (5, 16), (6, 16)]
+    )
+    def test_each_heading_level_has_its_size_down_to_the_body_s(
+        self, level: int, size: int
+    ) -> None:
+        (block,) = _text_blocks(okf.render_page(f"{'#' * level} Title"))
+        assert (block.font_size, block.heading) == (size, True)
 
     def test_heading_flag_set_only_on_headings(self) -> None:
         """Paragraphs are not section starters; the Footnotes header is."""
@@ -226,8 +243,9 @@ class TestRenderPage:
 
     def test_code_fence_block(self) -> None:
         """A fenced code block is a colored block at the code font size."""
-        blocks = _text_blocks(okf.render_page("```\nsome_code()\n```"))
-        assert any(b.markup == f"[color={okf.CODE_COLOR}]some_code()[/color]" for b in blocks)
+        (block,) = _text_blocks(okf.render_page("```\nsome_code()\n```"))
+        assert block.markup == f"[color={okf.CODE_COLOR}]some_code()[/color]"
+        assert block.font_size == okf.CODE_FONT_SIZE
 
     def test_thematic_break_block(self) -> None:
         """A thematic break renders as a horizontal rule block."""
@@ -239,6 +257,8 @@ class TestRenderPage:
         blocks = _text_blocks(okf.render_page("Before.\n\n<div>block html</div>\n\nAfter."))
         expected = f"[color={okf.CODE_COLOR}]<div>block html</div>[/color]"
         assert [b.markup for b in blocks] == ["Before.", expected, "After."]
+        assert blocks[1].font_size == okf.CODE_FONT_SIZE
+        assert blocks[0].font_size > okf.CODE_FONT_SIZE  # a little under the body's
 
     def test_html_comment_block_skipped(self) -> None:
         """A pure HTML comment is author metadata, not content, and is not rendered."""
@@ -289,8 +309,7 @@ class TestRenderPage:
         """A cell past TABLE_COL_WRAP_WIDTH wraps at word boundaries inside its column."""
         a, b, c = "a" * 20, "b" * 20, "c" * 10
         md = f"| T | N |\n|---|---|\n| {a} {b} {c} | x |\n| short | y |\n"
-        table = okf.render_page(md).blocks[0]
-        assert isinstance(table, okf.TableBlock)
+        table = _table(md)
         # Column width = the widest wrapped line (31), not the unwrapped cell (52).
         assert table.rows[1] == f"{a}{' ' * 11}  x\n{b} {c}"
         assert table.rows[2] == f"short{' ' * 26}  y"
@@ -299,8 +318,7 @@ class TestRenderPage:
         """Wrapping breaks at visible spaces only; a split tag pair is re-balanced per line."""
         a, b, c = "a" * 20, "b" * 20, "c" * 10
         md = f"| T | N |\n|---|---|\n| *{a} {b} {c}* | x |\n"
-        table = okf.render_page(md).blocks[0]
-        assert isinstance(table, okf.TableBlock)
+        table = _table(md)
         # [i]…[/i] closes at each line's end and reopens on the next; padding
         # counts visible chars only.
         assert table.rows[1] == f"[i]{a}[/i]{' ' * 11}  x\n[i]{b} {c}[/i]"
@@ -317,8 +335,7 @@ class TestRenderPage:
             "| Vol | Title | Yrs |\n|---|---|---|\n"
             "| 14 | [The Seven Cities of Gold and Then Some](x.md) | 1954-55 |\n"
         )
-        table = okf.render_page(md).blocks[0]
-        assert isinstance(table, okf.TableBlock)
+        table = _table(md)
         link_open = f"[ref=x.md][color={okf.LINK_COLOR}][u]"
         assert table.rows[1] == (
             f" 14  {link_open}The Seven Cities of Gold and[/u][/color][/ref]  1954-55\n"
@@ -328,8 +345,7 @@ class TestRenderPage:
     def test_table_numeric_columns_right_justified(self) -> None:
         """A column of plain numbers is right-justified; text columns stay left."""
         md = "| Title | Pages |\n|---|---|\n| A Story | 8 |\n| Longer Story | -1.00 |\n"
-        table = okf.render_page(md).blocks[0]
-        assert isinstance(table, okf.TableBlock)
+        table = _table(md)
         assert table.rows[0] == f"[color={okf.HEADING_COLOR}]Title{' ' * 7}  Pages[/color]"
         assert table.rows[1] == f"A Story{' ' * 5}  {' ' * 4}8"
         assert table.rows[2] == "Longer Story  -1.00"  # negatives count as numeric
@@ -337,8 +353,7 @@ class TestRenderPage:
     def test_table_mixed_column_stays_left_justified(self) -> None:
         """One non-numeric cell (e.g. a page code) keeps the whole column left-justified."""
         md = "| Pg | X |\n|---|---|\n| 151 | a |\n| 570b | b |\n"
-        table = okf.render_page(md).blocks[0]
-        assert isinstance(table, okf.TableBlock)
+        table = _table(md)
         assert table.rows[1] == "151   a"  # "151" left-justified in the 4-wide column
         assert table.rows[2] == "570b  b"
 
@@ -359,8 +374,7 @@ class TestRenderPage:
                 return [None] * len(header)
 
         md = "| T | F |\n|---|---|\n| own | x |\n| assigned |  |\n"
-        table = okf.render_page(md, table_rewriter=FoldFlagIntoTitle()).blocks[0]
-        assert isinstance(table, okf.TableBlock)
+        table = _table(md, table_rewriter=FoldFlagIntoTitle())
         assert table.rows == [
             f"[color={okf.HEADING_COLOR}]T[/color]",  # single column left; still colored
             "own",
@@ -381,8 +395,7 @@ class TestRenderPage:
                 return [6, None]
 
         md = "| A | B |\n|---|---|\n| aaa bbb | x |\n"
-        table = okf.render_page(md, table_rewriter=NarrowFirstColumn()).blocks[0]
-        assert isinstance(table, okf.TableBlock)
+        table = _table(md, table_rewriter=NarrowFirstColumn())
         # "aaa bbb" (7 visible) is under the 32 default but over the override of 6.
         assert table.rows[1] == "aaa  x\nbbb"
 
@@ -390,8 +403,7 @@ class TestRenderPage:
         """A single word past TABLE_COL_WRAP_WIDTH overflows its own row, not the column."""
         long_cell = "L" * (okf.TABLE_COL_WRAP_WIDTH + 10)
         md = f"| A | B |\n|---|---|\n| short | x |\n| {long_cell} | y |\n"
-        table = okf.render_page(md).blocks[0]
-        assert isinstance(table, okf.TableBlock)
+        table = _table(md)
         assert table.rows[1] == "short  x"  # column width set by "short", not the outlier
         assert table.rows[2] == f"{long_cell}  y"  # the outlier row alone runs long
 

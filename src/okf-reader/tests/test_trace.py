@@ -4,39 +4,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-import pytest
-from kivy.logger import Logger
 from okf_reader.ui import trace
 
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
 BUNDLE = Path("/bundle")
-
-
-class _Capture(logging.Handler):
-    def __init__(self) -> None:
-        super().__init__(logging.DEBUG)
-        self.messages: list[str] = []
-
-    def emit(self, record: logging.LogRecord) -> None:
-        self.messages.append(record.getMessage())
-
-
-@pytest.fixture
-def kivy_log() -> Iterator[list[str]]:
-    """Collect every message Kivy's logger emits during the test, DEBUG and up."""
-    handler = _Capture()
-    level = Logger.level
-    Logger.setLevel(logging.DEBUG)
-    Logger.addHandler(handler)
-    try:
-        yield handler.messages
-    finally:
-        Logger.removeHandler(handler)
-        Logger.setLevel(level)
 
 
 def test_page_shown_names_the_page_relative_to_the_bundle(kivy_log: list[str]) -> None:
@@ -126,11 +97,34 @@ def test_the_contrast_marker(kivy_log: list[str]) -> None:
     assert kivy_log == ["OKFViewer: Contrast on.", "OKFViewer: Contrast off."]
 
 
-def test_a_lazy_rows_wrong_height_is_an_error(kivy_log: list[str]) -> None:
+def test_a_lazy_rows_wrong_height_is_an_error(kivy_log_levels: list[tuple[int, str]]) -> None:
     trace.lazy_row_height_differs(12, 34, 17)
-    assert kivy_log == [
+    assert kivy_log_levels == [
         (
-            "OKFViewer: Lazy table row 12 is 34px high, not the 17px reserved for it:"
-            " its rows may overlap or leave gaps."
+            logging.ERROR,
+            (
+                "OKFViewer: Lazy table row 12 is 34px high, not the 17px reserved for it:"
+                " its rows may overlap or leave gaps."
+            ),
         )
+    ]
+
+
+def test_what_a_user_did_is_info_and_the_rest_is_debug(
+    kivy_log_levels: list[tuple[int, str]],
+) -> None:
+    """A normal log holds the pages shown and left and the actions run; the steps are debug."""
+    trace.page_shown(BUNDLE, BUNDLE / "index.md", 1)
+    trace.back_to(BUNDLE, BUNDLE / "index.md")
+    trace.back_exit()
+    trace.page_action("Read comic")
+    trace.focus_region("SIDEBAR")
+    trace.search_results(3, "grotto")
+    trace.link_focus("fn:bib")
+    trace.search_index_failed(0.5, OSError("gone"))
+
+    assert [level for level, _ in kivy_log_levels] == [
+        *[logging.INFO] * 4,
+        *[logging.DEBUG] * 3,
+        logging.WARNING,
     ]

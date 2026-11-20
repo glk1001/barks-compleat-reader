@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from okf_reader.core import bundle as okf
 
 if TYPE_CHECKING:
@@ -53,11 +54,16 @@ class TestResolveLink:
         bundle = self._bundle(tmp_path)
         assert okf.resolve_link(bundle / "concept" / "a.md", "#section", bundle) is None
 
-    def test_escape_outside_bundle_rejected(self, tmp_path: Path) -> None:
-        """A .md traversal that escapes the bundle root is rejected by the bounds check."""
-        bundle = self._bundle(tmp_path)
-        target = okf.resolve_link(bundle / "concept" / "a.md", "../../../../etc/secret.md", bundle)
-        assert target is None
+    @pytest.mark.parametrize("href", ["../../outside.md", "/../outside.md"])
+    def test_escape_outside_bundle_rejected(self, tmp_path: Path, href: str) -> None:
+        """A page that is really there, but outside the bundle, is not a link's target."""
+        bundle = self._bundle(tmp_path / "bundle")
+        outside = tmp_path / "outside.md"
+        outside.write_text("---\ntype: x\n---\nnot the bundle's", encoding="utf-8")
+        page = bundle / "concept" / "a.md"
+        assert (page.parent / "../../outside.md").resolve() == outside  # the link does reach it
+
+        assert okf.resolve_link(page, href, bundle) is None
 
     def test_missing_file_is_none(self, tmp_path: Path) -> None:
         """A path inside the bundle that does not exist resolves to None."""

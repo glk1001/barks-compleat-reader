@@ -33,6 +33,8 @@ CODE_COLOR = "c0a0ff"
 # distinct from links (blue) and code (violet).
 HEADING_COLOR = "ffd54a"
 HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
+# A code fence's and a raw HTML block's, a little under the body's 16.
+CODE_FONT_SIZE = 14
 # Kivy's [sup] halves the current font size; the inner [size=…] overrides the
 # shrink so markers stay readable. Kivy pins superscript glyphs near the top of
 # the line box, so the visible "raise" is line height minus marker height —
@@ -658,7 +660,9 @@ class _PageBuilder:
 
     def _code(self, i: int) -> int:
         content = self._tokens[i].content.rstrip()
-        self.blocks.append(Block(f"[color={CODE_COLOR}]{escape_markup(content)}[/color]", 14))
+        self.blocks.append(
+            Block(f"[color={CODE_COLOR}]{escape_markup(content)}[/color]", CODE_FONT_SIZE)
+        )
         return i + 1
 
     def _html(self, i: int) -> int:
@@ -669,7 +673,9 @@ class _PageBuilder:
         # markers), not content, and are skipped.
         content = self._tokens[i].content.strip()
         if not (content.startswith("<!--") and content.endswith("-->")):
-            self.blocks.append(Block(f"[color={CODE_COLOR}]{escape_markup(content)}[/color]", 14))
+            self.blocks.append(
+                Block(f"[color={CODE_COLOR}]{escape_markup(content)}[/color]", CODE_FONT_SIZE)
+            )
         return i + 1
 
     def _rule(self, i: int) -> int:

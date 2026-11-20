@@ -8,8 +8,10 @@ heading > text, AND semantics, phrases, empty query, limit), and the snippets.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
+from okf_reader.core import search
 from okf_reader.core.search import (
     _ELLIPSIS,
     BundleSearcher,
@@ -51,6 +53,16 @@ def _make_bundle(tmp_path: Path) -> Path:
     return bundle
 
 
+def _text_bundle(tmp_path: Path, pages: dict[str, tuple[str, str]]) -> Path:
+    """Build a flat bundle of ``{filename: (title, body)}`` pages."""
+    bundle = tmp_path / "b"
+    bundle.mkdir()
+    (bundle / "index.md").write_text("# B\n", encoding="utf-8")
+    for name, (title, body) in pages.items():
+        (bundle / name).write_text(_page(title, body), encoding="utf-8")
+    return bundle
+
+
 class TestBuildIndex:
     def test_entries_follow_curated_order(self, tmp_path: Path) -> None:
         """Pages come back in the index.md listing order, not filename order."""
@@ -76,13 +88,19 @@ class TestBuildIndex:
         )
         assert search_index(index, "payment") == []
 
+    def test_headings_can_be_left_out_and_the_text_kept(self, tmp_path: Path) -> None:
+        """Without headings a heading's words are still the page's text, and match as that."""
+        index = build_search_index(_make_bundle(tmp_path), include_headings=False)
+        assert all(e.headings_lower == () for e in index.entries)
+        assert [h.matched_on for h in search_index(index, "payment")] == ["text"]
+
     def test_fenced_code_hash_not_a_heading(self, tmp_path: Path) -> None:
         """A ``#`` comment inside a fenced code block is not indexed as a heading."""
-        bundle = tmp_path / "b"
-        bundle.mkdir()
-        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
-        (bundle / "a.md").write_text(
-            _page("Recipe", "# Recipe\n\n```\n# not a heading\n```\n"), encoding="utf-8"
+        bundle = _text_bundle(
+            tmp_path,
+            {
+                "a.md": ("Recipe", "# Recipe\n\n```\n# not a heading\n```\n"),
+            },
         )
         index = build_search_index(bundle)
         assert index.entries[0].headings_lower == ("recipe",)
@@ -95,10 +113,12 @@ class TestBuildIndex:
 
     def test_page_without_headings_indexes_title(self, tmp_path: Path) -> None:
         """A page with no body headings still indexes, with an empty heading set."""
-        bundle = tmp_path / "b"
-        bundle.mkdir()
-        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
-        (bundle / "plain.md").write_text(_page("Plain", "Just prose, no headings.\n"), "utf-8")
+        bundle = _text_bundle(
+            tmp_path,
+            {
+                "plain.md": ("Plain", "Just prose, no headings.\n"),
+            },
+        )
         index = build_search_index(bundle)
         plain = next(e for e in index.entries if e.path.name == "plain.md")
         assert plain.headings_lower == ()
@@ -107,22 +127,26 @@ class TestBuildIndex:
 class TestRanking:
     def test_exact_beats_prefix_beats_substring(self, tmp_path: Path) -> None:
         """A query that exactly matches one title ranks it above partial matches."""
-        bundle = tmp_path / "b"
-        bundle.mkdir()
-        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
-        (bundle / "duck.md").write_text(_page("Duck"), encoding="utf-8")
-        (bundle / "duckling.md").write_text(_page("Duckling"), encoding="utf-8")
-        (bundle / "lucky.md").write_text(_page("A Lucky Duck Tale"), encoding="utf-8")
+        bundle = _text_bundle(
+            tmp_path,
+            {
+                "duck.md": ("Duck", ""),
+                "duckling.md": ("Duckling", ""),
+                "lucky.md": ("A Lucky Duck Tale", ""),
+            },
+        )
         hits = search_index(build_search_index(bundle), "duck")
         assert [h.title for h in hits] == ["Duck", "Duckling", "A Lucky Duck Tale"]
 
     def test_title_match_beats_heading_match(self, tmp_path: Path) -> None:
         """A word in the title outranks the same word only in a heading."""
-        bundle = tmp_path / "b"
-        bundle.mkdir()
-        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
-        (bundle / "a.md").write_text(_page("Gold Story", "# Gold Story\n"), encoding="utf-8")
-        (bundle / "z.md").write_text(_page("Other", "# Other\n\n## Gold Rush\n"), encoding="utf-8")
+        bundle = _text_bundle(
+            tmp_path,
+            {
+                "a.md": ("Gold Story", "# Gold Story\n"),
+                "z.md": ("Other", "# Other\n\n## Gold Rush\n"),
+            },
+        )
         hits = search_index(build_search_index(bundle), "gold")
         assert [h.title for h in hits] == ["Gold Story", "Other"]
         assert hits[0].matched_on == "title"
@@ -147,11 +171,13 @@ class TestRanking:
 
     def test_quoted_phrase_matches_its_words_in_order(self, tmp_path: Path) -> None:
         """The words inside quotes match together, in order, not as separate words."""
-        bundle = tmp_path / "b"
-        bundle.mkdir()
-        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
-        (bundle / "a.md").write_text(_page("Letter to Glen Brown"), encoding="utf-8")
-        (bundle / "z.md").write_text(_page("Brown Glen Walk"), encoding="utf-8")
+        bundle = _text_bundle(
+            tmp_path,
+            {
+                "a.md": ("Letter to Glen Brown", ""),
+                "z.md": ("Brown Glen Walk", ""),
+            },
+        )
         index = build_search_index(bundle)
         assert [h.title for h in search_index(index, '"glen brown"')] == ["Letter to Glen Brown"]
         assert len(search_index(index, "glen brown")) == 2  # noqa: PLR2004 — unquoted: both
@@ -171,36 +197,16 @@ class TestRanking:
 
     def test_apostrophes_match_straight_or_curly(self, tmp_path: Path) -> None:
         """A typed straight apostrophe finds a curly one, and the other way round."""
-        bundle = tmp_path / "b"
-        bundle.mkdir()
-        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
-        (bundle / "a.md").write_text(_page("Scrooge’s Quest"), encoding="utf-8")  # noqa: RUF001
+        bundle = _text_bundle(tmp_path, {"a.md": ("Scrooge\u2019s Quest", "")})
         index = build_search_index(bundle)
         assert [h.title for h in search_index(index, "scrooge's")] == ["Scrooge’s Quest"]  # noqa: RUF001
         assert [h.title for h in search_index(index, "scrooge’s")] == ["Scrooge’s Quest"]  # noqa: RUF001
 
     def test_limit_respected(self, tmp_path: Path) -> None:
         """No more than ``limit`` hits come back."""
-        bundle = tmp_path / "b"
-        bundle.mkdir()
-        (bundle / "index.md").write_text("# B\n", encoding="utf-8")
-        for i in range(5):
-            (bundle / f"p{i}.md").write_text(_page(f"Duck {i}"), encoding="utf-8")
+        bundle = _text_bundle(tmp_path, {f"p{i}.md": (f"Duck {i}", "") for i in range(5)})
         limit = 3
         assert len(search_index(build_search_index(bundle), "duck", limit=limit)) == limit
-
-
-_OPEN, _CLOSE = "\u201c", "\u201d"  # curly double quotes
-
-
-def _text_bundle(tmp_path: Path, pages: dict[str, tuple[str, str]]) -> Path:
-    """Build a flat bundle of ``{filename: (title, body)}`` pages."""
-    bundle = tmp_path / "b"
-    bundle.mkdir()
-    (bundle / "index.md").write_text("# B\n", encoding="utf-8")
-    for name, (title, body) in pages.items():
-        (bundle / name).write_text(_page(title, body), encoding="utf-8")
-    return bundle
 
 
 class TestPageText:
@@ -311,6 +317,17 @@ class TestSnippet:
         start, end = hit.snippet_match
         assert hit.snippet[start:end] == "Scrooge\u2019s"
 
+    def test_a_lowercase_of_another_length_is_shown_folded(self, tmp_path: Path) -> None:
+        """A dotted capital I lowercases to two characters: the match is still marked rightly."""
+        bundle = _text_bundle(tmp_path, {"a.md": ("A", "\u0130 and a Needle there.")})
+        hit = search_index(build_search_index(bundle), "needle")[0]
+        start, end = hit.snippet_match
+        assert hit.snippet[start:end] == "needle"
+        assert hit.snippet == "\u0130 and a Needle there.".lower()
+
+
+_OPEN, _CLOSE = "\u201c", "\u201d"  # curly double quotes
+
 
 class TestParseQuery:
     @pytest.mark.parametrize(
@@ -333,9 +350,12 @@ class TestBundleSearcher:
     def test_builds_once_and_queries(self, tmp_path: Path) -> None:
         """The lazy searcher answers a query and caches the built index."""
         searcher = BundleSearcher(_make_bundle(tmp_path))
-        assert [h.title for h in searcher.search("guess")] == ["You Can't Guess!"]
-        # Second call reuses the cached index (same answer, no rebuild needed).
-        assert [h.title for h in searcher.search("guess")] == ["You Can't Guess!"]
+        with patch.object(search, "build_search_index", wraps=build_search_index) as build:
+            assert [h.title for h in searcher.search("guess")] == ["You Can't Guess!"]
+            assert [h.title for h in searcher.search("guess")] == ["You Can't Guess!"]
+            searcher.warm()
+
+        build.assert_called_once()
 
     def test_blank_query_short_circuits(self, tmp_path: Path) -> None:
         """A blank query returns nothing without forcing an index build."""
@@ -347,10 +367,13 @@ class TestBundleSearcher:
         """warm() makes the searcher ready so a later search does not build inline."""
         searcher = BundleSearcher(_make_bundle(tmp_path))
         assert searcher.is_ready is False
-        searcher.warm()
-        assert searcher.is_ready is True
-        searcher.warm()  # idempotent — a second call is a no-op
-        assert [h.title for h in searcher.search("guess")] == ["You Can't Guess!"]
+        with patch.object(search, "build_search_index", wraps=build_search_index) as build:
+            searcher.warm()
+            assert searcher.is_ready is True
+            searcher.warm()  # a second call builds nothing
+            assert [h.title for h in searcher.search("guess")] == ["You Can't Guess!"]
+
+        build.assert_called_once()
 
     def test_search_marks_ready(self, tmp_path: Path) -> None:
         """A non-blank search builds the index and leaves the searcher ready."""

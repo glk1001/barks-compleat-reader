@@ -20,10 +20,13 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.scrollview import ScrollView
 from okf_reader.core.actions import PageAction
+from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.render import TableBlock
 from okf_reader.core.search import SearchHit
 from okf_reader.core.session import load_session_state
@@ -40,6 +43,7 @@ from okf_reader.ui.keynav import (
     KEY_PAGE_UP,
     KEY_RIGHT,
     KEY_TAB,
+    PAGE_STEP_OVERLAP,
 )
 from okf_reader.ui.viewer import (
     LAZY_TABLE_MARGIN,
@@ -51,6 +55,7 @@ from okf_reader.ui.viewer import (
     OKFViewer,
     _LazyTable,
 )
+from PIL import Image as PilImage
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -88,6 +93,23 @@ def bundle(tmp_path: Path) -> Path:
     return root
 
 
+@pytest.fixture(autouse=True)
+def index_worker() -> Iterator[MagicMock]:
+    """Keep every test's viewer from starting the thread that builds the search index.
+
+    A real one outlives its test, and what it logs then lands in another's log.
+    """
+    with patch.object(viewer_module.threading, "Thread") as thread:
+        yield thread
+
+
+def _window_patched() -> Any:  # noqa: ANN401 — a patcher, as patch.object returns it
+    """Patch the realized window the viewer imports where it needs it."""
+    import kivy.core.window as window_module  # noqa: PLC0415 — importing it makes the window
+
+    return patch.object(window_module, "Window")
+
+
 @pytest.fixture
 def viewer(bundle: Path) -> Iterator[OKFViewer]:
     okf_viewer = OKFViewer(bundle)
@@ -113,6 +135,12 @@ def _remove_popups_left_open() -> None:
             Window.remove_widget(widget)
 
 
+def _open_footnote(viewer: OKFViewer) -> None:
+    """Press the home page's footnote marker, as a tap or Enter on it does."""
+    note_label = next(lbl for lbl, ref, _ in viewer._page_links if ref == "fn:note")
+    viewer._on_ref(note_label, "fn:note")
+
+
 def _page(viewer: OKFViewer) -> str:
     return viewer.history[-1].path.relative_to(viewer.bundle).as_posix()
 
@@ -129,11 +157,16 @@ class TestPageScrollKeys:
         return viewer
 
     def test_page_down_and_up_move_by_a_view(self, long_page: OKFViewer) -> None:
+        """A view less the overlap that keeps the last lines read in sight."""
+        view, scrollable = 100, 1000 - 100
         assert long_page.handle_key(KEY_PAGE_DOWN) is True
-        down = long_page.body_scroll.scroll_y
-        assert down < 1.0
+        step = view - dp(PAGE_STEP_OVERLAP)
+        assert long_page.body_scroll.scroll_y == pytest.approx(1 - step / scrollable)
+        long_page.handle_key(KEY_PAGE_DOWN)
+        assert long_page.body_scroll.scroll_y == pytest.approx(1 - 2 * step / scrollable)
         long_page.handle_key(KEY_PAGE_UP)
-        assert long_page.body_scroll.scroll_y > down
+        long_page.handle_key(KEY_PAGE_UP)
+        assert long_page.body_scroll.scroll_y == pytest.approx(1.0)
 
     def test_end_and_home_jump_to_the_ends(self, long_page: OKFViewer) -> None:
         long_page.handle_key(KEY_END)
@@ -149,8 +182,7 @@ class TestPageScrollKeys:
 
 class TestFootnoteLink:
     def test_a_link_inside_a_footnote_closes_it_and_opens_the_page(self, viewer: OKFViewer) -> None:
-        note_label = next(lbl for lbl, ref, _ in viewer._page_links if ref == "fn:note")
-        viewer._on_ref(note_label, "fn:note")
+        _open_footnote(viewer)
         popup = viewer._footnote_popup
         assert popup is not None
         popup_label = viewer._popup_link_label
@@ -162,8 +194,7 @@ class TestFootnoteLink:
         assert len(viewer.history) == 2  # noqa: PLR2004
 
     def test_the_popup_takes_escape_and_holds_the_arrows(self, viewer: OKFViewer) -> None:
-        note_label = next(lbl for lbl, ref, _ in viewer._page_links if ref == "fn:note")
-        viewer._on_ref(note_label, "fn:note")
+        _open_footnote(viewer)
         popup = viewer._footnote_popup
         assert popup is not None
         with patch.object(popup, "dismiss") as dismiss:
@@ -217,7 +248,7 @@ class TestMouse:
         under.assert_called_once_with(label, 10, 10)
 
     def test_the_cursor_changes_only_on_a_change(self, viewer: OKFViewer) -> None:
-        with patch("kivy.core.window.Window") as window:
+        with _window_patched() as window:
             viewer._set_hand_cursor(over=True)
             viewer._set_hand_cursor(over=True)
             viewer._set_hand_cursor(over=False)
@@ -243,13 +274,6 @@ class TestRefUnder:
 
     def test_inside_the_label_but_off_its_text_is_no_link(self, label: Label) -> None:
         assert viewer_module._ref_under(label, 10, 20) is None
-
-
-class _NoWarmSearcher:
-    """A search provider with no index to warm."""
-
-    def search(self, query: str) -> list[SearchHit]:  # noqa: ARG002
-        return []
 
 
 class TestSearchFocus:
@@ -326,7 +350,7 @@ class TestSearchIndexFailure:
         ready.assert_called_once_with(failed=True, text="grotto")
 
     def test_a_provider_that_needs_no_warming_is_ready_at_once(self, viewer: OKFViewer) -> None:
-        viewer._searcher = _NoWarmSearcher()
+        viewer._searcher = _Hits([])  # no `warm` to call
         viewer._on_search_focus(None, focused=True)
         assert viewer._search_ready is True
 
@@ -465,12 +489,13 @@ class TestLazyTable:
     def test_scrolling_to_the_end_builds_the_last_rows_and_reuses_labels(
         self, table: _LazyTable, viewport: ScrollView
     ) -> None:
-        labels_before = {id(lbl) for lbl in table.children}
+        labels_before = set(table.children)  # the labels, kept: a freed one's id is reused
         table.y = viewport.y  # the table's bottom at the viewport's bottom
         table._update()
         assert table.built_rows[-1] == len(LONG_TABLE_ROWS) - 1
         assert 0 not in table.built_rows
-        assert {id(lbl) for lbl in table.children} <= labels_before  # reused, none new
+        assert table.children  # some built, and
+        assert set(table.children) <= labels_before  # each one reused, none new
 
     def test_a_row_of_another_height_than_reserved_is_logged_once(
         self, viewport: ScrollView
@@ -545,9 +570,9 @@ class TestTreeKeys:
 
     def test_home_and_end_go_to_the_first_and_last_node(self, viewer: OKFViewer) -> None:
         concept = _concept(viewer)
-        viewer.tree.toggle_node(concept)
-        viewer._add_tree_nodes(viewer_module.list_children(concept.bundle_path), concept)
+        viewer.tree.toggle_node(concept)  # opening it loads its pages
         nodes = list(viewer.tree.iterate_open_nodes())
+        assert [n.text for n in nodes].count("A") == 1
 
         assert viewer.handle_key(KEY_END) is True
         assert viewer.tree.selected_node is nodes[-1]
@@ -655,7 +680,17 @@ class TestSidebarWhileSearching:
         assert viewer.tree_scroll.parent is viewer._left_body
 
     def test_clearing_twice_leaves_the_tree_alone(self, viewer: OKFViewer) -> None:
-        viewer._show_tree_panel()
+        """An empty box asked again rebuilds nothing: the sidebar's ringed row is kept."""
+        self._type(viewer, "grotto")
+        viewer._clear_search()
+        viewer._sidebar_index = 0  # a row ringed since the tree came back
+
+        with patch.object(viewer._left_body, "clear_widgets") as cleared:
+            viewer._clear_search()
+            viewer._show_tree_panel()
+
+        cleared.assert_not_called()
+        assert viewer._sidebar_index == 0
         assert viewer.tree_scroll.parent is viewer._left_body
 
 
@@ -758,8 +793,7 @@ class TestPageKeys:
         assert _page(on_page) == "index.md"
 
     def test_a_footnote_link_that_resolves_nowhere_only_closes_it(self, on_page: OKFViewer) -> None:
-        note_label = next(lbl for lbl, ref, _ in on_page._page_links if ref == "fn:note")
-        on_page._on_ref(note_label, "fn:note")
+        _open_footnote(on_page)
         popup_label = on_page._popup_link_label
         assert popup_label is not None
         popup_label.dispatch("on_ref_press", "no/such/page.md")
@@ -823,7 +857,9 @@ class TestPageAction:
 
     def test_with_no_action_running_one_does_nothing(self, viewer: OKFViewer) -> None:
         viewer._set_page_action(None)
-        viewer._run_page_action()
+        with patch.object(viewer_module.trace, "page_action") as logged:
+            viewer._run_page_action()
+        logged.assert_not_called()
 
     def test_a_white_tint_leaves_an_icon_as_it_is(self) -> None:
         button = MagicMock()
@@ -832,15 +868,67 @@ class TestPageAction:
 
 
 class TestBackground:
-    def test_a_page_with_no_background_clears_the_last(self, bundle: Path) -> None:
+    """The art behind a page is the provider's answer for that page, each time one is shown."""
+
+    @pytest.fixture
+    def art(self, tmp_path: Path) -> Path:
+        path = tmp_path / "art.png"
+        PilImage.new("RGB", (4, 2), "red").save(path)
+        return path
+
+    @staticmethod
+    def _viewer(
+        bundle: Path, home: PageBackground | None, a_page: PageBackground | None = None
+    ) -> tuple[OKFViewer, MagicMock]:
+        """Open a viewer (on the home page) whose provider answers for each of the two pages."""
+        answers = {"index.md": home, "a.md": a_page}
         provider = MagicMock()
-        provider.background_for.return_value = None
-        viewer = OKFViewer(bundle, image_provider=provider)
-        try:
-            assert viewer.bg_image.source == ""
-            assert viewer.bg_image.texture is None
-        finally:
-            _remove_popups_left_open()
+        provider.background_for.side_effect = lambda _frontmatter, page: answers.get(page.name)
+        return OKFViewer(bundle, image_provider=provider), provider
+
+    def test_a_file_is_shown_by_its_path(self, bundle: Path, art: Path) -> None:
+        viewer, provider = self._viewer(bundle, PageBackground(ext=".png", path=art))
+
+        assert viewer.bg_image.source == str(art)
+        provider.background_for.assert_called_with({}, bundle / "index.md")
+
+    def test_the_provider_is_given_the_page_s_frontmatter(self, bundle: Path) -> None:
+        viewer, provider = self._viewer(bundle, None)
+
+        viewer.show_page(bundle / "concept" / "a.md")
+
+        provider.background_for.assert_called_with({"title": "A"}, bundle / "concept" / "a.md")
+
+    def test_bytes_are_decoded_to_a_texture_with_no_file_named(
+        self, bundle: Path, art: Path
+    ) -> None:
+        viewer, _ = self._viewer(bundle, PageBackground(ext=".png", data=art.read_bytes()))
+
+        assert viewer.bg_image.source == ""
+        assert viewer.bg_image.texture.size == (4, 2)
+
+    def test_a_page_with_no_background_clears_the_last(self, bundle: Path, art: Path) -> None:
+        viewer, _ = self._viewer(bundle, PageBackground(ext=".png", data=art.read_bytes()))
+        assert viewer.bg_image.texture is not None
+
+        viewer.show_page(bundle / "concept" / "a.md")
+
+        assert viewer.bg_image.source == ""
+        assert viewer.bg_image.texture is None
+
+    def test_bytes_after_a_file_drop_the_file_s_name(self, bundle: Path, art: Path) -> None:
+        """Or Kivy would load the old file again over the new texture."""
+        viewer, _ = self._viewer(
+            bundle,
+            PageBackground(ext=".png", path=art),
+            PageBackground(ext=".png", data=art.read_bytes()),
+        )
+        assert viewer.bg_image.source == str(art)
+
+        viewer.show_page(bundle / "concept" / "a.md")
+
+        assert viewer.bg_image.source == ""
+        assert viewer.bg_image.texture.size == (4, 2)
 
 
 class TestBlocks:
@@ -848,7 +936,11 @@ class TestBlocks:
         page = viewer.bundle / "concept" / "table.md"
         page.write_text("| a | b |\n|---|---|\n| 1 | 2 |\n", encoding="utf-8")
         viewer.show_page(page)
-        assert viewer.body.children
+
+        (section,) = viewer.body.children  # one banded box, as a run of text gets
+        assert isinstance(section, BoxLayout)
+        assert [type(w) for w in section.walk(restrict=True) if isinstance(w, Label)]
+        assert not any(isinstance(w, Label) for w in viewer.body.children)
 
     def test_a_nested_list_item_is_indented(self, viewer: OKFViewer) -> None:
         page = viewer.bundle / "concept" / "list.md"
@@ -876,7 +968,7 @@ class TestStandaloneAppWindow:
         return app
 
     def test_on_start_takes_the_titlebar_and_the_keys(self, app: OKFApp) -> None:
-        with patch("kivy.core.window.Window") as window:
+        with _window_patched() as window:
             window.set_custom_titlebar.return_value = True
             app.on_start()
         assert window.custom_titlebar is True
@@ -885,13 +977,17 @@ class TestStandaloneAppWindow:
     def test_a_system_refusing_a_custom_title_bar_keeps_its_own(
         self, app: OKFApp, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        with patch("kivy.core.window.Window") as window:
+        with _window_patched() as window:
             window.set_custom_titlebar.return_value = False
             app.on_start()
         assert "custom titlebar not allowed" in capsys.readouterr().out
 
-    def test_on_stop_before_a_build_saves_nothing(self, bundle: Path) -> None:
-        OKFApp(bundle).on_stop()
+    def test_on_stop_before_a_build_saves_nothing(self, bundle: Path, tmp_path: Path) -> None:
+        state_path = tmp_path / "session.json"
+        with patch.object(viewer_module, "save_session_state") as save:
+            OKFApp(bundle, state_path=state_path).on_stop()
+        save.assert_not_called()
+        assert not state_path.exists()
 
     def test_a_key_neither_takes_is_left_to_kivy(self, app: OKFApp) -> None:
         assert app._on_keyboard(None, KEY_F, 0, "", []) is False
@@ -994,8 +1090,7 @@ class TestTheCentredBlock:
     def _lay_out(self, viewer: OKFViewer, width: float) -> None:
         viewer.size = (width, 800)
         viewer._content.size = (width, 700)
-        viewer._content.do_layout()
-        viewer.body_scroll.width = viewer.body_scroll.width  # the column's fit
+        viewer._content.do_layout()  # the scroll's new width refits the column
 
     def test_the_pair_is_centred_with_the_sidebars_share_kept(self, viewer: OKFViewer) -> None:
         viewer.set_body_max_width(880)
@@ -1088,3 +1183,122 @@ class TestTheSideScrims:
 
     def test_the_side_scrims_are_light(self) -> None:
         assert viewer_module.SIDE_SCRIM[3] < viewer_module.READING_PANE_SCRIM[3]
+
+
+class TestTheIndexReadyWithAQueryTyped:
+    def test_a_query_typed_during_the_build_gets_its_hits_when_it_ends(
+        self, viewer: OKFViewer
+    ) -> None:
+        """Or it stays on "Searching…" until something more is typed."""
+        a_page = viewer.bundle / "concept" / "a.md"
+        viewer._searcher = _Hits([_hit(a_page, "A")])
+        viewer.search_field.text = "a"
+        assert _left_texts(viewer) == ["Searching…"]
+
+        viewer._mark_search_ready(failed=False)
+
+        assert [path for path, _btn in viewer._result_rows] == [a_page]
+
+    def test_with_nothing_typed_the_tree_stays(self, viewer: OKFViewer) -> None:
+        viewer._searcher = _Hits([])
+
+        viewer._mark_search_ready(failed=False)
+
+        assert viewer.tree_scroll.parent is viewer._left_body
+
+    def test_a_query_nothing_matches_says_so(self, viewer: OKFViewer) -> None:
+        viewer._searcher = _Hits([])
+        viewer._mark_search_ready(failed=False)
+
+        viewer.search_field.text = "zzzz"
+
+        assert _left_texts(viewer) == ["No matches"]
+        assert viewer._result_rows == []
+
+    def test_a_title_hit_s_row_names_where_the_page_is(self, viewer: OKFViewer) -> None:
+        a_page = viewer.bundle / "concept" / "a.md"
+        hit = SearchHit(path=a_page, title="A", breadcrumb="Concept", matched_on="title", score=1)
+        viewer._searcher = _Hits([hit])
+        viewer._mark_search_ready(failed=False)
+
+        viewer.search_field.text = "a"
+
+        ((_path, row),) = viewer._result_rows
+        assert "A" in row.text
+        assert "Concept" in row.text
+
+
+class TestEscapeSearch:
+    """What a host asks before its own Back: an active search takes the Escape."""
+
+    def test_a_query_is_cleared_and_the_escape_taken(self, viewer: OKFViewer) -> None:
+        viewer.search_field.text = "grotto"
+        with patch.object(viewer_module.trace, "search_cleared") as cleared:
+            assert viewer.escape_search() is True
+
+        assert viewer.search_field.text == ""
+        assert viewer.search_field.focus is False
+        cleared.assert_called_once_with()
+
+    def test_an_idle_search_leaves_the_escape_to_the_host(self, viewer: OKFViewer) -> None:
+        with patch.object(viewer_module.trace, "search_cleared") as cleared:
+            assert viewer.escape_search() is False
+
+        cleared.assert_not_called()
+
+
+class TestHistoryRoot:
+    def test_back_at_the_root_leaves_the_reader(self, bundle: Path) -> None:
+        on_exit = MagicMock()
+        viewer = OKFViewer(bundle, on_exit=on_exit)
+
+        viewer.go_back()
+
+        on_exit.assert_called_once_with()
+        assert _page(viewer) == "index.md"
+
+    def test_back_from_a_second_page_returns_to_the_first(self, bundle: Path) -> None:
+        on_exit = MagicMock()
+        viewer = OKFViewer(bundle, on_exit=on_exit)
+        viewer.show_page(bundle / "concept" / "a.md")
+
+        viewer.go_back()
+
+        on_exit.assert_not_called()
+        assert _page(viewer) == "index.md"
+
+    def test_a_reset_keeps_the_page_showing_as_the_new_root(self, bundle: Path) -> None:
+        """Re-entered, the reader's Back leaves it and does not walk the last visit."""
+        on_exit = MagicMock()
+        viewer = OKFViewer(bundle, on_exit=on_exit)
+        viewer.show_page(bundle / "concept" / "a.md")
+
+        viewer.reset_to(None)
+
+        assert [e.path for e in viewer.history] == [bundle / "concept" / "a.md"]
+        viewer.go_back()
+        on_exit.assert_called_once_with()
+
+    def test_a_reset_to_a_page_roots_the_history_there(self, bundle: Path) -> None:
+        viewer = OKFViewer(bundle)
+
+        viewer.reset_to(bundle / "concept" / "a.md")
+
+        assert [e.path for e in viewer.history] == [bundle / "concept" / "a.md"]
+
+
+def test_run_hands_every_option_to_the_app(bundle: Path) -> None:
+    options = {
+        "image_provider": MagicMock(),
+        "table_rewriter": MagicMock(),
+        "start_page": bundle / "concept" / "a.md",
+        "action_provider": MagicMock(),
+        "top_bar": MagicMock(),
+        "state_path": bundle / "session.json",
+        "search_provider": MagicMock(),
+    }
+    with patch.object(viewer_module, "OKFApp") as app:
+        viewer_module.run(bundle, **options)
+
+    app.assert_called_once_with(bundle, **options)
+    app.return_value.run.assert_called_once_with()
