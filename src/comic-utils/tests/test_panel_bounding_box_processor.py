@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class FakeKumiko:
-    """Stand-in for `KumikoPanelSegmentation` that records the images it was given.
+    """Stand-in for `KumikoPanelSegmentation` that records the images and names it was given.
 
     Each call returns panels whose bounds encode the image's size, so a test can tell
     which image produced which result.
@@ -26,9 +26,11 @@ class FakeKumiko:
 
     def __init__(self, *_args: Any, **_kwargs: Any) -> None:  # noqa: ANN401
         self.images: list[PilImage] = []
+        self.filenames: list[Path] = []
 
-    def get_panels_segment_info(self, srce_image: PilImage, _srce_filename: Path) -> dict[str, Any]:
+    def get_panels_segment_info(self, srce_image: PilImage, srce_filename: Path) -> dict[str, Any]:
         self.images.append(srce_image)
+        self.filenames.append(srce_filename)
         w, h = srce_image.size
         return {"panels": [[0, 0, w, h]], "processing_time": 0.1}
 
@@ -50,6 +52,24 @@ def _write_image(path: Path, size: tuple[int, int], mode: str = "RGB") -> Path:
     return path
 
 
+class TestTheSegmenterItBuilds:
+    @pytest.mark.parametrize(
+        ("kwargs", "no_panel_expansion"),
+        [
+            pytest.param({}, False, id="expansion left on by default"),
+            pytest.param({"no_panel_expansion": True}, True, id="expansion turned off"),
+        ],
+    )
+    def test_it_is_given_the_directories_and_the_expansion_choice(
+        self, tmp_path: Path, kwargs: dict[str, bool], no_panel_expansion: bool
+    ) -> None:
+        work_dir, building_dir = tmp_path / "work", tmp_path / "building"
+        with patch.object(processor_module, "KumikoPanelSegmentation") as kumiko:
+            BoundingBoxProcessor(work_dir, building_dir, **kwargs)
+
+        kumiko.assert_called_once_with(work_dir, building_dir, no_panel_expansion)
+
+
 class TestGetPanelsSegmentInfoFromKumiko:
     def test_uses_srce_file_when_no_override(
         self, tmp_path: Path, processor: BoundingBoxProcessor, fake_kumiko: FakeKumiko
@@ -61,6 +81,7 @@ class TestGetPanelsSegmentInfoFromKumiko:
         info = processor.get_panels_segment_info_from_kumiko(srce, override_dir)
 
         assert len(fake_kumiko.images) == 1
+        assert fake_kumiko.filenames == [srce]
         assert info["panels"] == [[0, 0, 30, 40]]
         assert info["overall_bounds"] == (0, 0, 29, 39)
 
@@ -85,6 +106,9 @@ class TestGetPanelsSegmentInfoFromKumiko:
         info = processor.get_panels_segment_info_from_kumiko(srce, override_dir)
 
         assert len(fake_kumiko.images) == 1
+        # Kumiko is given the override's image under the page's own name, which names
+        # its work file.
+        assert fake_kumiko.filenames == [srce]
         assert info["panels"] == [[0, 0, 50, 60]]
         assert info["overall_bounds"] == (0, 0, 49, 59)
 
@@ -99,6 +123,7 @@ class TestGetPanelsSegmentInfoFromKumiko:
         info = processor.get_panels_segment_info_from_kumiko(srce, override_dir)
 
         assert len(fake_kumiko.images) == 2
+        assert fake_kumiko.filenames == [srce, srce]
         # Panels come from the bounds override; overall bounds from the overall override.
         assert info["panels"] == [[0, 0, 50, 60]]
         assert info["overall_bounds"] == (0, 0, 69, 79)
