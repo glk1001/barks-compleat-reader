@@ -254,6 +254,9 @@ class TestGetCleanedTerms:
         result = SearchEngineCreator._get_cleaned_terms([term])
         assert term.upper() in result
 
+    def test_an_empty_term_is_left_out(self) -> None:
+        assert "" not in SearchEngineCreator._get_cleaned_terms(["", "lollipop"])
+
 
 # ---------------------------------------------------------------------------
 # SearchEngine.find_entities — multi-word entity search

@@ -153,6 +153,12 @@ class TestTheStoryPages:
         assert pages.volume > 0
         assert len(pages.body_images) > 1
 
+    def test_a_title_neither_the_database_nor_the_one_pagers_know_is_refused(
+        self, db: ComicsDatabase
+    ) -> None:
+        with pytest.raises(TitleNotFoundError, match="Dinner Dilemma"):
+            censorship_story_pages(db, "Dinner Dilemma")
+
 
 class TestTheShippedCsvResolves:
     """Every row of the real CSV, which is what a hand-added row breaks."""

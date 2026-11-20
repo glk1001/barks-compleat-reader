@@ -166,6 +166,16 @@ class TestInsetInfo:
         comic = db.get_comic_book("Lost in the Andes!")
         assert comic.intro_inset_file == tmp_path / f"Lost in the Andes!{JPG_FILE_EXT}"
 
+    def test_an_inset_passed_in_is_used_in_place_of_the_story_s_own(
+        self, db: ComicsDatabase, tmp_path: Path
+    ) -> None:
+        other_inset = tmp_path / "another.png"
+        for comic in (
+            db.get_comic_book("Lost in the Andes!", other_inset),
+            db.get_comic_book_for(Titles.LOST_IN_THE_ANDES, other_inset),
+        ):
+            assert comic.intro_inset_file == other_inset
+
     def test_the_inset_directory_must_exist(self, tmp_path: Path) -> None:
         with pytest.raises(AssertionError):
             ComicsDatabase().set_inset_info(tmp_path / "missing", JPG_FILE_EXT)

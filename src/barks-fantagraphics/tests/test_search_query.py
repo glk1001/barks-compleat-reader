@@ -226,6 +226,11 @@ def test_words_picked_from_the_list_are_exact_and_combined() -> None:
     assert query_from_words(["gold", "mine"], Combine.ANY) == Or((gold, mine))
 
 
+def test_flipping_a_combine_gives_the_other_one() -> None:
+    assert Combine.ALL.flipped() is Combine.ANY
+    assert Combine.ANY.flipped() is Combine.ALL
+
+
 @pytest.mark.parametrize(
     ("lefts", "rights", "near"),
     [
