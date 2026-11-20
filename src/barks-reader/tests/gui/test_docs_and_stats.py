@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_gui import expected, nodes
 from barks_gui.logs import fields_of, last_field
-from barks_gui.steps import DOCUMENT_ENTERED
+from barks_gui.steps import DOCUMENT_ENTERED, MAIN_FROM_DOCUMENT, open_document
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import MainLayoutMode
@@ -82,23 +82,11 @@ def test_an_article_opens_in_the_comic_reader(boot: AppBoot) -> None:
     d.close_reader()
 
 
-MAIN_FROM_DOCUMENT = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_DOCUMENT_READER)
 MAIN_FROM_NUMBERS = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_BY_THE_NUMBERS)
 NUMBERS_ENTERED = pattern(markers.SCREEN_ENTERED, name="corpus_stats")
 # The canned history finished The Ghost of the Grotto once, and nothing else.
 CANNED_STORIES_READ = 1
 MAIN_ENTERED = pattern(markers.SCREEN_ENTERED, name="main_screen")
-
-
-def _open_document(d: Driver, name: str) -> None:
-    d.select_node(name)
-    with (
-        d.expect(pattern(markers.DOCUMENT_READER_ACTIVE)),
-        d.expect(pattern(markers.DOCUMENT_OPENED)),
-        d.expect(pattern(markers.DOCUMENT_PAGE, page=1)),
-        d.expect(DOCUMENT_ENTERED),  # the transition has finished before any key is sent
-    ):
-        d.key("Return")
 
 
 def _close_document(d: Driver) -> None:
@@ -119,7 +107,7 @@ def _pages_opened(d: Driver, title: str) -> int:
 
 def test_the_intro_document_opens_and_closes(boot: AppBoot) -> None:
     d = boot(nodes.INTRODUCTION)
-    _open_document(d, nodes.INTRO_DOCUMENT)
+    open_document(d, nodes.INTRO_DOCUMENT)
     pages = _pages_opened(d, nodes.INTRO_DOCUMENT)
     assert pages == expected.document_page_count(expected.intro_document_dir())
     assert fields_of(d, markers.DOCUMENT_PAGE, "page") == ["1"]
@@ -132,7 +120,7 @@ def test_the_how_to_opens_from_its_node_a_page_at_a_time_and_closes_onto_it(
     """The node under Introduction opens the document the dots menu opens, the same way."""
     d = boot(nodes.INTRODUCTION)
     with d.expect(pattern(markers.DOCUMENT_ONE_PAGE_AT_A_TIME)):
-        _open_document(d, nodes.HOW_TO_DOCUMENT)
+        open_document(d, nodes.HOW_TO_DOCUMENT)
     pages = _pages_opened(d, nodes.HOW_TO_DOCUMENT)
     assert pages == expected.document_page_count(expected.how_to_document_dir())
     d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=2), "Right")
@@ -144,7 +132,7 @@ def test_the_how_to_opens_from_its_node_a_page_at_a_time_and_closes_onto_it(
 def test_the_censorship_document_turns_pages(boot: AppBoot) -> None:
     """Right turns a page, or on the two-page spread a pair (pages 1 and 2, then 3 and 4)."""
     d = boot(nodes.APPENDIX)
-    _open_document(d, nodes.CENSORSHIP_DOCUMENT)
+    open_document(d, nodes.CENSORSHIP_DOCUMENT)
     paired = last_field(d, markers.MAIN_LAYOUT_MODE, "mode") == MainLayoutMode.SPREAD.value
     turned_to = 3 if paired else 2
     d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=turned_to), "Right")
@@ -214,7 +202,7 @@ def _linked_page(d: Driver, *, several: bool) -> expected.LinkedPage:
 def _open_chapter_at(d: Driver, linked: expected.LinkedPage) -> None:
     """Open the history, then the page's chapter, and turn to the page."""
     d.open_branch(nodes.ILLUSTRATED_HISTORY)
-    _open_document(d, linked.chapter.title)
+    open_document(d, linked.chapter.title)
     for page in linked.turns:
         d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=page), "Right")
 

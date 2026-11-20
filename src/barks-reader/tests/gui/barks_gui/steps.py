@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 ANY_NODE_SELECTED = pattern(markers.NEW_SELECTED_NODE)
 SHOWED_PAGE = pattern(markers.SHOWED_PAGE)
 DOCUMENT_ENTERED = pattern(markers.SCREEN_ENTERED, name="document_reader")
+MAIN_FROM_DOCUMENT = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_DOCUMENT_READER)
 
 # Seconds for the window to go fullscreen or come back: the desktop animates it.
 FULLSCREEN_TIMEOUT = 20
@@ -43,3 +44,15 @@ def open_selected_story_to_its_first_page(d: Driver) -> Driver:
     d.open_selected_story()
     d.wait_for(SHOWED_PAGE)
     return d
+
+
+def open_document(d: Driver, name: str) -> None:
+    """Select the document's node and open it, waiting for its first page to be up."""
+    d.select_node(name)
+    with (
+        d.expect(pattern(markers.DOCUMENT_READER_ACTIVE)),
+        d.expect(pattern(markers.DOCUMENT_OPENED)),
+        d.expect(pattern(markers.DOCUMENT_PAGE, page=1)),
+        d.expect(DOCUMENT_ENTERED),  # the transition has finished before any key is sent
+    ):
+        d.key("Return")

@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING
 
 from barks_gui import harness, nodes
 from barks_gui.logs import last_field
-from barks_gui.steps import DOCUMENT_ENTERED, FULLSCREEN_TIMEOUT, SHOWED_PAGE
+from barks_gui.steps import (
+    FULLSCREEN_TIMEOUT,
+    MAIN_FROM_DOCUMENT,
+    SHOWED_PAGE,
+    open_document,
+)
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
 
@@ -21,7 +26,6 @@ if TYPE_CHECKING:
 READER = "ComicBookReaderScreen"
 DOCUMENT_READER = "DocumentReaderScreen"
 MAIN = "MainScreen"
-MAIN_FROM_DOCUMENT = pattern(markers.MAIN_SCREEN_ACTIVE, origin=markers.FROM_DOCUMENT_READER)
 # Pages turned before going two-up, to land on a spread rather than the title page
 # and the full-page splash that open the story, which show alone even two-up.
 PAGES_TO_A_SPREAD = 6
@@ -46,12 +50,7 @@ def test_reader_fullscreen_round_trip(boot: AppBoot) -> None:
 def test_document_reader_fullscreen_round_trip(boot: AppBoot) -> None:
     """The document reader's bar has the comic reader's Fullscreen; the bar hides in it."""
     d = boot(nodes.APPENDIX)
-    d.select_node(nodes.CENSORSHIP_DOCUMENT)
-    with (
-        d.expect(pattern(markers.DOCUMENT_OPENED)),
-        d.expect(DOCUMENT_ENTERED),
-    ):
-        d.key("Return")
+    open_document(d, nodes.CENSORSHIP_DOCUMENT)
     before = d.window_geometry()
     with d.expect(pattern(markers.ENTERED_FULLSCREEN, screen=DOCUMENT_READER), FULLSCREEN_TIMEOUT):
         d.press_document_menu_button("fullscreen")
@@ -67,12 +66,7 @@ def test_document_reader_fullscreen_round_trip(boot: AppBoot) -> None:
 def test_a_document_closed_from_fullscreen_comes_back_windowed(boot: AppBoot) -> None:
     """A document opened windowed and closed in fullscreen leaves the window as it found it."""
     d = boot(nodes.APPENDIX)
-    d.select_node(nodes.CENSORSHIP_DOCUMENT)
-    with (
-        d.expect(pattern(markers.DOCUMENT_OPENED)),
-        d.expect(DOCUMENT_ENTERED),
-    ):
-        d.key("Return")
+    open_document(d, nodes.CENSORSHIP_DOCUMENT)
     before = d.window_geometry()
     with d.expect(pattern(markers.ENTERED_FULLSCREEN, screen=DOCUMENT_READER), FULLSCREEN_TIMEOUT):
         d.press_document_menu_button("fullscreen")
