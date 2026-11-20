@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import check_wiki_copy
 import pytest
@@ -99,3 +99,61 @@ class TestExitStatus:
     ) -> None:
         kwargs = {"stale": stale, "exported": exported, "broken": broken}
         assert self._main(tmp_path, "--strict", **kwargs) == status
+
+    def test_without_a_usable_configuration_it_fails_before_looking(self) -> None:
+        with (
+            patch.object(check_wiki_copy, "phase1_config", return_value=None),
+            patch.object(check_wiki_copy, "fresh_export") as export,
+        ):
+            assert check_wiki_copy.main([]) == 1
+
+        export.assert_not_called()
+
+    def test_strict_fails_a_stale_copy_with_its_own_status(self, tmp_path: Path) -> None:
+        assert self._main(tmp_path, "--strict", stale=True) == check_wiki_copy.STALE_EXIT
+
+
+class TestFreshExport:
+    """The live bundle is exported by barks-wiki's own script, which this repo only runs."""
+
+    @staticmethod
+    def _export(
+        tmp_path: Path, *, has_script: bool = True, status: int = 0
+    ) -> tuple[bool, MagicMock]:
+        wiki = tmp_path / "barks-wiki"
+        script = wiki / "scripts" / "export_reader_wiki.py"
+        if has_script:
+            write_tree(wiki, {"scripts/export_reader_wiki.py": ""})
+        done = MagicMock(returncode=status, stderr="no such bundle\n")
+        with (
+            patch.object(check_wiki_copy, "WIKI_REPO", wiki),
+            patch.object(check_wiki_copy, "EXPORT_SCRIPT", script),
+            patch.object(check_wiki_copy.subprocess, "run", return_value=done) as run,
+        ):
+            return check_wiki_copy.fresh_export(tmp_path / "out"), run
+
+    def test_it_runs_the_wiki_s_export_into_the_folder_it_is_given(self, tmp_path: Path) -> None:
+        exported, run = self._export(tmp_path)
+
+        assert exported
+        script = tmp_path / "barks-wiki" / "scripts" / "export_reader_wiki.py"
+        assert run.call_args.args[0][1:] == ["-B", str(script), str(tmp_path / "out"), "--apply"]
+        assert run.call_args.kwargs["cwd"] == tmp_path / "barks-wiki"
+
+    def test_with_no_sibling_wiki_staleness_is_not_checked(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        exported, run = self._export(tmp_path, has_script=False)
+
+        assert not exported
+        run.assert_not_called()
+        assert "staleness not checked" in capsys.readouterr().out
+
+    def test_an_export_that_fails_says_why(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        exported, _ = self._export(tmp_path, status=1)
+
+        assert not exported
+        out = capsys.readouterr().out
+        assert out == "wiki copy: the export failed - staleness not checked:\nno such bundle\n\n"

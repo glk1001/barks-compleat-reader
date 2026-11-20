@@ -10,11 +10,15 @@ off-by-one in counting inversions.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
+import check_wiki_story_order
 from check_wiki_story_order import Entry, inversions, linked_entries, report, slugify
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 class TestSlugify:
@@ -103,3 +107,49 @@ class TestReport:
     def test_in_order_passes(self, tmp_path: Path) -> None:
         bundle = self._bundle(tmp_path, "the-golden-christmas-tree", "lost-in-the-andes")
         assert report(bundle, quiet=True) == 0
+
+    def test_the_report_names_each_pair_the_wrong_way_round(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        bundle = self._bundle(tmp_path, "lost-in-the-andes", "the-golden-christmas-tree", "nope")
+
+        assert report(bundle, show_order=True) == 1
+
+        out = capsys.readouterr().out
+        assert "donald-duck-adventures  (2 story links, 1 unrecognised)" in out
+        assert "Lost in the Andes!\n" in out
+        assert "The Golden Christmas Tree   <- listed after, belongs before" in out
+        # The corrected order, as file names to paste back into the index.
+        corrected = out[out.index("corrected order:") :].splitlines()[1:3]
+        assert corrected == ["    the-golden-christmas-tree.md", "    lost-in-the-andes.md"]
+        assert "1 out-of-order pairs across 1 story indexes" in out
+
+    def test_an_index_in_order_is_said_to_be_unless_quiet(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        bundle = self._bundle(tmp_path, "the-golden-christmas-tree", "lost-in-the-andes")
+
+        assert report(bundle) == 0
+        assert "  in chronological order" in capsys.readouterr().out
+
+        assert report(bundle, quiet=True) == 0
+        assert capsys.readouterr().out.strip() == "0 out-of-order pairs across 1 story indexes"
+
+
+class TestMain:
+    def test_the_flags_reach_the_report(self, tmp_path: Path) -> None:
+        with patch.object(check_wiki_story_order, "report", return_value=1) as run:
+            status = check_wiki_story_order.main(
+                ["--bundle", str(tmp_path), "--show-order", "--quiet"]
+            )
+
+        assert status == 1
+        run.assert_called_once_with(tmp_path, show_order=True, quiet=True)
+
+    def test_with_no_flags_it_reports_on_the_sibling_wiki_in_full(self) -> None:
+        with patch.object(check_wiki_story_order, "report", return_value=0) as run:
+            assert check_wiki_story_order.main([]) == 0
+
+        run.assert_called_once_with(
+            check_wiki_story_order.DEFAULT_BUNDLE, show_order=False, quiet=False
+        )

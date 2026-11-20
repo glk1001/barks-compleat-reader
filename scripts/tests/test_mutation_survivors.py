@@ -192,3 +192,20 @@ class TestMain:
         assert status == 0
         assert read_listed(path).untriaged == [_survivor("fresh").key]
         assert self._run(tmp_path, survivors)[0] == 0
+
+
+class TestTheEdges:
+    def test_source_that_does_not_parse_is_never_log_wording(self) -> None:
+        assert not ms.is_log_wording("def f(:\n", "def f():\n    pass\n")
+
+    def test_the_same_code_is_no_change_of_wording(self) -> None:
+        source = "def f():\n    logger.info('a')\n"
+        assert not ms.is_log_wording(source, source)
+
+    def test_a_long_list_of_new_survivors_is_cut_to_a_count(self) -> None:
+        many = [_survivor(f"f{n}") for n in range(ms._SHOWN + 4)]  # noqa: SLF001
+
+        lines = report(ms.Sorted([], [], [], new=many, gone=[]), "barks-reader")
+
+        assert lines[-1] == "  ... and 4 more"
+        assert sum(line.startswith(f"  {CORE} f") for line in lines) == ms._SHOWN  # noqa: SLF001

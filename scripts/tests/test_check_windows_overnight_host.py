@@ -4,18 +4,22 @@ What it asks Windows (the registry, powercfg, tasklist) runs only there; what
 is tested here, on every platform, is the parsing and the verdicts.
 """
 
-# cspell:ignore tasklist
+# cspell:ignore tasklist RTCWAKE schtasks
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import check_windows_overnight_host as ch
+import gui_probe_win32
 import pytest
 import run_overnight_desktop as rw
+from script_test_helpers import write_tree
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
     from pathlib import Path
 
 POWERCFG = """Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
@@ -178,3 +182,225 @@ class TestMemoryCheck:
 
         assert status == "OK"
         assert "needs 500" in text
+
+
+class TestRun:
+    def test_a_tool_s_status_and_everything_it_printed_come_back(self) -> None:
+        code = "import sys; print('out'); print('err', file=sys.stderr); sys.exit(3)"
+
+        status, text = ch._run([sys.executable, "-c", code])  # noqa: SLF001
+
+        assert status == 3  # noqa: PLR2004
+        assert text.splitlines() == ["out", "err"]
+
+    def test_a_tool_that_is_not_there_is_a_status_not_an_error(self) -> None:
+        status, text = ch._run(["no-such-tool-on-this-machine"])  # noqa: SLF001
+
+        assert status == 127  # noqa: PLR2004
+        assert text  # the system's own words for it, which differ by platform
+
+
+class TestRegistryValues:
+    def test_off_windows_there_is_no_registry_to_read(self) -> None:
+        with patch.object(ch.sys, "platform", "linux"):
+            assert ch._registry(r"Control Panel\Desktop", "DelayLockInterval") is None  # noqa: SLF001
+
+    @pytest.mark.parametrize(("value", "number"), [("0", 0), (300, 300), ("", None), (None, None)])
+    def test_a_value_is_a_number_or_nothing(self, value: object, number: int | None) -> None:
+        assert ch._as_int(value) == number  # noqa: SLF001
+
+
+def _tools(present: set[str]) -> Callable[[str], str | None]:
+    return lambda tool: f"/usr/bin/{tool}" if tool in present else None
+
+
+class TestToolChecks:
+    @staticmethod
+    def _checks(present: set[str], gh_status: int = 0) -> list[tuple[str, str]]:
+        with (
+            patch.object(ch.shutil, "which", side_effect=_tools(present)),
+            patch.object(ch, "_run", return_value=(gh_status, "")) as run,
+        ):
+            checks = ch.tool_checks()
+        if "gh" in present:
+            run.assert_called_once_with(["gh", "auth", "status"])
+        else:
+            run.assert_not_called()
+        return checks
+
+    def test_a_machine_with_every_tool(self) -> None:
+        assert self._checks({"git", "gh", "bunx"}) == [
+            ("OK", "git"),
+            ("OK", "gh"),
+            ("OK", "gh logged in"),
+            ("OK", "bunx"),
+        ]
+
+    def test_fetch_build_needs_gh_logged_in_and_the_hooks_want_bunx(self) -> None:
+        assert self._checks({"git", "gh"}, gh_status=1)[2:] == [
+            ("FAIL", "gh: run 'gh auth login'"),
+            ("WARN", "no bunx: the cspell commit hook fails (docs/setup.md, Windows: bunx.cmd)"),
+        ]
+
+    def test_a_tool_not_on_the_path_fails_and_says_where_it_comes_from(self) -> None:
+        assert self._checks(set())[:2] == [
+            ("FAIL", "git not on PATH (Git for Windows)"),
+            ("FAIL", "gh not on PATH (winget install GitHub.cli, for fetch-build)"),
+        ]
+
+
+class TestRepoFileChecks:
+    def test_a_fresh_clone_lacks_the_generated_modules_and_a_calibration(
+        self, tmp_path: Path
+    ) -> None:
+        with patch.object(ch, "REPO_ROOT", tmp_path):
+            checks = ch.repo_file_checks()
+
+        assert [status for status, _ in checks] == ["FAIL", "FAIL", "WARN"]
+        assert checks[0][1].endswith("_version.py missing - run 'bash scripts/build.sh'")
+        assert "--calibrate" in checks[2][1]
+
+    def test_a_set_up_clone_has_them_all(self, tmp_path: Path) -> None:
+        files = {module: "" for module, _ in ch.GENERATED_MODULES}
+        write_tree(tmp_path, {**files, ".benchmarks/gui-timings.json": "{}"})
+        with patch.object(ch, "REPO_ROOT", tmp_path):
+            checks = ch.repo_file_checks()
+
+        assert [status for status, _ in checks] == ["OK", "OK", "OK"]
+
+
+class TestDataChecks:
+    @staticmethod
+    def _checks(barks_root: Path, prebuilt: Path) -> list[tuple[str, str]]:
+        with (
+            patch.object(ch, "BARKS_ROOT", barks_root),
+            patch.object(ch.gui_probe, "config_dir", return_value=barks_root / "config"),
+            patch.object(ch.gui_probe, "data_dir", return_value=barks_root / "data"),
+            patch.object(ch, "_prebuilt_dir", return_value=prebuilt) as read,
+            patch.object(ch, "wiki_copy_checks", return_value=[("OK", "the wiki copy")]) as wiki,
+        ):
+            checks = ch.data_checks()
+        read.assert_called_once_with(barks_root / "config" / "barks-reader.ini")
+        wiki.assert_called_once_with(barks_root / "data")
+        return checks
+
+    def test_the_reader_files_and_the_prebuilt_comics_are_there(self, tmp_path: Path) -> None:
+        reader_files = tmp_path / "Compleat Barks Disney Reader" / "Reader Files"
+        reader_files.mkdir(parents=True)
+        (tmp_path / "prebuilt").mkdir()
+
+        assert self._checks(tmp_path, tmp_path / "prebuilt") == [
+            ("OK", f"{reader_files}"),
+            ("OK", f"prebuilt comics: {tmp_path / 'prebuilt'}"),
+            ("OK", "the wiki copy"),
+        ]
+
+    def test_no_reader_files_fails_and_no_prebuilt_comics_only_warns(self, tmp_path: Path) -> None:
+        missing, prebuilt, _ = self._checks(tmp_path, tmp_path / "prebuilt")
+
+        assert missing[0] == "FAIL"
+        assert "pytest needs it" in missing[1]
+        assert prebuilt == (
+            "WARN",
+            f"no prebuilt comics at {tmp_path / 'prebuilt'}: the validate stage skips itself",
+        )
+
+    def test_the_prebuilt_folder_is_read_as_the_runner_reads_it(self, tmp_path: Path) -> None:
+        with patch.object(rw, "prebuilt_dir", return_value=tmp_path) as read:
+            assert ch._prebuilt_dir(tmp_path / "barks-reader.ini") == tmp_path  # noqa: SLF001
+
+        read.assert_called_once_with(tmp_path / "barks-reader.ini")
+
+
+class TestMachineChecks:
+    """What the checks ask Windows, and what each answer becomes."""
+
+    AC_FIVE_MINUTES = "    Current AC Power Setting Index: 0x0000012c\n"
+    AC_NEVER = "    Current AC Power Setting Index: 0x00000000\n"
+
+    def _checks(
+        self, *, registry: Mapping[str, object], wake: str, task_status: int
+    ) -> list[tuple[str, str]]:
+        def run(argv: list[str]) -> tuple[int, str]:
+            match argv:
+                case ["powercfg", *_, "RTCWAKE"]:
+                    return 0, wake
+                case ["powercfg", *_]:
+                    return 0, self.AC_NEVER
+                case ["tasklist", *_]:
+                    return 0, '"explorer.exe","4","Console","1","9 K"\n'
+                case ["schtasks", *_]:
+                    return task_status, ""
+            raise AssertionError(argv)
+
+        def read_registry(_path: str, name: str, **_kw: object) -> object | None:
+            return registry.get(name)
+
+        with (
+            patch.object(ch, "_registry", side_effect=read_registry),
+            patch.object(ch, "_run", side_effect=run),
+            patch.object(ch, "memory_check", return_value=("OK", "memory")),
+            patch.object(ch, "opengl_check", return_value=("OK", "OpenGL")) as opengl,
+            patch.object(gui_probe_win32, "opengl_renderer", return_value="a renderer"),
+            patch.object(ch, "presence_lock_checks", return_value=[("OK", "presence")]) as presence,
+        ):
+            checks = ch.machine_checks()
+        assert opengl.call_args.args[0] == "a renderer"
+        presence.assert_called_once_with({"explorer.exe"})
+        return checks
+
+    def test_a_machine_set_up_for_the_night(self) -> None:
+        never = str(ch.SIGN_IN_NEVER)
+        registry = {"AllowDevelopmentWithoutDevLicense": 1, "DelayLockInterval": never}
+
+        checks = self._checks(registry=registry, wake=self.AC_NEVER[:-2] + "1\n", task_status=0)
+
+        assert [status for status, _ in checks if status != "OK"] == []
+        assert ("OK", "Developer Mode") in checks
+        assert ("OK", "wake timers allowed on AC") in checks
+        assert ("OK", f"the '{ch.TASK_NAME}' task is registered") in checks
+        assert len(checks) == 2 + 3 + len(ch.IDLE_SETTINGS) + 3
+
+    def test_what_is_not_set_up_is_named(self) -> None:
+        checks = self._checks(registry={}, wake=self.AC_NEVER, task_status=1)
+
+        problems = [text for status, text in checks if status != "OK"]
+        assert any(text.startswith("Developer Mode off") for text in problems)
+        assert "wake timers off on AC: the task cannot wake the machine at night" in problems
+        assert any(text.startswith(f"no '{ch.TASK_NAME}' task") for text in problems)
+
+
+class TestTheWholeCheck:
+    def test_the_probe_s_doctor_checks_come_first(self) -> None:
+        with (
+            patch.object(gui_probe_win32, "Win32Backend") as backend,
+            patch.object(ch.gui_probe, "repo_checks", return_value=[("OK", "uv")]),
+        ):
+            backend.return_value.doctor_checks.return_value = [("OK", "a screen")]
+            assert ch.gui_checks() == [("OK", "a screen"), ("OK", "uv")]
+
+    @staticmethod
+    def _main(machine: list[tuple[str, str]]) -> int:
+        with (
+            patch.object(ch.sys, "platform", "win32"),
+            patch.object(ch, "gui_checks", return_value=[("OK", "a screen")]),
+            patch.object(ch, "tool_checks", return_value=[("WARN", "no bunx")]),
+            patch.object(ch, "repo_file_checks", return_value=[]),
+            patch.object(ch, "data_checks", return_value=[]),
+            patch.object(ch, "machine_checks", return_value=machine),
+        ):
+            return ch.main()
+
+    def test_warnings_alone_leave_the_machine_ready(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        assert self._main([("OK", "memory")]) == 0
+
+        out = capsys.readouterr().out
+        assert "\nThe GUI probe (doctor)\n  OK   a screen\n\nTools\n  WARN no bunx\n" in out
+        assert out.endswith("\ncheck_windows_overnight_host: ready.\n")
+
+    def test_one_fail_and_it_is_not_ready(self, capsys: pytest.CaptureFixture[str]) -> None:
+        assert self._main([("FAIL", "Developer Mode off")]) == 1
+
+        assert capsys.readouterr().out.endswith("NOT ready - fix the FAIL items above.\n")

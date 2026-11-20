@@ -7,8 +7,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 import prune_onefile_cache as poc
+import psutil
 
 if TYPE_CHECKING:
     import pytest
@@ -131,3 +133,54 @@ class TestPrune:
         (folder,) = _versions(tmp_path, "1.0.0.602")
 
         assert poc.folder_size(folder) == 1500  # noqa: PLR2004 - the two files _versions writes
+
+
+class TestRemove:
+    def test_a_folder_left_aside_by_an_earlier_run_does_not_block_the_next(
+        self, tmp_path: Path
+    ) -> None:
+        """The same version unpacked again after an interrupted prune of it."""
+        (folder,) = _versions(tmp_path, "1.0.0.601")
+        _versions(tmp_path, "1.0.0.601" + poc.DELETING_SUFFIX)
+
+        assert poc.remove(folder) is None
+        assert _left(tmp_path) == []
+
+
+class TestRunningExecutables:
+    def test_this_test_s_own_interpreter_is_among_them(self) -> None:
+        assert Path(psutil.Process().exe()) in poc.running_executables()
+
+    def test_a_process_whose_executable_cannot_be_read_is_passed_over(self) -> None:
+        processes = [MagicMock(info={"exe": None}), MagicMock(info={"exe": "/opt/app/app.bin"})]
+        with patch.object(poc.psutil, "process_iter", return_value=processes):
+            assert poc.running_executables() == {Path("/opt/app/app.bin")}
+
+
+class TestMain:
+    def test_the_flags_reach_the_prune(self, tmp_path: Path) -> None:
+        exes = {Path("/opt/app/app.bin")}
+        with (
+            patch.object(poc, "running_executables", return_value=exes),
+            patch.object(poc, "prune", return_value=1) as prune,
+        ):
+            assert poc.main(["--root", str(tmp_path), "--keep", "2", "--dry-run"]) == 1
+
+        prune.assert_called_once_with(tmp_path, 2, exes, dry_run=True)
+
+    def test_by_default_it_prunes_the_app_s_own_folder_to_the_usual_few(self) -> None:
+        with (
+            patch.object(poc, "unpack_root", return_value=Path("/home/duck/.cache/app")),
+            patch.object(poc, "running_executables", return_value=set()),
+            patch.object(poc, "prune", return_value=0) as prune,
+        ):
+            assert poc.main([]) == 0
+
+        prune.assert_called_once_with(Path("/home/duck/.cache/app"), poc.KEEP, set(), dry_run=False)
+
+    def test_a_negative_keep_is_none_kept_not_all_but_the_oldest(self, tmp_path: Path) -> None:
+        _versions(tmp_path, "1.0.0.602", "1.0.0.601")
+        with patch.object(poc, "running_executables", return_value=set()):
+            assert poc.main(["--root", str(tmp_path), "--keep", "-1"]) == 0
+
+        assert _left(tmp_path) == []

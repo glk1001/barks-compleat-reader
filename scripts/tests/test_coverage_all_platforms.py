@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import coverage
 import coverage_all_platforms as cap
@@ -11,6 +11,7 @@ import pytest
 from script_test_helpers import git, write_tree
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 LINUX = cap.Host(cap.LINUX, "gmk", "Prj/barks-compleat-reader")
@@ -214,3 +215,148 @@ def test_lines_only_windows_ran(tmp_path: Path) -> None:
     linux = cap._read(_data(tmp_path / "l.dat", {"/s/a.py": [1, 2], "/s/b.py": [1]}))  # noqa: SLF001
     windows = cap._read(_data(tmp_path / "w.dat", {"/s/a.py": [2, 3, 4], "/s/c.py": [5]}))  # noqa: SLF001
     assert cap.lines_only_in(windows, linux) == {"/s/a.py": 2, "/s/c.py": 1}
+
+
+class TestRemoteSteps:
+    """What goes to ssh and scp, and what a refusal says: the machines are not called."""
+
+    def test_the_listing_script_runs_in_the_host_s_repo(self) -> None:
+        done = MagicMock(returncode=0, stdout="a listing\n")
+        with patch.object(cap.subprocess, "run", return_value=done) as run:
+            assert cap._ssh(LINUX, "ls build") == "a listing\n"  # noqa: SLF001
+
+        assert run.call_args.args[0][-5:] == ["gmk", "bash", "-s", "--", LINUX.repo]
+        assert run.call_args.kwargs["input"] == "ls build"
+
+    def test_a_host_that_cannot_be_reached_is_named(self) -> None:
+        done = MagicMock(returncode=255, stderr="ssh: connect to host gmk: timed out\n")
+        with (
+            patch.object(cap.subprocess, "run", return_value=done),
+            pytest.raises(cap.CoverageAllError, match=r"^gmk: listing the overnight runs failed"),
+        ):
+            cap._ssh(LINUX, "ls build")  # noqa: SLF001
+
+    def test_a_run_s_parts_are_copied_from_its_coverage_folder(self, tmp_path: Path) -> None:
+        run = cap.Run("20261002-040000", "aa630aa3", (".coverage.unit", ".coverage.gui"))
+        with patch.object(cap.subprocess, "run", return_value=MagicMock(returncode=0)) as scp:
+            fetched = cap._fetch(WINDOWS, run, tmp_path / "win-data")  # noqa: SLF001
+
+        assert fetched == [tmp_path / "win-data" / name for name in run.data_files]
+        assert (tmp_path / "win-data").is_dir()
+        folder = f"win:{WINDOWS.repo}/build/overnight/20261002-040000/coverage"
+        assert [c.args[0][-2] for c in scp.call_args_list] == [
+            f"{folder}/.coverage.unit",
+            f"{folder}/.coverage.gui",
+        ]
+
+    def test_a_copy_that_fails_names_the_file(self, tmp_path: Path) -> None:
+        refused = MagicMock(returncode=1, stderr="scp: No such file or directory\n")
+        with (
+            patch.object(cap.subprocess, "run", return_value=refused),
+            pytest.raises(cap.CoverageAllError, match=r"coverage/\.coverage\.all failed: scp: No"),
+        ):
+            cap._fetch(LINUX, _run("20261002-040000", "aa630aa3"), tmp_path / "data")  # noqa: SLF001
+
+
+MODULE = "src/pkg/src/pkg/mod.py"
+
+
+@pytest.fixture
+def checkout(tmp_path: Path, no_outer_git: None) -> Iterator[tuple[Path, str]]:  # noqa: ARG001
+    """Make a throwaway repository with one module committed; yield it and the commit."""
+    repo = tmp_path / "barks-compleat-reader"
+    repo.mkdir()
+    git(repo, "init", "-q")
+    write_tree(repo, {MODULE: "a = 1\nb = 2\nc = 3\nd = 4\n", "docs/notes.md": "notes\n"})
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "the module")
+    commit = git(repo, "rev-parse", "--short=8", "HEAD")
+    cap.git_src_tree.cache_clear()
+    with (
+        patch.object(cap, "REPO_ROOT", repo),
+        patch.object(cap, "OUT_ROOT", tmp_path / "coverage-all"),
+        patch.object(cap, "MEASURED_DIRS", ("src/pkg/src",)),
+    ):
+        yield repo, commit
+    cap.git_src_tree.cache_clear()
+
+
+class TestLocalSteps:
+    def test_a_commit_s_src_tree_is_written_out_and_nothing_else(
+        self, checkout: tuple[Path, str], tmp_path: Path
+    ) -> None:
+        _, commit = checkout
+
+        cap._extract_source(commit, tmp_path / "source")  # noqa: SLF001
+
+        written = tmp_path / "source" / MODULE
+        assert written.read_text(encoding="utf-8") == "a = 1\nb = 2\nc = 3\nd = 4\n"
+        assert not (tmp_path / "source" / "docs").exists()
+
+    @pytest.mark.usefixtures("checkout")
+    def test_a_commit_git_does_not_have_says_to_fetch(self, tmp_path: Path) -> None:
+        with pytest.raises(cap.CoverageAllError, match=r"no commit 0123abcd here .*`git fetch`"):
+            cap._extract_source("0123abcd", tmp_path / "source")  # noqa: SLF001
+
+    def test_the_main_checkout_is_where_the_git_folder_is(self, checkout: tuple[Path, str]) -> None:
+        repo, _ = checkout
+
+        assert cap._main_checkout().resolve() == repo.resolve()  # noqa: SLF001
+
+
+class TestMain:
+    """The whole run on one throwaway commit, with only ssh and scp stood in for."""
+
+    @staticmethod
+    def _listing(commit: str) -> str:
+        header = f"==== overnight run, 20261002-040000 ({commit}): finished ===="
+        return f"20261002-040000\t{header}\t.coverage.all \n"
+
+    @staticmethod
+    def _main(listing: str, lines: dict[str, dict[str, list[int]]]) -> int:
+        """Run for a Linux and a Windows machine whose runs measured `lines`, by platform."""
+
+        def fetch(host: cap.Host, _run: cap.Run, dest: Path) -> list[Path]:
+            dest.mkdir(parents=True)
+            return [_data(dest / ".coverage.all", lines[host.platform])]
+
+        with (
+            patch.object(cap, "_main_checkout", return_value=cap.Path.home() / "Prj" / "reader"),
+            patch.object(cap, "_ssh", return_value=listing),
+            patch.object(cap, "_fetch", side_effect=fetch),
+        ):
+            return cap.main(["gmk:Prj/barks-compleat-reader", "win"])
+
+    def test_each_machine_s_lines_are_combined_and_reported(
+        self, checkout: tuple[Path, str], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        _, commit = checkout
+        lines = {cap.LINUX: {LINUX_FILE: [1, 2]}, cap.WINDOWS: {WIN_FILE: [2, 3]}}
+
+        assert self._main(self._listing(commit), lines) == 0
+
+        out = capsys.readouterr().out.splitlines()
+        assert out[0] == f"coverage-all: commit {commit}"
+        totals = {line.split()[0]: line.split()[1] for line in out[1:4]}
+        assert totals == {"Linux": "50.0%", "Windows": "50.0%", "all": "75.0%"}
+        assert f"(gmk, run 20261002-040000, {commit})" in out[1]
+        assert "  lines only Windows ran: 1" in out
+        assert out[-2].split() == ["1", str(cap.Path(MODULE))]
+        report = tmp_path / "coverage-all" / commit / "html" / "index.html"
+        assert out[-1] == f"  report: {report}"
+        assert report.is_file()
+
+    def test_a_machine_with_no_run_of_the_commit_fails_it_and_says_what_each_has(
+        self, checkout: tuple[Path, str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        _, commit = checkout
+
+        with (
+            patch.object(cap, "_main_checkout", return_value=cap.Path.home() / "Prj" / "reader"),
+            patch.object(cap, "_ssh", side_effect=[self._listing(commit), ""]),
+        ):
+            assert cap.main(["gmk", "win"]) == 1
+
+        err = capsys.readouterr().err
+        assert err.startswith("coverage-all: no a commit has coverage from every machine")
+        assert f"Linux: {commit}; Windows: none" in err

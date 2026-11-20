@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import textwrap
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import coverage
 import dead_code_report
@@ -205,3 +205,30 @@ class TestMain:
         with patch.object(dead_code_report, "run_vulture", return_value=None):
             assert main([str(tmp_path / ".coverage")]) == 2  # noqa: PLR2004
         assert "dead-code: vulture failed to run" in capsys.readouterr().out
+
+
+class TestRunVulture:
+    """Vulture exits 3 when it finds something: that is its report, not a failure."""
+
+    @staticmethod
+    def _run(status: int) -> tuple[str | None, MagicMock]:
+        done = MagicMock(returncode=status, stdout="a.py:3: unused function 'dead'\n", stderr="")
+        with patch.object(dead_code_report.subprocess, "run", return_value=done) as run:
+            return dead_code_report.run_vulture(), run
+
+    @pytest.mark.parametrize("status", [0, 3])
+    def test_its_report_comes_back_whether_or_not_it_found_anything(self, status: int) -> None:
+        report_text, run = self._run(status)
+
+        assert report_text == "a.py:3: unused function 'dead'\n"
+        confidence = str(dead_code_report.MIN_CONFIDENCE)
+        assert run.call_args.args[0][1:] == ["-m", "vulture", "--min-confidence", confidence]
+        assert run.call_args.kwargs["cwd"] == dead_code_report.REPO_ROOT
+
+    def test_any_other_status_is_a_failure_and_its_output_is_shown(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        report_text, _ = self._run(1)
+
+        assert report_text is None
+        assert capsys.readouterr().err == "a.py:3: unused function 'dead'\n"
