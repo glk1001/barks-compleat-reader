@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 from comic_utils import get_panel_bytes, pil_image_utils
 from comic_utils.decryption import DecryptionError
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -34,6 +34,24 @@ def _png_bytes() -> bytes:
     return data.getvalue()
 
 
+def _first_pixel_with_the_source_closed(image: Image.Image) -> object:
+    """Read a pixel after shutting the file or buffer the image came from.
+
+    A decoded image holds its pixels and needs the source no longer; one only opened
+    would go back to the source for them, and fail.
+    """
+    source = getattr(image, "fp", None)
+    if source is not None:
+        source.close()
+    return image.getpixel((0, 0))
+
+
+def _jpg_bytes(size: tuple[int, int]) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", size, (90, 60, 30)).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
 @pytest.fixture
 def root_at_warning() -> Iterator[None]:
     """Hold the root logger at WARNING, and check the loaders put it back after quietening PIL."""
@@ -50,13 +68,29 @@ class TestLoading:
     def test_from_a_file(self, tmp_path: Path) -> None:
         image = pil_image_utils.load_pil_image_for_reading(_png(tmp_path))
         assert image.size == (40, 20)
+        assert _first_pixel_with_the_source_closed(image) == (200, 100, 50)
 
     def test_its_size(self, tmp_path: Path) -> None:
         assert pil_image_utils.get_image_size(_png(tmp_path, size=(7, 9))) == (7, 9)
 
     @pytest.mark.parametrize("ext", [".png", ".PNG"])
     def test_from_bytes_by_extension(self, ext: str) -> None:
-        assert pil_image_utils.load_pil_image_from_bytes(_png_bytes(), ext).size == (40, 20)
+        image = pil_image_utils.load_pil_image_from_bytes(_png_bytes(), ext)
+        assert image.size == (40, 20)
+        assert _first_pixel_with_the_source_closed(image) == (200, 100, 50)
+
+    @pytest.mark.parametrize(
+        ("data", "ext"),
+        [
+            pytest.param(_png_bytes(), ".jpg", id="a PNG named as a JPEG"),
+            pytest.param(_jpg_bytes((40, 20)), ".png", id="a JPEG named as a PNG"),
+        ],
+    )
+    def test_bytes_that_are_not_the_format_the_extension_names_are_refused(
+        self, data: bytes, ext: str
+    ) -> None:
+        with pytest.raises(UnidentifiedImageError):
+            pil_image_utils.load_pil_image_from_bytes(data, ext)
 
     def test_from_bytes_with_an_unknown_extension_is_refused(self) -> None:
         with pytest.raises(ValueError, match=r"Unsupported image extension for PIL: '\.gif'"):
@@ -162,12 +196,6 @@ class TestFiles:
             assert image.info["BARKS:title"] == "Lost in the Andes!"
 
 
-def _jpg_bytes(size: tuple[int, int]) -> bytes:
-    buf = io.BytesIO()
-    Image.new("RGB", size, (90, 60, 30)).save(buf, format="JPEG")
-    return buf.getvalue()
-
-
 class TestContainSize:
     def test_a_wide_image_is_bounded_by_the_width(self) -> None:
         assert pil_image_utils.contain_size((400, 200), (100, 100)) == (100, 50)
@@ -224,6 +252,14 @@ class TestOpeningBeforeLoading:
 
         assert image is opened
         assert image.size == (100, 50)  # the quarter scale: a draft taken before the load
+        assert _first_pixel_with_the_source_closed(image)  # decoded, not only drafted
+
+    def test_an_opened_image_is_not_decoded_until_it_is_loaded(self) -> None:
+        """The other half of the helper above: without a load, the pixels are not there."""
+        opened = pil_image_utils.open_pil_image_from_bytes(_png_bytes(), ".png")
+
+        with pytest.raises(ValueError, match="closed file"):
+            _first_pixel_with_the_source_closed(opened)
 
     def test_an_unknown_extension_is_refused_at_the_open(self) -> None:
         with pytest.raises(ValueError, match="Unsupported image extension"):
