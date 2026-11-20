@@ -16,7 +16,7 @@ from barks_fantagraphics.search_ports import CorpusTextTotals
 from barks_fantagraphics.search_query import AnyTerm
 from barks_fantagraphics.speech_groupers import OcrTypes
 from barks_fantagraphics.speech_markup import strip_markup
-from barks_fantagraphics.testing.whoosh_index import build_test_index
+from barks_fantagraphics.testing.whoosh_index import bubble_doc, build_test_index
 from barks_fantagraphics.whoosh_search_engine import (
     ENTITY_TYPES,
     SearchEngine,
@@ -270,17 +270,17 @@ class TestFindEntities:
     @pytest.fixture
     def index_dir(self, tmp_path: Path) -> Path:
         """Create a temporary Whoosh index with a test document."""
-        doc = {
-            "title": "Bongo on the Congo",
-            "fanta_vol": "26",
-            "fanta_page": "074",
-            "comic_page": "6",
-            "content_id": "16",
-            "panel_num": "7",
-            "unstemmed": "qwak qwaks are a terrible voodoo cult of the duk duk tribe",
-            "content_raw": "QWAK QWAKS ARE A TERRIBLE VOODOO CULT OF THE DUK DUK TRIBE",
-            "entities_person": "Duk Duk,Qwak Qwaks",
-        }
+        doc = bubble_doc(
+            "Bongo on the Congo",
+            "qwak qwaks are a terrible voodoo cult of the duk duk tribe",
+            fanta_vol="26",
+            fanta_page="074",
+            comic_page="6",
+            content_id="16",
+            panel_num="7",
+            content_raw="QWAK QWAKS ARE A TERRIBLE VOODOO CULT OF THE DUK DUK TRIBE",
+            entities_person="Duk Duk,Qwak Qwaks",
+        )
         return build_test_index(tmp_path, [doc])
 
     def test_multi_word_entity_found(self, index_dir: Path) -> None:
@@ -423,17 +423,15 @@ class TestCollectAndSortResults:
 
 def _build_words_index(tmp_path: Path) -> Path:
     def doc(title: str, vol: str, page: str, group: str, speaker: str, text: str) -> dict[str, str]:
-        return {
-            "title": title,
-            "fanta_vol": vol,
-            "fanta_page": page,
-            "comic_page": "1",
-            "content_id": group,
-            "panel_num": "1",
-            "speaker": speaker,
-            "unstemmed": text,
-            "content_raw": "RAW",
-        }
+        return bubble_doc(
+            title,
+            text,
+            fanta_vol=vol,
+            fanta_page=page,
+            content_id=group,
+            speaker=speaker,
+            content_raw="RAW",
+        )
 
     return build_test_index(
         tmp_path,
@@ -587,17 +585,15 @@ class TestGetCorpusTextTotals:
         def doc(
             title: str, vol: str, page: str, panel: str, raw: str, group: str
         ) -> dict[str, str]:
-            return {
-                "title": title,
-                "fanta_vol": vol,
-                "fanta_page": page,
-                "comic_page": "1",
-                "content_id": group,
-                "panel_num": panel,
-                "unstemmed": strip_markup(raw),
-                "content_raw": strip_markup(raw),
-                "_stored_content_raw": raw,
-            }
+            return bubble_doc(
+                title,
+                strip_markup(raw),
+                fanta_vol=vol,
+                fanta_page=page,
+                content_id=group,
+                panel_num=panel,
+                _stored_content_raw=raw,
+            )
 
         # Two groups share a page and a panel; the third is a second page.
         return build_test_index(

@@ -40,6 +40,54 @@ def build_test_index(index_dir: Path, docs: Iterable[Mapping[str, str]] = ()) ->
     return index_dir
 
 
+def bubble_doc(
+    title: str,
+    text: str,
+    *,
+    fanta_vol: str = "1",
+    fanta_page: str = "001",
+    comic_page: str = "1",
+    content_id: str = "1",
+    panel_num: str = "1",
+    speaker: str = "",
+    content_raw: str | None = None,
+    **more: str,
+) -> dict[str, str]:
+    """Return one speech bubble's document, with the fields every bubble has.
+
+    The field names are written here once, so a renamed schema field is one edit and not
+    one in each test's own dict.
+
+    Args:
+        title: The story's title.
+        text: The bubble's text as it is indexed (``unstemmed``).
+        fanta_vol: The Fantagraphics volume.
+        fanta_page: The volume's page.
+        comic_page: The story's page.
+        content_id: The speech group's id.
+        panel_num: The panel on the page.
+        speaker: Who says it, if a speaker is recorded.
+        content_raw: The text as shown, if it differs from ``text``.
+        more: Any other field, such as ``entities_person`` or ``_stored_content_raw``.
+
+    Returns:
+        The document, for ``build_test_index``.
+
+    """
+    return {
+        "title": title,
+        "fanta_vol": fanta_vol,
+        "fanta_page": fanta_page,
+        "comic_page": comic_page,
+        "content_id": content_id,
+        "panel_num": panel_num,
+        "speaker": speaker,
+        "unstemmed": text,
+        "content_raw": text if content_raw is None else content_raw,
+        **more,
+    }
+
+
 def schema_tokens(text: str) -> list[str]:
     """Tokenize ``text`` the way the index's ``unstemmed`` field does.
 

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_fantagraphics.search_query import AnyTerm, Near, Phrase, SearchLeaf
 from barks_fantagraphics.testing.fake_search import FakeBubble, InMemoryFullTextSearch
-from barks_fantagraphics.testing.whoosh_index import build_test_index, schema_tokens
+from barks_fantagraphics.testing.whoosh_index import bubble_doc, build_test_index, schema_tokens
 from barks_fantagraphics.whoosh_search_engine import SearchEngine
 
 if TYPE_CHECKING:
@@ -49,17 +49,16 @@ def _build_index(tmp_path: Path) -> Path:
     return build_test_index(
         tmp_path,
         [
-            {
-                "title": bubble.title,
-                "fanta_vol": str(bubble.fanta_vol),
-                "fanta_page": bubble.fanta_page,
-                "comic_page": bubble.comic_page,
-                "content_id": bubble.group_id,
-                "panel_num": str(bubble.panel_num),
-                "speaker": bubble.speaker or "",
-                "unstemmed": bubble.text,
-                "content_raw": bubble.text,
-            }
+            bubble_doc(
+                bubble.title,
+                bubble.text,
+                fanta_vol=str(bubble.fanta_vol),
+                fanta_page=bubble.fanta_page,
+                comic_page=bubble.comic_page,
+                content_id=bubble.group_id,
+                panel_num=str(bubble.panel_num),
+                speaker=bubble.speaker or "",
+            )
             for bubble in CORPUS
         ],
     )
