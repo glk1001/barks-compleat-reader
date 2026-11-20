@@ -86,12 +86,14 @@ class TestCoverTitles:
             assert payment.num_pages == 1
             assert payment.payment == -1.0 or payment.payment > 0.0, title.name
 
-    def test_collection_page_num(self) -> None:
-        located = get_located_covers()
-        assert get_cover_collection_page_num(get_cover_title(located[0])) == 1
-        assert get_cover_collection_page_num(get_cover_title(located[-1])) == len(located)
+    def test_collection_page_num(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # A table of its own, so the unlocated case outlives the last cover's location.
+        first, unlocated, second = BARKS_COVERS[:3]
+        monkeypatch.setattr(bc, "COVER_LOCATIONS", {first.key: (6, 209), second.key: (6, 219)})
+
+        page_nums = [get_cover_collection_page_num(get_cover_title(c)) for c in (first, second)]
+        assert page_nums == [1, 2]
         # An unlocated cover has no collection page.
-        unlocated = next(c for c in BARKS_COVERS if c not in located)
         assert get_cover_collection_page_num(get_cover_title(unlocated)) is None
         # Nor has a title that is not a cover at all.
         assert get_cover_collection_page_num(Titles.LOST_IN_THE_ANDES) is None
