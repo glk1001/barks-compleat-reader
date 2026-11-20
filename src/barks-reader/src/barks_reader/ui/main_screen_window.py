@@ -196,6 +196,13 @@ class MainScreenWindowHelper:
             )
         )
         if not WindowManager.is_fullscreen_now():
+            # Also reached in the moment between this screen's own fullscreen exit and
+            # its restore, if the layout is resized then: the size is freed a frame
+            # early, and the line logged says another screen left it fixed. Left so on
+            # purpose (a review of 2026-11-20): holding this back while a restore is
+            # pending could miss the one resize that frees the size after another
+            # screen's exit, and leave this screen fixed for good, which is far worse
+            # than a stray log line.
             self.restore_windowed_size_hints()
             return
         self._change_fullscreen_win_size(size[1])

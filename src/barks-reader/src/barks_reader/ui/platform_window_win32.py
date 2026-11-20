@@ -145,6 +145,13 @@ class _ScheduledRestore:
             self._backend.release_windowed_rect()
 
         if self._finished:
+            # A resize the app made itself in the quarter second since the restore
+            # finished (a layout refit, a raise to the minimum) is moved back here
+            # too, and the window bounces once before the app's resize guard wins.
+            # Left so on purpose (a review of 2026-11-20): the backend cannot tell
+            # the app's resize from one the exit made, and telling it would mean the
+            # geometry helper reporting every resize it makes to this backend. Not
+            # checking at all would leave a window the exit shifted where it is.
             if still_this_restores and not self._backend._is_window_at(self._wanted):  # noqa: SLF001
                 logger.warning("Win32: Window moved after its early restore; moving it back.")
                 self._backend._set_window_rect(x, y, width, height)  # noqa: SLF001
