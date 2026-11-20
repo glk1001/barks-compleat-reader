@@ -41,6 +41,7 @@ from barks_fantagraphics.pages import (
     get_srce_and_dest_pages_in_order,
     get_srce_dest_map,
 )
+from spec_mocks import mock_comic_book
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -145,16 +146,16 @@ class TestGetRequiredPagesInOrder:
 class TestGetFullSrceFilepath:
     def test_title_empty_returns_title_empty_path(self) -> None:
         page = CleanPage(TITLE_EMPTY_FILENAME, PageType.TITLE)
-        result = get_full_srce_filepath(MagicMock(), page)
+        result = get_full_srce_filepath(mock_comic_book(), page)
         assert result == TITLE_EMPTY_IMAGE_FILEPATH
 
     def test_empty_returns_empty_path(self) -> None:
         page = CleanPage(EMPTY_FILENAME, PageType.BLANK_PAGE)
-        result = get_full_srce_filepath(MagicMock(), page)
+        result = get_full_srce_filepath(mock_comic_book(), page)
         assert result == EMPTY_IMAGE_FILEPATH
 
     def test_normal_page_calls_get_final_srce_story_file(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         expected = Path("/some/dir/001.jpg")
         comic.get_final_srce_story_file.return_value = (str(expected), ModifiedType.ORIGINAL)
         page = CleanPage("001", PageType.BODY)
@@ -165,7 +166,7 @@ class TestGetFullSrceFilepath:
         assert result == expected
 
     def test_custom_resolver_overrides_default(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         page = CleanPage("001", PageType.BODY)
         expected = Path("/custom/001.png")
 
@@ -183,8 +184,8 @@ class TestGetFullSrceFilepath:
         title_page = CleanPage(TITLE_EMPTY_FILENAME, PageType.TITLE)
         blank_page = CleanPage(EMPTY_FILENAME, PageType.BLANK_PAGE)
 
-        title_result = get_full_srce_filepath(MagicMock(), title_page, resolver)
-        blank_result = get_full_srce_filepath(MagicMock(), blank_page, resolver)
+        title_result = get_full_srce_filepath(mock_comic_book(), title_page, resolver)
+        blank_result = get_full_srce_filepath(mock_comic_book(), blank_page, resolver)
         assert title_result == TITLE_EMPTY_IMAGE_FILEPATH
         assert blank_result == EMPTY_IMAGE_FILEPATH
         resolver.get_story_file.assert_not_called()
@@ -203,7 +204,7 @@ class TestSrceStoryFileResolver:
 
 class TestFinalStoryFileResolver:
     def test_returns_final_srce_story_file_as_path(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         expected = Path("/some/dir/001.jpg")
         comic.get_final_srce_story_file.return_value = (str(expected), ModifiedType.ORIGINAL)
         page = CleanPage("001", PageType.BODY)
@@ -214,7 +215,7 @@ class TestFinalStoryFileResolver:
         assert result == expected
 
     def test_wraps_non_str_return_value_in_path(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.get_final_srce_story_file.return_value = (Path("/p/2.jpg"), ModifiedType.MODIFIED)
         page = CleanPage("002", PageType.BODY)
 
@@ -226,7 +227,7 @@ class TestFinalStoryFileResolver:
 
 class TestSvgPngStoryFileResolver:
     def test_returns_png_when_file_exists(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         png_path = MagicMock(spec=Path)
         png_path.is_file.return_value = True
         comic.get_srce_restored_svg_png_story_file.return_value = png_path
@@ -238,7 +239,7 @@ class TestSvgPngStoryFileResolver:
         assert result is png_path
 
     def test_raises_when_missing_and_no_fallback(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         png_path = MagicMock(spec=Path)
         png_path.is_file.return_value = False
         comic.get_srce_restored_svg_png_story_file.return_value = png_path
@@ -252,7 +253,7 @@ class TestSvgPngStoryFileResolver:
         assert issubclass(SrceStoryFileNotFoundError, FileNotFoundError)
 
     def test_delegates_to_fallback_when_png_missing(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         png_path = MagicMock(spec=Path)
         png_path.is_file.return_value = False
         comic.get_srce_restored_svg_png_story_file.return_value = png_path
@@ -268,7 +269,7 @@ class TestSvgPngStoryFileResolver:
         assert result == fallback_path
 
     def test_fallback_not_called_when_png_exists(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         png_path = MagicMock(spec=Path)
         png_path.is_file.return_value = True
         comic.get_srce_restored_svg_png_story_file.return_value = png_path
@@ -312,16 +313,16 @@ class TestGetRelativeSrceFilepath:
 class TestGetPageModType:
     def test_title_empty_returns_original(self) -> None:
         page = CleanPage(TITLE_EMPTY_FILENAME, PageType.TITLE)
-        result = get_page_mod_type(MagicMock(), page)
+        result = get_page_mod_type(mock_comic_book(), page)
         assert result == ModifiedType.ORIGINAL
 
     def test_empty_returns_original(self) -> None:
         page = CleanPage(EMPTY_FILENAME, PageType.BLANK_PAGE)
-        result = get_page_mod_type(MagicMock(), page)
+        result = get_page_mod_type(mock_comic_book(), page)
         assert result == ModifiedType.ORIGINAL
 
     def test_uses_story_file_mod_type_when_not_original(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.get_final_srce_story_file.return_value = (
             Path("/some/001.jpg"),
             ModifiedType.MODIFIED,
@@ -334,7 +335,7 @@ class TestGetPageModType:
         comic.get_final_srce_story_file.assert_called_once_with("001", PageType.BODY)
 
     def test_falls_through_to_upscayled_when_original(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.get_final_srce_story_file.return_value = (Path("/x.jpg"), ModifiedType.ORIGINAL)
         comic.get_final_srce_upscayled_story_file.return_value = (
             Path("/x.jpg"),
@@ -347,7 +348,7 @@ class TestGetPageModType:
         assert result == ModifiedType.ADDED
 
     def test_falls_through_to_original_file_when_all_original(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.get_final_srce_story_file.return_value = (Path("/x.jpg"), ModifiedType.ORIGINAL)
         comic.get_final_srce_upscayled_story_file.return_value = (
             Path("/x.jpg"),
@@ -365,7 +366,7 @@ class TestGetPageModType:
         assert result == ModifiedType.ORIGINAL
 
     def test_uses_page_num_not_filename_stem_for_multi_extension_paths(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.get_final_srce_story_file.return_value = (
             Path("/some/199.svg.png"),
             ModifiedType.MODIFIED,
@@ -407,7 +408,7 @@ class TestSrceDependency:
 
 
 def _comic_with_pages(pages: list[OriginalPage]) -> MagicMock:
-    comic = MagicMock()
+    comic = mock_comic_book()
     comic.page_images_in_order = pages
     return comic
 
@@ -532,7 +533,7 @@ class TestGetSrceAndDestPagesInOrder:
 class TestGetSrceDestMap:
     def test_builds_dimension_and_page_map(self) -> None:
         """The map carries dir names, bbox dimensions, and a dest->srce page map."""
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.dirs.srce_dir = "/root/my-srce-dir"
         comic.get_dest_rel_dirname.return_value = "dest-rel"
         srce_dim = ComicDimensions(
@@ -579,7 +580,7 @@ class TestGetRestoredSrceDependencies:
         for mtime, file in enumerate(files.values(), start=1_000):
             file.write_text("x")
             os.utime(file, (mtime, mtime))
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.files = files
         comic.ini_file = files["ini"]
         comic.intro_inset_file = files["inset"]
@@ -757,7 +758,7 @@ class TestSortedPagesWrappers:
         self, geometry: tuple[CleanPage, MagicMock]
     ) -> None:
         srce_page, set_srce_boxes = geometry
-        comic = MagicMock()
+        comic = mock_comic_book()
 
         _, srce_dim, required_dim = get_sorted_srce_and_dest_pages_with_dimensions(
             comic, get_full_paths=False
@@ -773,7 +774,7 @@ class TestSortedPagesWrappers:
 
     def test_a_getter_given_is_used_instead(self, geometry: tuple[CleanPage, MagicMock]) -> None:
         _, set_srce_boxes = geometry
-        comic = MagicMock()
+        comic = mock_comic_book()
         getter = MagicMock(return_value=Path("segments.json"))
 
         get_sorted_srce_and_dest_pages_with_dimensions(

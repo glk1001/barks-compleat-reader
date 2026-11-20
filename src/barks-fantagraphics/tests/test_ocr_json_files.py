@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.ocr_file_paths import OCR_ANNOTATIONS_DIR, OCR_FINAL_DIR, OCR_PRELIM_DIR
 from barks_fantagraphics.ocr_json_files import JsonFiles
+from spec_mocks import mock_comics_database
+
+if TYPE_CHECKING:
+    from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -14,7 +18,7 @@ from barks_fantagraphics.ocr_json_files import JsonFiles
 
 
 def _make_db(volume: int = 3, volume_dirname: str = "Carl-Barks-Vol-03") -> MagicMock:
-    db = MagicMock()
+    db = mock_comics_database()
     db.get_fanta_volume_int.return_value = volume
     db.get_fantagraphics_volume_title.return_value = volume_dirname
     return db

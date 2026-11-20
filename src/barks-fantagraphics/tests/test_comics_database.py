@@ -46,6 +46,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_fantagraphics.ocr_file_paths import OCR_PRELIM_DIR_ENV_VAR
 from comic_utils.comic_consts import JPG_FILE_EXT
 from loguru import logger
+from spec_mocks import mock_comic_book
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -60,8 +61,9 @@ class TestTitleNotFoundError:
         err = TitleNotFoundError("msg", "Some Title")
         assert err.title == "Some Title"
 
-    def test_is_exception(self) -> None:
+    def test_its_text_is_the_message_alone(self) -> None:
         err = TitleNotFoundError("Could not find", "Bad Title")
+        assert isinstance(err, Exception)
         assert str(err) == "Could not find"
 
 
@@ -285,16 +287,23 @@ class TestComicBookIniFiles:
 # ---------------------------------------------------------------------------
 
 
-class TestComicsDatabaseStaticMethods:
-    def test_get_fantagraphics_volume_title_returns_string(self) -> None:
-        title = ComicsDatabase.get_fantagraphics_volume_title(1)
-        assert isinstance(title, str)
-        assert title
+# One story whose facts are known, so a test can say what a getter must return.
+ANDES = "Lost in the Andes!"
+ANDES_VOLUME = 7
 
-    def test_get_num_pages_in_fantagraphics_volume_returns_int(self) -> None:
-        num_pages = ComicsDatabase.get_num_pages_in_fantagraphics_volume(1)
-        assert isinstance(num_pages, int)
-        assert num_pages > 0
+
+class TestComicsDatabaseStaticMethods:
+    def test_a_volume_s_title_is_its_book_s(self) -> None:
+        title = ComicsDatabase.get_fantagraphics_volume_title(ANDES_VOLUME)
+        assert title.startswith("Carl Barks Vol. 7 - Donald Duck - Lost in the Andes")
+
+    def test_a_volume_s_page_count_is_its_book_s(self) -> None:
+        # Two volumes, so one number for every volume would not pass.
+        num_pages = [
+            ComicsDatabase.get_num_pages_in_fantagraphics_volume(volume)
+            for volume in (ANDES_VOLUME, ANDES_VOLUME + 1)
+        ]
+        assert num_pages == [239, 223]
 
     def test_get_root_dir_combines_with_barks_root(self) -> None:
         result = ComicsDatabase.get_root_dir("SomeSubdir")
@@ -338,51 +347,39 @@ class TestComicsDatabaseStaticMethods:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
-def known_title(db: ComicsDatabase) -> str:
-    """Return any title that is confirmed to be in the story-titles database."""
-    titles = db.get_all_story_titles()
-    assert titles, "No story titles found — data directory may be empty"
-    return titles[0]
-
-
 class TestComicsDatabaseInstance:
-    def test_get_all_story_titles_nonempty(self, db: ComicsDatabase) -> None:
-        titles = db.get_all_story_titles()
-        assert len(titles) > 0
+    def test_get_all_story_titles_holds_a_known_story(self, db: ComicsDatabase) -> None:
+        assert ANDES in db.get_all_story_titles()
 
     def test_get_all_story_titles_sorted(self, db: ComicsDatabase) -> None:
         titles = db.get_all_story_titles()
         assert titles == sorted(titles)
 
-    def test_is_story_title_known_title(self, db: ComicsDatabase, known_title: str) -> None:
-        found, close = db.is_story_title(known_title)
-        assert found is True
-        assert close == ""
+    def test_is_story_title_known_title(self, db: ComicsDatabase) -> None:
+        assert db.is_story_title(ANDES) == (True, "")
+
+    def test_is_story_title_names_the_close_one(self, db: ComicsDatabase) -> None:
+        assert db.is_story_title("Lost in the Andes") == (False, ANDES)
 
     def test_is_story_title_unknown_returns_false(self, db: ComicsDatabase) -> None:
         found, _close = db.is_story_title("ZZZZZ_DEFINITELY_NOT_A_REAL_TITLE_XYZZY")
         assert found is False
 
-    def test_get_fanta_volume_int_returns_int(self, db: ComicsDatabase, known_title: str) -> None:
-        vol = db.get_fanta_volume_int(known_title)
-        assert isinstance(vol, int)
-        assert FIRST_VOLUME_NUMBER <= vol <= LAST_VOLUME_NUMBER
+    def test_a_story_s_volume_as_a_number_and_as_a_key(self, db: ComicsDatabase) -> None:
+        assert db.get_fanta_volume_int(ANDES) == ANDES_VOLUME
+        assert db.get_fanta_volume(ANDES) == "FANTA_07"
 
-    def test_get_fanta_volume_returns_string(self, db: ComicsDatabase, known_title: str) -> None:
-        vol_str = db.get_fanta_volume(known_title)
-        assert isinstance(vol_str, str)
-        assert vol_str.startswith("FANTA_")
+    def test_a_story_s_fanta_info_is_its_own(self, db: ComicsDatabase) -> None:
+        info = db.get_fanta_comic_book_info(ANDES)
+        assert info.comic_book_info.title is Titles.LOST_IN_THE_ANDES
+        assert info.fantagraphics_volume == "FANTA_07"
 
-    def test_get_fanta_comic_book_info_not_none(self, db: ComicsDatabase, known_title: str) -> None:
-        info = db.get_fanta_comic_book_info(known_title)
-        assert info is not None
-
-    def test_get_all_titles_in_fantagraphics_volumes_nonempty(self, db: ComicsDatabase) -> None:
-        titles = db.get_all_titles_in_fantagraphics_volumes([1])
-        assert len(titles) > 0
-        for title, _info in titles:
-            assert isinstance(title, str)
+    def test_a_volume_s_titles_each_come_with_their_own_info(self, db: ComicsDatabase) -> None:
+        titles = dict(db.get_all_titles_in_fantagraphics_volumes([ANDES_VOLUME]))
+        assert {ANDES, "Voodoo Hoodoo", "Four Color #223 Cover"} <= set(titles)
+        assert "The Victory Garden" not in titles  # volume 1
+        assert titles[ANDES].comic_book_info.title is Titles.LOST_IN_THE_ANDES
+        assert {info.fantagraphics_volume for info in titles.values()} == {"FANTA_07"}
 
     def test_get_all_titles_sorted(self, db: ComicsDatabase) -> None:
         titles = db.get_all_titles_in_fantagraphics_volumes([1])
@@ -403,7 +400,7 @@ class TestComicsDatabaseInstance:
     def test_get_fantagraphics_volume_dir_contains_title(self, db: ComicsDatabase) -> None:
         vol_title = ComicsDatabase.get_fantagraphics_volume_title(1)
         vol_dir = db.get_fantagraphics_volume_dir(1)
-        assert vol_title in str(vol_dir)
+        assert vol_dir == db.get_fantagraphics_original_root_dir() / vol_title
 
     def test_get_story_title_from_issue_unknown(self, db: ComicsDatabase) -> None:
         found, titles, _close = db.get_story_title_from_issue("ZZZZZ_XYZZY_NOPE_99999")
@@ -700,7 +697,7 @@ BUILD_DIRS = [
 
 def _comic_with_dirs(root: Path, missing: str | None = None) -> MagicMock:
     """Return a stand-in comic whose build dirs are under `root`, all made but `missing`."""
-    comic = MagicMock()
+    comic = mock_comic_book()
     for index, (where, _what) in enumerate(BUILD_DIRS):
         path = root / f"dir{index}"
         if where != missing:
@@ -722,7 +719,7 @@ class TestCheckComicOkForBuilding:
             check_comic_ok_for_building(_comic_with_dirs(tmp_path, missing=where))
 
     def test_the_database_method_checks_the_same(self) -> None:
-        comic = MagicMock()
+        comic = mock_comic_book()
         with patch.object(comics_database_module, "check_comic_ok_for_building") as checked:
             ComicsDatabase.check_comic_ok_for_building(comic)
         checked.assert_called_once_with(comic)

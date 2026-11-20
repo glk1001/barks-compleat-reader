@@ -29,6 +29,7 @@ from barks_fantagraphics.whoosh_search_engine import (
     build_index_schema,
     entity_names_absent_from_text,
 )
+from spec_mocks import mock_comics_database
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -683,7 +684,7 @@ class TestSearchEngineCreator:
         **kwargs: object,
     ) -> tuple[SearchEngineCreator, MagicMock]:
         pages = PAGES if pages is None else pages
-        db = MagicMock()
+        db = mock_comics_database()
         db.get_configured_titles_in_fantagraphics_volumes.return_value = [
             (ENUM_TO_STR_TITLE[t], SimpleNamespace(comic_book_info=SimpleNamespace(title=t)))
             for t in pages

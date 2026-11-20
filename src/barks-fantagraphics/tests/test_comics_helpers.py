@@ -27,6 +27,7 @@ from barks_fantagraphics.comics_helpers import (
 )
 from panel_factories import make_page_panel_boxes, make_panel_box
 from PIL import Image
+from spec_mocks import mock_comic_book, mock_comics_database
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,7 +40,7 @@ if TYPE_CHECKING:
 
 
 def _make_db() -> MagicMock:
-    return MagicMock()
+    return mock_comics_database()
 
 
 def _make_fanta_info(is_barks: bool = True) -> MagicMock:
@@ -134,7 +135,8 @@ class TestGetTitles:
         ) as mock_sort:
             result = get_titles(db, [1], "", submission_date_sorted=True)
 
-        mock_sort.assert_called_once()
+        # The sorter is handed the titles with their info, as the database listed them.
+        mock_sort.assert_called_once_with([("B Title", fanta_info), ("A Title", fanta_info)])
         assert result == ["A Title", "B Title"]
 
     def test_submission_date_sorted_false_preserves_order(self) -> None:
@@ -226,28 +228,6 @@ class TestGetDisplayTitle:
 
         assert result == "Some Title"
 
-    def test_configured_barks_title_returns_title_as_is(self) -> None:
-        db = _make_db()
-        db.is_story_title.return_value = (True, "")
-        fanta_info = MagicMock()
-        fanta_info.comic_book_info.get_display_title.return_value = "Barks Story"
-        db.get_fanta_comic_book_info.return_value = fanta_info
-
-        result = get_display_title(db, "Barks Story")
-
-        assert result == "Barks Story"
-
-    def test_configured_non_barks_title_returns_in_parens(self) -> None:
-        db = _make_db()
-        db.is_story_title.return_value = (True, "")
-        fanta_info = MagicMock()
-        fanta_info.comic_book_info.get_display_title.return_value = "(Non-Barks Story)"
-        db.get_fanta_comic_book_info.return_value = fanta_info
-
-        result = get_display_title(db, "Non-Barks Story")
-
-        assert result == "(Non-Barks Story)"
-
     def test_real_titles_are_bracketed_only_when_not_barks_own(self) -> None:
         db = ComicsDatabase()
         assert get_display_title(db, "Lost in the Andes!") == "Lost in the Andes!"
@@ -271,7 +251,7 @@ class TestGetIssueTitle:
     def test_configured_returns_safe_issue_title(self) -> None:
         db = _make_db()
         db.is_story_title.return_value = (True, "")
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.get_comic_issue_title.return_value = "WDC & S 001: Some Title"
         db.get_comic_book.return_value = comic
 
@@ -307,7 +287,7 @@ class TestGetTitleFromVolumePage:
     def test_page_found_returns_title_and_page_num(self) -> None:
         db = _make_db()
         db.get_all_titles_in_fantagraphics_volumes.return_value = [(self.TITLE_A, MagicMock())]
-        db.get_comic_book.return_value = MagicMock()
+        db.get_comic_book.return_value = mock_comic_book()
         srce_dest = _make_srce_dest_pages(["page-001", "page-002"], [10, 11])
 
         with patch.object(
@@ -321,7 +301,7 @@ class TestGetTitleFromVolumePage:
     def test_page_not_found_returns_empty_and_minus_one(self) -> None:
         db = _make_db()
         db.get_all_titles_in_fantagraphics_volumes.return_value = [(self.TITLE_A, MagicMock())]
-        db.get_comic_book.return_value = MagicMock()
+        db.get_comic_book.return_value = mock_comic_book()
         srce_dest = _make_srce_dest_pages(["page-001"], [5])
 
         with patch.object(
@@ -336,7 +316,7 @@ class TestGetTitleFromVolumePage:
         db = _make_db()
         titles = [(self.TITLE_A, MagicMock()), (self.TITLE_B, MagicMock())]
         db.get_all_titles_in_fantagraphics_volumes.return_value = titles
-        db.get_comic_book.side_effect = [MagicMock(), MagicMock()]
+        db.get_comic_book.side_effect = [mock_comic_book(), mock_comic_book()]
         srce_dest1 = _make_srce_dest_pages(["page-001"], [3])
         srce_dest2 = _make_srce_dest_pages(["page-002"], [7])
 
@@ -366,7 +346,7 @@ class TestGetTitleFromVolumePage:
         db = _make_db()
         titles = [("Comics and Stories #178 Cover", MagicMock()), (self.TITLE_A, MagicMock())]
         db.get_all_titles_in_fantagraphics_volumes.return_value = titles
-        db.get_comic_book.return_value = MagicMock()
+        db.get_comic_book.return_value = mock_comic_book()
         srce_dest = _make_srce_dest_pages(["page-001"], [3])
 
         with patch.object(

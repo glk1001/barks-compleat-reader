@@ -25,6 +25,7 @@ from barks_fantagraphics.speech_groupers import (
 )
 from barks_fantagraphics.speech_markup import strip_markup
 from barks_fantagraphics.speech_speakers import SpeakerCall
+from spec_mocks import mock_comic_book, mock_comics_database
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -816,7 +817,7 @@ class TestSaveSpeechPageGroupJson:
 
 class TestGetSpeechPageGroup:
     def test_returns_correct_speech_page_group(self, tmp_path: Path) -> None:
-        db = MagicMock()
+        db = mock_comics_database()
         db.get_fantagraphics_restored_ocr_prelim_volume_dir.return_value = tmp_path
 
         json_content = _make_json_content({"1": _make_group_entry(ai_text="Quack!")})
@@ -862,7 +863,7 @@ def _make_srce_dest_pages(
 
 def _make_comic(fixes_files: dict[str, Path]) -> MagicMock:
     """Make a comic whose get_srce_original_fixes_story_file returns the given paths."""
-    comic = MagicMock()
+    comic = mock_comic_book()
     comic.get_srce_original_fixes_story_file.side_effect = lambda page: fixes_files.get(
         page, Path("/no/such/fixes/file.png")
     )
@@ -927,10 +928,10 @@ def _make_speech_groups(
     tmp_path: Path, pages: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> SpeechGroups:
     """Make a SpeechGroups over `pages` (srce -> dest), with tmp_path as the prelim dir."""
-    db = MagicMock()
+    db = mock_comics_database()
     db.get_fanta_volume_int_for.return_value = 1
     db.get_fantagraphics_restored_ocr_prelim_volume_dir.return_value = tmp_path
-    db.get_comic_book_for.return_value = MagicMock()
+    db.get_comic_book_for.return_value = mock_comic_book()
 
     monkeypatch.setattr(
         SpeechGroups, "_get_srce_page_to_dest_page_map", staticmethod(lambda _comic: pages)
@@ -1048,7 +1049,7 @@ class TestOnePagerPages:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         self._locate(monkeypatch, 5, 123, 2)
-        db = MagicMock()
+        db = mock_comics_database()
         db.get_fantagraphics_restored_ocr_prelim_volume_dir.return_value = tmp_path
         for ocr_type in OcrTypes:
             _write_prelim(tmp_path, "123", ocr_type)

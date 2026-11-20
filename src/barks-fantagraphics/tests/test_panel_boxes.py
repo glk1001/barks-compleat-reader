@@ -20,6 +20,7 @@ from barks_fantagraphics.panel_boxes import (
     check_page_panel_boxes,
 )
 from panel_factories import make_page_panel_boxes
+from spec_mocks import mock_comic_book, mock_comics_database
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -122,7 +123,7 @@ class TestGetOverallBoundsBox:
 class TestGetPanelBoxes:
     @staticmethod
     def _make_tpb() -> TitlePanelBoxes:
-        return TitlePanelBoxes(_comics_database=MagicMock())
+        return TitlePanelBoxes(_comics_database=mock_comics_database())
 
     def test_raises_when_file_not_found(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
@@ -212,7 +213,7 @@ class TestGetSrcePageNums:
         srce_dest = MagicMock()
         srce_dest.srce_pages = [body_page, cover_page, front_page, back_page]
 
-        comic = MagicMock()
+        comic = mock_comic_book()
         with patch.object(
             panel_boxes_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
         ):
@@ -225,7 +226,7 @@ class TestGetSrcePageNums:
         srce_dest = MagicMock()
         srce_dest.srce_pages = []
 
-        comic = MagicMock()
+        comic = mock_comic_book()
         with patch.object(
             panel_boxes_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
         ):
@@ -238,7 +239,7 @@ class TestGetSrcePageNums:
         srce_dest = MagicMock()
         srce_dest.srce_pages = [page]
 
-        comic = MagicMock()
+        comic = mock_comic_book()
         with patch.object(
             panel_boxes_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
         ):
@@ -254,13 +255,13 @@ class TestGetSrcePageNums:
 
 class TestPrivateGetPanelBoxes:
     def test_delegates_to_get_panel_boxes(self, tmp_path: Path) -> None:
-        db = MagicMock()
+        db = mock_comics_database()
         tpb = TitlePanelBoxes(_comics_database=db)
 
         panel_file = tmp_path / "001.json"
         panel_file.write_text(_make_panel_segments_json())
 
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.get_srce_panel_segments_file.return_value = panel_file
 
         result = tpb._get_panel_boxes(comic, "001")
@@ -277,13 +278,13 @@ class TestPrivateGetPanelBoxes:
 
 class TestGetPagePanelBoxes:
     def test_returns_title_pages_panel_boxes(self, tmp_path: Path) -> None:
-        db = MagicMock()
+        db = mock_comics_database()
         db.get_fanta_volume_int_for.return_value = 3
 
         panel_file = tmp_path / "001.json"
         panel_file.write_text(_make_panel_segments_json())
 
-        comic = MagicMock()
+        comic = mock_comic_book()
         comic.get_srce_panel_segments_file.return_value = panel_file
         db.get_comic_book_for.return_value = comic
 
@@ -323,7 +324,7 @@ class TestGetPagePanelBoxesOnePager:
         resolver = MagicMock(return_value=panel_file)
         monkeypatch.setattr(panel_boxes_module, "get_one_pager_file", resolver)
 
-        db = MagicMock()
+        db = mock_comics_database()
         tpb = TitlePanelBoxes(_comics_database=db)
 
         result = tpb.get_page_panel_boxes(Titles.IF_THE_HAT_FITS)
