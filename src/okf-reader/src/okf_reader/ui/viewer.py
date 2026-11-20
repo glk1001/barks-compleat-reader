@@ -45,7 +45,6 @@ from kivy.uix.widget import Widget
 
 from okf_reader.core.bundle import BundleDir, has_children, list_children, resolve_link
 from okf_reader.core.render import (
-    LINK_COLOR,
     Block,
     TableBlock,
     TableRewriter,
@@ -1621,7 +1620,10 @@ class OKFViewer(RelativeLayout):
             return
         lbl, ref, occurrence = self._page_links[idx]
         lbl._orig_markup = lbl.text  # noqa: SLF001
-        lbl.text = highlight_ref_occurrence(lbl.text, occurrence, LINK_COLOR, LINK_FOCUS_COLOR)
+        # The colour the page's links were rendered in: a host may have themed it.
+        lbl.text = highlight_ref_occurrence(
+            lbl.text, occurrence, self._theme.link_hex, LINK_FOCUS_COLOR
+        )
         if self.body.height > self.body_scroll.height:
             self.body_scroll.scroll_to(lbl, padding=24)  # scroll_to applies dp() itself
         trace.link_focus(ref)

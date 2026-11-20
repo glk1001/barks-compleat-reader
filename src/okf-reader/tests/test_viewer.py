@@ -30,6 +30,7 @@ from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.render import TableBlock
 from okf_reader.core.search import SearchHit
 from okf_reader.core.session import load_session_state
+from okf_reader.core.theme import ViewerThemeSpec
 from okf_reader.ui import viewer as viewer_module
 from okf_reader.ui.keynav import (
     KEY_DOWN,
@@ -1285,6 +1286,25 @@ class TestHistoryRoot:
         viewer.reset_to(bundle / "concept" / "a.md")
 
         assert [e.path for e in viewer.history] == [bundle / "concept" / "a.md"]
+
+
+class TestLinkFocusColour:
+    """The focused link is recoloured from whatever colour the page's links were drawn in."""
+
+    @pytest.mark.parametrize("theme", [None, ViewerThemeSpec(link_hex="00ff00")])
+    def test_the_focused_link_takes_the_focus_colour(
+        self, bundle: Path, theme: ViewerThemeSpec | None
+    ) -> None:
+        viewer = OKFViewer(bundle, theme=theme)
+        label = viewer._page_links[0][0]
+        before = label.text
+        assert viewer_module.LINK_FOCUS_COLOR not in before
+
+        viewer._set_link_focus(0)
+
+        assert f"[color={viewer_module.LINK_FOCUS_COLOR}]" in label.text
+        viewer._set_link_focus(None)
+        assert label.text == before
 
 
 def test_run_hands_every_option_to_the_app(bundle: Path) -> None:
