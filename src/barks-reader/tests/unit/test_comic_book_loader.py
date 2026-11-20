@@ -81,6 +81,26 @@ class FakePageImageSource:
         return f'"fake_image" (from test, page {page_info.page_index})'
 
 
+# Long enough for a loaded machine: a load here takes milliseconds.
+_LOAD_JOIN_TIMEOUT_SECS = 10.0
+
+
+def _join_load(loader: ComicBookLoader) -> None:
+    """Wait for the load thread, if one is running, and fail if it has not ended.
+
+    A join that timed out went unnoticed: the test read on while the thread was still
+    writing, and failed on whatever it read, not on the thread.
+    """
+    if loader._thread is not None:
+        _join_thread(loader._thread)
+
+
+def _join_thread(thread: threading.Thread) -> None:
+    """Wait for a load thread a test kept hold of, and fail if it has not ended."""
+    thread.join(timeout=_LOAD_JOIN_TIMEOUT_SECS)
+    assert not thread.is_alive(), "the load thread is still running"
+
+
 @pytest.fixture
 def mock_sys_file_paths(tmp_path: Path) -> MagicMock:
     """Mock the system file paths helper."""
@@ -316,8 +336,7 @@ def test_set_comic_and_load_success(
     source = FakePageImageSource()
 
     loader.set_comic(source, load_order, page_map, archive_desc="test_comic.cbz")
-    if loader._thread:
-        loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     mock_callbacks["on_first_image_loaded"].assert_called_once()
     mock_callbacks["on_all_images_loaded"].assert_called_once()
@@ -358,8 +377,7 @@ def test_cursor_restored_at_first_page_ready(
     assert recording_cursor.states == ["busy", "normal"]
 
     release_last_page.set()
-    if loader._thread:
-        loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     assert recording_cursor.states == ["busy", "normal", "normal"]
 
@@ -428,7 +446,7 @@ def test_prioritize_page_loads_navigated_page_before_later_pages(
     release.set()
 
     assert loader._thread is not None
-    loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     order = source.load_order
     assert set(order) == {0, 1, 2, 3, 4}  # every page still loaded exactly once
@@ -458,7 +476,7 @@ def test_the_first_page_loads_alone_before_the_window_opens(
 
     release.set()
     assert loader._thread is not None
-    loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     assert source.load_order[0] == 0
     assert set(source.load_order) == {0, 1, 2, 3, 4}
@@ -493,7 +511,7 @@ def test_the_awaited_pair_loads_together_and_alone(
 
     release.set()
     assert loader._thread is not None
-    loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     assert source.load_order[:2] == [0, 1]
     assert set(source.load_order) == {0, 1, 2, 3, 4}
@@ -508,7 +526,7 @@ def test_a_comic_of_just_the_awaited_pair_loads(
 
     loader.set_comic(source, load_order, page_map, archive_desc="pair.cbz", num_pages_awaited=2)
     assert loader._thread is not None
-    loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     assert source.load_count == 2  # noqa: PLR2004
     mock_callbacks["on_all_images_loaded"].assert_called_once()
@@ -550,7 +568,7 @@ def test_the_whole_window_opens_once_the_awaited_page_lands(
     finally:
         source.release.set()
     assert loader._thread is not None
-    loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     mock_callbacks["on_all_images_loaded"].assert_called_once()
 
@@ -564,8 +582,7 @@ def test_prioritize_page_is_noop_when_page_already_loaded(
     source = FakePageImageSource()
 
     loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")
-    if loader._thread:
-        loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     assert loader._load.priority_keys.empty()
     loader.prioritize_page("p1")  # already loaded
@@ -596,8 +613,7 @@ def test_prioritize_page_ignores_a_page_not_in_the_comic(
     """A name off the map (the page manager's "" for an index off the comic) enqueues nothing."""
     page_map, load_order = page_map_and_order
     loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="test.cbz")
-    if loader._thread:
-        loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     loader.prioritize_page("")
     assert loader._load.priority_keys.empty()
@@ -633,8 +649,7 @@ def test_close_comic_calls_source_close(
     source = FakePageImageSource()
 
     loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")
-    if loader._thread:
-        loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     loader.close_comic()
 
@@ -687,8 +702,7 @@ def test_get_image_info_str_delegates_to_source(
     source = FakePageImageSource()
 
     loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")
-    if loader._thread:
-        loader._thread.join(timeout=2.0)
+    _join_load(loader)
 
     info_str = loader.get_image_info_str("p1")
     assert "fake_image" in info_str
@@ -951,7 +965,7 @@ def test_waiting_on_a_loaded_page_goes_by_its_load_event(
     page_map, load_order = page_map_and_order
     loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="test.cbz")
     assert loader._thread is not None
-    loader._thread.join(timeout=5.0)  # the thread lays out the pages, then loads them
+    _join_load(loader)  # the thread lays out the pages, then loads them
     assert loader.wait_load_event(1, timeout=0.0) is True
     loader._image_loaded_events[1].clear()
     assert loader.wait_load_event(1, timeout=0.0) is False
@@ -964,7 +978,7 @@ def test_waiting_on_a_page_past_the_last_is_rejected(
     page_map, load_order = page_map_and_order
     loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="test.cbz")
     assert loader._thread is not None
-    loader._thread.join(timeout=5.0)
+    _join_load(loader)
 
     with pytest.raises(AssertionError):
         loader.wait_load_event(len(page_map), timeout=0.0)
@@ -1211,8 +1225,7 @@ def _run_load(
     page_map, load_order = page_map_and_order
     loader.set_comic(source or FakePageImageSource(), load_order, page_map, archive_desc="t.cbz")
     assert loader._thread is not None
-    loader._thread.join(timeout=3.0)
-    assert not loader._thread.is_alive()
+    _join_load(loader)
     if isinstance(loader._scheduler, _DeferringScheduler):
         loader._scheduler.run_pending()
 
@@ -1429,8 +1442,7 @@ class TestLoadErrorClose:
         loader.set_comic(source, load_order, page_map, archive_desc="failing.cbz")
         thread = loader._thread
         assert thread is not None
-        thread.join(timeout=3.0)
-        assert not thread.is_alive()
+        _join_thread(thread)
         return source
 
     def test_the_close_and_the_report_wait_for_the_ui_thread(
@@ -1473,7 +1485,7 @@ class TestLoadErrorClose:
         loader.set_comic(next_source, load_order, page_map, archive_desc="next.cbz")
         thread = loader._thread
         assert thread is not None  # the finished thread was let go: the load started
-        thread.join(timeout=3.0)
+        _join_thread(thread)
 
         scheduler.run_pending()
 
@@ -1501,7 +1513,7 @@ class TestLoadErrorClose:
         page_map, load_order = page_map_and_order
         loader.set_comic(next_source, load_order, page_map, archive_desc="next.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
         scheduler.run_pending()
 
         assert not next_source.closed
@@ -1556,7 +1568,7 @@ class TestPrefetchWindow:
 
             loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="t.cbz")
             assert loader._thread is not None
-            loader._thread.join(timeout=3.0)
+            _join_load(loader)
 
         # One worker (patched to 1 in the fixture), four pages.
         get_tuning.assert_called_once_with(1, 4)
@@ -1577,7 +1589,7 @@ class TestPrefetchWindow:
 
         loader.set_comic(source, load_order, page_map, archive_desc="t.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         assert source.load_count == 6  # noqa: PLR2004
         assert all(entry is not None for entry in loader._images)
@@ -1601,7 +1613,7 @@ class TestPrefetchWindow:
         loader._max_worker_count = 4
         loader.set_comic(TwoAtATimeSource(), load_order, page_map, archive_desc="t.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=10.0)
+        _join_load(loader)
 
         assert not together.broken
         assert max(in_flight_at_each_wait.queue) == 2  # noqa: PLR2004
@@ -1628,7 +1640,7 @@ class TestPrefetchWindow:
         finally:
             release.set()
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
         assert loader._image_loaded_events[1].is_set()
 
     def test_the_first_page_callback_fires_once_for_the_first_page_only(
@@ -1639,7 +1651,7 @@ class TestPrefetchWindow:
 
         loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="t.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         mock_callbacks["on_first_image_loaded"].assert_called_once()
 
@@ -1660,7 +1672,7 @@ class TestPrefetchWindow:
         release.set()
 
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         # Page 0 is not fetched twice, and every page still arrives exactly once.
         assert sorted(source.load_order) == [0, 1, 2, 3]
@@ -1685,7 +1697,7 @@ class TestPrefetchWindow:
         release.set()
 
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         assert sorted(source.load_order) == [0, 1, 2, 3, 4, 5]
         assert all(entry is not None for entry in loader._images)
@@ -1711,7 +1723,7 @@ class TestPrefetchWindow:
         release.set()
 
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         order = source.load_order
         assert sorted(order) == [0, 1, 2, 3, 4, 5]
@@ -1737,7 +1749,7 @@ class TestPrefetchWindow:
             loader.prioritize_page("2")
             release.set()
             assert loader._thread is not None
-            loader._thread.join(timeout=3.0)
+            _join_load(loader)
 
         assert source.load_order == [0, 2, 1, 3, 4, 5]
 
@@ -1757,7 +1769,7 @@ class TestPrefetchWindow:
             loader.prioritize_page("5")
             release.set()
             assert loader._thread is not None
-            loader._thread.join(timeout=3.0)
+            _join_load(loader)
 
         assert source.load_order == [0, 5, 1, 2, 3, 4]
 
@@ -1802,7 +1814,7 @@ class TestPrefetchWindow:
         ):
             loader.set_comic(source, load_order, page_map, archive_desc="t.cbz")
             assert loader._thread is not None
-            loader._thread.join(timeout=5.0)
+            _join_load(loader)
         scheduler.run_pending()
 
         assert 3 not in source.loaded  # noqa: PLR2004
@@ -1822,14 +1834,18 @@ class TestPrefetchWindow:
                 if page_info.page_index == 0:
                     first_done.set()
                 else:
-                    time.sleep(0.05)
+                    # Held until the stop, not for a time the test must then beat.
+                    deadline = time.monotonic() + _LOAD_JOIN_TIMEOUT_SECS
+                    while not loader._load.stop and time.monotonic() < deadline:
+                        time.sleep(0.001)
                 return result
 
         loader.set_comic(StopAfterFirstSource(), load_order, page_map, archive_desc="t.cbz")
-        assert first_done.wait(2.0)
+        assert first_done.wait(_LOAD_JOIN_TIMEOUT_SECS)
         loader.stop_now()
 
-        assert any(entry is None for entry in loader._images)
+        # The first page may have landed before the stop; none after it can have.
+        assert loader._images[1:] == [None] * 5
         mock_callbacks["on_all_images_loaded"].assert_not_called()
 
 
@@ -1850,7 +1866,7 @@ class TestLoaderLifecycle:
         assert thread is not None
 
         assert thread.daemon is True
-        thread.join(timeout=3.0)
+        _join_thread(thread)
 
     def test_a_second_load_does_not_start_a_rival_thread(self, loader: ComicBookLoader) -> None:
         """`_start_loading_thread` is a no-op while a load is already running."""
@@ -1868,7 +1884,7 @@ class TestLoaderLifecycle:
         assert loader._thread is running
         release.set()
         assert running is not None
-        running.join(timeout=3.0)
+        _join_thread(running)
 
     def test_stop_now_waits_a_bounded_time_for_the_thread(self, loader: ComicBookLoader) -> None:
         """An unbounded join would hang the UI thread on a wedged loader."""
@@ -1929,7 +1945,7 @@ class TestLoaderLifecycle:
 
         loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="second.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         assert loader._load.stop is False
         assert all(entry is not None for entry in loader._images)
@@ -1942,7 +1958,7 @@ class TestLoaderLifecycle:
         source = FakePageImageSource()
         loader.set_comic(source, load_order, page_map, archive_desc="t.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         loader.close_comic()
 
@@ -2191,14 +2207,12 @@ class TestAThreadThatOutlivesItsStop:
         old_thread, new_thread = self._open_over_a_stuck_load(loader, old, new)
 
         old.release.set()
-        old_thread.join(timeout=3.0)
-        assert not old_thread.is_alive()
+        _join_thread(old_thread)
         # The next comic is still loading: the old thread leaving must not say otherwise.
         assert recording_cursor.states[-1] == "busy"
 
         new.release.set()
-        new_thread.join(timeout=3.0)
-        assert not new_thread.is_alive()
+        _join_thread(new_thread)
 
         assert [page is new.page for page in loader._images] == [True, True, True]
         mock_callbacks["on_first_image_loaded"].assert_called_once_with()
@@ -2234,9 +2248,8 @@ class TestAThreadThatOutlivesItsStop:
 
         loader.close_comic()
         source.release.set()
-        thread.join(timeout=3.0)
+        _join_thread(thread)
 
-        assert not thread.is_alive()
         assert source.holds_a_file is False
         assert source.load_count == 0  # and it did not go on to load the closed comic
 
@@ -2250,14 +2263,13 @@ class TestAThreadThatOutlivesItsStop:
         old_thread, new_thread = self._open_over_a_stuck_load(loader, old, new)
 
         old.release.set()
-        old_thread.join(timeout=3.0)
-        assert not old_thread.is_alive()
+        _join_thread(old_thread)
 
         mock_callbacks["on_load_error"].assert_not_called()
         assert loader._current_comic_desc == "new.cbz"
 
         new.release.set()
-        new_thread.join(timeout=3.0)
+        _join_thread(new_thread)
         assert [page is new.page for page in loader._images] == [True, True, True]
         mock_callbacks["on_all_images_loaded"].assert_called_once_with()
 
@@ -2294,7 +2306,7 @@ def test_a_regrown_window_fills_at_once(loader: ComicBookLoader) -> None:
 
         loader.set_comic(BarrierSource(), load_order, page_map, archive_desc="t.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=5.0)
+        _join_load(loader)
 
     assert peak == 3  # noqa: PLR2004
     assert all(page is not None for page in loader._images)
@@ -2373,7 +2385,7 @@ class TestAStaleCallbackIsDropped:
         page_map, load_order = page_map_and_order
         loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="t.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
         assert len(fake_scheduler.pending) == 2  # noqa: PLR2004
 
         loader.close_comic()
@@ -2393,12 +2405,12 @@ class TestAStaleCallbackIsDropped:
         _ = fake_scheduler
         loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="old.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
         stale = list(fake_scheduler.pending)
         fake_scheduler.pending.clear()
 
         loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="new.cbz")
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
         for callback in stale:
             callback()
 
@@ -2421,10 +2433,10 @@ class TestTheSourceIsClosed:
         old, new = FakePageImageSource(), FakePageImageSource()
         loader.set_comic(old, load_order, page_map, archive_desc="old.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         loader.set_comic(new, load_order, page_map, archive_desc="new.cbz")
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         assert old.closed
         assert not new.closed
@@ -2439,7 +2451,7 @@ class TestTheSourceIsClosed:
         source = FakePageImageSource()
         loader.set_comic(source, load_order, page_map)
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
         loader.close_comic()
 
@@ -2591,7 +2603,7 @@ def test_a_stop_landing_with_a_finished_page_drops_that_page(
     with patch.object(loader_module, real_wait.__name__, stopping_wait):
         loader.set_comic(FakePageImageSource(), load_order, page_map, archive_desc="t.cbz")
         assert loader._thread is not None
-        loader._thread.join(timeout=3.0)
+        _join_load(loader)
 
     assert "Stop flag set while handling page index 0." in loguru_sink
     assert loader._images == [None, None, None]
