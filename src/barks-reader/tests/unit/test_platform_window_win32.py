@@ -484,6 +484,18 @@ def test_a_window_still_elsewhere_is_moved_when_the_delay_is_up_then_called_back
         assert restore.clock.live() == []  # the looking stopped with the move
 
 
+def test_a_restore_finished_a_second_time_calls_back_only_once() -> None:
+    """Nothing asks twice today; the guard is what keeps a later caller from laying out twice."""
+    with _Restore(_SAVED) as restore:
+        restore.assert_called_back_once()
+
+        scheduled = restore.backend._restore
+        assert scheduled is not None
+        scheduled._finish()
+
+        restore.assert_called_back_once()
+
+
 def test_a_window_already_put_right_is_called_back_without_waiting(
     loguru_sink: list[str],
 ) -> None:
