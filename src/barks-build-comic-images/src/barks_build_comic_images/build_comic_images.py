@@ -412,7 +412,12 @@ class ComicBookImageBuilder:
         """
         self._log_page_info(f"{srce_page.page_num}-Srce", srce_page_image, srce_page)
         self._log_page_info(f"{srce_page.page_num}-Dest", None, dest_page)
-        assert srce_scale == 1.0 or source_may_be_reduced(dest_page.page_type)
+        if srce_scale != 1.0 and not source_may_be_reduced(dest_page.page_type):
+            msg = (
+                f"A {dest_page.page_type.name} page is measured in its scan's own pixels:"
+                f" it cannot be built from a scan decoded at {srce_scale} of its size."
+            )
+            raise ValueError(msg)
 
         scale = get_build_scale(dest_page.page_type, fit_within)
         if dest_page.page_type in PAGES_WITHOUT_PANELS:

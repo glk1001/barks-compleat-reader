@@ -1,5 +1,5 @@
 # ruff: noqa: SLF001
-# cspell:ignore getbbox
+# cspell:ignore getbbox getextrema
 """The page builder's rarer pages and its refusals.
 
 A painting with its border drawn on, against one with black bars; a page that
@@ -15,7 +15,8 @@ import itertools
 import re
 import zipfile
 from pathlib import Path
-from unittest.mock import MagicMock
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_build_comic_images.build_comic_images import (
@@ -44,30 +45,49 @@ from barks_build_comic_images.build_comic_images import (
     INTRO_TITLE_WORD_GAP,
     INTRO_TOP,
     SPLASH_BORDER_COLOR,
+    SPLASH_MARGIN,
+    AlphaPageImageSource,
     ComicBookImageBuilder,
     PageDataError,
+    PageImageSource,
     _get_inset_border_color,
     _get_title_page_font,
     _PubTextLine,
+    build_double_page_image,
 )
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import (
+    BACK_NO_PANELS_PAGES,
     CARL_BARKS_FONT_FILE,
     DEST_TARGET_HEIGHT,
     DEST_TARGET_WIDTH,
     INTRO_PUB_TEXT_BOLD_FONT_FILE,
     INTRO_PUB_TEXT_FONT_FILE,
     INTRO_PUB_TEXT_ITALIC_FONT_FILE,
+    PAGE_NUM_COLOR,
+    PAGE_NUM_HEIGHT,
     PageType,
 )
 from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLES
-from barks_fantagraphics.page_classes import CleanPage
+from barks_fantagraphics.page_classes import RequiredDimensions
 from barks_fantagraphics.panel_geometry import BoundingBox
+from build_test_helpers import (
+    BLACK,
+    BOOK_PAGE_SIZE,
+    TITLE_FONT_SIZE,
+    WHITE,
+    ink_bands,
+    ink_mask,
+    ink_rows,
+    make_builder,
+    make_page,
+)
 from comic_utils.decryption import DecryptionError
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 # A square painting, centred on a page taller than it is wide: a band above and
 # below it shows the page underneath.
 PAINTING_SIZE = 400
@@ -75,31 +95,8 @@ PAINTING_TOP = (DEST_TARGET_HEIGHT - DEST_TARGET_WIDTH) // 2
 # The box an intro inset is fitted into, and the 3:2 inset fitted.
 INSET_MAX_WIDTH, INSET_MAX_HEIGHT = 600, 500
 INSET_SIZE = (30, 20)
-# On a laid-out intro page: a row is ink if any pixel is darker than this; gaps are
-# measured on visible ink, which a font's bounding box overshoots by a pixel or few.
-INK_THRESHOLD = 250
+# How far two gaps measured on ink may differ and still be the same gap.
 GAP_TOLERANCE = 4
-
-
-def _builder(
-    tmp_path: Path,
-    empty_size: tuple[int, int],
-    inset: object = None,
-    comic: MagicMock | None = None,
-    **kwargs: object,
-) -> ComicBookImageBuilder:
-    empty_page = tmp_path / "empty.png"
-    Image.new("RGB", empty_size, WHITE).save(empty_page)
-    comic = comic or MagicMock()
-    comic.intro_inset_file = inset
-    return ComicBookImageBuilder(comic, empty_page, **kwargs)  # ty: ignore[invalid-argument-type]
-
-
-def _page(page_type: PageType, bbox: BoundingBox | None = None) -> CleanPage:
-    page = CleanPage("page-012.jpg", page_type, page_num=12)
-    if bbox is not None:
-        page.panels_bbox = bbox
-    return page
 
 
 class TestPaintings:
@@ -109,10 +106,10 @@ class TestPaintings:
     def test_a_bordered_painting_gets_its_border_and_the_empty_page(
         self, tmp_path: Path, page_type: PageType
     ) -> None:
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT))
+        builder = make_builder(tmp_path)
         painting = Image.new("RGB", (PAINTING_SIZE, PAINTING_SIZE), WHITE)
 
-        page = builder.get_dest_page_image(painting, _page(page_type), _page(page_type))
+        page = builder.get_dest_page_image(painting, make_page(page_type), make_page(page_type))
 
         assert page.size == (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT)
         # The border is drawn on the painting itself, then scaled up with it.
@@ -123,11 +120,11 @@ class TestPaintings:
         assert page.getpixel((DEST_TARGET_WIDTH // 2, PAINTING_TOP // 2)) == WHITE
 
     def test_a_borderless_painting_gets_black_bars_and_no_border(self, tmp_path: Path) -> None:
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT))
+        builder = make_builder(tmp_path)
         painting = Image.new("RGB", (PAINTING_SIZE, PAINTING_SIZE), WHITE)
         page_type = PageType.PAINTING_NO_BORDER
 
-        page = builder.get_dest_page_image(painting, _page(page_type), _page(page_type))
+        page = builder.get_dest_page_image(painting, make_page(page_type), make_page(page_type))
 
         assert painting.getpixel((0, 0)) == WHITE
         assert page.getpixel((DEST_TARGET_WIDTH // 2, PAINTING_TOP // 2)) == BLACK
@@ -142,24 +139,24 @@ class TestTheBookSize:
     def _build(self, builder: ComicBookImageBuilder) -> None:
         builder.get_dest_page_image(
             Image.new("RGB", (60, 60), WHITE),
-            _page(PageType.BODY, self.SRCE_BBOX),
-            _page(PageType.BODY, self.DEST_BBOX),
+            make_page(PageType.BODY, self.SRCE_BBOX),
+            make_page(PageType.BODY, self.DEST_BBOX),
         )
 
     def test_a_page_too_narrow_is_refused_by_name(self, tmp_path: Path) -> None:
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH - 1, DEST_TARGET_HEIGHT))
+        builder = make_builder(tmp_path, (DEST_TARGET_WIDTH - 1, DEST_TARGET_HEIGHT))
         with pytest.raises(RuntimeError, match=r'Width mismatch for page "page-012\.jpg"'):
             self._build(builder)
 
     def test_a_page_too_short_is_refused_by_name(self, tmp_path: Path) -> None:
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT - 1))
+        builder = make_builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT - 1))
         with pytest.raises(RuntimeError, match=r'Height mismatch for page "page-012\.jpg"'):
             self._build(builder)
 
 
 def test_panels_and_their_mask_are_scaled_together_to_the_dest_panels() -> None:
     """With an alpha source the paste mask goes with the panels, at the same size."""
-    dest_page = _page(PageType.BODY, BoundingBox(0, 0, 99, 49))
+    dest_page = make_page(PageType.BODY, BoundingBox(0, 0, 99, 49))
     panels = Image.new("RGB", (20, 10), WHITE)
     mask = Image.new("L", (20, 10), 255)
 
@@ -175,13 +172,13 @@ def test_panels_and_their_mask_are_scaled_together_to_the_dest_panels() -> None:
 class TestTheIntroInset:
     def test_a_title_page_without_its_inset_file_is_refused(self, tmp_path: Path) -> None:
         missing = tmp_path / "missing-inset.png"
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), inset=missing)
+        builder = make_builder(tmp_path, inset=missing)
 
         with pytest.raises(FileNotFoundError, match="Could not find inset file") as raised:
             builder.get_dest_page_image(
                 Image.new("RGB", (40, 60), WHITE),
-                _page(PageType.TITLE),
-                _page(PageType.TITLE),
+                make_page(PageType.TITLE),
+                make_page(PageType.TITLE),
             )
 
         assert str(missing) in str(raised.value)
@@ -197,7 +194,7 @@ class TestTheIntroInset:
         return zipfile.Path(archive, "Insets/Lost in the Andes.png")
 
     def test_an_inset_that_decrypts_to_nothing_is_refused_by_name(self, tmp_path: Path) -> None:
-        builder = _builder(
+        builder = make_builder(
             tmp_path,
             (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT),
             inset=self._inset_in_a_zip(tmp_path),
@@ -206,6 +203,15 @@ class TestTheIntroInset:
 
         with pytest.raises(DecryptionError, match="Lost in the Andes"):
             builder._get_resized_inset(INSET_MAX_WIDTH, INSET_MAX_HEIGHT)
+
+    def test_an_inset_in_an_archive_that_is_not_encrypted_is_read_as_it_is(
+        self, tmp_path: Path
+    ) -> None:
+        builder = make_builder(tmp_path, inset=self._inset_in_a_zip(tmp_path))
+
+        inset = builder._get_resized_inset(INSET_MAX_WIDTH, INSET_MAX_HEIGHT)
+
+        assert inset.width / inset.height == pytest.approx(INSET_SIZE[0] / INSET_SIZE[1], abs=0.01)
 
     @pytest.mark.parametrize(
         ("max_width", "max_height", "expected_size"),
@@ -221,7 +227,7 @@ class TestTheIntroInset:
         max_height: int,
         expected_size: tuple[int, int],
     ) -> None:
-        builder = _builder(
+        builder = make_builder(
             tmp_path,
             (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT),
             inset=self._inset_in_a_zip(tmp_path),
@@ -245,7 +251,7 @@ class TestTheIntroInset:
     ) -> None:
         inset_file = tmp_path / "inset.png"
         Image.new("RGB", inset_size, WHITE).save(inset_file)
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), inset=inset_file)
+        builder = make_builder(tmp_path, inset=inset_file)
 
         inset = builder._get_resized_inset(300, 1000, min_height=150, max_wide_width=600)
 
@@ -294,9 +300,10 @@ class TestThePublicationText:
         comic = MagicMock()
         comic.publication_text = text
         comic.title = title
+        # A story later given a name is called by its ini title, not its title string.
         comic.get_ini_title.return_value = "The Hypno-Gun"
-        comic.get_title_str.return_value = "The Hypno-Gun"
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), comic=comic)
+        comic.get_title_str.return_value = "the title string, which this does not read"
+        builder = make_builder(tmp_path, comic=comic)
         return builder._get_publication_text_lines()
 
     def test_the_paragraphs_are_styled_by_what_they_say(self, tmp_path: Path) -> None:
@@ -348,7 +355,7 @@ class TestThePublicationText:
         lines = self._lines(tmp_path, PUBLICATION_TEXT)
         image = Image.new("RGB", (DEST_TARGET_WIDTH, 1000), WHITE)
         draw = ImageDraw.Draw(image)
-        builder = _builder(tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT))
+        builder = make_builder(tmp_path)
         top = 200
 
         builder._draw_publication_text(image, draw, lines, top)
@@ -359,39 +366,39 @@ class TestThePublicationText:
         assert abs(drawn[3] - (top + builder._get_publication_text_height(lines))) <= 1
 
 
+INTRO_INSET_COLOR = (0, 120, 255)
+INTRO_TITLE_COLOR = (38, 104, 178)
+
+
+def _story_comic(title: str) -> MagicMock:
+    comic = MagicMock()
+    comic.get_comic_title.return_value = title
+    comic.fanta_info.comic_book_info.is_barks_title = True
+    return comic
+
+
+def _intro_page(
+    tmp_path: Path,
+    inset_size: tuple[int, int],
+    title: str = "Lost in the\nAndes!",
+    comic: MagicMock | None = None,
+) -> Image.Image:
+    """Lay out a title page: the title, the byline, a plain inset and the publication text."""
+    inset_file = tmp_path / f"inset-{inset_size[0]}x{inset_size[1]}.png"
+    Image.new("RGB", inset_size, INTRO_INSET_COLOR).save(inset_file)
+    comic = comic or _story_comic(title)
+    comic.title_font_file = CARL_BARKS_FONT_FILE
+    comic.title_font_size = TITLE_FONT_SIZE
+    comic.title_color = INTRO_TITLE_COLOR
+    comic.author_font_size = 90
+    comic.byline = "by"
+    comic.publication_text = PUBLICATION_TEXT
+    builder = make_builder(tmp_path, inset=inset_file, comic=comic)
+    return builder._get_dest_title_page_image(Image.new("RGB", (40, 60), WHITE))
+
+
 class TestTheIntroPageLayout:
     """The title and the publication text are pinned; the room between them is shared."""
-
-    INSET_COLOR = (0, 120, 255)
-    TITLE_COLOR = (38, 104, 178)
-
-    def _intro_page(
-        self,
-        tmp_path: Path,
-        inset_size: tuple[int, int],
-        title: str = "Lost in the\nAndes!",
-        comic: MagicMock | None = None,
-    ) -> Image.Image:
-        inset_file = tmp_path / f"inset-{inset_size[0]}x{inset_size[1]}.png"
-        Image.new("RGB", inset_size, self.INSET_COLOR).save(inset_file)
-        comic = comic or self._story_comic(title)
-        comic.title_font_file = CARL_BARKS_FONT_FILE
-        comic.title_font_size = 155
-        comic.title_color = self.TITLE_COLOR
-        comic.author_font_size = 90
-        comic.byline = "by"
-        comic.publication_text = PUBLICATION_TEXT
-        builder = _builder(
-            tmp_path, (DEST_TARGET_WIDTH, DEST_TARGET_HEIGHT), inset=inset_file, comic=comic
-        )
-        return builder._get_dest_title_page_image(Image.new("RGB", (40, 60), WHITE))
-
-    @staticmethod
-    def _story_comic(title: str) -> MagicMock:
-        comic = MagicMock()
-        comic.get_comic_title.return_value = title
-        comic.fanta_info.comic_book_info.is_barks_title = True
-        return comic
 
     @staticmethod
     def _issue_comic(number: str, *, us_censored: bool) -> MagicMock:
@@ -400,37 +407,21 @@ class TestTheIntroPageLayout:
         comic.get_comic_title.return_value = f"{ISSUE_NAME[Issues.CS]} {number}"
         comic.fanta_info.comic_book_info.is_barks_title = False
         comic.fanta_info.comic_book_info.issue_name = Issues.CS
-        comic.get_ini_title.return_value = US_CENSORED_TITLES[0] if us_censored else "Not it"
-        comic.get_title_str.return_value = comic.get_ini_title.return_value
+        # The censored list is of title strings: the ini title is not what is looked up.
+        comic.get_title_str.return_value = US_CENSORED_TITLES[0] if us_censored else "Not it"
+        comic.get_ini_title.return_value = "the ini title, which this does not read"
         return comic
-
-    @staticmethod
-    def _ink_rows(page: Image.Image) -> list[int]:
-        ink = page.convert("L").point(lambda p: 255 if p < INK_THRESHOLD else 0)
-        return [y for y in range(page.height) if ink.crop((0, y, page.width, y + 1)).getbbox()]
-
-    @classmethod
-    def _ink_bands(cls, page: Image.Image) -> list[tuple[int, int]]:
-        """Return the first and last row of each run of ink rows, top to bottom."""
-        rows = cls._ink_rows(page)
-        bands = [(rows[0], rows[0])]
-        for y in rows[1:]:
-            if y == bands[-1][1] + 1:
-                bands[-1] = (bands[-1][0], y)
-            else:
-                bands.append((y, y))
-        return bands
 
     def _inset_rows(self, page: Image.Image) -> tuple[int, int]:
         column = page.width // 2
-        rows = [y for y in range(page.height) if page.getpixel((column, y)) == self.INSET_COLOR]
+        rows = [y for y in range(page.height) if page.getpixel((column, y)) == INTRO_INSET_COLOR]
         return rows[0], rows[-1]
 
     def test_the_title_and_publication_text_are_pinned_whatever_the_inset(
         self, tmp_path: Path
     ) -> None:
-        wide = self._ink_rows(self._intro_page(tmp_path, (300, 100)))
-        tall = self._ink_rows(self._intro_page(tmp_path, (300, 400)))
+        wide = ink_rows(_intro_page(tmp_path, (300, 100)))
+        tall = ink_rows(_intro_page(tmp_path, (300, 400)))
 
         assert wide[0] == tall[0]
         assert wide[-1] == tall[-1]
@@ -441,14 +432,14 @@ class TestTheIntroPageLayout:
     )
     def test_the_title_ink_starts_at_the_intro_top(self, tmp_path: Path, title: str) -> None:
         """Outline included, whether the first line is full-size, small, or shrunk to fit."""
-        rows = self._ink_rows(self._intro_page(tmp_path, (300, 200), title))
+        rows = ink_rows(_intro_page(tmp_path, (300, 200), title))
 
         assert abs(rows[0] - INTRO_TOP) <= 1
 
     def test_the_byline_is_the_gap_below_the_title_ink(self, tmp_path: Path) -> None:
-        page = self._intro_page(tmp_path, (300, 400))  # a tall inset: the minimum gaps
+        page = _intro_page(tmp_path, (300, 400))  # a tall inset: the minimum gaps
         inset_top, _ = self._inset_rows(page)
-        above_inset = [band for band in self._ink_bands(page) if band[1] < inset_top]
+        above_inset = [band for band in ink_bands(page) if band[1] < inset_top]
         (_, title_bottom), (byline_top, _) = above_inset[-2:]
 
         assert abs((byline_top - title_bottom) - INTRO_TITLE_BYLINE_MIN_GAP) <= GAP_TOLERANCE
@@ -457,22 +448,20 @@ class TestTheIntroPageLayout:
         title = "Too\nMany\nLines\nMake\nOne\nTitle\nPage\nFail"
 
         with pytest.raises(PageDataError, match=r"No room for the intro inset.*inset-300x200") as e:
-            self._intro_page(tmp_path, (300, 200), title)
+            _intro_page(tmp_path, (300, 200), title)
 
         assert f"needs {INTRO_INSET_LEAST_HEIGHT}" in str(e.value)
 
     def test_a_censored_issues_number_is_centred_and_its_mark_follows(self, tmp_path: Path) -> None:
-        plain = self._intro_page(
-            tmp_path, (300, 200), comic=self._issue_comic("98", us_censored=False)
-        )
-        censored = self._intro_page(
+        plain = _intro_page(tmp_path, (300, 200), comic=self._issue_comic("98", us_censored=False))
+        censored = _intro_page(
             tmp_path, (300, 200), comic=self._issue_comic("98", us_censored=True)
         )
 
         # The masthead's second ink band is the number's line.
-        number_top, number_bottom = self._ink_bands(plain)[1]
-        number_ink = plain.crop((0, number_top, plain.width, number_bottom + 1)).convert("L")
-        number_bbox = number_ink.point(lambda p: 255 if p < INK_THRESHOLD else 0).getbbox()
+        number_top, number_bottom = ink_bands(plain)[1]
+        number_ink = plain.crop((0, number_top, plain.width, number_bottom + 1))
+        number_bbox = ink_mask(number_ink).getbbox()
         assert number_bbox is not None
         number_left, _, number_right, _ = number_bbox
         assert abs((number_left + number_right) / 2 - plain.width / 2) <= GAP_TOLERANCE
@@ -484,16 +473,16 @@ class TestTheIntroPageLayout:
         assert changed[1] < number_top <= changed[3] <= number_bottom
 
     def test_a_tall_inset_is_no_taller_than_4_3_art_at_the_width_cap(self, tmp_path: Path) -> None:
-        inset_top, inset_bottom = self._inset_rows(self._intro_page(tmp_path, (300, 400)))
+        inset_top, inset_bottom = self._inset_rows(_intro_page(tmp_path, (300, 400)))
 
         assert inset_bottom - inset_top + 1 == INTRO_INSET_MAX_HEIGHT
 
     def test_spare_room_widens_the_byline_gap_by_a_smaller_share(self, tmp_path: Path) -> None:
-        page = self._intro_page(tmp_path, (300, 100))
+        page = _intro_page(tmp_path, (300, 100))
         inset_top, _ = self._inset_rows(page)
         # The border runs on into the inset, so the last two bands wholly above the
         # inset are the title's last line and the byline.
-        above_inset = [band for band in self._ink_bands(page) if band[1] < inset_top]
+        above_inset = [band for band in ink_bands(page) if band[1] < inset_top]
         (_, title_bottom), (byline_top, byline_bottom) = above_inset[-2:]
 
         byline_gap = byline_top - title_bottom
@@ -505,10 +494,10 @@ class TestTheIntroPageLayout:
     def test_the_inset_is_centred_between_the_byline_and_the_publication_text(
         self, tmp_path: Path, inset_size: tuple[int, int]
     ) -> None:
-        page = self._intro_page(tmp_path, inset_size)
+        page = _intro_page(tmp_path, inset_size)
         inset_top, inset_bottom = self._inset_rows(page)
         b = INTRO_INSET_BORDER_WIDTH
-        ink = self._ink_rows(page)
+        ink = ink_rows(page)
         byline_bottom = max(y for y in ink if y < inset_top - b)
         text_top = min(y for y in ink if y > inset_bottom + b)
 
@@ -516,7 +505,7 @@ class TestTheIntroPageLayout:
         below = text_top - inset_bottom
         assert abs(above - below) <= GAP_TOLERANCE
         assert above >= INTRO_INSET_MIN_GAP
-        border_color = _get_inset_border_color(self.TITLE_COLOR)
+        border_color = _get_inset_border_color(INTRO_TITLE_COLOR)
         assert page.getpixel((page.width // 2, inset_top - 1)) == border_color
 
 
@@ -529,12 +518,12 @@ class TestTheByline:
         comic.title_font_file = CARL_BARKS_FONT_FILE
         comic.author_font_size = 90
         comic.byline = byline
-        builder = _builder(tmp_path, (8, 8), comic=comic)
+        builder = make_builder(tmp_path, (8, 8), comic=comic)
         image = Image.new("RGB", (DEST_TARGET_WIDTH, 400), WHITE)
 
         builder._draw_byline(image, ImageDraw.Draw(image), 100)
 
-        ink = image.convert("L").point(lambda p: 255 if p < INK_THRESHOLD else 0).getbbox()
+        ink = ink_mask(image).getbbox()
         assert ink is not None
         return ink
 
@@ -565,9 +554,11 @@ class TestTheIntroTitle:
     def test_the_title_colour_sits_inside_a_black_outline_and_shadow(self, tmp_path: Path) -> None:
         color = (38, 104, 178)
         image = Image.new("RGB", (900, 300), WHITE)
-        builder = _builder(tmp_path, (8, 8))
+        builder = make_builder(tmp_path, (8, 8))
 
-        builder._draw_title_text(ImageDraw.Draw(image), 20, 20, "Lost", self._font(155), color, 40)
+        builder._draw_title_text(
+            ImageDraw.Draw(image), 20, 20, "Lost", self._font(TITLE_FONT_SIZE), color, 40
+        )
 
         colored_box = self._color_mask(image, color).getbbox()
         outlined_box = self._color_mask(image, INTRO_TITLE_OUTLINE_COLOR).getbbox()
@@ -582,8 +573,8 @@ class TestTheIntroTitle:
         assert outlined_box[3] - colored_box[3] == pytest.approx(w + shadow, abs=1)
 
     def test_the_letters_are_spaced_apart(self, tmp_path: Path) -> None:
-        font = self._font(155)
-        builder = _builder(tmp_path, (8, 8))
+        font = self._font(TITLE_FONT_SIZE)
+        builder = make_builder(tmp_path, (8, 8))
 
         width = builder._get_title_text_width("Lost\nAndes!", font)
 
@@ -607,22 +598,22 @@ class TestTheIntroTitle:
             gaps.append(right_ink - left_ink)
         return gaps
 
-    @pytest.mark.parametrize("size", [155, 85])
+    @pytest.mark.parametrize("size", [TITLE_FONT_SIZE, 85])
     def test_word_and_hyphen_gaps_are_measured_from_the_letters(
         self, tmp_path: Path, size: int
     ) -> None:
         font = self._font(size)
-        builder = _builder(tmp_path, (8, 8))
+        builder = make_builder(tmp_path, (8, 8))
 
         gaps = self._ink_gaps(builder, "Twenty-four Carat Moon", font)
 
-        scale = size / 155
+        scale = size / TITLE_FONT_SIZE
         hyphen, word = INTRO_TITLE_HYPHEN_GAP * scale, INTRO_TITLE_WORD_GAP * scale
         assert gaps == pytest.approx([hyphen, hyphen, word, word])
 
     def test_letters_within_a_word_keep_the_fonts_spacing(self, tmp_path: Path) -> None:
-        font = self._font(155)
-        builder = _builder(tmp_path, (8, 8))
+        font = self._font(TITLE_FONT_SIZE)
+        builder = make_builder(tmp_path, (8, 8))
 
         offsets, _ = builder._get_title_letter_offsets("Carat Moon", font)
 
@@ -631,13 +622,19 @@ class TestTheIntroTitle:
 
     def test_words_stand_apart_where_a_letter_overhangs_the_space(self, tmp_path: Path) -> None:
         image = Image.new("RGB", (1600, 300), WHITE)
-        builder = _builder(tmp_path, (8, 8))
+        builder = make_builder(tmp_path, (8, 8))
 
         builder._draw_title_text(
-            ImageDraw.Draw(image), 20, 20, "Carat Moon", self._font(155), (214, 48, 39), 40
+            ImageDraw.Draw(image),
+            20,
+            20,
+            "Carat Moon",
+            self._font(TITLE_FONT_SIZE),
+            (214, 48, 39),
+            40,
         )
 
-        ink = image.convert("L").point(lambda p: 255 if p < INK_THRESHOLD else 0)
+        ink = ink_mask(image)
         columns = [x for x in range(image.width) if ink.crop((x, 0, x + 1, image.height)).getbbox()]
         widest_gap = max(right - left - 1 for left, right in itertools.pairwise(columns))
         # At least the gap less the two outlines around it shows between the words (a
@@ -645,22 +642,22 @@ class TestTheIntroTitle:
         assert widest_gap >= INTRO_TITLE_WORD_GAP - (2 * INTRO_TITLE_OUTLINE_WIDTH)
 
     def test_the_outline_and_spacing_scale_with_the_font_size(self, tmp_path: Path) -> None:
-        font = self._font(155 // 2)
-        builder = _builder(tmp_path, (8, 8))
+        font = self._font(TITLE_FONT_SIZE // 2)
+        builder = make_builder(tmp_path, (8, 8))
 
         width = builder._get_title_text_width("and", font)
 
-        tracking = INTRO_TITLE_TRACKING * font.size / 155
+        tracking = INTRO_TITLE_TRACKING * font.size / TITLE_FONT_SIZE
         assert width == round(font.getlength("and") + (2 * tracking))
         assert builder._get_title_scaled(INTRO_TITLE_OUTLINE_WIDTH, font) == pytest.approx(
             INTRO_TITLE_OUTLINE_WIDTH / 2, abs=0.1
         )
 
     def test_the_title_page_title_is_in_the_comics_title_colour(self, tmp_path: Path) -> None:
-        page = TestTheIntroPageLayout()._intro_page(tmp_path, (300, 100))
+        page = _intro_page(tmp_path, (300, 100))
         title_band = page.crop((0, 0, page.width, 700))
 
-        assert self._color_mask(title_band, TestTheIntroPageLayout.TITLE_COLOR).getbbox()
+        assert self._color_mask(title_band, INTRO_TITLE_COLOR).getbbox()
 
 
 class TestTheTitleFont:
@@ -671,9 +668,9 @@ class TestTheTitleFont:
         comic = MagicMock()
         comic.get_comic_title.return_value = title
         comic.title_font_file = CARL_BARKS_FONT_FILE
-        comic.title_font_size = 155
+        comic.title_font_size = TITLE_FONT_SIZE
         comic.fanta_info.comic_book_info.is_barks_title = True
-        return _builder(tmp_path, (8, 8), comic=comic)
+        return make_builder(tmp_path, (8, 8), comic=comic)
 
     def test_the_title_uses_the_basic_layout(self, tmp_path: Path) -> None:
         _, fonts, _ = self._title_builder(tmp_path, "Lost\nin the\nAndes!")._get_title_and_fonts()
@@ -681,9 +678,9 @@ class TestTheTitleFont:
         assert fonts[0].layout_engine == ImageFont.Layout.BASIC
 
     def test_a_face_is_loaded_once(self) -> None:
-        font = _get_title_page_font(CARL_BARKS_FONT_FILE, 155)
+        font = _get_title_page_font(CARL_BARKS_FONT_FILE, TITLE_FONT_SIZE)
 
-        assert _get_title_page_font(Path(CARL_BARKS_FONT_FILE), 155) is font
+        assert _get_title_page_font(Path(CARL_BARKS_FONT_FILE), TITLE_FONT_SIZE) is font
         assert _get_title_page_font(CARL_BARKS_FONT_FILE, 154) is not font
 
     @pytest.mark.parametrize(
@@ -713,7 +710,7 @@ class TestTheTitleFont:
     def test_a_title_that_fits_keeps_its_size(self, tmp_path: Path) -> None:
         _, fonts, _ = self._title_builder(tmp_path, "Lost\nin the\nAndes!")._get_title_and_fonts()
 
-        assert fonts[0].size == 155  # noqa: PLR2004
+        assert fonts[0].size == TITLE_FONT_SIZE
 
     def test_a_title_too_wide_is_lettered_smaller_to_fit(self, tmp_path: Path) -> None:
         builder = self._title_builder(tmp_path, "The Paul Bunyan Machine Goes West")
@@ -722,7 +719,7 @@ class TestTheTitleFont:
 
         max_width = DEST_TARGET_WIDTH - (2 * INTRO_TITLE_MIN_MARGIN)
         title = "The Paul Bunyan Machine Goes West"
-        assert fonts[0].size < 155  # noqa: PLR2004
+        assert fonts[0].size < TITLE_FONT_SIZE
         assert builder._get_title_ink_width(title, fonts[0]) <= max_width
         bigger = fonts[0].font_variant(size=fonts[0].size + 1)
         assert builder._get_title_ink_width(title, bigger) > max_width
@@ -731,7 +728,7 @@ class TestTheTitleFont:
 class TestSmallWordTitleLines:
     """A title line of small words, like "of the", is lettered smaller, evenly spaced."""
 
-    SIZE = 155
+    SIZE = TITLE_FONT_SIZE
     SMALL_SIZE = round(INTRO_TITLE_SMALL_WORD_SIZE_FRAC * SIZE)
 
     @staticmethod
@@ -750,7 +747,7 @@ class TestSmallWordTitleLines:
     def test_only_a_line_of_small_words_is_smaller(
         self, tmp_path: Path, title: str, sizes: list[int]
     ) -> None:
-        builder = _builder(tmp_path, (8, 8))
+        builder = make_builder(tmp_path, (8, 8))
 
         fonts = builder._get_title_line_fonts(title.split("\n"), self._font(self.SIZE))
 
@@ -758,7 +755,7 @@ class TestSmallWordTitleLines:
 
     def test_full_size_lines_keep_their_spacing(self, tmp_path: Path) -> None:
         font = self._font(self.SIZE)
-        builder = _builder(tmp_path, (8, 8))
+        builder = make_builder(tmp_path, (8, 8))
         lines = ["Lost in the", "Andes!"]
 
         tops = builder._get_title_line_tops(lines, [font, font], font, INTRO_TITLE_SPACING)
@@ -767,7 +764,7 @@ class TestSmallWordTitleLines:
 
     def test_a_small_line_has_even_gaps_above_and_below(self, tmp_path: Path) -> None:
         image = Image.new("RGB", (2120, 800), WHITE)
-        builder = _builder(tmp_path, (8, 8))
+        builder = make_builder(tmp_path, (8, 8))
 
         builder._draw_title_text(
             ImageDraw.Draw(image),
@@ -779,18 +776,165 @@ class TestSmallWordTitleLines:
             INTRO_TITLE_SPACING,
         )
 
-        (_, first_bottom), (small_top, small_bottom), (last_top, _) = (
-            TestTheIntroPageLayout._ink_bands(image)
-        )
+        (_, first_bottom), (small_top, small_bottom), (last_top, _) = ink_bands(image)
         gap_above = small_top - first_bottom
         gap_below = last_top - small_bottom
         assert abs(gap_above - gap_below) <= GAP_TOLERANCE
 
     def test_a_small_line_makes_the_title_shorter(self, tmp_path: Path) -> None:
         font = self._font(self.SIZE)
-        builder = _builder(tmp_path, (8, 8))
+        builder = make_builder(tmp_path, (8, 8))
 
         small = builder._get_intro_text_height("Hound\nof the\nMoaning Hills", font)
         full = builder._get_intro_text_height("Hound\nof thy\nMoaning Hills", font)
 
         assert small < full
+
+
+RED = (200, 30, 30)
+GREEN = (30, 160, 60)
+PAGE_NUM_Y_BOTTOM = 120
+
+
+class TestTheBuildersPageSource:
+    """Panels are pasted through whatever the builder's page source makes of the scan."""
+
+    SRCE_BBOX = BoundingBox(0, 0, 99, 149)
+    DEST_BBOX = BoundingBox(100, 200, 2019, 2999)
+
+    def _build(self, builder: ComicBookImageBuilder, scan: Image.Image) -> Image.Image:
+        builder.set_required_dim(RequiredDimensions(page_num_y_bottom=PAGE_NUM_Y_BOTTOM))
+        return builder.get_dest_page_image(
+            scan, make_page(PageType.BODY, self.SRCE_BBOX), make_page(PageType.BODY, self.DEST_BBOX)
+        )
+
+    def test_the_source_it_was_given_is_asked_for_the_panels(self, tmp_path: Path) -> None:
+        source = MagicMock(spec=PageImageSource)
+        source.to_renderable.return_value = (Image.new("RGB", (100, 150), GREEN), None)
+        builder = make_builder(tmp_path, page_image_source=source)
+
+        page = self._build(builder, Image.new("RGB", (100, 150), RED))
+
+        source.to_renderable.assert_called_once()
+        assert page.getpixel((1060, 1600)) == GREEN  # what the source made, not the scan
+
+    def test_a_scan_with_alpha_lets_the_empty_page_through_where_it_is_clear(
+        self, tmp_path: Path
+    ) -> None:
+        """Ink where the scan is opaque, the page's own paper where it is not."""
+        paper = (250, 240, 200)
+        builder = make_builder(tmp_path, page_image_source=AlphaPageImageSource())
+        builder._empty_page_image = Image.new("RGB", BOOK_PAGE_SIZE, paper)
+        scan = Image.new("RGBA", (100, 150), (0, 0, 0, 0))
+        scan.paste((0, 0, 0, 255), (0, 0, 100, 75))  # the top half opaque: ink
+
+        page = self._build(builder, scan)
+
+        assert page.getpixel((1060, 800)) == BLACK
+        assert page.getpixel((1060, 2400)) == paper
+
+
+class TestASplashPage:
+    """A splash is shrunk inside a margin of the empty page, with a border drawn on it."""
+
+    def test_the_splash_sits_inside_its_margin_with_its_border(self, tmp_path: Path) -> None:
+        builder = make_builder(tmp_path)
+        splash = Image.new("RGB", BOOK_PAGE_SIZE, RED)
+
+        page = builder.get_dest_page_image(
+            splash, make_page(PageType.SPLASH), make_page(PageType.SPLASH)
+        )
+
+        assert page.size == BOOK_PAGE_SIZE
+        middle, right_edge = DEST_TARGET_HEIGHT // 2, DEST_TARGET_WIDTH - SPLASH_MARGIN
+        assert page.getpixel((SPLASH_MARGIN // 2, middle)) == WHITE  # the margin: empty page
+        assert page.getpixel((SPLASH_MARGIN + 1, middle)) == SPLASH_BORDER_COLOR
+        assert page.getpixel((right_edge - 2, middle)) == SPLASH_BORDER_COLOR
+        assert page.getpixel((right_edge + SPLASH_MARGIN // 2, middle)) == WHITE
+        assert page.getpixel((DEST_TARGET_WIDTH // 2, SPLASH_MARGIN // 2)) == WHITE
+        assert page.getpixel((DEST_TARGET_WIDTH // 2, middle)) == RED
+
+
+class TestAPageWithNoPanels:
+    """A front or back matter page with no panels is centred, and numbered like the rest."""
+
+    @pytest.mark.parametrize("page_type", [PageType.FRONT_NO_PANELS, *BACK_NO_PANELS_PAGES])
+    def test_it_fills_the_page_and_carries_its_number(
+        self, tmp_path: Path, page_type: PageType
+    ) -> None:
+        builder = make_builder(tmp_path)
+        builder.set_required_dim(RequiredDimensions(page_num_y_bottom=PAGE_NUM_Y_BOTTOM))
+        art = Image.new("RGB", BOOK_PAGE_SIZE, WHITE)
+        dest_page = make_page(page_type)
+        dest_page.page_num = 3  # front matter is numbered in roman, which stops short of 12
+
+        page = builder.get_dest_page_image(art, make_page(page_type), dest_page)
+
+        assert page.size == BOOK_PAGE_SIZE
+        number_bottom = DEST_TARGET_HEIGHT - PAGE_NUM_Y_BOTTOM
+        number = ink_mask(page).getbbox()
+        assert number is not None  # the only ink on a white page
+        left, top, right, bottom = number
+        assert number_bottom - PAGE_NUM_HEIGHT <= top < bottom <= number_bottom + 1
+        assert (left + right) / 2 == pytest.approx(DEST_TARGET_WIDTH / 2, abs=3)
+        assert page.crop(number).convert("L").getextrema()[0] == PAGE_NUM_COLOR[0]
+
+
+class TestADoublePage:
+    """Two pages side by side on black, each centred top to bottom."""
+
+    def test_left_is_on_the_left_and_right_on_the_right(self) -> None:
+        left, right = Image.new("RGB", (30, 40), RED), Image.new("RGB", (50, 40), GREEN)
+
+        spread = build_double_page_image(left, right)
+
+        assert spread.size == (80, 40)
+        assert spread.mode == "RGB"
+        assert spread.getpixel((29, 20)) == RED
+        assert spread.getpixel((30, 20)) == GREEN
+
+    def test_a_shorter_page_is_centred_on_black(self) -> None:
+        left, right = Image.new("RGB", (30, 20), RED), Image.new("RGB", (30, 40), GREEN)
+
+        spread = build_double_page_image(left, right)
+
+        assert spread.size == (60, 40)
+        assert [spread.getpixel((15, y)) for y in (9, 10, 29, 30)] == [BLACK, RED, RED, BLACK]
+        assert [spread.getpixel((45, y)) for y in (0, 39)] == [GREEN, GREEN]
+
+
+class TestTheFittedTitleSize:
+    """The fit starts from an estimate, and single points settle it either way."""
+
+    MAX_WIDTH = DEST_TARGET_WIDTH - 2 * INTRO_TITLE_MIN_MARGIN
+
+    def _fitted(self, tmp_path: Path, width_at: Callable[[int], float]) -> int:
+        builder = make_builder(tmp_path, (8, 8))
+        with patch.object(
+            builder, "_get_title_ink_width", side_effect=lambda _title, font: width_at(font.size)
+        ):
+            font = builder._get_fitted_title_font("A Title", CARL_BARKS_FONT_FILE, TITLE_FONT_SIZE)
+        return int(font.size)
+
+    def _largest_that_fits(self, width_at: Callable[[int], float]) -> int:
+        return max(s for s in range(1, TITLE_FONT_SIZE + 1) if width_at(s) <= self.MAX_WIDTH)
+
+    def test_an_estimate_too_large_is_stepped_down_to_the_largest_that_fits(
+        self, tmp_path: Path
+    ) -> None:
+        def width_at(size: int) -> float:  # grows slower than the size: the estimate overshoots
+            return self.MAX_WIDTH * 2 * (size / TITLE_FONT_SIZE) ** 0.5
+
+        fitted = self._fitted(tmp_path, width_at)
+
+        assert fitted == self._largest_that_fits(width_at) < TITLE_FONT_SIZE
+
+    def test_an_estimate_too_small_is_stepped_up_to_the_largest_that_fits(
+        self, tmp_path: Path
+    ) -> None:
+        def width_at(size: int) -> float:  # grows faster than the size: the estimate undershoots
+            return self.MAX_WIDTH * 2 * (size / TITLE_FONT_SIZE) ** 2
+
+        fitted = self._fitted(tmp_path, width_at)
+
+        assert fitted == self._largest_that_fits(width_at) < TITLE_FONT_SIZE

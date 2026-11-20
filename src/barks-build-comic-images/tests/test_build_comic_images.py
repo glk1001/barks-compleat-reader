@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-import importlib.util
 from dataclasses import FrozenInstanceError
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,12 +21,17 @@ from barks_build_comic_images.build_comic_images import (
 )
 from barks_build_comic_images.consts import FOOTNOTE_CHAR
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
+from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_FILE
 from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLES
 from barks_fantagraphics.pages import (
     FinalStoryFileResolver,
     SvgPngStoryFileResolver,
 )
+from build_test_helpers import make_builder
 from PIL import Image, ImageChops, ImageDraw, ImageFont
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestPageImageSource:
@@ -67,40 +71,42 @@ class TestAlphaPageImageSource:
 
 
 class TestAdaptivePageImageSource:
-    def test_rgba_dispatches_to_rgba_source(self) -> None:
-        rgba_src = AlphaPageImageSource()
-        rgb_src = RgbPageImageSource()
-        adapter = AdaptivePageImageSource(rgba_source=rgba_src, rgb_source=rgb_src)
+    """An image with an alpha channel goes to one source, every other to the other."""
 
-        rgba_image = Image.new("RGBA", (1, 1), color=(0, 0, 0, 255))
-        rgb, mask = adapter.to_renderable(rgba_image)
+    @staticmethod
+    def _sources() -> tuple[AdaptivePageImageSource, MagicMock, MagicMock]:
+        rgba_source = MagicMock(spec=PageImageSource)
+        rgb_source = MagicMock(spec=PageImageSource)
+        adapter = AdaptivePageImageSource(rgba_source=rgba_source, rgb_source=rgb_source)
+        return adapter, rgba_source, rgb_source
 
-        # AlphaPageImageSource always emits an RGB image plus a mask.
-        assert rgb.mode == "RGB"
-        assert mask is not None
+    def test_an_rgba_image_goes_to_the_rgba_source_it_was_given(self) -> None:
+        adapter, rgba_source, rgb_source = self._sources()
+        image = Image.new("RGBA", (1, 1), color=(0, 0, 0, 255))
 
-    def test_non_rgba_dispatches_to_rgb_source(self) -> None:
+        assert adapter.to_renderable(image) is rgba_source.to_renderable.return_value
+
+        rgba_source.to_renderable.assert_called_once_with(image)
+        rgb_source.to_renderable.assert_not_called()
+
+    @pytest.mark.parametrize("mode", ["RGB", "L", "P"])
+    def test_any_other_image_goes_to_the_rgb_source_it_was_given(self, mode: str) -> None:
+        adapter, rgba_source, rgb_source = self._sources()
+        image = Image.new(mode, (1, 1))
+
+        assert adapter.to_renderable(image) is rgb_source.to_renderable.return_value
+
+        rgb_source.to_renderable.assert_called_once_with(image)
+        rgba_source.to_renderable.assert_not_called()
+
+    def test_given_none_it_uses_the_alpha_and_the_plain_sources(self) -> None:
         adapter = AdaptivePageImageSource()
-        rgb_image = Image.new("RGB", (1, 1), color=(1, 2, 3))
 
-        rgb, mask = adapter.to_renderable(rgb_image)
+        _, mask = adapter.to_renderable(Image.new("RGBA", (1, 1), color=(0, 0, 0, 0)))
+        assert mask is not None  # the alpha source's
 
-        # RgbPageImageSource returns the input image as-is, no mask.
-        assert rgb is rgb_image
-        assert mask is None
-
-    def test_defaults_match_the_module_constants(self) -> None:
-        adapter = AdaptivePageImageSource()
-
-        # RGBA → alpha pipeline (mask is not None).
-        rgba_image = Image.new("RGBA", (1, 1), color=(0, 0, 0, 0))
-        _, mask = adapter.to_renderable(rgba_image)
-        assert mask is not None
-
-        # Non-RGBA (e.g. L) → rgb pipeline (mask is None).
-        l_image = Image.new("L", (1, 1), color=128)
-        _, mask = adapter.to_renderable(l_image)
-        assert mask is None
+        plain = Image.new("L", (1, 1), color=128)
+        assert adapter.to_renderable(plain) == (plain, None)  # the plain source's
 
 
 class TestBuildSourceProfile:
@@ -134,34 +140,30 @@ class TestBuildSourceProfile:
 # Stories" issue, its masthead's pieces, with a footnote mark on a US-censored one.
 # ---------------------------------------------------------------------------
 
-# A TrueType font any workspace has: Kivy's, found without importing Kivy.
-_KIVY_SPEC = importlib.util.find_spec("kivy")
-assert _KIVY_SPEC is not None
-assert _KIVY_SPEC.origin is not None
-TITLE_FONT = Path(_KIVY_SPEC.origin).parent / "data" / "fonts" / "Roboto-Regular.ttf"
+# The comics' own title font, which the package's data has: no other package's.
+TITLE_FONT = CARL_BARKS_FONT_FILE
 TITLE_FONT_SIZE = 40
 CS_TITLE = f"{ISSUE_NAME[Issues.CS]}91"
 
 
 def _builder(
-    tmp_path: Path, *, title: str, is_barks: bool, ini_title: str
+    tmp_path: Path, *, title: str, is_barks: bool, title_str: str
 ) -> ComicBookImageBuilder:
-    empty_page = tmp_path / "empty.png"
-    Image.new("RGB", (8, 8), "white").save(empty_page)
     comic = MagicMock()
     comic.get_comic_title.return_value = title
     comic.title_font_file = TITLE_FONT
     comic.title_font_size = TITLE_FONT_SIZE
     comic.fanta_info.comic_book_info.is_barks_title = is_barks
     comic.fanta_info.comic_book_info.issue_name = Issues.CS
-    comic.get_ini_title.return_value = ini_title
-    comic.get_title_str.return_value = ini_title
-    return ComicBookImageBuilder(comic, empty_page)
+    # The censored list is of title strings: the ini title is not what is looked up.
+    comic.get_title_str.return_value = title_str
+    comic.get_ini_title.return_value = "the ini title, which this does not read"
+    return make_builder(tmp_path, (8, 8), comic=comic)
 
 
 class TestTitleAndFonts:
     def test_a_barks_title_is_one_line_in_one_font(self, tmp_path: Path) -> None:
-        builder = _builder(tmp_path, title="Lost in the Andes!", is_barks=True, ini_title="x")
+        builder = _builder(tmp_path, title="Lost in the Andes!", is_barks=True, title_str="x")
         texts, fonts, ink = builder._get_title_and_fonts()
         assert texts == ["Lost in the Andes!"]
         assert [f.size for f in fonts] == [TITLE_FONT_SIZE]
@@ -170,7 +172,7 @@ class TestTitleAndFonts:
         assert ink.height > 0
 
     def test_a_comics_and_stories_issue_is_lettered_as_its_masthead(self, tmp_path: Path) -> None:
-        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title="Not censored")
+        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, title_str="Not censored")
         texts, fonts, _ = builder._get_title_and_fonts()
         assert texts == ["COMICS", "AND", "STORIES", "91"]
         comics_font, and_font, stories_font, number_font = fonts
@@ -178,7 +180,7 @@ class TestTitleAndFonts:
         assert and_font.size == stories_font.size < TITLE_FONT_SIZE
 
     def test_and_over_stories_is_as_tall_as_the_capitals_of_comics(self, tmp_path: Path) -> None:
-        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title="Not censored")
+        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, title_str="Not censored")
         _, (comics_font, small_font, _, _), _ = builder._get_title_and_fonts()
 
         def cap_height(font: ImageFont.FreeTypeFont, text: str) -> float:
@@ -191,7 +193,7 @@ class TestTitleAndFonts:
 
     def test_a_us_censored_one_gets_the_footnote_mark(self, tmp_path: Path) -> None:
         censored = US_CENSORED_TITLES[0]
-        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title=censored)
+        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, title_str=censored)
         texts, _, _ = builder._get_title_and_fonts()
         assert texts[-1] == f"91{FOOTNOTE_CHAR}"
 
@@ -199,7 +201,7 @@ class TestTitleAndFonts:
 class TestDrawingTheTitle:
     def test_two_lines_and_a_superscript_mark_are_drawn(self, tmp_path: Path) -> None:
         censored = US_CENSORED_TITLES[0]
-        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, ini_title=censored)
+        builder = _builder(tmp_path, title=CS_TITLE, is_barks=False, title_str=censored)
         image = Image.new("RGB", (600, 400), "white")
         draw = ImageDraw.Draw(image)
         texts, fonts, _ = builder._get_title_and_fonts()

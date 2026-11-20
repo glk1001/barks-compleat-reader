@@ -17,8 +17,9 @@ ignore = [
 
 [lint.per-file-ignores]
 "scripts/*" = ["INP001"]
-# Its conftest.py would share the module name "tests.conftest" with barks-fantagraphics'
-# if the folder were a package, and pytest refuses two plugins of one name.
+# Their conftest.py would share the module name "tests.conftest" with barks-fantagraphics'
+# if the folders were packages, and pytest refuses two plugins of one name.
 "src/okf-reader/tests/*" = ["INP001"]
+"src/barks-build-comic-images/tests/*" = ["INP001"]
 # Root pytest conftest: loaded by pytest, not imported as a package module.
 "conftest.py" = ["INP001"]
