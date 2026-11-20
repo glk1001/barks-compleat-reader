@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+from contextlib import ExitStack
 from ctypes import wintypes
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
@@ -62,18 +63,16 @@ class FakeUser32:
 @pytest.fixture
 def use_user32() -> Iterator[Callable[[FakeUser32], FakeUser32]]:
     """Stand a `FakeUser32` in for the typed ``user32``, and a pass-through callback type."""
-    with patch.object(ctypes, "WINFUNCTYPE", create=True, new=lambda *_types: lambda f: f):
+    with ExitStack() as patches:
+        patches.enter_context(
+            patch.object(ctypes, "WINFUNCTYPE", create=True, new=lambda *_types: lambda f: f)
+        )
 
         def install(fake: FakeUser32) -> FakeUser32:
-            patcher = patch.object(win32_window, "_typed_user32", return_value=fake)
-            patcher.start()
-            patchers.append(patcher)
+            patches.enter_context(patch.object(win32_window, "_typed_user32", return_value=fake))
             return fake
 
-        patchers: list[Any] = []
         yield install
-        for patcher in patchers:
-            patcher.stop()
 
 
 class TestFindHwndByEnumWindows:
