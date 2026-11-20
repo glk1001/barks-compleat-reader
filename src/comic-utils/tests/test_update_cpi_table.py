@@ -77,6 +77,14 @@ class TestUpdate:
         assert (result.years, result.previous_latest_year, result.latest_year) == (2, 2024, 2025)
         assert not path.with_suffix(".py.new").exists()
 
+    def test_a_download_ending_in_the_table_s_own_year_replaces_it(self, tmp_path: Path) -> None:
+        """The usual monthly run: the year so far gains a month, so its average moves."""
+        path = tmp_path / "cpi_table.py"
+        path.write_text(updater.render_table({2024: 313.7, 2025: 317.6}), encoding="utf-8")
+        result = _update(path, _bls((SERIES, 2024, "M13", "313.7"), (SERIES, 2025, "M02", "319.0")))
+        assert updater.read_table(path) == {2024: 313.7, 2025: 319.0}
+        assert (result.previous_latest_year, result.latest_year) == (2025, 2025)
+
     def test_a_download_that_ends_earlier_is_refused(self, tmp_path: Path) -> None:
         path = tmp_path / "cpi_table.py"
         before = updater.render_table({2024: 313.7, 2025: 321.9})
@@ -114,9 +122,36 @@ class TestMain:
             assert updater.main(["--table", str(path)]) == 0
         assert "1 years, to 2025 (was None)" in capsys.readouterr().out
 
-    def test_a_failure_exits_1_saying_why(
+    def test_a_failed_download_exits_1_saying_why(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         with patch.object(updater, "download_all_items", side_effect=OSError("no network")):
             assert updater.main(["--table", str(tmp_path / "t.py")]) == 1
-        assert "no network" in capsys.readouterr().err
+        assert capsys.readouterr().err == "update_cpi_table: no network\n"
+
+    @pytest.mark.parametrize(
+        ("download", "says"),
+        [
+            pytest.param(
+                _bls((OTHER, 2025, "M01", "1.0")),
+                f"update_cpi_table: the BLS download has no data for series {SERIES}\n",
+                id="no data for the series",
+            ),
+            pytest.param(
+                _bls((SERIES, 2024, "M13", "313.7")),
+                "update_cpi_table: refusing the update: the download ends 2024,"
+                " before the table's 2025\n",
+                id="ends before the table",
+            ),
+        ],
+    )
+    def test_a_refused_update_exits_1_saying_why(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], download: str, says: str
+    ) -> None:
+        path = tmp_path / "cpi_table.py"
+        before = updater.render_table({2024: 313.7, 2025: 321.9})
+        path.write_text(before, encoding="utf-8")
+        with patch.object(updater, "download_all_items", return_value=download):
+            assert updater.main(["--table", str(path)]) == 1
+        assert capsys.readouterr().err == says
+        assert path.read_text(encoding="utf-8") == before

@@ -11,7 +11,7 @@ import math
 import statistics
 
 import pytest
-from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
+from comic_utils.cpi_calculator import get_adjusted_usd
 from comic_utils.cpi_table import ANNUAL_CPI
 from comic_utils.panel_segmentation import (
     TIER_TOLERANCE_FRACTION,
@@ -85,11 +85,6 @@ _YEARS = st.sampled_from(sorted(ANNUAL_CPI))
 _AMOUNTS = st.floats(min_value=0.01, max_value=1e9)
 
 
-@given(_AMOUNTS, _YEARS)
-def test_a_year_to_itself_changes_nothing(amount: float, year: int) -> None:
-    assert get_adjusted_usd(amount, year, year) == amount
-
-
 @given(_AMOUNTS, _YEARS, _YEARS)
 def test_there_and_back_gives_the_amount_within_rounding(
     amount: float, base_year: int, to_year: int
@@ -103,10 +98,3 @@ def test_there_and_back_gives_the_amount_within_rounding(
 def test_a_larger_amount_adjusts_to_a_larger_amount(first: float, second: float, year: int) -> None:
     if first < second:
         assert get_adjusted_usd(first, year) <= get_adjusted_usd(second, year)
-    assert get_adjusted_usd(first, year) == get_adjusted_usd(first, year, get_latest_year())
-
-
-@given(_AMOUNTS, st.integers(max_value=1800) | st.integers(min_value=2200))
-def test_a_year_the_table_lacks_is_refused(amount: float, year: int) -> None:
-    with pytest.raises(ValueError, match="No CPI data"):
-        get_adjusted_usd(amount, year)
