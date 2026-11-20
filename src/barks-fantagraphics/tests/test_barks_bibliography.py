@@ -174,18 +174,6 @@ def test_matched_entries_sit_in_the_curated_issue() -> None:
                 assert cbi.issue_year == _expected_curated_year(issue), entry.title.name
 
 
-def test_cover_entries_match_registry_one_to_one() -> None:
-    """Cover entry <-> BarksCover record is one-to-one."""
-    cover_entries = [e for e in _all_entries() if e.disposition == Disposition.COVER]
-    keys = [e.cover_key for e in cover_entries]
-    assert len(keys) == len(set(keys)), "duplicate cover keys among bibliography entries"
-    for key in keys:
-        assert key in BARKS_COVER_BY_KEY, f"no BarksCover for bibliography cover {key}"
-    assert len(cover_entries) == len(BARKS_COVERS), (
-        "BarksCover records with no bibliography cover entry"
-    )
-
-
 def test_cover_registry_and_bibliography_covers_are_bijective() -> None:
     """The BARKS_COVERS registry and the bibliography's cover entries are one-to-one.
 

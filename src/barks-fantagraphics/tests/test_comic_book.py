@@ -562,37 +562,36 @@ class TestGetFinalSrceStoryFile:
 
 
 class TestFixesSpecialCases:
-    def test_vol16_page_209_is_special(self) -> None:
-        assert ComicBook.is_fixes_special_case(16, "209")
+    """Which volume and page may break each rule: (volume, page, edited, added)."""
 
-    def test_vol4_page_227_is_special(self) -> None:
-        assert ComicBook.is_fixes_special_case(4, "227")
-
-    def test_normal_case_not_special(self) -> None:
-        assert not ComicBook.is_fixes_special_case(1, "001")
-
-    def test_added_vol7_page_240(self) -> None:
-        assert ComicBook.is_fixes_special_case_added(7, "240")
-
-    def test_added_vol7_page_241(self) -> None:
-        assert ComicBook.is_fixes_special_case_added(7, "241")
-
-    def test_added_vol16_page_235(self) -> None:
-        assert ComicBook.is_fixes_special_case_added(16, "235")
-
-    def test_added_vol1_page_268(self) -> None:
-        assert ComicBook.is_fixes_special_case_added(1, "268")
-
-    def test_added_vol2_range_252_to_261(self) -> None:
-        for page in range(252, 262):
-            assert ComicBook.is_fixes_special_case_added(2, str(page))
-
-    def test_added_vol7_range_260_to_266(self) -> None:
-        for page in range(260, 267):
-            assert ComicBook.is_fixes_special_case_added(7, str(page))
-
-    def test_added_normal_case(self) -> None:
-        assert not ComicBook.is_fixes_special_case_added(1, "001")
+    @pytest.mark.parametrize(
+        ("volume", "page_num", "edited", "added"),
+        [
+            pytest.param(16, "209", True, False, id="the Happy New Year page"),
+            pytest.param(4, "227", True, True, id="the restored Bill Collectors page"),
+            pytest.param(7, "240", False, True, id="copied from volume 8"),
+            pytest.param(7, "241", False, True, id="copied from volume 8, the next"),
+            pytest.param(16, "235", False, True, id="copied from volume 14"),
+            pytest.param(28, "207", False, True, id="a cover restored from another image"),
+            pytest.param(1, "268", False, True, id="volume 1's added title page"),
+            *[
+                pytest.param(2, str(page), False, True, id=f"volume 2's added page {page}")
+                for page in range(252, 262)
+            ],
+            *[
+                pytest.param(7, str(page), False, True, id=f"volume 7's added page {page}")
+                for page in range(260, 267)
+            ],
+            pytest.param(1, "001", False, False, id="an ordinary page"),
+            pytest.param(16, "227", False, False, id="a special page number in another volume"),
+            pytest.param(2, "262", False, False, id="one past volume 2's added pages"),
+        ],
+    )
+    def test_a_page_is_special_only_where_listed(
+        self, volume: int, page_num: str, edited: bool, added: bool
+    ) -> None:
+        assert ComicBook.is_fixes_special_case(volume, page_num) is edited
+        assert ComicBook.is_fixes_special_case_added(volume, page_num) is added
 
 
 class TestIsEditedFixesSpecialCase:

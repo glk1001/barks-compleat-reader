@@ -100,6 +100,7 @@ class TestTheCreditReader:
                 "Script and layout by Carl Barks\nPencils and inks by Daan Jippes",
                 StoryCredits(barks_script=True, other_art=True),
             ),
+            ("Pages 1-3, script by Carl Barks", StoryCredits(barks_script=True)),
         ],
     )
     def test_a_credit_is_read(self, credit: str, expected: StoryCredits) -> None:
@@ -112,6 +113,7 @@ class TestTheCreditReader:
             "and Unn Printz-Påhlson, art by Daan Jippes",
             "Layout and restoration by Kim Weston",
             "Original art and dialogue on pages 2, 4, 5, 6, 7, and 8 restored by GLK, Dec 2025",
+            "Original dialogue on page 4 restored by GLK, Aug 2025",
         ],
     )
     def test_a_note_is_not_a_credit(self, note: str) -> None:

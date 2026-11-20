@@ -36,28 +36,35 @@ ALL, ANY = Combine.ALL, Combine.ANY
         ("indo-china", TagSelection(("indo-china",))),  # a hyphen inside a name is the name's
         ("one-off characters", TagSelection(("one-off characters",))),
         ("scrooge + scrooge", TagSelection(("scrooge",))),
+        # years and volumes beside the tags
+        ("scrooge year:1950-55", TagSelection(("scrooge",), years=(1950, 1955))),
+        ("Year:1951 gyro", TagSelection(("gyro",), years=(1951, 1951))),
+        ("scrooge vol:7", TagSelection(("scrooge",), volumes=(7, 7))),
+        (
+            "gyro year:1948-9 vol:5-8 -andes",
+            TagSelection(("gyro",), ("andes",), years=(1948, 1949), volumes=(5, 8)),
+        ),
+        ("scrooge | gyro year:1950", TagSelection(("scrooge", "gyro"), (), ANY, (1950, 1950))),
+        # beside a separator, a range is a part of its own
+        ("scrooge + year:1950", TagSelection(("scrooge",), years=(1950, 1950))),
+        ("scrooge,year:1950", TagSelection(("scrooge",), years=(1950, 1950))),
+        ("year:1950 | gyro", TagSelection(("gyro",), (), ANY, (1950, 1950))),
+        ("scrooge + vol:7 + gyro", TagSelection(("scrooge", "gyro"), volumes=(7, 7))),
+        ("year:1950,vol:7 gyro", TagSelection(("gyro",), years=(1950, 1950), volumes=(7, 7))),
+        # two ranges in one part beside a separator are still no part of their own
+        (
+            "scrooge + year:1950 vol:3",
+            TagSelection(("scrooge",), years=(1950, 1950), volumes=(3, 3)),
+        ),
+        (
+            "year:1950 vol:3 | scrooge",
+            TagSelection(("scrooge",), (), ANY, (1950, 1950), (3, 3)),
+        ),
     ],
 )
 def test_a_typed_selection_parses(text: str, selection: TagSelection) -> None:
     parsed = parse_tag_query(text)
     assert (parsed.selection, parsed.error) == (selection, None)
-
-
-@pytest.mark.parametrize(
-    ("text", "says"),
-    [
-        ("scrooge + gyro | donald", "not both"),
-        ("scrooge +", "missing next to"),
-        ("| gyro", "missing next to"),
-        ("scrooge + -", "missing after -"),
-        ("", "No tag is named"),
-    ],
-)
-def test_a_bad_selection_says_why(text: str, says: str) -> None:
-    parsed = parse_tag_query(text)
-    assert parsed.selection is None
-    assert parsed.error is not None
-    assert says in parsed.error
 
 
 @pytest.mark.parametrize(
@@ -84,58 +91,6 @@ def test_a_selection_describes_itself_as_typed() -> None:
     )
     assert TagSelection(("Scrooge", "Gyro"), (), ANY).describe() == "Scrooge | Gyro"
     assert TagSelection((), ("Gyro",)).describe() == "-Gyro"
-
-
-@pytest.mark.parametrize(
-    ("text", "selection"),
-    [
-        ("scrooge year:1950-55", TagSelection(("scrooge",), years=(1950, 1955))),
-        ("Year:1951 gyro", TagSelection(("gyro",), years=(1951, 1951))),
-        ("scrooge vol:7", TagSelection(("scrooge",), volumes=(7, 7))),
-        (
-            "gyro year:1948-9 vol:5-8 -andes",
-            TagSelection(("gyro",), ("andes",), years=(1948, 1949), volumes=(5, 8)),
-        ),
-        ("scrooge | gyro year:1950", TagSelection(("scrooge", "gyro"), (), ANY, (1950, 1950))),
-        # beside a separator, a range is a part of its own
-        ("scrooge + year:1950", TagSelection(("scrooge",), years=(1950, 1950))),
-        ("scrooge,year:1950", TagSelection(("scrooge",), years=(1950, 1950))),
-        ("year:1950 | gyro", TagSelection(("gyro",), (), ANY, (1950, 1950))),
-        ("scrooge + vol:7 + gyro", TagSelection(("scrooge", "gyro"), volumes=(7, 7))),
-        ("year:1950,vol:7 gyro", TagSelection(("gyro",), years=(1950, 1950), volumes=(7, 7))),
-        # two ranges in one part beside a separator are still no part of their own
-        (
-            "scrooge + year:1950 vol:3",
-            TagSelection(("scrooge",), years=(1950, 1950), volumes=(3, 3)),
-        ),
-        (
-            "year:1950 vol:3 | scrooge",
-            TagSelection(("scrooge",), (), ANY, (1950, 1950), (3, 3)),
-        ),
-    ],
-)
-def test_a_typed_selection_takes_years_and_volumes(text: str, selection: TagSelection) -> None:
-    parsed = parse_tag_query(text)
-    assert (parsed.selection, parsed.error) == (selection, None)
-
-
-@pytest.mark.parametrize(
-    ("text", "says"),
-    [
-        ("gyro year:x", "year: a year must be a number or a range"),
-        ("gyro vol:8-5", "vol: a volume range runs backwards"),
-        ("gyro year:1950 year:1951", "year: is given twice"),
-        ("year:1950", "No tag is named"),
-        ("year:1950 + vol:7", "No tag is named"),
-        ("year:1950 vol:7", "No tag is named"),
-        ("year:1950 + + gyro", "A tag name is missing next to"),
-    ],
-)
-def test_a_bad_year_or_volume_says_why(text: str, says: str) -> None:
-    parsed = parse_tag_query(text)
-    assert parsed.selection is None
-    assert parsed.error is not None
-    assert says in parsed.error
 
 
 def test_year_and_vol_are_tag_syntax_but_a_colon_alone_is_not() -> None:
@@ -168,9 +123,20 @@ def test_range_text(first_last: tuple[int, int], years: bool, text: str) -> None
     [
         ("", "No tag is named."),
         (" + ", "No tag is named."),  # separators only: no name, not a missing one
+        ("scrooge + gyro | donald", "Use + or | between tags, not both."),
         ("scrooge, gyro | daisy", "Use + or | between tags, not both."),  # a comma is a +
         ("scrooge +", "A tag name is missing next to + , or |."),
+        ("| gyro", "A tag name is missing next to + , or |."),
         ("scrooge -", "A tag name is missing after -."),
+        ("scrooge + -", "A tag name is missing after -."),
+        # a year or a volume gone wrong, or given with no tag beside it
+        ("gyro year:x", "year: a year must be a number or a range, like 1950-55."),
+        ("gyro vol:8-5", "vol: a volume range runs backwards."),
+        ("gyro year:1950 year:1951", "year: is given twice."),
+        ("year:1950", "No tag is named."),
+        ("year:1950 + vol:7", "No tag is named."),
+        ("year:1950 vol:7", "No tag is named."),
+        ("year:1950 + + gyro", "A tag name is missing next to + , or |."),
     ],
 )
 def test_text_that_names_no_tags_says_exactly_why(text: str, error: str) -> None:

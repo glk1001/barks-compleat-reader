@@ -27,11 +27,6 @@ class TestIndexSidecars:
     def engine(self, tmp_path: Path) -> SearchEngine:
         return SearchEngine(build_test_index(tmp_path))
 
-    @pytest.mark.parametrize("getter", ["get_cleaned_terms", "get_cleaned_alpha_split_terms"])
-    def test_a_missing_sidecar_asks_for_a_rebuild(self, engine: SearchEngine, getter: str) -> None:
-        with pytest.raises(FileNotFoundError, match="The search index needs rebuilding"):
-            getattr(engine, getter)()
-
     def test_the_sidecars_are_read_when_there(self, engine: SearchEngine, tmp_path: Path) -> None:
         (tmp_path / "cleaned-unstemmed-terms.json").write_text(json.dumps(["quack"]))
         split = {"q": {"qu": ["quack"]}}

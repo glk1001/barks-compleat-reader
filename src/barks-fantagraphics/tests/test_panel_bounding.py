@@ -27,7 +27,7 @@ from barks_fantagraphics.panel_bounding import (
     set_dest_panel_bounding_boxes,
     set_srce_panel_bounding_boxes,
 )
-from barks_fantagraphics.panel_geometry import BoundingBox, scale_height
+from barks_fantagraphics.panel_geometry import BoundingBox
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -71,38 +71,6 @@ def _make_panel_segments_json(overall_bounds: list[int] | None = None) -> str:
 
 
 # ---------------------------------------------------------------------------
-# BoundingBox
-# ---------------------------------------------------------------------------
-
-
-class TestBoundingBox:
-    def test_get_box(self) -> None:
-        bb = BoundingBox(10, 20, 100, 200)
-        assert bb.get_box() == (10, 20, 100, 200)
-
-    def test_get_width(self) -> None:
-        bb = BoundingBox(10, 0, 109, 0)
-        assert bb.get_width() == 100  # (109 - 10) + 1
-
-    def test_get_height(self) -> None:
-        bb = BoundingBox(0, 20, 0, 219)
-        assert bb.get_height() == 200  # (219 - 20) + 1
-
-    def test_default_values(self) -> None:
-        bb = BoundingBox()
-        assert bb.x_min == -1
-        assert bb.y_min == -1
-        assert bb.x_max == -1
-        assert bb.y_max == -1
-
-    def test_is_frozen(self) -> None:
-        bb = BoundingBox(0, 0, 10, 10)
-        with pytest.raises((AttributeError, TypeError)):
-            # noinspection PyDataclass
-            bb.x_min = 99  # ty: ignore[invalid-assignment]
-
-
-# ---------------------------------------------------------------------------
 # get_panels_bounding_box_from_file
 # ---------------------------------------------------------------------------
 
@@ -118,31 +86,6 @@ class TestGetPanelsBoundingBoxFromFile:
         assert result.y_min == 10
         assert result.x_max == 800
         assert result.y_max == 1400
-
-
-# ---------------------------------------------------------------------------
-# scale_height
-# ---------------------------------------------------------------------------
-
-
-class TestScaleHeight:
-    def test_basic_scaling(self) -> None:
-        # If width doubles, height doubles
-        result = scale_height(
-            target_width=2000,
-            source_width=1000,
-            source_height=1500,
-        )
-        assert result == 3000
-
-    def test_identity_scaling(self) -> None:
-        result = scale_height(1000, 1000, 1500)
-        assert result == 1500
-
-    def test_rounds_result(self) -> None:
-        # 1500 * 1001 / 1000 = 1501.5 → rounds to 1502
-        result = scale_height(1001, 1000, 1500)
-        assert result == 1502
 
 
 # ---------------------------------------------------------------------------

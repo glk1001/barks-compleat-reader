@@ -155,7 +155,7 @@ class TestComputePageNumYBottom:
 
 
 class TestCenteredBbox:
-    def test_horizontally_symmetric(self) -> None:
+    def test_the_box_has_the_margin_at_each_side_and_is_centred_vertically(self) -> None:
         bb = centered_bbox(
             target_page_width=2120,
             target_page_height=3200,
@@ -163,31 +163,9 @@ class TestCenteredBbox:
             bbox_height=2880,
             x_margin=100,
         )
-        assert bb.x_min == 100
-        assert bb.x_max == 100 + 1920 - 1
-
-    def test_vertically_centered(self) -> None:
-        bb = centered_bbox(
-            target_page_width=2120,
-            target_page_height=3200,
-            bbox_width=1920,
-            bbox_height=2880,
-            x_margin=100,
-        )
-        # (3200 - 2880) / 2 = 160
-        assert bb.y_min == 160
-        assert bb.y_max == 160 + 2880 - 1
-
-    def test_exact_width_and_height(self) -> None:
-        bb = centered_bbox(
-            target_page_width=2120,
-            target_page_height=3200,
-            bbox_width=1920,
-            bbox_height=2880,
-            x_margin=100,
-        )
-        assert bb.get_width() == 1920
-        assert bb.get_height() == 2880
+        # (3200 - 2880) / 2 = 160 above; the far corners are inclusive.
+        assert bb == BoundingBox(100, 160, 100 + 1920 - 1, 160 + 2880 - 1)
+        assert (bb.get_width(), bb.get_height()) == (1920, 2880)
 
     def test_asserts_bbox_fits_horizontally(self) -> None:
         with pytest.raises(AssertionError):

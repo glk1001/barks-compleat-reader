@@ -1,5 +1,3 @@
-# ruff: noqa: PLR2004
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -38,47 +36,26 @@ def _make_json_files(
 
 
 class TestJsonFilesInit:
-    def test_stores_title(self) -> None:
-        jf, _ = _make_json_files()
-        assert jf.title == "Some Title"
+    def test_the_volume_and_its_dirname_come_from_the_database(self) -> None:
+        jf, db = _make_json_files(volume=7, volume_dirname="Carl-Barks-Vol-07")
 
-    def test_calls_db_for_volume(self) -> None:
-        db = _make_db()
-        JsonFiles(db, "My Title")
-        db.get_fanta_volume_int.assert_called_once_with("My Title")
+        db.get_fanta_volume_int.assert_called_once_with("Some Title")
+        db.get_fantagraphics_volume_title.assert_called_once_with(7)
+        assert (jf.title, jf.volume, jf.volume_dirname) == ("Some Title", 7, "Carl-Barks-Vol-07")
 
-    def test_calls_db_for_volume_dirname(self) -> None:
-        db = _make_db(volume=5)
-        JsonFiles(db, "My Title")
-        db.get_fantagraphics_volume_title.assert_called_once_with(5)
-
-    def test_stores_volume_and_dirname(self) -> None:
-        jf, _ = _make_json_files(volume=7, volume_dirname="Carl-Barks-Vol-07")
-        assert jf.volume == 7
-        assert jf.volume_dirname == "Carl-Barks-Vol-07"
-
-    def test_prelim_dir_uses_volume_dirname(self) -> None:
+    def test_each_results_dir_is_the_volume_s_under_its_own_root(self) -> None:
         jf, _ = _make_json_files(volume_dirname="Vol-03")
+
         assert jf.title_prelim_results_dir == OCR_PRELIM_DIR / "Vol-03"
-
-    def test_final_dir_uses_volume_dirname(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
         assert jf.title_final_results_dir == OCR_FINAL_DIR / "Vol-03"
-
-    def test_annotated_dir_uses_volume_dirname(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
         assert jf.title_annotated_images_dir == OCR_ANNOTATIONS_DIR / "Vol-03"
 
-    def test_initial_state_empty(self) -> None:
+    def test_no_page_is_set_to_begin_with(self) -> None:
         jf, _ = _make_json_files()
+
         assert jf.page == ""
         assert jf.ocr_file is None
-        assert jf.ocr_type == []
-        assert jf.ocr_prelim_groups_json_file == []
-        assert jf.ocr_final_groups_json_file == []
-        assert jf.ocr_prelim_groups_annotated_file == []
-        assert jf.ocr_final_groups_annotated_file == []
-        assert jf.ocr_boxes_annotated_file == []
+        assert _per_page_lists(jf) == [[], [], [], [], [], []]
 
 
 # ---------------------------------------------------------------------------
@@ -86,117 +63,64 @@ class TestJsonFilesInit:
 # ---------------------------------------------------------------------------
 
 
+def _per_page_lists(jf: JsonFiles) -> list[list[str] | list[Path]]:
+    return [
+        jf.ocr_type,
+        jf.ocr_prelim_groups_json_file,
+        jf.ocr_final_groups_json_file,
+        jf.ocr_prelim_groups_annotated_file,
+        jf.ocr_final_groups_annotated_file,
+        jf.ocr_boxes_annotated_file,
+    ]
+
+
+def _ocr_pair(page: str) -> tuple[Path, Path]:
+    return Path(f"{page}.hires.json"), Path(f"{page}.lores.json")
+
+
+def _expected_per_page_lists(page: str) -> list[list[str] | list[Path]]:
+    """Each list for a page of "Vol-03": one entry per engine, in the engines' order.
+
+    The final files do not depend on the engine, so both of their entries are the same.
+    """
+    prelim, final, annotations = (
+        root / "Vol-03" for root in (OCR_PRELIM_DIR, OCR_FINAL_DIR, OCR_ANNOTATIONS_DIR)
+    )
+    return [
+        ["hires", "lores"],
+        [
+            prelim / f"{page}-hires-gemini-prelim-groups.json",
+            prelim / f"{page}-lores-gemini-prelim-groups.json",
+        ],
+        [final / f"{page}-gemini-final-groups.json"] * 2,
+        [
+            annotations / f"{page}-hires-ocr-gemini-prelim-annotated.png",
+            annotations / f"{page}-lores-ocr-gemini-prelim-annotated.png",
+        ],
+        [annotations / f"{page}-ocr-gemini-final-annotated.png"] * 2,
+        [
+            annotations / f"{page}-hires-ocr-gemini-boxes-annotated.png",
+            annotations / f"{page}-lores-ocr-gemini-boxes-annotated.png",
+        ],
+    ]
+
+
 class TestSetOcrFile:
-    @staticmethod
-    def _ocr_pair(
-        page: str = "001",
-        types: tuple[str, str] = ("hires", "lores"),
-    ) -> tuple[Path, Path]:
-        return Path(f"{page}.{types[0]}.json"), Path(f"{page}.{types[1]}.json")
-
-    def test_sets_page_from_first_file_stem(self) -> None:
+    def test_the_page_and_every_per_page_file_are_set(self) -> None:
         jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="042"))
-        assert jf.page == "042"
+        pair = _ocr_pair("007")
 
-    def test_sets_ocr_file(self) -> None:
-        jf, _ = _make_json_files()
-        pair = self._ocr_pair()
         jf.set_ocr_file(pair)
+
+        assert jf.page == "007"
         assert jf.ocr_file == pair
+        assert _per_page_lists(jf) == _expected_per_page_lists("007")
 
-    def test_extracts_ocr_types(self) -> None:
-        jf, _ = _make_json_files()
-        jf.set_ocr_file(self._ocr_pair(types=("hires", "lores")))
-        assert jf.ocr_type == ["hires", "lores"]
-
-    def test_builds_two_prelim_json_files(self) -> None:
+    def test_a_second_page_replaces_the_first(self) -> None:
         jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007", types=("hires", "lores")))
-        assert len(jf.ocr_prelim_groups_json_file) == 2
-        assert jf.ocr_prelim_groups_json_file[0].name == "007-hires-gemini-prelim-groups.json"
-        assert jf.ocr_prelim_groups_json_file[1].name == "007-lores-gemini-prelim-groups.json"
+        jf.set_ocr_file(_ocr_pair("001"))
 
-    def test_prelim_json_files_in_prelim_dir(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007"))
-        for f in jf.ocr_prelim_groups_json_file:
-            assert f.parent == OCR_PRELIM_DIR / "Vol-03"
+        jf.set_ocr_file(_ocr_pair("002"))
 
-    def test_builds_two_final_json_files(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007"))
-        assert len(jf.ocr_final_groups_json_file) == 2
-        # final filename doesn't depend on ocr_type — both entries are the same
-        assert jf.ocr_final_groups_json_file[0].name == "007-gemini-final-groups.json"
-        assert jf.ocr_final_groups_json_file[1].name == "007-gemini-final-groups.json"
-
-    def test_final_json_files_in_final_dir(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007"))
-        for f in jf.ocr_final_groups_json_file:
-            assert f.parent == OCR_FINAL_DIR / "Vol-03"
-
-    def test_builds_prelim_annotated_files(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007", types=("hires", "lores")))
-        assert len(jf.ocr_prelim_groups_annotated_file) == 2
-        assert (
-            jf.ocr_prelim_groups_annotated_file[0].name
-            == "007-hires-ocr-gemini-prelim-annotated.png"
-        )
-        assert (
-            jf.ocr_prelim_groups_annotated_file[1].name
-            == "007-lores-ocr-gemini-prelim-annotated.png"
-        )
-
-    def test_prelim_annotated_files_in_annotations_dir(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007"))
-        for f in jf.ocr_prelim_groups_annotated_file:
-            assert f.parent == OCR_ANNOTATIONS_DIR / "Vol-03"
-
-    def test_builds_final_annotated_files(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007"))
-        assert len(jf.ocr_final_groups_annotated_file) == 2
-        assert jf.ocr_final_groups_annotated_file[0].name == "007-ocr-gemini-final-annotated.png"
-        assert jf.ocr_final_groups_annotated_file[1].name == "007-ocr-gemini-final-annotated.png"
-
-    def test_final_annotated_files_in_annotations_dir(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007"))
-        for f in jf.ocr_final_groups_annotated_file:
-            assert f.parent == OCR_ANNOTATIONS_DIR / "Vol-03"
-
-    def test_builds_boxes_annotated_files(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007", types=("hires", "lores")))
-        assert len(jf.ocr_boxes_annotated_file) == 2
-        assert jf.ocr_boxes_annotated_file[0].name == "007-hires-ocr-gemini-boxes-annotated.png"
-        assert jf.ocr_boxes_annotated_file[1].name == "007-lores-ocr-gemini-boxes-annotated.png"
-
-    def test_boxes_annotated_files_in_annotations_dir(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="007"))
-        for f in jf.ocr_boxes_annotated_file:
-            assert f.parent == OCR_ANNOTATIONS_DIR / "Vol-03"
-
-    def test_resets_lists_on_second_call(self) -> None:
-        jf, _ = _make_json_files(volume_dirname="Vol-03")
-        jf.set_ocr_file(self._ocr_pair(page="001"))
-        jf.set_ocr_file(self._ocr_pair(page="002"))
-        # After second call, every per-page list has exactly 2 entries (not 4), all for page 002
-        per_page_lists = (
-            jf.ocr_type,
-            jf.ocr_prelim_groups_json_file,
-            jf.ocr_final_groups_json_file,
-            jf.ocr_prelim_groups_annotated_file,
-            jf.ocr_final_groups_annotated_file,
-            jf.ocr_boxes_annotated_file,
-        )
-        for per_page_list in per_page_lists:
-            assert len(per_page_list) == 2
-        for path_list in per_page_lists[1:]:
-            assert all(path.name.startswith("002-") for path in path_list)
         assert jf.page == "002"
+        assert _per_page_lists(jf) == _expected_per_page_lists("002")

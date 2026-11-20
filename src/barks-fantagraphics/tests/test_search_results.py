@@ -74,11 +74,20 @@ class TestMerge:
             "The Gold Mine": {"40": ["5"]},
         }
 
-    def test_a_bubble_both_found_keeps_both_entity_types(self) -> None:
-        first = {"S": TitleInfo(1, {"1": PageInfo("c1", [_speech("4", "person")])})}
-        second = {"S": TitleInfo(1, {"1": PageInfo("c1", [_speech("4", "person", "place")])})}
+    @pytest.mark.parametrize(
+        ("first_types", "second_types", "merged"),
+        [
+            pytest.param(("person",), ("person", "place"), ("person", "place"), id="one shared"),
+            pytest.param(("location",), ("person",), ("location", "person"), id="none shared"),
+        ],
+    )
+    def test_a_bubble_both_found_keeps_both_entity_types(
+        self, first_types: tuple[str, ...], second_types: tuple[str, ...], merged: tuple[str, ...]
+    ) -> None:
+        first = {"S": TitleInfo(1, {"1": PageInfo("c1", [_speech("4", *first_types)])})}
+        second = {"S": TitleInfo(1, {"1": PageInfo("c1", [_speech("4", *second_types)])})}
         [speech] = merge_title_dicts(first, second)["S"].fanta_pages["1"].speech_info_list
-        assert speech.entity_types == ("person", "place")
+        assert speech.entity_types == merged
 
     def test_in_the_engine_order(self) -> None:
         """Stories and pages by name; bubbles by number, a malformed id after them."""
@@ -166,13 +175,3 @@ def test_no_operation_changes_its_arguments(operation) -> None:  # noqa: ANN001
             page.speech_info_list.append(_speech("99"))
     assert gold == GOLD
     assert mine == MINE
-
-
-def test_one_speech_group_found_twice_keeps_both_finds_entity_types() -> None:
-    def found(entity: str) -> TitleDict:
-        speech = SpeechInfo("3", 1, "Duckburg!", "Duckburg!", entity_types=(entity,))
-        return {"A Story": TitleInfo(5, {"010": PageInfo("10", [speech])})}
-
-    merged = merge_title_dicts(found("location"), found("person"))
-    [speech] = merged["A Story"].fanta_pages["010"].speech_info_list
-    assert speech.entity_types == ("location", "person")

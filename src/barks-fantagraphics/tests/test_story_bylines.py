@@ -34,33 +34,6 @@ def other_script_bylines(db: ComicsDatabase) -> dict[str, str]:
     return bylines
 
 
-class TestTheCreditPattern:
-    @pytest.mark.parametrize(
-        "credit",
-        [
-            "Script not by Barks",
-            "Script by Vic Lockman",
-            "Script by Bob Gregory and Barks",
-            "Script: Bob Karp\nArt: Carl Barks (pages 1, 2, 5, 12-40)",
-            "Pages 1-3, script by Carl Barks\nPages 4-8 script and finished art by Don Rosa",
-        ],
-    )
-    def test_a_credit_naming_another_scriptwriter_is_found(self, credit: str) -> None:
-        assert read_credits(credit).other_script
-
-    @pytest.mark.parametrize(
-        "credit",
-        [
-            "Script and layout by Carl Barks\nPencils and inks by Daan Jippes",
-            "Pages 1-3, script by Carl Barks",
-            "New opening half-page written by David Gerstein",
-            "Original dialogue on page 4 restored by GLK, Aug 2025",
-        ],
-    )
-    def test_a_credit_naming_no_other_scriptwriter_is_not(self, credit: str) -> None:
-        assert not read_credits(credit).other_script
-
-
 class TestEveryStoryByline:
     def test_the_stories_are_found(self, other_script_bylines: dict[str, str]) -> None:
         # Guards the check below: with no stories it would pass vacuously.

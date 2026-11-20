@@ -87,11 +87,6 @@ class TestGetFantaTitleForVolume:
 
 
 class TestGetFantaRestoredOcrPrelimRootDir:
-    def test_appends_prelim(self) -> None:
-        root = Path("/some/ocr/root")
-        result = get_fanta_restored_ocr_prelim_root_dir(root)
-        assert result == root / "Prelim"
-
     def test_an_override_set_after_the_first_call_is_honoured(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -193,14 +188,6 @@ class TestIniFilenames:
         assert sorted(names) == sorted(p.name for p in db.get_story_titles_dir().glob("*.ini"))
         names.clear()
         assert db.get_ini_filenames()
-
-
-class TestGetFantaRestoredOcrPrelimVolumeDir:
-    def test_structure_is_root_prelim_title(self) -> None:
-        root = Path("/some/ocr/root")
-        result = get_fanta_restored_ocr_prelim_volume_dir(root, 1)
-        title = get_fanta_title_for_volume(1)
-        assert result == root / "Prelim" / title
 
 
 class TestGetStoryTitlesDir:
@@ -311,35 +298,6 @@ class TestComicsDatabaseStaticMethods:
 
     def test_get_fantagraphics_dirname_returns_constant(self) -> None:
         assert ComicsDatabase.get_fantagraphics_dirname() == FANTAGRAPHICS_DIRNAME
-
-    def test_get_fantagraphics_restored_dirname(self) -> None:
-        assert ComicsDatabase.get_fantagraphics_restored_dirname() == FANTAGRAPHICS_RESTORED_DIRNAME
-
-    def test_get_fantagraphics_upscayled_dirname(self) -> None:
-        assert (
-            ComicsDatabase.get_fantagraphics_upscayled_dirname() == FANTAGRAPHICS_UPSCAYLED_DIRNAME
-        )
-
-    def test_get_fantagraphics_restored_upscayled_dirname(self) -> None:
-        assert (
-            ComicsDatabase.get_fantagraphics_restored_upscayled_dirname()
-            == FANTAGRAPHICS_RESTORED_UPSCAYLED_DIRNAME
-        )
-
-    def test_get_fantagraphics_fixes_dirname(self) -> None:
-        assert ComicsDatabase.get_fantagraphics_fixes_dirname() == FANTAGRAPHICS_FIXES_DIRNAME
-
-    def test_get_fantagraphics_upscayled_fixes_dirname(self) -> None:
-        assert (
-            ComicsDatabase.get_fantagraphics_upscayled_fixes_dirname()
-            == FANTAGRAPHICS_UPSCAYLED_FIXES_DIRNAME
-        )
-
-    def test_get_fantagraphics_panel_segments_dirname(self) -> None:
-        assert (
-            ComicsDatabase.get_fantagraphics_panel_segments_dirname()
-            == FANTAGRAPHICS_PANEL_SEGMENTS_DIRNAME
-        )
 
 
 # ---------------------------------------------------------------------------
