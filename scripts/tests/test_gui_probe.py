@@ -6,6 +6,7 @@ how it reads the app log, and that the lines it writes are the ones the GUI
 harness parses. The Windows backend's structures are checked on Windows.
 """
 
+# ruff: noqa: PLR2004  (small literal counts are the point of these tests)
 
 # cspell:ignore glew PYTHONIOENCODING
 
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -24,9 +26,11 @@ import gui_probe_darwin
 import gui_probe_win32
 import pytest
 from barks_reader.core import data_pack
+from script_test_helpers import write_tree
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from types import ModuleType
 
 GUI_TESTS_DIR = Path(__file__).resolve().parents[2] / "src" / "barks-reader" / "tests" / "gui"
 
@@ -500,3 +504,412 @@ class TestHoldForModeSwitch:
 
     def test_the_mac_backend_asks(self) -> None:
         assert gui_probe_darwin.DarwinBackend.mode_switch_settle_secs > 0
+
+
+@pytest.fixture
+def backend(run_dir: Path) -> Iterator[MagicMock]:
+    """Stand in for the platform under `gui_probe.main`, with an app running in front."""
+    fake = _backend_with_an_app(run_dir)
+    fake.mode_switch_settle_secs = 0.0
+    fake.find_window.return_value = 7
+    with patch.object(gui_probe, "_backend", return_value=fake):
+        yield fake
+
+
+@pytest.mark.usefixtures("run_dir")
+class TestTheCommandLine:
+    """Each command, as the driver sends it: through `main`, over a faked platform."""
+
+    def test_no_command_and_an_unknown_one_print_the_usage(
+        self, backend: MagicMock, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        assert gui_probe.main([]) == 1
+        assert gui_probe.main(["no-such-command"]) == 1
+
+        assert capsys.readouterr().out.count(str(gui_probe.__doc__)) == 2
+        backend.send_key.assert_not_called()
+
+    def test_log_and_config_print_where_the_files_are(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        assert gui_probe.main(["log"]) == 0
+        assert gui_probe.main(["config"]) == 0
+
+        out = capsys.readouterr().out.splitlines()
+        assert out == [str(gui_probe.app_log()), str(gui_probe.config_file())]
+
+    def test_tail_prints_the_last_lines_twenty_unless_told(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        lines = [f"line {n}" for n in range(30)]
+        gui_probe.app_log().write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        assert gui_probe.main(["tail"]) == 0
+        assert capsys.readouterr().out.splitlines() == lines[-20:]
+        assert gui_probe.main(["tail", "2"]) == 0
+        assert capsys.readouterr().out.splitlines() == ["line 28", "line 29"]
+
+    def test_settle_takes_its_quiet_time_and_its_limit(self) -> None:
+        with patch.object(gui_probe, "settle") as settle:
+            assert gui_probe.main(["settle"]) == 0
+            assert gui_probe.main(["settle", "500", "5"]) == 0
+
+        assert [c.args for c in settle.call_args_list] == [(1000, 30), (500, 5.0)]
+
+    def test_geometry_prints_the_window_s_drawable_area(
+        self, backend: MagicMock, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        assert gui_probe.main(["geometry"]) == 0
+
+        assert capsys.readouterr().out == "800x600+100+50\n"
+        backend.client_geometry.assert_called_once_with(7)
+
+    def test_a_shot_waits_for_the_app_to_stop_drawing_then_captures_the_window(
+        self, backend: MagicMock, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        out = tmp_path / "shot.png"
+        with patch.object(gui_probe, "settle") as settle:
+            assert gui_probe.main(["shot", str(out)]) == 0
+
+        settle.assert_called_once_with(500, 5)
+        backend.capture.assert_called_once_with((800, 600, 100, 50), out)
+        assert capsys.readouterr().out == f"{out}\n"
+
+    @pytest.mark.parametrize(
+        ("command", "problem", "says"),
+        [
+            pytest.param("geometry", "no pid", "not started - run 'gui_probe.py start' first"),
+            pytest.param("geometry", "no window", "app window (Compleat Barks Disney Reader) not"),
+            pytest.param(
+                "type", "not in front", "the app window would not come to the front, so input"
+            ),
+        ],
+    )
+    def test_a_command_with_no_app_to_reach_says_why(
+        self,
+        backend: MagicMock,
+        capsys: pytest.CaptureFixture[str],
+        command: str,
+        problem: str,
+        says: str,
+    ) -> None:
+        match problem:
+            case "no pid":
+                (gui_probe.run_dir() / "app.pid").unlink()
+            case "no window":
+                backend.find_window.return_value = None
+            case _:
+                backend.bring_to_front.return_value = False
+
+        assert gui_probe.main([command, "x"]) == 1
+
+        assert f"gui-probe: {says}" in capsys.readouterr().err
+        backend.send_char.assert_not_called()
+
+    def test_typing_sends_each_character_and_is_logged_as_one_line(
+        self, backend: MagicMock
+    ) -> None:
+        assert gui_probe.main(["type", "duck"]) == 0
+
+        assert [c.args[0] for c in backend.send_char.call_args_list] == list("duck")
+        (line,) = gui_probe.input_log().read_text(encoding="utf-8").splitlines()
+        assert line.split(" ", 1)[1] == "type duck"
+
+    @pytest.mark.parametrize(
+        ("argv", "method", "args"),
+        [
+            (["click", "40", "60"], "click", (40, 60)),
+            (["tap", "10", "20"], "tap", (10, 20)),
+            (["tap-targets", "7"], "tap_targets", ("7",)),
+            (["memory-census", "8"], "memory_census", ("8",)),
+            (["frame-capture", "9"], "frame_capture", ("9",)),
+            (["key", "Down", "Return"], "key", (["Down", "Return"],)),
+            (["start", "100,50"], "start", ()),
+        ],
+    )
+    @pytest.mark.usefixtures("backend")
+    def test_each_command_reaches_its_own_move(
+        self, argv: list[str], method: str, args: tuple[object, ...]
+    ) -> None:
+        with patch.object(gui_probe.Probe, method) as move:
+            assert gui_probe.main(argv) == 0
+
+        move.assert_called_once_with(*args)
+
+    def test_the_x_server_command_is_kept_and_says_there_is_none(
+        self, backend: MagicMock, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        backend.process_alive.return_value = True
+        assert gui_probe.main(["stop-xserver"]) == 1
+        assert "the app is still running - stop it first" in capsys.readouterr().err
+
+        backend.process_alive.return_value = False
+        assert gui_probe.main(["stop-xserver"]) == 0
+        assert capsys.readouterr().out == "gui-probe: no X server on this platform\n"
+
+    def test_doctor_lists_every_check_and_fails_on_a_fail(
+        self, backend: MagicMock, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        backend.doctor_checks.return_value = [("OK", "a screen")]
+        with patch.object(gui_probe, "repo_checks", return_value=[("WARN", "no profile")]):
+            assert gui_probe.main(["doctor"]) == 0
+        assert capsys.readouterr().out == "  OK   a screen\n  WARN no profile\n\ndoctor: ready.\n"
+
+        with patch.object(gui_probe, "repo_checks", return_value=[("FAIL", "uv not on PATH")]):
+            assert gui_probe.main(["doctor"]) == 1
+        assert "doctor: NOT ready - fix the FAIL items above." in capsys.readouterr().out
+
+    @pytest.mark.parametrize(
+        ("platform", "module", "name"),
+        [
+            ("win32", gui_probe_win32, "Win32Backend"),
+            ("darwin", gui_probe_darwin, "DarwinBackend"),
+        ],
+    )
+    def test_each_platform_gets_its_own_backend(
+        self, platform: str, module: ModuleType, name: str
+    ) -> None:
+        with patch.object(gui_probe.sys, "platform", platform), patch.object(module, name) as made:
+            assert gui_probe._backend() is made.return_value  # noqa: SLF001
+
+
+class TestStartAndStop:
+    @pytest.fixture
+    def profile(self, run_dir: Path) -> Iterator[tuple[Path, Path]]:
+        """Make a live profile file; yield it and where a start backs it up."""
+        live, backup = run_dir / "barks-reader.json", run_dir / "barks-reader.json.bak"
+        live.write_text("the user's", encoding="utf-8")
+        with patch.object(gui_probe, "_profile_backups", return_value=[(live, backup)]):
+            yield live, backup
+
+    @staticmethod
+    def _start(backend: MagicMock, log_text: str, *, ready: bool = True) -> None:
+        """Start with the launch faked: the app has logged `log_text` by the time it is ready."""
+
+        def launch(_probe: gui_probe.Probe) -> None:
+            gui_probe.app_log().write_text(log_text, encoding="utf-8")
+            (gui_probe.run_dir() / "app.pid").write_text("1234", encoding="utf-8")
+
+        backend.process_alive.return_value = False
+        with (
+            patch.object(gui_probe.Probe, "_launch", launch),
+            patch.object(gui_probe, "wait_for", return_value=ready),
+            patch.object(gui_probe, "settle"),
+            patch.object(gui_probe.time, "sleep"),
+        ):
+            gui_probe.Probe(backend).start()
+
+    @pytest.fixture
+    def fresh(self, run_dir: Path) -> MagicMock:
+        """Make a backend with no app running and no window of the app's on screen yet."""
+        fake = MagicMock()
+        fake.client_geometry.return_value = (800, 600, 100, 50)
+        fake.find_window.side_effect = [None, None, 7]  # the refusal's look, then two waits
+        (run_dir / "frame-old.png").write_bytes(b"png")
+        (run_dir / "tap-request").write_text("stale", encoding="utf-8")
+        return fake
+
+    def test_a_start_clears_the_last_run_backs_up_the_profile_and_parks_the_pointer(
+        self,
+        fresh: MagicMock,
+        run_dir: Path,
+        profile: tuple[Path, Path],
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        self._start(fresh, "GL: Backend used <sdl2>\n")
+
+        _live, backup = profile
+        assert backup.read_text(encoding="utf-8") == "the user's"
+        assert not (run_dir / "frame-old.png").exists()
+        assert not (run_dir / "tap-request").exists()
+        assert gui_probe.input_log().read_text(encoding="utf-8") == ""
+        fresh.bring_to_front.assert_called_once_with(7)
+        fresh.move_pointer.assert_called_once_with(105, 350)  # far left, mid-height
+        assert f"ready (graphics backend: sdl2). Log: {gui_probe.app_log()}" in (
+            capsys.readouterr().out
+        )
+
+    def test_a_throwaway_profile_is_not_backed_up(
+        self, fresh: MagicMock, profile: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BARKS_PROBE_NO_RESTORE", "1")
+
+        self._start(fresh, "")
+
+        assert not profile[1].exists()
+
+    @pytest.mark.parametrize(
+        ("fails", "says"),
+        [
+            pytest.param("ready", "app never became ready; see ", id="never ready"),
+            pytest.param("gl", "not the 'angle_sdl2' asked for", id="the wrong graphics"),
+            pytest.param("window", "logged its ready line but no Compleat Barks", id="no window"),
+            pytest.param("front", "would not come to the front (is the screen", id="not in front"),
+        ],
+    )
+    def test_a_start_that_fails_stops_the_app_and_restores_the_profile(
+        self,
+        fresh: MagicMock,
+        profile: tuple[Path, Path],
+        monkeypatch: pytest.MonkeyPatch,
+        fails: str,
+        says: str,
+    ) -> None:
+        live, backup = profile
+        log_text = ""
+        match fails:
+            case "gl":
+                monkeypatch.setenv("KIVY_GL_BACKEND", "angle_sdl2")
+                log_text = "GL: Backend used <sdl2>\n"
+            case "window":
+                fresh.find_window.side_effect = None
+                fresh.find_window.return_value = None
+                monkeypatch.setattr(gui_probe, "WINDOW_WAIT_SECS", 0.0)
+            case "front":
+                fresh.bring_to_front.return_value = False
+
+        def app_rewrites_the_profile(*_args: object, **_kwargs: object) -> None:
+            live.write_text("the app's", encoding="utf-8")
+
+        fresh.kill_tree.side_effect = app_rewrites_the_profile
+        with pytest.raises(gui_probe.ProbeError, match=re.escape(says)):
+            self._start(fresh, log_text, ready=fails != "ready")
+
+        fresh.kill_tree.assert_called_once_with(1234, max_secs=10)
+        assert live.read_text(encoding="utf-8") == "the user's"
+        assert not backup.exists()
+        assert not (gui_probe.run_dir() / "app.pid").exists()
+
+    @pytest.mark.parametrize(
+        ("running", "window", "says"),
+        [
+            (True, None, "already running (stop it first)"),
+            (False, 7, "window is already open - close it first, or keys would go to it"),
+        ],
+    )
+    def test_a_start_is_refused_while_an_app_or_its_window_is_there(
+        self, run_dir: Path, running: bool, window: int | None, says: str
+    ) -> None:
+        fake = _backend_with_an_app(run_dir)
+        fake.process_alive.return_value = running
+        fake.find_window.return_value = window
+
+        with (
+            patch.object(gui_probe.Probe, "_launch") as launch,
+            pytest.raises(gui_probe.ProbeError, match=re.escape(says)),
+        ):
+            gui_probe.Probe(fake).start()
+
+        launch.assert_not_called()
+
+    def test_a_stop_ends_the_app_and_puts_the_profile_back(
+        self, backend: MagicMock, profile: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        live, backup = profile
+        backup.write_text("the user's", encoding="utf-8")
+        live.write_text("the app's", encoding="utf-8")
+
+        assert gui_probe.main(["stop"]) == 0
+
+        backend.kill_tree.assert_called_once_with(1234, max_secs=10)
+        assert live.read_text(encoding="utf-8") == "the user's"
+        assert not backup.exists()
+        assert capsys.readouterr().out == f"gui-probe: restored {live}\ngui-probe: stopped\n"
+
+    def test_a_stop_with_nothing_started_only_says_so(
+        self, run_dir: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        fake = MagicMock()
+        with patch.object(gui_probe, "_profile_backups", return_value=[]):
+            gui_probe.Probe(fake).stop()
+
+        fake.kill_tree.assert_not_called()
+        assert not any(run_dir.iterdir())
+        assert capsys.readouterr().out == "gui-probe: stopped\n"
+
+
+@pytest.mark.usefixtures("run_dir")
+class TestSettle:
+    """The app has stopped drawing once its log has stopped growing."""
+
+    @staticmethod
+    def _settle(growth: list[str], quiet_ms: int = 500) -> int:
+        """Settle while the log grows by each of `growth` in turn; return the polls slept."""
+        pending = list(growth)
+
+        def app_keeps_drawing(_secs: float) -> None:
+            if pending:
+                with gui_probe.app_log().open("a", encoding="utf-8") as log:
+                    log.write(pending.pop(0))
+
+        with patch.object(gui_probe.time, "sleep", side_effect=app_keeps_drawing) as sleep:
+            gui_probe.settle(quiet_ms, max_secs=30)
+        return sleep.call_count
+
+    def test_it_returns_once_the_log_has_been_still_for_the_quiet_time(self) -> None:
+        gui_probe.app_log().write_text("booting\n", encoding="utf-8")
+
+        # Two polls see it grow; two more, 250 ms each, see it still.
+        assert self._settle(["drew a page\n", "drew another\n"]) == 4
+
+    def test_a_log_that_is_not_there_is_a_still_one(self) -> None:
+        assert self._settle([]) == 2
+
+    def test_a_log_that_never_stops_growing_is_given_up_on_at_the_limit(self) -> None:
+        with (
+            patch.object(gui_probe.time, "monotonic", side_effect=[0.0, 1.0, 2.0, 31.0]),
+            patch.object(gui_probe.time, "sleep") as sleep,
+            patch.object(gui_probe, "app_log") as app_log,
+        ):
+            app_log.return_value.stat.side_effect = [MagicMock(st_size=n) for n in (10, 20)]
+            gui_probe.settle(500, max_secs=30)
+
+        assert sleep.call_count == 2
+
+
+class TestRepoChecks:
+    """The doctor's checks that are the same on every platform."""
+
+    @staticmethod
+    def _checks(repo: Path, *, uv: str | None = "/usr/bin/uv") -> list[tuple[str, str]]:
+        with (
+            patch.object(gui_probe, "REPO_ROOT", repo),
+            patch.object(gui_probe, "config_dir", return_value=repo / "config"),
+            patch.object(gui_probe.shutil, "which", return_value=uv),
+            patch.object(gui_probe, "dir_setting_checks", return_value=[("OK", "its folders")]),
+        ):
+            return gui_probe.repo_checks()
+
+    def test_a_machine_with_everything(self, tmp_path: Path) -> None:
+        env = "BARKS_ZIPS_KEY=k\nBARKS_READER_CONFIG_DIR=c\nBARKS_READER_DATA_DIR=d\n"
+        ini = tmp_path / "config" / "barks-reader.ini"
+        write_tree(tmp_path, {".env.runtime": env, ".venv/bin/python": "", str(ini): "[ui]\n"})
+
+        assert self._checks(tmp_path) == [
+            ("OK", "uv"),
+            ("OK", ".env.runtime"),
+            ("OK", "BARKS_ZIPS_KEY"),
+            ("OK", "BARKS_READER_CONFIG_DIR"),
+            ("OK", "BARKS_READER_DATA_DIR"),
+            ("OK", ".venv"),
+            ("OK", str(ini)),
+            ("OK", "its folders"),
+        ]
+
+    def test_a_fresh_clone_fails_on_each_thing_it_lacks(self, tmp_path: Path) -> None:
+        checks = self._checks(tmp_path, uv=None)
+
+        assert [status for status, _ in checks] == ["FAIL", "FAIL", "FAIL", "WARN"]
+        assert checks[0] == ("FAIL", "uv not on PATH")
+        assert checks[1][1].startswith(".env.runtime - gitignored (it holds BARKS_ZIPS_KEY)")
+        assert checks[2] == ("FAIL", ".venv - run 'uv sync'")
+        assert "the GUI suite skips every test" in checks[3][1]
+
+    def test_a_variable_missing_from_env_runtime_is_named(self, tmp_path: Path) -> None:
+        write_tree(tmp_path, {".env.runtime": "BARKS_ZIPS_KEY=k\nBARKS_READER_DATA_DIR=\n"})
+
+        failed = [text for status, text in self._checks(tmp_path) if status == "FAIL"]
+
+        assert "BARKS_READER_CONFIG_DIR not set in .env.runtime" in failed
+        assert "BARKS_READER_DATA_DIR not set in .env.runtime" in failed
+        assert not any("BARKS_ZIPS_KEY" in text for text in failed)

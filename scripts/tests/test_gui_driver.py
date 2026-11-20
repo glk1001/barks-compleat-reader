@@ -21,7 +21,7 @@ from okf_reader.core import log_markers as okf_log_markers
 from script_test_helpers import keys_recorded
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Generator, Sequence
     from pathlib import Path
 
     KeysPressed = Callable[[MagicMock], list[str]]
@@ -857,3 +857,244 @@ class TestInMenuMode:
         key_then_wait.assert_not_called()
         assert keys_pressed(key) == ["Return"]
         assert move.call_count >= 1
+
+
+class FakeApp:
+    """Stand in for the probe and the app behind it: a key writes the lines the app would log.
+
+    The driver's waits read its log file, so with this in place of ``Driver._run`` they
+    run for real: nothing of the driver's own is patched.
+    """
+
+    def __init__(self, driver: Driver, answers: dict[str, list[str]]) -> None:
+        """Answer each command in `answers` (``key Down``, ``click 3 4``) with its lines.
+
+        A command's lines are used up one per time it is sent, the last one staying.
+        """
+        self._log = driver.log_path
+        self._answers = {command: list(lines) for command, lines in answers.items()}
+        self.sent: list[str] = []
+
+    def __call__(self, args: Sequence[str]) -> str:
+        command = " ".join(args)
+        self.sent.append(command)
+        lines = self._answers.get(command)
+        if lines:
+            line = lines.pop(0) if len(lines) > 1 else lines[0]
+            with self._log.open("a", encoding="utf-8") as log:
+                log.write(line + "\n")
+        return ""
+
+
+@pytest.fixture
+def not_paced(stub_driver: Driver) -> Driver:
+    """Make a stub driver that keeps no camera gaps, as the GUI tests run it."""
+    stub_driver._paced = False  # noqa: SLF001
+    stub_driver._settle_quiet_ms = gui_driver.SETTLE_QUIET_MS  # noqa: SLF001
+    return stub_driver
+
+
+class TestWhatTheLogSays:
+    """The reads every wait is built on, against a real log file."""
+
+    LOG = (
+        '10:00:01 | New selected node: "Themes"\n'
+        "10:00:02 | Showed page 3 in 12 ms.\n"
+        '10:00:03 | New selected node: "FROZEN_GOLD"\n'
+        "10:00:04 | Showed page 34 in 9 ms.\n"
+    )
+
+    def test_before_the_app_has_logged_anything(self, stub_driver: Driver) -> None:
+        assert stub_driver.current_node() == ""
+        assert stub_driver.current_page() == 0
+        assert stub_driver.last_line("Showed page") == ""
+        assert stub_driver.match_count("Showed page") == 0
+
+    def test_the_node_and_the_page_are_the_last_the_app_logged(self, stub_driver: Driver) -> None:
+        stub_driver.log_path.write_text(self.LOG, encoding="utf-8")
+
+        assert stub_driver.current_node() == "FROZEN_GOLD"
+        assert stub_driver.current_page() == 34  # noqa: PLR2004
+        assert stub_driver.match_count("Showed page") == 2  # noqa: PLR2004
+        assert stub_driver.last_line("Showed page") == "10:00:04 | Showed page 34 in 9 ms."
+        assert stub_driver.last_line("New selected node").endswith('"FROZEN_GOLD"')
+
+    def test_bytes_that_are_not_text_do_not_stop_a_read(self, stub_driver: Driver) -> None:
+        """A log caught mid-write can end inside a character."""
+        stub_driver.log_path.write_bytes(self.LOG.encode() + b"\xe2\x94")
+
+        assert stub_driver.current_page() == 34  # noqa: PLR2004
+
+
+class TestWaitFor:
+    def test_a_line_already_logged_is_enough(self, stub_driver: Driver) -> None:
+        stub_driver.log_path.write_text("Main screen is active\n", encoding="utf-8")
+
+        stub_driver.wait_for("Main screen is active", timeout=0)
+
+    def test_a_line_that_never_comes_is_a_stalled_beat(self, stub_driver: Driver) -> None:
+        with (
+            patch.object(gui_driver.time, "monotonic", side_effect=[100.0, 100.5, 116.0]),
+            patch.object(gui_driver.time, "sleep") as sleep,
+            pytest.raises(DriverError, match=r"never saw /All images loaded/ in the app log"),
+        ):
+            stub_driver.wait_for("All images loaded")
+
+        sleep.assert_called_once_with(0.25)
+
+
+class TestAgainstAnAppThatAnswers:
+    """Each composite move, with only the probe replaced: the waits are the real ones."""
+
+    def test_a_click_waits_for_its_own_new_line(self, not_paced: Driver) -> None:
+        not_paced.log_path.write_text("Showed page 3 in 12 ms.\n", encoding="utf-8")
+        app = FakeApp(not_paced, {"click 40 60": ["Showed page 4 in 8 ms."]})
+
+        with patch.object(Driver, "_run", side_effect=app):
+            not_paced.click_then_wait(Driver.SHOWED_PAGE, 40, 60, timeout=0)
+
+        assert app.sent == ["click 40 60"]
+        assert not_paced.current_page() == 4  # noqa: PLR2004
+
+    def test_a_click_the_app_ignores_is_a_stalled_beat(self, not_paced: Driver) -> None:
+        """The page already shown is not the answer: only a new line is."""
+        not_paced.log_path.write_text("Showed page 3 in 12 ms.\n", encoding="utf-8")
+        app = FakeApp(not_paced, {})
+
+        with (
+            patch.object(Driver, "_run", side_effect=app),
+            patch.object(gui_driver.time, "sleep"),
+            pytest.raises(DriverError, match=r"no new /Showed page/ in the app log after 0s"),
+        ):
+            not_paced.click_then_wait(Driver.SHOWED_PAGE, 40, 60, timeout=0)
+
+    def test_a_branch_is_walked_to_opened_and_left_to_lay_out(self, not_paced: Driver) -> None:
+        selections = [f'New selected node: "{name}"' for name in ("Series", "Themes")]
+        expanded = Driver.NODE_EXPANDED.format(name="Themes")
+        app = FakeApp(not_paced, {"key Down": selections, "key Return": [expanded]})
+
+        with patch.object(Driver, "_run", side_effect=app):
+            not_paced.open_branch("Themes")
+
+        settle = f"settle {gui_driver.SETTLE_QUIET_MS}"
+        assert app.sent == ["key Down", "key Down", "key Return", settle]
+
+    def test_a_tree_that_stops_moving_says_where_it_stopped(self, not_paced: Driver) -> None:
+        app = FakeApp(not_paced, {})
+        not_paced.log_path.write_text('New selected node: "Series"\n', encoding="utf-8")
+
+        with (
+            patch.object(Driver, "_run", side_effect=app),
+            patch.object(gui_driver.time, "sleep"),
+            pytest.raises(DriverError, match=r'tree stopped at "Series" before reaching "Themes"'),
+        ):
+            not_paced.select_node("Themes", step_timeout=0)
+
+    def test_a_node_too_far_down_is_given_up_on(self, not_paced: Driver) -> None:
+        selections = [f'New selected node: "Story {n}"' for n in range(5)]
+        app = FakeApp(not_paced, {"key Down": selections})
+
+        with (
+            patch.object(Driver, "_run", side_effect=app),
+            pytest.raises(DriverError, match=r'never reached node "Themes" in 3 steps'),
+        ):
+            not_paced.select_node("Themes", max_steps=3)
+
+        assert app.sent == ["key Down"] * 3
+
+    def test_a_main_bar_button_s_wait_counts_from_after_the_walk(self, not_paced: Driver) -> None:
+        """The dots menu: the walk to it logs the very line its opening logs."""
+        focus = Driver.FOCUS_MOVED
+        answers = {
+            "key Escape": [Driver.MENU_ENTERED],
+            "key Right": [f"{focus} collapse", f"{focus} change_pics", f"{focus} menu"],
+            "key Return": [f"{focus} the menu's first entry"],
+        }
+        app = FakeApp(not_paced, answers)
+
+        with patch.object(Driver, "_run", side_effect=app):
+            not_paced.main_menu_button_then_wait("menu", focus, timeout=0)
+
+        assert app.sent == ["key Escape", "key Right", "key Right", "key Right", "key Return"]
+        assert not_paced._main_menu_focus == "menu"  # noqa: SLF001
+
+    def test_going_back_waits_for_a_new_line_not_the_one_from_the_way_in(
+        self, not_paced: Driver
+    ) -> None:
+        not_paced.log_path.write_text("Main screen is active\n", encoding="utf-8")
+        answers = {"key Escape": [Driver.MENU_ENTERED], "key Return": ["Main screen is active"]}
+        app = FakeApp(not_paced, answers)
+
+        with patch.object(Driver, "_run", side_effect=app):
+            not_paced.go_back_then_wait(Driver.MAIN_SCREEN_ACTIVE, timeout=0)
+
+        assert app.sent == ["key Escape", "key Return"]  # go_back is where the bar opens
+        assert not_paced.match_count(Driver.MAIN_SCREEN_ACTIVE) == 2  # noqa: PLR2004
+
+    def test_the_document_bar_is_walked_the_short_way_and_remembered(
+        self, not_paced: Driver
+    ) -> None:
+        focus = Driver.FOCUS_MOVED
+        answers = {
+            "key Escape": [Driver.MENU_ENTERED],
+            "key Right": [f"{focus} fullscreen"],
+            "key Left": [f"{focus} goto_story"],
+        }
+        app = FakeApp(not_paced, answers)
+
+        with patch.object(Driver, "_run", side_effect=app):
+            not_paced.press_document_menu_button("fullscreen")  # from close: one Right, wrapping
+            not_paced.log_path.write_text("", encoding="utf-8")  # the bar closed again
+            not_paced.press_document_menu_button("goto_story")
+
+        assert app.sent == [
+            *("key Escape", "key Right", "key Return"),
+            *("key Escape", "key Right", "key Return"),
+        ]
+        assert not_paced._document_menu_focus == "goto_story"  # noqa: SLF001
+
+    def test_a_button_the_document_bar_does_not_have(self, not_paced: Driver) -> None:
+        with pytest.raises(DriverError, match=r"no such menu button: quit \(have: fullscreen,"):
+            not_paced.press_document_menu_button("quit")
+
+
+class TestTheProbeCommands:
+    """What each plain move sends the probe, and what attaching reads from it."""
+
+    def test_attaching_asks_the_probe_for_the_app_s_log(self, tmp_path: Path) -> None:
+        script = tmp_path / "gui_probe.py"
+        with patch.object(gui_driver, "probe", return_value=f"{tmp_path / 'app.log'}\n") as run:
+            driver = Driver(script, settle_quiet_ms=250, paced=False)
+
+        run.assert_called_once_with("log", script=script)
+        assert driver.log_path == tmp_path / "app.log"
+
+    def test_each_move_is_one_probe_command(self, tmp_path: Path) -> None:
+        with patch.object(gui_driver, "probe", return_value=f"{tmp_path / 'app.log'}\n") as run:
+            driver = Driver(settle_quiet_ms=250)
+            run.reset_mock()
+            driver.key("Down", "Return")
+            driver.click(40, 60)
+            driver.tap(10, 20)
+            driver.request_tap_targets("7")
+            driver.request_memory_census("8")
+            driver.settle()
+            shot = driver.shot(tmp_path / "shot.png")
+
+        assert shot == tmp_path / "shot.png"
+        assert [c.args for c in run.call_args_list] == [
+            ("key", "Down", "Return"),
+            ("click", "40", "60"),
+            ("tap", "10", "20"),
+            ("tap-targets", "7"),
+            ("memory-census", "8"),
+            ("settle", "250"),
+            ("shot", str(tmp_path / "shot.png")),
+        ]
+        assert all(c.kwargs == {"script": gui_driver.PROBE} for c in run.call_args_list)
+
+    def test_a_hold_is_a_sleep_and_nothing_more(self) -> None:
+        with patch.object(gui_driver.time, "sleep") as sleep:
+            Driver.hold(1.5)
+
+        sleep.assert_called_once_with(1.5)
