@@ -458,8 +458,9 @@ class TestHeldRect:
         win32_window.hold_window_rect(HIGH_HWND, HELD)  # the exit between them
         win32_window.release_window_rect(HIGH_HWND)
         second = win32_window.quiet_window_frame(HIGH_HWND, 0.5)
-        assert first
-        assert second not in (0, first)
+        # Numbered from 1, each its own (the hold between took 2): 0 is the answer for a
+        # window with no guard.
+        assert (first, second) == (1, 3)
 
         win32_window.end_window_frame_quiet(HIGH_HWND, first)
 

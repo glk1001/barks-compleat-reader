@@ -37,40 +37,31 @@ change = """
 reason = "Assigned before any read, and only ever asserted or tested for truth, where \"\" and None are alike."
 
 [[equivalent]]
-module = "barks_reader.core.kivy_log_handler"
-function = "LoguruKivyHandler.emit"
+module = "barks_reader.core.boot_splash"
+function = "close_boot_splash"
 change = """
-- self.logr.exception("Error in LoguruKivyHandler.emit: ")
-+ self.logr.exception(None)
+- parent_pid = os.environ.get(_ONEFILE_PARENT_ENV, "")
++ parent_pid = os.environ.get(_ONEFILE_PARENT_ENV, None)
 """
-reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
+reason = "The default is never used: with the variable unset there are no splash files, and the function has returned before this line."
 
 [[equivalent]]
-module = "barks_reader.core.kivy_log_handler"
-function = "LoguruKivyHandler.emit"
+module = "barks_reader.core.boot_splash"
+function = "close_boot_splash"
 change = """
-- self.logr.exception("Error in LoguruKivyHandler.emit: ")
-+ self.logr.exception("XXError in LoguruKivyHandler.emit: XX")
+- parent_pid = os.environ.get(_ONEFILE_PARENT_ENV, "")
++ parent_pid = os.environ.get(_ONEFILE_PARENT_ENV, )
 """
-reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
+reason = "The default is never used: with the variable unset there are no splash files, and the function has returned before this line."
 
 [[equivalent]]
-module = "barks_reader.core.kivy_log_handler"
-function = "LoguruKivyHandler.emit"
+module = "barks_reader.core.boot_splash"
+function = "close_boot_splash"
 change = """
-- self.logr.exception("Error in LoguruKivyHandler.emit: ")
-+ self.logr.exception("error in logurukivyhandler.emit: ")
+- parent_pid = os.environ.get(_ONEFILE_PARENT_ENV, "")
++ parent_pid = os.environ.get(_ONEFILE_PARENT_ENV, "XXXX")
 """
-reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
-
-[[equivalent]]
-module = "barks_reader.core.kivy_log_handler"
-function = "LoguruKivyHandler.emit"
-change = """
-- self.logr.exception("Error in LoguruKivyHandler.emit: ")
-+ self.logr.exception("ERROR IN LOGURUKIVYHANDLER.EMIT: ")
-"""
-reason = "The fallback's own log line, logged with its traceback whatever its text: only the wording changes. mutation_survivors.py lets wording through for a call on `logger`, not on `self.logr`."
+reason = "The default is never used: with the variable unset there are no splash files, and the function has returned before this line."
 
 [[equivalent]]
 module = "barks_reader.core.linux_desktop_entry"

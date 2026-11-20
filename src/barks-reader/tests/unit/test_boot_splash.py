@@ -87,6 +87,20 @@ class TestCloseBootSplash:
         assert len(lines) == 1
         assert f'No boot splash file to delete in "{splash_file.parent}": ' in lines[0]
 
+    def test_each_unpacking_program_s_missing_file_is_said_once(
+        self, splash_file: Path, monkeypatch: pytest.MonkeyPatch, loguru_sink: list[str]
+    ) -> None:
+        """What is settled is settled for one unpacking program, not for every one after it."""
+        close_boot_splash()
+        monkeypatch.setenv(_ENV, _PARENT_PID + "1")  # the app, started again
+
+        close_boot_splash()
+        close_boot_splash()
+
+        lines = [s for s in loguru_sink if "No boot splash file" in s]
+        assert len(lines) == 2  # noqa: PLR2004
+        assert splash_file.parent.is_dir()
+
     @pytest.mark.parametrize("windows_folder", ["TMP", "TEMP"])
     def test_a_file_in_the_temp_folder_windows_chose_is_found_there(
         self,
