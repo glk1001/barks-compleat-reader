@@ -20,6 +20,7 @@ from barks_fantagraphics.alpha_split import (
     split_alpha_terms,
     split_letter_terms,
 )
+from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 from barks_fantagraphics.panel_geometry import centered_bbox, scale_height
 from barks_fantagraphics.search_query import Combine, read_range
 from barks_fantagraphics.speech_groupers import join_line_breaks
@@ -153,7 +154,7 @@ def test_no_mix_of_the_tag_syntax_makes_the_parser_raise(text: str) -> None:
 
 _NAMES = st.text(alphabet=string.ascii_lowercase, min_size=1, max_size=8)
 _YEARS = st.integers(min_value=1940, max_value=1970)
-_VOLUMES = st.integers(min_value=1, max_value=30)
+_VOLUMES = st.integers(min_value=FIRST_VOLUME_NUMBER, max_value=LAST_VOLUME_NUMBER)
 
 
 @st.composite

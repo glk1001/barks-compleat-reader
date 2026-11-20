@@ -63,7 +63,7 @@ class TestAnImageWithNoPrintedPage:
             pytest.param(1, "500", id="a slot in a collection's own numbering"),
             pytest.param(18, "empty_page", id="a page that is not a scan"),
             pytest.param(18, "", id="a row with no image"),
-            pytest.param(32, "040", id="a volume that does not exist"),
+            pytest.param(LAST_VOLUME_NUMBER + 1, "040", id="a volume that does not exist"),
         ],
     )
     def test_it_is_none(self, volume: int, image: str) -> None:

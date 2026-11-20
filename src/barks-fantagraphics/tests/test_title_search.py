@@ -8,6 +8,7 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET
 from barks_fantagraphics.comic_issues import Issues
+from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 from barks_fantagraphics.search_query import Combine
 from barks_fantagraphics.tag_query import TagSelection
 from barks_fantagraphics.title_search import BarksTitleSearch
@@ -222,7 +223,9 @@ def test_a_tag_named_by_several_aliases_keeps_its_best_rank() -> None:
 
 
 def test_a_volume_range_leaves_out_stories_in_no_volume() -> None:
-    selection = TagSelection(("abduction stories",), volumes=(1, 30))
+    selection = TagSelection(
+        ("abduction stories",), volumes=(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER)
+    )
     titles = BarksTitleSearch().get_titles_for_selection(selection)
     assert Titles.CAPN_BLIGHTS_MYSTERY_SHIP not in titles  # in no Fantagraphics volume
     assert titles

@@ -10,8 +10,7 @@ from barks_fantagraphics.barks_covers import (
     get_located_covers,
     is_cover_located,
 )
-
-MAX_FANTA_VOLUME = 30
+from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 
 
 class TestCoverLocations:
@@ -21,7 +20,7 @@ class TestCoverLocations:
 
     def test_volume_and_page_ranges(self) -> None:
         for volume, page in COVER_LOCATIONS.values():
-            assert 1 <= volume <= MAX_FANTA_VOLUME
+            assert FIRST_VOLUME_NUMBER <= volume <= LAST_VOLUME_NUMBER
             assert page > 0
 
     def test_get_cover_location_none_when_absent(self, monkeypatch: pytest.MonkeyPatch) -> None:
