@@ -6,6 +6,7 @@ not imported by the app - so there is no installed module path to import them by
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,8 +21,24 @@ if str(SCRIPTS_DIR) not in sys.path:
 from gui_driver import Driver  # noqa: E402
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from unittest.mock import MagicMock
+
+
+@pytest.fixture(autouse=True)
+def _environment_as_it_was() -> Iterator[None]:
+    """Put the environment back after every test, whatever changed it.
+
+    ``monkeypatch.delenv(NAME, raising=False)`` records nothing when the variable is
+    absent, so what the script under test then writes to ``os.environ`` (a config
+    dir, a random seed, a screen size) stayed set for every later test: the scripts'
+    tests come first in ``testpaths``.
+    """
+    before = dict(os.environ)
+    yield
+    for name in os.environ.keys() - before.keys():
+        del os.environ[name]
+    os.environ.update(before)
 
 
 @pytest.fixture
