@@ -16,7 +16,6 @@ ini must name his part in ``byline`` ("art by", "story by" and the like).
 
 from __future__ import annotations
 
-from configparser import ConfigParser, ExtendedInterpolation
 from typing import TYPE_CHECKING
 
 import pytest
@@ -47,26 +46,6 @@ def _misc_titles_needing_attribution() -> list[str]:
     return [title for title in misc_titles() if title not in exempt]
 
 
-def _get_extra_pub_info(db: ComicsDatabase, story_title: str) -> str:
-    """Return the ``extra_pub_info`` value from a story's ini file.
-
-    Args:
-        db: The comics database used to locate the ini file.
-        story_title: The story title to look up.
-
-    Returns:
-        The ``extra_pub_info`` value, or an empty string if the key is absent.
-
-    """
-    ini_file = db.get_ini_file(story_title)
-    assert ini_file.is_file(), f'{SERIES_MISC} title "{story_title}" has no ini file: "{ini_file}".'
-
-    config = ConfigParser(interpolation=ExtendedInterpolation())
-    config.read(ini_file)
-
-    return config["info"].get("extra_pub_info", "")
-
-
 class TestMiscSeriesAttribution:
     def test_misc_series_is_not_empty(self) -> None:
         # Guards the parametrize source below: if this ever returns nothing, the
@@ -75,7 +54,7 @@ class TestMiscSeriesAttribution:
 
     @pytest.mark.parametrize("story_title", _misc_titles_needing_attribution())
     def test_misc_title_ini_declares_authorship(self, db: ComicsDatabase, story_title: str) -> None:
-        extra_pub_info = _get_extra_pub_info(db, story_title)
+        extra_pub_info = db.get_comic_book(story_title).extra_pub_info
 
         assert extra_pub_info, (
             f'{SERIES_MISC} title "{story_title}" has no "extra_pub_info" in its ini file.'
@@ -107,7 +86,7 @@ class TestAttributionExemptions:
     def test_exempt_title_still_has_no_attribution(
         self, db: ComicsDatabase, story_title: str
     ) -> None:
-        extra_pub_info = _get_extra_pub_info(db, story_title)
+        extra_pub_info = db.get_comic_book(story_title).extra_pub_info
 
         assert not read_credits(extra_pub_info).any, (
             f'"{story_title}" is exempt from the {SERIES_MISC} authorship check, but its ini'
