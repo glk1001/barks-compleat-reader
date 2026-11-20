@@ -234,6 +234,12 @@ class TestFindUpdate:
             " The reader will close, install it, and start again."
         )
 
+    def test_an_update_gives_no_reason_for_there_being_none(self, tmp_path: Path) -> None:
+        """The menu asks for the reason only when there is nothing to install."""
+        _write_packs(tmp_path, _info(6), _info(6))
+
+        assert find_update(tmp_path, _info(5)).no_update_message() == ""
+
     def test_an_unversioned_install_takes_any_versioned_pack(self, tmp_path: Path) -> None:
         _write_packs(tmp_path, _info(1), _info(1))
 

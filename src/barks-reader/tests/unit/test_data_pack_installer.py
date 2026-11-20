@@ -280,6 +280,21 @@ class TestMain:
 
         update.spawn.assert_called_once()
 
+    def test_an_error_popup_that_comes_back_still_starts_the_reader_and_ends_cleanly(
+        self, update: _Update
+    ) -> None:
+        """The popup exits the process itself; one that only closes must not hang the update."""
+        update.install_old_data()
+        update.write_packs(panels=b"truncated!")
+
+        with patch.object(data_pack_installer, "handle_app_fail") as popup:
+            assert data_pack_installer.main() == 0
+
+        assert "not what its packs promised" in popup.call_args.args[2]
+        update.spawn.assert_called_once()
+        update.success.assert_not_called()
+        assert (update.reader_files / "Indexes" / "old.seg").exists()
+
     def test_a_reader_that_cannot_be_started_after_a_failure_is_logged(
         self, update: _Update
     ) -> None:

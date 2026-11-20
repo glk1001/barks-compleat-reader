@@ -8,6 +8,7 @@ from unittest.mock import patch
 from zipfile import ZipFile
 
 import pytest
+from barks_reader import installer_support
 from barks_reader.core import config_info as config_info_module
 from barks_reader.core import data_pack
 from barks_reader.core.config_info import ConfigInfo
@@ -222,6 +223,38 @@ class TestInstallReaderFiles:
             subdir_bytes(tmp_path / name, "Reader Files/") for name in DATA_PACK_FILE_NAMES
         )
         assert [p.name for p in reader_files.parent.iterdir()] == ["Reader Files"]
+
+    def test_an_update_whose_old_folder_cannot_be_removed_is_still_installed(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        """Windows still holding a file in the old folder: a warning, not a failed update."""
+        info = self._packs(tmp_path)
+        reader_files = tmp_path / "data" / "Reader Files"
+        reader_files.mkdir(parents=True)
+        (reader_files / "stale.txt").write_text("stale", encoding="utf-8")
+        old_dir = reader_files.with_name("Reader Files.old")
+
+        with patch.object(installer_support.shutil, "rmtree") as rmtree:  # removes nothing
+            install_reader_files(info, tmp_path, reader_files)
+
+        rmtree.assert_called_once_with(old_dir, ignore_errors=True)
+        assert data_pack.read_installed(reader_files) == info
+        assert not (reader_files / "stale.txt").exists()
+        assert (old_dir / "stale.txt").exists()
+        assert f'Could not remove "{old_dir}"; the next update will.' in loguru_sink
+
+    def test_an_update_that_removes_its_old_folder_warns_of_nothing(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        info = self._packs(tmp_path)
+        reader_files = tmp_path / "data" / "Reader Files"
+        reader_files.mkdir(parents=True)
+        (reader_files / "stale.txt").write_text("stale", encoding="utf-8")
+
+        install_reader_files(info, tmp_path, reader_files)
+
+        assert [p.name for p in reader_files.parent.iterdir()] == ["Reader Files"]
+        assert not any("Could not remove" in line for line in loguru_sink)
 
     def test_a_first_install_that_fails_says_nothing_of_installed_data(
         self, tmp_path: Path
