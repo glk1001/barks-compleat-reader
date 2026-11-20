@@ -549,12 +549,17 @@ class TestGetSrceDestMap:
 
         result = get_srce_dest_map(comic, srce_dim, required_dim, pages)
 
-        assert result["srce_dirname"] == "my-srce-dir"
-        assert result["dest_dirname"] == "dest-rel"
-        assert result["srce_min_panels_bbox_width"] == 10
-        assert result["dest_required_bbox_width"] == 100
-        assert result["dest_required_bbox_height"] == 200
-        assert result["pages"] == {"2-01.jpg": {"file": "101.jpg", "type": "BODY"}}
+        assert result == {
+            "srce_dirname": "my-srce-dir",
+            "dest_dirname": "dest-rel",
+            "srce_min_panels_bbox_width": 10,
+            "srce_max_panels_bbox_width": 20,
+            "srce_min_panels_bbox_height": 30,
+            "srce_max_panels_bbox_height": 40,
+            "dest_required_bbox_width": 100,
+            "dest_required_bbox_height": 200,
+            "pages": {"2-01.jpg": {"file": "101.jpg", "type": "BODY"}},
+        }
 
 
 # ---------------------------------------------------------------------------

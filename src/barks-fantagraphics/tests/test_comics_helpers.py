@@ -206,9 +206,10 @@ class TestGetIssueTitles:
 
         result = get_issue_titles(db, [("Title A", info_a), ("Title B", info_b)])
 
-        assert len(result) == 2
-        assert result[0][0] == "Title A"
-        assert result[1][0] == "Title B"
+        assert result == [
+            ("Title A", "WDC 001", info_a, True),
+            ("Title B", "WDC 002", info_b, True),
+        ]
 
 
 # ---------------------------------------------------------------------------
