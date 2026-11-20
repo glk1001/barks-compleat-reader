@@ -62,7 +62,8 @@
 #                  (not the slowest: one starved worker is not a drift); warns
 #                  when one has drifted, well before its budget would fail
 #   coverage       the unit suite's and the GUI tests' coverage combined: all
-#                  three totals, an HTML report of what nothing tests, and a floor -
+#                  three totals, an HTML report of what nothing tests, how much of
+#                  scripts/ its own tests run (a figure only), and a floor -
 #                  fails when the combined total is COVERAGE_TOLERANCE points below
 #                  the best recorded (coverage_floor.py, .benchmarks/); only when both the
 #                  pytest and gui stages passed, else it reports without judging
@@ -294,6 +295,20 @@ result_of() {
     echo ""
 }
 
+# How much of scripts/ its own tests run: a figure to read, with no floor. The totals
+# above measure the app's packages alone ([tool.coverage.run] source), and CI's
+# diff-coverage with them, so an untested script was invisible everywhere.
+scripts_coverage() {
+    local data="${cov_dir}/.coverage.scripts" log="${cov_dir}/scripts-coverage.log"
+    if COVERAGE_FILE="$data" with_display uv run pytest scripts/tests -q \
+        --cov=scripts --cov-report= --cov-fail-under=0 >"$log" 2>&1; then
+        echo "coverage: scripts     $(uv run coverage report --fail-under=0 --format=total \
+            --precision=1 --data-file="$data")% (its own tests; not judged)"
+    else
+        echo "coverage: scripts     not measured - its tests failed (${log})"
+    fi
+}
+
 # The unit suite's and the GUI tests' coverage, each and combined. The floor is
 # judged only on a night both ran whole: a failed GUI stage measures less, and
 # that is its own failure already.
@@ -315,6 +330,7 @@ coverage_stage() {
     echo "coverage: combined    ${total}%"
     uv run coverage html --fail-under=0 --quiet --data-file="$all" -d "${cov_dir}/html"
     echo "coverage: what nothing tests: ${cov_dir}/html/index.html"
+    scripts_coverage
 
     if [[ "$(result_of pytest)" != passed || "$(result_of gui)" != passed ]]; then
         echo "coverage: not judged - the pytest and gui stages did not both pass"
