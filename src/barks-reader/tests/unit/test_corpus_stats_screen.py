@@ -589,6 +589,20 @@ class TestLifecycle:
         mock_window.unbind.assert_called_once()
         screen._on_close_screen.assert_called_once()
 
+    @pytest.mark.parametrize("in_the_menu", [True, False])
+    def test_closing_from_the_menu_leaves_the_menu_first(
+        self, screen: CorpusStatsScreen, in_the_menu: bool
+    ) -> None:
+        """Left in menu mode, the bar came back focused the next time the screen opened."""
+        screen._menu_mode = in_the_menu
+        with (
+            patch.object(corpus_stats_screen_module, "Window"),
+            patch.object(screen, "_exit_menu_mode") as exit_menu,
+        ):
+            screen.close()
+        assert exit_menu.call_count == in_the_menu
+        screen._on_close_screen.assert_called_once()
+
 
 class TestCorpusStatsMarkers:
     def test_open_and_close_log(self, screen: CorpusStatsScreen, loguru_sink: list[str]) -> None:

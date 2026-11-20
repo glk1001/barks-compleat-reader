@@ -322,6 +322,24 @@ class TestPopupFrame:
             body.do_layout()
             assert tuple(frame.size) == pytest.approx((class_width, class_height))
 
+    def test_a_frame_fitting_its_body_follows_a_body_put_in_its_place(self) -> None:
+        """Shown again with a longer body, it refits to the new one and forgets the old."""
+        old = BoxLayout(orientation="vertical", size_hint_y=None)
+        new = BoxLayout(orientation="vertical", size_hint_y=None)
+        with patch.object(popup_frame, "Window") as window:
+            window.width, window.height = 1760, 1300
+            frame = PopupFrame(title="T", body=old, size=PopupSize.LARGE, fit_body_height=True)
+            frame.set_body(new)
+
+            new.add_widget(Widget(size_hint_y=None, height=300))
+            new.do_layout()
+            fitted = TITLE_BAR_HEIGHT + 2 * CARD_PADDING + 300
+            assert frame.height == pytest.approx(fitted)
+
+            old.add_widget(Widget(size_hint_y=None, height=450))
+            old.do_layout()
+            assert frame.height == pytest.approx(fitted)
+
     def test_the_title_bar_is_lighter_than_the_card_and_ruled_in_the_title_colour(self) -> None:
         frame = _frame()
         (title,) = [w for w in frame.walk() if isinstance(w, Label) and w.text == "A Title"]

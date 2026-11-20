@@ -1058,6 +1058,24 @@ class TestTheSpreadsTwoTiers:
         marker = pattern(log_markers.FUN_VIEW_SEEDED, filename="seed.png", title="Gift Lion")
         assert any(re.search(marker, line) for line in loguru_sink)
 
+    def test_an_image_a_full_history_has_no_room_for_is_not_said_to_be_put_behind(
+        self, screen_setup: _Setup, loguru_sink: list[str]
+    ) -> None:
+        """Full with its newest image on show, the history keeps what it has."""
+        screen, _, _ = screen_setup
+        self._on_the_spread(screen)
+        picker = MagicMock(return_value=_info("seed.png", Titles.GIFT_LION))
+        screen.set_pick_image_func(picker)
+        with (
+            patch.object(screen, "_needs_a_second_image", return_value=True),
+            patch.object(screen._history, "add_oldest", return_value=False) as add_oldest,
+        ):
+            screen._feed_the_oldest_end()
+
+        add_oldest.assert_called_once_with(_info("seed.png", Titles.GIFT_LION))
+        marker = pattern(log_markers.FUN_VIEW_SEEDED, filename="seed.png", title="Gift Lion")
+        assert not any(re.search(marker, line) for line in loguru_sink)
+
     def test_a_step_back_to_the_oldest_image_puts_one_more_behind_it(
         self, screen_setup: _Setup
     ) -> None:

@@ -1482,6 +1482,41 @@ class TestComicBookReaderScreen:
             mock_show.assert_not_called()
             mock_hide.assert_not_called()
 
+    def test_a_tap_a_button_took_does_not_also_show_the_bar(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        """A press on a bar button in the top margin is the button's, and only its."""
+        screen.comic_book_reader = MagicMock()
+        screen.comic_book_reader.is_click_in_top_margin.return_value = True
+        with (
+            patch.object(screen, "_is_action_bar_hidden", return_value=True),
+            patch.object(screen, "_show_action_bar") as mock_show,
+            patch.object(screen, "_clear_menu_on_touch") as clear_menu,
+            patch.object(FloatLayout, "on_touch_down", return_value=True),
+        ):
+            assert screen.on_touch_down(MagicMock(pos=(400, 900), button="left")) is True
+
+        clear_menu.assert_called_once()  # the tap still leaves the menu
+        mock_show.assert_not_called()
+        screen.comic_book_reader.is_click_in_top_margin.assert_not_called()
+
+    def test_a_tap_outside_the_top_margin_is_left_to_the_page(
+        self, screen: ComicBookReaderScreen
+    ) -> None:
+        """Only the top margin shows the bar: a tap on the page below turns pages."""
+        screen.comic_book_reader = MagicMock()
+        screen.comic_book_reader.is_click_in_top_margin.return_value = False
+        with (
+            patch.object(screen, "_is_action_bar_hidden", return_value=True),
+            patch.object(screen, "_show_action_bar") as mock_show,
+            patch.object(screen, "_hide_action_bar") as mock_hide,
+            patch.object(FloatLayout, "on_touch_down", return_value=False),
+        ):
+            assert screen.on_touch_down(MagicMock(pos=(400, 300), button="left")) is False
+
+        mock_show.assert_not_called()
+        mock_hide.assert_not_called()
+
     @pytest.mark.parametrize("button", ["scrollup", "scrolldown", "right", "middle"])
     def test_only_a_tap_shows_the_bar_or_leaves_the_menu(
         self, screen: ComicBookReaderScreen, button: str

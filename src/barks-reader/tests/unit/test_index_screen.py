@@ -1243,6 +1243,47 @@ class TestAlphabetPanelEdges:
             index_screen._draw_letter_focus()
         drawn.assert_not_called()
 
+    def test_a_letter_that_cannot_be_selected_still_gets_the_focus(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """Selecting draws the ring itself; where nothing was selected, the move draws it."""
+        index_screen._populate_alphabet_menu()
+        index_screen._nav_focused_letter_idx = 0
+        with (
+            patch.object(index_screen, "_select_focused_letter", return_value=False),
+            patch.object(index_screen, "_clear_letter_focus"),
+            patch.object(index_screen, "_draw_letter_focus") as draw,
+        ):
+            index_screen._move_letter_focus(1)
+        assert index_screen._nav_focused_letter_idx == 1
+        draw.assert_called_once_with()
+
+    def test_a_letter_that_was_selected_is_not_drawn_a_second_time(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._populate_alphabet_menu()
+        index_screen._nav_focused_letter_idx = 0
+        with (
+            patch.object(index_screen, "_select_focused_letter", return_value=True),
+            patch.object(index_screen, "_clear_letter_focus"),
+            patch.object(index_screen, "_draw_letter_focus") as draw,
+        ):
+            index_screen._move_letter_focus(1)
+        draw.assert_not_called()
+
+    def test_focusing_the_item_already_focused_redraws_nothing(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        index_screen._nav_focused_col, index_screen._nav_focused_item_idx = 1, 4
+        with (
+            patch.object(index_screen, "_clear_all_item_focus") as clear,
+            patch.object(index_screen, "_draw_item_focus") as draw,
+        ):
+            index_screen._focus_cursor(index_screen._grid_cursor())
+        clear.assert_not_called()
+        draw.assert_not_called()
+        assert (index_screen._nav_focused_col, index_screen._nav_focused_item_idx) == (1, 4)
+
 
 class TestItemsPanelColumnEdges:
     def test_up_from_a_columns_top_with_an_empty_column_before_goes_up_out(

@@ -775,3 +775,24 @@ class TestTheRealGlide:
         on_complete(glide, scroll_view)
 
         on_done.assert_called_once_with(reached)
+
+
+@pytest.mark.parametrize(
+    ("tree_height", "view_height"),
+    [
+        pytest.param(0.0, 100.0, id="a tree not laid out yet"),
+        pytest.param(500.0, 0.0, id="a view with no height yet"),
+    ],
+)
+def test_a_tree_or_view_with_no_height_is_waited_on_and_not_scrolled(
+    tree_height: float, view_height: float
+) -> None:
+    """There is no share of nothing to scroll to: the frames run out and the pin settles."""
+    scroll_view = _make_scroll_view(cont_height=tree_height)
+    scroll_view.height = view_height
+
+    on_settled, frames = _collapse(_make_parent_node(), scroll_view)
+
+    assert scroll_view.scroll_y == pytest.approx(0.5)
+    on_settled.assert_called_once()
+    assert frames == TreeScrollPinner._MAX_SETTLE_FRAMES  # noqa: SLF001

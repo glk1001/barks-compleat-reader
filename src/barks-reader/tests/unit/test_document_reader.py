@@ -984,6 +984,19 @@ class TestTheStoryList:
         assert screen._story_dropdown is None
 
 
+class TestDismissingTheStoryList:
+    def test_an_open_list_is_dismissed(self, screen: DocumentReaderScreen) -> None:
+        dropdown = MagicMock()
+        screen._story_dropdown = dropdown
+        screen._dismiss_dropdown()
+        dropdown.dismiss.assert_called_once_with()
+
+    def test_with_no_list_there_is_nothing_to_dismiss(self, screen: DocumentReaderScreen) -> None:
+        screen._story_dropdown = None
+        screen._dismiss_dropdown()  # Escape with the list never opened: no error
+        assert screen._story_dropdown is None
+
+
 class TestClosing:
     def test_a_close_while_one_is_under_way_does_nothing(
         self, screen: DocumentReaderScreen, loguru_sink: list[str]

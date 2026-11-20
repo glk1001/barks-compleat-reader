@@ -125,3 +125,26 @@ def test_a_level_loguru_has_no_name_for_is_logged_at_info() -> None:
     (loguru_record,) = _loguru_records_for(record)
 
     assert loguru_record["level"].name == "INFO"
+
+
+def test_a_line_that_cannot_be_logged_is_reported_and_does_not_raise() -> None:
+    """Raised into Kivy's logging call, it would stop whatever Kivy was doing."""
+
+    class _RecordWithNoMessage(logging.LogRecord):
+        def getMessage(self) -> str:  # noqa: N802 - logging's own name
+            msg = "bad format arguments"
+            raise TypeError(msg)
+
+    record = _RecordWithNoMessage("kivy", logging.INFO, "base.py", 1, "%d", None, None)
+    lines: list[str] = []
+    handle = logger.add(
+        lambda message: lines.append(str(message)), format="{message}\n{exception}", catch=False
+    )
+    try:
+        LoguruKivyHandler(logger, "kivy").emit(record)
+    finally:
+        logger.remove(handle)
+
+    (line,) = lines
+    assert line.startswith("Error in LoguruKivyHandler.emit: \n")
+    assert "TypeError: bad format arguments" in line

@@ -82,6 +82,15 @@ class TestReaderTreeViewUtils:
         # Test finding a non-existent node
         assert find_and_expand_node_by_path(tree, ["root", "Child 2", "Non-existent"]) is None
 
+    def test_an_empty_path_finds_nothing_and_opens_nothing(
+        self, mock_tree: tuple[Any, Any, Any, Any]
+    ) -> None:
+        """A profile with no saved node: the tree is left as it is."""
+        tree, *_ = mock_tree
+
+        assert find_and_expand_node_by_path(tree, []) is None
+        tree.toggle_node.assert_not_called()
+
     def test_find_tree_view_title_node(self) -> None:
         """Test finding a title node by its title enum."""
         # Create mock title nodes
