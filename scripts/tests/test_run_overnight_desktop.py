@@ -12,16 +12,22 @@ called, and that summary.txt reads as the Linux run's does.
 from __future__ import annotations
 
 import datetime as dt
+import io
 import json
+import os
 import re
+import subprocess
+import sys
+import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import gui_probe_win32
 import psutil
 import pytest
 import run_overnight_desktop as rw
+from script_test_helpers import write_tree
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -996,3 +1002,385 @@ class TestMacOS:
         assert _results(repo) == {"fetch-build": "skipped", "built-app": "skipped"}
         log = _stage_log(repo, "fetch-build")
         assert "with-soft-gl.sh" in log.read_text(encoding="utf-8")
+
+
+def _python(code: str) -> list[str]:
+    return [sys.executable, "-c", code]
+
+
+class TestStageLogCommands:
+    """A stage's commands, run for real: what reaches the log, the console and the stage."""
+
+    @pytest.fixture
+    def log(self, tmp_path: Path) -> Iterator[tuple[rw.StageLog, io.StringIO]]:
+        out = io.StringIO()
+        with patch.object(rw, "REPO_ROOT", tmp_path):
+            yield rw.StageLog(out), out
+
+    def test_a_command_s_output_goes_to_the_log_and_the_console_and_its_status_back(
+        self, log: tuple[rw.StageLog, io.StringIO], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        stage, out = log
+        code = "import sys; print('one'); print('two', file=sys.stderr); sys.exit(3)"
+
+        assert stage.run(_python(code)) == 3
+
+        written = out.getvalue()
+        first = written.splitlines()[0]
+        assert first.startswith("+ ")
+        assert first.endswith(f' -c "{code}"')  # an argument with a space is quoted
+        assert "one\n" in written
+        assert "two\n" in written
+        assert capsys.readouterr().out == written
+
+    def test_a_command_runs_in_the_repo_with_the_environment_it_is_given(
+        self, log: tuple[rw.StageLog, io.StringIO], tmp_path: Path
+    ) -> None:
+        stage, out = log
+        code = "import os; print(os.getcwd()); print(os.environ['BARKS_TEST_SAYS'])"
+        env = {**os.environ, "BARKS_TEST_SAYS": "quack"}
+
+        assert stage.run(_python(code), env) == 0
+
+        ran_in, said = out.getvalue().splitlines()[-2:]
+        assert Path(ran_in).resolve() == tmp_path.resolve()
+        assert said == "quack"
+
+    def test_a_captured_command_is_logged_but_not_echoed(
+        self, log: tuple[rw.StageLog, io.StringIO], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        stage, out = log
+        code = "import sys; print('84.2'); print('a warning', file=sys.stderr); sys.exit(1)"
+
+        assert stage.capture(_python(code)) == (1, "84.2\n")
+
+        assert out.getvalue().endswith("84.2\na warning\n")
+        assert capsys.readouterr().out == ""
+
+    def test_a_ctrl_c_ends_the_command_s_whole_tree_before_it_is_waited_on(
+        self, log: tuple[rw.StageLog, io.StringIO]
+    ) -> None:
+        """A child that ignored the Ctrl-C (the app under uv) would hold the run open."""
+        stage, _ = log
+        process = MagicMock(pid=4242)
+        process.stdout.__iter__.side_effect = KeyboardInterrupt
+        popen = MagicMock()
+        popen.return_value.__enter__.return_value = process
+        with (
+            patch.object(rw.subprocess, "Popen", popen),
+            patch.object(rw, "kill_tree") as kill,
+            pytest.raises(KeyboardInterrupt),
+        ):
+            stage.run(["uv", "run", "pytest"])
+
+        kill.assert_called_once_with(4242)
+
+
+class TestKillTree:
+    def test_on_windows_the_system_s_own_tool_ends_the_tree(self) -> None:
+        with patch.object(rw, "ON_WINDOWS", True), patch.object(rw.subprocess, "run") as run:  # noqa: FBT003
+            rw.kill_tree(4242)
+
+        assert run.call_args.args[0] == ["taskkill", "/PID", "4242", "/T", "/F"]
+
+    def test_elsewhere_the_process_and_the_one_it_started_both_end(self) -> None:
+        nap = "import time; time.sleep(60)"
+        parent_code = (
+            f"import subprocess, sys; subprocess.Popen([sys.executable, '-c', {nap!r}]).wait()"
+        )
+        parent = subprocess.Popen(_python(parent_code))  # noqa: S603 (a throwaway child)
+        try:
+            root = psutil.Process(parent.pid)
+            deadline = time.monotonic() + 30
+            while not root.children() and time.monotonic() < deadline:
+                time.sleep(0.05)
+            (child,) = root.children()
+
+            with patch.object(rw, "ON_WINDOWS", False):  # noqa: FBT003
+                rw.kill_tree(parent.pid)
+
+            parent.wait(timeout=30)
+            _gone, alive = psutil.wait_procs([child], timeout=30)
+            assert alive == []
+        finally:
+            parent.kill()
+
+    def test_a_process_that_is_already_gone_is_no_error(self) -> None:
+        done = subprocess.Popen(_python("pass"))  # noqa: S603 (a throwaway child)
+        done.wait(timeout=30)
+
+        with patch.object(rw, "ON_WINDOWS", False):  # noqa: FBT003
+            rw.kill_tree(done.pid)
+
+
+class TestProcessTreeMemory:
+    def test_no_such_process_is_none(self) -> None:
+        with patch.object(rw.psutil, "Process", side_effect=psutil.NoSuchProcess(4242)):
+            assert rw.process_tree_mb(4242) is None
+
+    def test_a_child_that_ended_mid_count_is_left_out(self) -> None:
+        root, child = MagicMock(), MagicMock()
+        root.name.return_value = "python3.13"
+        root.children.return_value = [child]
+        root.memory_info.return_value.rss = 10 * 1024 * 1024
+        child.memory_info.side_effect = psutil.NoSuchProcess(4243)
+        with patch.object(rw.psutil, "Process", return_value=root):
+            assert rw.process_tree_mb(4242) == 10
+
+    def test_free_memory_is_read_from_the_machine(self) -> None:
+        assert rw.available_mb() > 0
+
+
+class TestShortCommit:
+    @pytest.mark.parametrize(("printed", "commit"), [("abc1234\n", "abc1234"), ("", "?")])
+    def test_it_is_what_git_says_or_a_question_mark(self, printed: str, commit: str) -> None:
+        with patch.object(rw.subprocess, "run", return_value=MagicMock(stdout=printed)) as run:
+            assert rw.short_commit() == commit
+
+        assert run.call_args.args[0] == ["git", "rev-parse", "--short", "HEAD"]
+        assert run.call_args.kwargs["cwd"] == rw.REPO_ROOT
+
+
+class TestKeptAwakeOnWindows:
+    WAKE = rw._ES_CONTINUOUS | rw._ES_SYSTEM_REQUIRED | rw._ES_DISPLAY_REQUIRED  # noqa: SLF001
+
+    def test_sleep_is_held_off_for_the_block_and_let_go_however_it_ends(self) -> None:
+        kernel32 = MagicMock()
+        kernel32.SetThreadExecutionState.return_value = 1
+
+        def the_run_dies() -> None:
+            with rw.kept_awake():
+                kernel32.SetThreadExecutionState.assert_called_once_with(self.WAKE)
+                msg = "the run died"
+                raise RuntimeError(msg)
+
+        with (
+            patch.object(rw, "_kernel32", kernel32),
+            patch.object(rw, "ON_WINDOWS", True),  # noqa: FBT003
+            patch.object(rw, "say") as say,
+            pytest.raises(RuntimeError, match="the run died"),
+        ):
+            the_run_dies()
+
+        assert kernel32.SetThreadExecutionState.call_args.args == (rw._ES_CONTINUOUS,)  # noqa: SLF001
+        say.assert_not_called()
+
+    def test_a_refusal_is_warned_about_and_the_run_goes_on(self) -> None:
+        kernel32 = MagicMock()
+        kernel32.SetThreadExecutionState.return_value = 0
+        with (
+            patch.object(rw, "_kernel32", kernel32),
+            patch.object(rw, "say") as say,
+            rw._kept_awake_windows(),  # noqa: SLF001
+        ):
+            pass
+
+        assert "could not hold off sleep" in say.call_args.args[0]
+
+
+class TestOnBattery:
+    def test_a_mac_asks_pmset(self) -> None:
+        batt = "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=1)\t71%; discharging\n"
+        with (
+            patch.object(rw, "ON_WINDOWS", False),  # noqa: FBT003
+            patch.object(rw.subprocess, "run", return_value=MagicMock(stdout=batt)) as run,
+        ):
+            assert rw.on_battery()
+
+        assert run.call_args.args[0] == ["pmset", "-g", "batt"]
+
+    @pytest.mark.parametrize(
+        ("answered", "ac_line", "on_battery"),
+        [(1, 0, True), (1, 1, False), (0, 0, False)],
+        ids=["the line is off", "plugged in", "windows cannot say"],
+    )
+    def test_windows_reads_the_line_status(
+        self, answered: int, ac_line: int, on_battery: bool
+    ) -> None:
+        def power_status(status_ref: Any) -> int:  # noqa: ANN401 (ctypes' byref object)
+            status_ref._obj.ACLineStatus = ac_line  # noqa: SLF001
+            return answered
+
+        kernel32 = MagicMock()
+        kernel32.GetSystemPowerStatus.side_effect = power_status
+        with patch.object(rw, "ON_WINDOWS", True), patch.object(rw, "_kernel32", kernel32):  # noqa: FBT003
+            assert rw.on_battery() is on_battery
+
+
+@pytest.mark.usefixtures("repo")
+class TestStagesOnTheirOwn:
+    def test_update_pulls_then_syncs(self) -> None:
+        log = _log()
+
+        assert rw.Run(["update"], None).stage_update(log) == 0
+
+        assert [c.args[0] for c in log.run.call_args_list] == [
+            ["git", "pull", "--ff-only"],
+            ["uv", "sync", "--locked"],
+        ]
+
+    def test_a_pull_that_fails_is_not_synced_over(self) -> None:
+        log = _log()
+        log.run.return_value = 1
+
+        assert rw.Run(["update"], None).stage_update(log) == 1
+
+        log.run.assert_called_once_with(["git", "pull", "--ff-only"])
+
+    def test_the_soak_walks_each_seed_and_fails_if_any_walk_did(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BARKS_OVERNIGHT_SOAK_SEEDS", "5 6")
+        monkeypatch.setenv("BARKS_OVERNIGHT_SOAK_STEPS", "200")
+        log = _log()
+        with patch.object(rw.Run, "gui_tests", side_effect=[1, 0]) as gui_tests:
+            assert rw.Run(["soak"], None).stage_soak(log) == 1
+
+        assert [c.kwargs for c in gui_tests.call_args_list] == [
+            {"BARKS_GUI_WALK_SEED": "5", "BARKS_GUI_WALK_STEPS": "200"},
+            {"BARKS_GUI_WALK_SEED": "6", "BARKS_GUI_WALK_STEPS": "200"},
+        ]
+        assert all(c.args == (log, "--soak") for c in gui_tests.call_args_list)
+        assert log.line.call_args_list[0].args == ("soak: seed 5, 200 keys",)
+
+    def test_the_built_app_stage_tests_the_executable_it_was_given(self, tmp_path: Path) -> None:
+        log = _log()
+        with patch.object(rw.Run, "gui_tests", return_value=0) as gui_tests:
+            assert rw.Run(["built-app"], tmp_path / "app.exe").stage_built_app(log) == 0
+
+        gui_tests.assert_called_once_with(log, "--app", str(tmp_path / "app.exe"))
+
+
+@pytest.mark.usefixtures("repo")
+class TestDownload:
+    @staticmethod
+    def _download(status: int, *, leaves_the_exe: bool) -> tuple[rw.Run, int, MagicMock]:
+        run = rw.Run(["fetch-build"], None)
+        log = _log()
+
+        def gh(_argv: list[str]) -> int:
+            if leaves_the_exe:
+                write_tree(run.log_dir / "build", {rw.WIN_ARTIFACT: b"MZ"})
+            return status
+
+        log.run.side_effect = gh
+        return run, run._download(log, "owner/repo", "30"), log  # noqa: SLF001
+
+    def test_the_run_s_executable_becomes_the_one_built_app_tests(self) -> None:
+        run, status, log = self._download(0, leaves_the_exe=True)
+
+        assert status == 0
+        assert run.exe == run.log_dir / "build" / rw.WIN_ARTIFACT
+        assert run.no_exe_why == ""
+        assert log.run.call_args.args[0][:6] == ["gh", "run", "download", "-R", "owner/repo", "30"]
+
+    @pytest.mark.parametrize(
+        ("status", "leaves_the_exe", "failed_with"),
+        [(0, False, 1), (3, False, 3), (3, True, 3)],
+        ids=["no executable in it", "the download failed", "a failed download left one"],
+    )
+    def test_a_download_with_nothing_to_test_fails_the_stage(
+        self, status: int, leaves_the_exe: bool, failed_with: int
+    ) -> None:
+        run, got, log = self._download(status, leaves_the_exe=leaves_the_exe)
+
+        assert got == failed_with
+        assert run.exe is None
+        assert (
+            log.line.call_args.args[0]
+            == f"fetch-build: run 30 has no {rw.WIN_ARTIFACT} to download"
+        )
+
+
+class TestAwaitWindowsJob:
+    """Only the Windows job matters: a macOS leg that failed does not cost the night its stage."""
+
+    @staticmethod
+    def _view(
+        status: str, conclusion: str | None = None, *, mac: str = "success"
+    ) -> tuple[int, str]:
+        jobs = [
+            {"name": "build (macos-latest)", "status": "completed", "conclusion": mac},
+            {"name": "build (windows-latest)", "status": status, "conclusion": conclusion},
+        ]
+        return 0, json.dumps({"status": status, "conclusion": conclusion, "jobs": jobs})
+
+    @staticmethod
+    def _await(*views: tuple[int, str], clock: list[float] | None = None) -> tuple[Any, list[str]]:
+        log = _log()
+        log.capture.side_effect = list(views)
+        with (
+            patch.object(rw.time, "sleep") as sleep,
+            patch.object(rw.time, "monotonic", side_effect=clock or [0.0] * (len(views) + 1)),
+        ):
+            job = rw.Run._await_windows_job(log, "owner/repo", "30")  # noqa: SLF001
+        assert sleep.call_count == len(views) - 1 if job is not None else True
+        return job, [c.args[0] for c in log.line.call_args_list]
+
+    def test_a_finished_build_is_returned_though_the_mac_leg_failed(self) -> None:
+        job, lines = self._await(self._view("completed", "success", mac="failure"))
+
+        assert job is not None
+        assert job["conclusion"] == "success"
+        assert lines == []
+
+    def test_a_build_still_going_is_looked_at_again_in_a_minute(self) -> None:
+        job, lines = self._await(self._view("in_progress"), self._view("completed", "success"))
+
+        assert job is not None
+        assert lines == ["fetch-build: run 30 is still building; looking again in a minute"]
+
+    def test_a_build_that_failed_leaves_nothing_to_test(self) -> None:
+        job, lines = self._await(self._view("completed", "failure"))
+
+        assert job is None
+        assert lines == ["fetch-build: the Windows build failure: nothing to test"]
+
+    def test_a_build_that_never_finishes_is_given_up_on(self) -> None:
+        late = float(rw.BUILD_WAIT_SECS)
+        job, lines = self._await(self._view("in_progress"), clock=[0.0, late])
+
+        assert job is None
+        assert lines == ["fetch-build: run 30's Windows build still not done; gave up"]
+
+    def test_a_gh_that_fails_is_said(self) -> None:
+        job, lines = self._await((1, ""))
+
+        assert job is None
+        assert lines == ["fetch-build: gh run view 30 failed (see the lines above)"]
+
+
+class TestMainRuns:
+    @staticmethod
+    def _main(argv: list[str], *, on_battery: bool) -> tuple[int, MagicMock, MagicMock]:
+        with (
+            patch.object(rw, "ON_WINDOWS", True),  # noqa: FBT003
+            patch.object(rw, "on_battery", return_value=on_battery),
+            patch.object(rw, "choose_gl_backend") as choose,
+            patch.object(rw, "kept_awake") as kept_awake,
+            patch.object(rw, "say") as say,
+            patch.object(rw, "Run") as run,
+        ):
+            run.return_value.run.return_value = 7
+            status = rw.main(argv)
+        choose.assert_called_once_with()
+        kept_awake.return_value.__enter__.assert_called_once_with()
+        return status, run, say
+
+    def test_the_chosen_stages_run_kept_awake_and_their_status_is_the_run_s(self) -> None:
+        status, run, say = self._main(["--only", "soak,update"], on_battery=False)
+
+        assert status == 7
+        run.assert_called_once_with(["update", "soak"], None)
+        say.assert_not_called()
+
+    def test_an_app_is_handed_on_by_its_full_path_and_a_battery_is_warned_about(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        write_tree(tmp_path, {"build/app.exe": b"MZ"})
+        monkeypatch.chdir(tmp_path)
+
+        _, run, say = self._main(["--app", "build/app.exe", "--only", "built-app"], on_battery=True)
+
+        run.assert_called_once_with(["built-app"], (tmp_path / "build" / "app.exe").resolve())
+        assert "on battery" in say.call_args.args[0]
