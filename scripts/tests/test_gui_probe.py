@@ -700,8 +700,10 @@ class TestStartAndStop:
             gui_probe.Probe(backend).start()
 
     @pytest.fixture
-    def fresh(self, run_dir: Path) -> MagicMock:
+    def fresh(self, run_dir: Path, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
         """Make a backend with no app running and no window of the app's on screen yet."""
+        # No backend asked for, whatever the machine running the tests asks of its own app.
+        monkeypatch.delenv("KIVY_GL_BACKEND", raising=False)
         fake = MagicMock()
         fake.client_geometry.return_value = (800, 600, 100, 50)
         fake.find_window.side_effect = [None, None, 7]  # the refusal's look, then two waits
