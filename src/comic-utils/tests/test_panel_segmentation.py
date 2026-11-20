@@ -173,6 +173,21 @@ class TestSortPanelsInReadingOrder:
         panels = [[1000, 3, 900, 600], [0, 0, 900, 600]]
         assert _order(panels) == [2, 1]
 
+    @pytest.mark.parametrize(
+        ("lower_by", "order"),
+        [
+            pytest.param(400, [2, 1], id="at the tolerance: one tier, read across"),
+            pytest.param(401, [1, 2], id="a pixel over: a tier of its own, read after"),
+        ],
+    )
+    def test_a_panel_starts_a_tier_when_over_two_fifths_of_a_panel_lower(
+        self, lower_by: int, order: list[int]
+    ) -> None:
+        # Both 1000 high, so the tolerance is 400. The lower panel is the left one, so
+        # whether it shares the first panel's tier decides which of them is read first.
+        panels = [[1000, 0, 900, 1000], [0, lower_by, 900, 1000]]
+        assert _order(panels) == order
+
     def test_single_panel(self) -> None:
         assert sort_panels_in_reading_order([[5, 6, 7, 8]]) == [[5, 6, 7, 8]]
 
@@ -195,7 +210,18 @@ class TestApplyPanelOrderOverride:
             [2, 0, 1, 1],
         ]
 
-    @pytest.mark.parametrize("order", [[1, 2], [1, 1, 2], [0, 1, 2], [1, 2, 4], [1, 2, True]])
+    @pytest.mark.parametrize(
+        "order",
+        [
+            [1, 2],
+            [1, 1, 2],
+            [0, 1, 2],
+            [1, 2, 4],
+            # Equal to 1, 2, 3 by value, so only the check that each is an int refuses them.
+            [True, 2, 3],
+            [1.0, 2, 3],
+        ],
+    )
     def test_non_permutation_raises(self, order: list[int]) -> None:
         panels = [[0, 0, 1, 1]] * 3
         with pytest.raises(ValueError, match="not a permutation"):
@@ -208,7 +234,7 @@ class TestReadPanelOrderOverride:
         f.write_text("[2, 1, 3]")
         assert read_panel_order_override(f) == [2, 1, 3]
 
-    @pytest.mark.parametrize("text", ['{"a": 1}', '["1", 2]', "[1.5, 2]"])
+    @pytest.mark.parametrize("text", ['{"a": 1}', '["1", 2]', "[1.5, 2]", "[true, 2]"])
     def test_rejects_non_int_list(self, tmp_path: Path, text: str) -> None:
         f = tmp_path / "012-panel-order.json"
         f.write_text(text)
@@ -290,7 +316,29 @@ class TestValidatePanelSegments:
     def test_no_panels(self) -> None:
         assert _faults(_segments([], overall=[0, 0, 1, 1])) == [PanelSegmentsFault.NO_PANELS]
 
-    @pytest.mark.parametrize("panel", [[950, 0, 100, 100], [0, 1450, 100, 100], [-1, 0, 10, 10]])
+    @pytest.mark.parametrize(
+        "panel",
+        [
+            pytest.param([900, 0, 100, 100], id="flush to the right edge"),
+            pytest.param([0, 1400, 100, 100], id="flush to the bottom edge"),
+            pytest.param([0, 0, 1000, 1500], id="the whole page"),
+        ],
+    )
+    def test_a_panel_reaching_the_page_s_edge_is_inside_it(self, panel: list[int]) -> None:
+        info = _segments([panel], overall=[0, 0, 1, 1])
+        assert _faults(info, has_overall_bounds_override=True) == []
+
+    @pytest.mark.parametrize(
+        "panel",
+        [
+            [950, 0, 100, 100],
+            [901, 0, 100, 100],
+            [0, 1450, 100, 100],
+            [0, 1401, 100, 100],
+            [-1, 0, 10, 10],
+            [0, -1, 10, 10],
+        ],
+    )
     def test_panel_outside_page(self, panel: list[int]) -> None:
         info = _segments([panel], overall=[0, 0, 1, 1])
         findings = validate_panel_segments(info, has_overall_bounds_override=True)
@@ -320,7 +368,29 @@ class TestValidatePanelSegments:
         assert _faults(info, has_overall_bounds_override=True) == []
 
     @pytest.mark.parametrize(
-        "overall", [[0, 0, 2000, 10], [10, 10, 5, 20], [-1, 0, 5, 5], [0, 0, 5], "x"]
+        "overall",
+        [
+            pytest.param([0, 0, 999, 1499], id="the page's last pixel each way"),
+            pytest.param([5, 5, 5, 5], id="one pixel"),
+        ],
+    )
+    def test_overall_bounds_up_to_the_page_s_last_pixel_are_fine(self, overall: list[int]) -> None:
+        info = _segments(CLEAN_PANELS, overall=overall)
+        assert _faults(info, has_overall_bounds_override=True) == []
+
+    @pytest.mark.parametrize(
+        "overall",
+        [
+            [0, 0, 2000, 10],
+            [0, 0, 1000, 10],  # x1 is a pixel, so the page's width is one past the last
+            [0, 0, 10, 1500],
+            [10, 10, 5, 20],
+            [10, 10, 20, 5],
+            [-1, 0, 5, 5],
+            [0, -1, 5, 5],
+            [0, 0, 5],
+            "x",
+        ],
     )
     def test_bad_overall_bounds(self, overall: Any) -> None:
         info = _segments(CLEAN_PANELS, overall=overall)
@@ -340,10 +410,12 @@ class TestValidatePanelSegments:
         assert (findings[0].fault, findings[0].detail) == (PanelSegmentsFault.MISSING_KEY, "size")
         assert PanelSegmentsFault.PANEL_OVERLAP in [f.fault for f in findings]
 
-    def test_missing_panels_is_the_only_finding(self) -> None:
+    @pytest.mark.parametrize("key", ["panels", "size", "overall_bounds", "numbering"])
+    def test_a_missing_key_is_named_and_is_the_only_finding_on_a_clean_page(self, key: str) -> None:
         info = _segments(CLEAN_PANELS)
-        del info["panels"]
-        assert _faults(info) == [PanelSegmentsFault.MISSING_KEY]
+        del info[key]
+        findings = validate_panel_segments(info, has_overall_bounds_override=False)
+        assert [(f.fault, f.detail) for f in findings] == [(PanelSegmentsFault.MISSING_KEY, key)]
 
     @pytest.mark.parametrize("size", [[0, 100], [100], ["a", 1], [True, 1], "big"])
     def test_bad_page_size(self, size: Any) -> None:
