@@ -28,6 +28,8 @@ from barks_fantagraphics.comic_book import (
     get_story_files_of_page_type,
     get_total_num_pages,
 )
+from barks_fantagraphics.comic_book_info import ComicBookInfo
+from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import (
     BOUNDED_SUBDIR,
     IMAGES_SUBDIR,
@@ -874,37 +876,66 @@ class TestGetTotalNumPages:
 
 
 class TestGetMainPublicationInfo:
+    """The whole text of each form, from a real `ComicBookInfo` in a volume 7 of 2012."""
+
+    FIRST_PUBLISHED = "Comics and Stories #91, June 1948"
+    SUBMITTED = "Submitted to Western Publishing on March 15th, 1947\n"
+
     @staticmethod
-    def _make_info_mocks(
-        file_title: str = "Regular Title",
-    ) -> tuple[str, FantaComicBookInfo, FantaBook]:
-        fanta_info = _make_fanta_info()
-        fanta_book = _make_fanta_book()
-        return file_title, fanta_info, fanta_book
+    def _publication_info(file_title: str) -> str:
+        comic_book_info = ComicBookInfo(
+            title=Titles.LOST_IN_THE_ANDES,
+            is_barks_title=True,
+            issue_name=Issues.CS,
+            issue_number=91,
+            issue_month=6,
+            issue_year=1948,
+            submitted_day=15,
+            submitted_month=3,
+            submitted_year=1947,
+        )
+        fanta_info = FantaComicBookInfo(
+            comic_book_info=comic_book_info,
+            colorist="Susan Daigle-Leach",
+            series_name="WDCS",
+            fantagraphics_volume="FANTA_07",
+            number_in_series=1,
+            fanta_chronological_number=42,
+        )
+        fanta_book = FantaBook(
+            title="Carl Barks Vol 07", pub="Fantagraphics", volume=7, year=2012, num_pages=280
+        )
+        return get_main_publication_info(file_title, fanta_info, fanta_book)
 
-    def test_regular_title_includes_first_published(self) -> None:
-        file_title, fanta_info, fanta_book = self._make_info_mocks()
-        result = get_main_publication_info(file_title, fanta_info, fanta_book)
-        assert "First published in" in result
-        assert "Submitted to Western Publishing" in result
-        assert "Fantagraphics" in result
+    def test_a_regular_title(self) -> None:
+        assert self._publication_info("Regular Title") == (
+            f"First published in {self.FIRST_PUBLISHED}\n"
+            f"{self.SUBMITTED}"
+            "\n"
+            "This edition published in Fantagraphics CBDL, Volume 7, 2012\n"
+            "Color restoration by Susan Daigle-Leach"
+        )
 
-    def test_silent_night_special_text(self) -> None:
-        file_title, fanta_info, fanta_book = self._make_info_mocks("Silent Night")
-        result = get_main_publication_info(file_title, fanta_info, fanta_book)
-        assert "Rejected by Western editors in 1945" in result
+    def test_silent_night_says_it_was_rejected(self) -> None:
+        assert self._publication_info("Silent Night") == (
+            "(*) Rejected by Western editors in 1945, this story was originally\n"
+            f" intended for publication in {self.FIRST_PUBLISHED}\n"
+            f"{self.SUBMITTED}"
+        )
 
-    def test_milkman_special_text(self) -> None:
-        file_title, fanta_info, fanta_book = self._make_info_mocks("The Milkman")
-        result = get_main_publication_info(file_title, fanta_info, fanta_book)
-        assert "Rejected by Western editors in 1957" in result
-        assert "Color restoration by" in result
+    def test_the_milkman_says_it_was_rejected_and_names_the_colorist(self) -> None:
+        assert self._publication_info("The Milkman") == (
+            "(*) Rejected by Western editors in 1957, this story was originally\n"
+            f" intended for publication in {self.FIRST_PUBLISHED}\n"
+            f"{self.SUBMITTED}"
+            "\n"
+            "Color restoration by Susan Daigle-Leach"
+        )
 
-    def test_good_deeds_no_fanta_pub_info(self) -> None:
-        file_title, fanta_info, fanta_book = self._make_info_mocks("Good Deeds")
-        result = get_main_publication_info(file_title, fanta_info, fanta_book)
-        assert "First published in" in result
-        assert "Fantagraphics" not in result
+    def test_good_deeds_has_no_fantagraphics_edition(self) -> None:
+        assert self._publication_info("Good Deeds") == (
+            f"First published in {self.FIRST_PUBLISHED}\n{self.SUBMITTED}"
+        )
 
 
 # ---------------------------------------------------------------------------
