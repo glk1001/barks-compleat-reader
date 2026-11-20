@@ -498,6 +498,43 @@ class TestHistoryScreenBuildCache:
 
 
 class TestHistoryScreenIncrementalDelete:
+    @pytest.mark.parametrize(
+        ("delete", "store_delete", "key", "marker"),
+        [
+            ("_on_delete_event", "delete_event", "e2", 'History: deleted event "e2".'),
+            (
+                "_on_delete_title",
+                "delete_events_for_title",
+                "Omelet",
+                history_screen_module.log_markers.HISTORY_DELETED_TITLE.format(title="Omelet"),
+            ),
+        ],
+    )
+    def test_a_delete_is_logged_once_the_store_has_it(
+        self,
+        stocked_screen: tuple[HistoryScreen, _FakeStore],
+        loguru_sink: list[str],
+        delete: str,
+        store_delete: str,
+        key: str,
+        marker: str,
+    ) -> None:
+        """A GUI test reads the history file on this line: logged first, it read the old one."""
+        screen, store = stocked_screen
+        screen._refresh()
+        logged_at_the_write: list[bool] = []
+        real_delete = getattr(store, store_delete)
+
+        def delete_and_note(deleted: str) -> None:
+            logged_at_the_write.append(marker in loguru_sink)
+            real_delete(deleted)
+
+        with patch.object(store, store_delete, side_effect=delete_and_note):
+            getattr(screen, delete)(key)
+
+        assert logged_at_the_write == [False]
+        assert marker in loguru_sink
+
     def test_delete_removes_only_the_deleted_row(
         self, stocked_screen: tuple[HistoryScreen, _FakeStore]
     ) -> None:

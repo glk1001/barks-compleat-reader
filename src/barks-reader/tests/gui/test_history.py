@@ -76,8 +76,7 @@ def test_delete_removes_the_focused_event(boot: AppBoot) -> None:
         pattern(markers.HISTORY_DELETED_EVENT, event_id=NEWEST_EVENT_ID),
         "Delete",  # desktop key: a row's delete is its button or Delete; the remote has neither
     )
-    d.settle()
-    remaining = _events(boot)
+    remaining = _events(boot)  # the marker is logged after the file is written
     assert len(remaining) == CANNED_EVENTS - 1
     assert [e["id"] for e in remaining] == [i for i in before if i != NEWEST_EVENT_ID], (
         "only the focused event goes, and the rest keep their order"
@@ -112,5 +111,4 @@ def test_left_on_a_row_asks_and_return_deletes_it(boot: AppBoot) -> None:
     d = _enter(boot)
     d.key_then_wait(pattern(markers.CONFIRM_POPUP_OPENED), "Left")
     d.key_then_wait(pattern(markers.HISTORY_DELETED_EVENT, event_id=NEWEST_EVENT_ID), "Return")
-    d.settle()
     assert len(_events(boot)) == CANNED_EVENTS - 1

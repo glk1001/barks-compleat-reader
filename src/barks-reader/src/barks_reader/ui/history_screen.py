@@ -615,14 +615,15 @@ class HistoryScreen(NavExitMixin, FloatLayout):
 
     def _on_delete_event(self, event_id: str) -> None:
         assert self._history_store is not None
-        logger.info(log_markers.HISTORY_DELETED_EVENT.format(event_id=event_id))
         self._history_store.delete_event(event_id)
+        # Logged once the store has written the file: a GUI test reads the file on it.
+        logger.info(log_markers.HISTORY_DELETED_EVENT.format(event_id=event_id))
         self._drop_rows({event_id})
 
     def _on_delete_title(self, title_str: str) -> None:
         assert self._history_store is not None
-        logger.info(log_markers.HISTORY_DELETED_TITLE.format(title=title_str))
         self._history_store.delete_events_for_title(title_str)
+        logger.info(log_markers.HISTORY_DELETED_TITLE.format(title=title_str))  # as above
         self._drop_rows({title_str})
 
     def _drop_rows(self, keys: set[str]) -> None:
