@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 from barks_fantagraphics.panel_geometry import (
     BoundingBox,
@@ -37,7 +39,7 @@ class TestBoundingBox:
 
     def test_is_frozen(self) -> None:
         bb = BoundingBox(0, 0, 10, 10)
-        with pytest.raises((AttributeError, TypeError)):
+        with pytest.raises(FrozenInstanceError):
             # noinspection PyDataclass
             bb.x_min = 99  # ty: ignore[invalid-assignment]
 

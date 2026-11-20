@@ -534,8 +534,11 @@ class TestUncleScroogeTags:
     """SCROOGE_NOT_IN_US must hold no Uncle Scrooge issue, as US or as its Four Color number."""
 
     @staticmethod
-    def _validate_with(issue_name: Issues, issue_number: int) -> None:
-        title = barks_tags.BARKS_TAGGED_TITLES[Tags.SCROOGE_NOT_IN_US][0]
+    def _title() -> Titles:
+        return barks_tags.BARKS_TAGGED_TITLES[Tags.SCROOGE_NOT_IN_US][0]
+
+    def _validate_with(self, issue_name: Issues, issue_number: int) -> None:
+        title = self._title()
         title_info = list(barks_tags.BARKS_TITLE_INFO)
         title_info[title] = replace(
             title_info[title], issue_name=issue_name, issue_number=issue_number
@@ -544,11 +547,11 @@ class TestUncleScroogeTags:
             barks_tags._validate_uncle_scrooge_tags()  # noqa: SLF001
 
     def test_an_uncle_scrooge_issue_is_refused(self) -> None:
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=self._title().name):
             self._validate_with(Issues.US, 7)
 
     def test_a_four_color_number_of_uncle_scrooge_is_refused(self) -> None:
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=self._title().name):
             self._validate_with(Issues.FC, 386)
 
     def test_the_same_number_in_another_series_is_not_uncle_scrooge(self) -> None:

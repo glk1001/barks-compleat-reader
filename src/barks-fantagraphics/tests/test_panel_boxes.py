@@ -9,17 +9,18 @@ from unittest.mock import MagicMock, patch
 if TYPE_CHECKING:
     from pathlib import Path
 
+from dataclasses import FrozenInstanceError
+
 import barks_fantagraphics.panel_boxes as panel_boxes_module
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.panel_boxes import (
     PagePanelBoxes,
-    PanelBox,
     TitlePanelBoxes,
     check_page_panel_boxes,
 )
-from panel_factories import make_page_panel_boxes
+from panel_factories import make_page_panel_boxes, make_panel_box
 from spec_mocks import mock_comic_book, mock_comics_database
 
 # ---------------------------------------------------------------------------
@@ -49,16 +50,16 @@ def _make_panel_segments_json(
 
 class TestPanelBox:
     def test_box_property_returns_coords(self) -> None:
-        pb = PanelBox(panel_num=1, x0=10, y0=20, x1=100, y1=200, w=90, h=180)
+        pb = make_panel_box(1, 10, 20, 100, 200)
         assert pb.box == (10, 20, 100, 200)
 
     def test_box_property_uses_stored_coords(self) -> None:
-        pb = PanelBox(panel_num=3, x0=5, y0=15, x1=50, y1=150, w=45, h=135)
+        pb = make_panel_box(3, 5, 15, 50, 150)
         assert pb.box == (5, 15, 50, 150)
 
     def test_is_frozen(self) -> None:
-        pb = PanelBox(panel_num=1, x0=0, y0=0, x1=10, y1=10, w=10, h=10)
-        with pytest.raises((AttributeError, TypeError)):
+        pb = make_panel_box(1, 0, 0, 10, 10)
+        with pytest.raises(FrozenInstanceError):
             # noinspection PyDataclass
             pb.x0 = 99  # ty: ignore[invalid-assignment]
 

@@ -1,14 +1,14 @@
 # ruff: noqa: SLF001
 
-"""Branch-coverage tests for ``validate_payment_data``.
+"""The payment data, and each error ``validate_payment_data`` can report.
 
-The top-level ``test_barks_payments.py`` only confirms validation passes on
-real data. This file exercises each individual error branch by patching the
-module-level data tables with minimal synthetic fixtures.
+The first class holds the real data to the validator. The rest exercise each individual
+error branch by patching the module-level data tables with minimal synthetic fixtures.
 """
 
 from __future__ import annotations
 
+import itertools
 import re
 from dataclasses import replace
 from fractions import Fraction
@@ -84,6 +84,22 @@ def _run_validation(
             validate_payment_data()  # Should not raise.
 
     return capsys.readouterr().out
+
+
+class TestTheRealPaymentData:
+    def test_the_current_data_is_valid(self) -> None:
+        validate_payment_data()  # no raise
+
+    def test_one_pagers_agree_with_the_payment_and_bibliography_page_counts(self) -> None:
+        assert get_one_pager_page_count_errors() == []
+
+    def test_the_payments_are_in_submission_order(self) -> None:
+        # Titles are in submission order, so the payments' titles must only ever rise.
+        titles = list(bp_module.BARKS_PAYMENTS)
+        out_of_order = [
+            later.name for earlier, later in itertools.pairwise(titles) if later < earlier
+        ]
+        assert out_of_order == []
 
 
 class TestValidatePaymentData:

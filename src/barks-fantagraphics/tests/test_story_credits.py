@@ -126,39 +126,53 @@ class TestTheCreditReader:
 
 
 class TestTheAgreementRules:
+    """The rules by role, not through a story: a corrected role must not fail a rule."""
+
     @pytest.mark.parametrize(
-        ("title", "story_credits", "agrees"),
+        ("role", "story_credits", "agrees"),
         [
-            # Corrected to art only: another's script is what the role says.
-            (Titles.DAY_THE_FARM_STOOD_STILL_THE, StoryCredits(other_script=True), True),
-            (Titles.DAY_THE_FARM_STOOD_STILL_THE, StoryCredits(), False),
-            # Pirate Gold: art only, Barks's art beside Jack Hannah's.
+            # Art only: another's script is what the role says.
+            (Qualifier.ART_ONLY, StoryCredits(other_script=True), True),
+            (Qualifier.ART_ONLY, StoryCredits(), False),
+            # Art only, Barks's art beside another's (Pirate Gold, with Jack Hannah).
             (
-                Titles.DONALD_DUCK_FINDS_PIRATE_GOLD,
+                Qualifier.ART_ONLY,
                 StoryCredits(other_script=True, barks_art=True, other_art=True),
                 True,
             ),
-            (
-                Titles.DONALD_DUCK_FINDS_PIRATE_GOLD,
-                StoryCredits(other_script=True, other_art=True),
-                False,
-            ),
+            (Qualifier.ART_ONLY, StoryCredits(other_script=True, other_art=True), False),
+            # Art and a rewrite of another's script takes the same credits as art only.
+            (Qualifier.ART_AND_REWRITING_OF_SCRIPT, StoryCredits(other_script=True), True),
+            (Qualifier.ART_AND_REWRITING_OF_SCRIPT, StoryCredits(), False),
             # Wholly Barks's.
-            (Titles.VACATION_TIME, StoryCredits(), True),
-            (Titles.VACATION_TIME, StoryCredits(other_art=True), False),
+            (None, StoryCredits(), True),
+            (None, StoryCredits(other_art=True), False),
+            (None, StoryCredits(other_script=True), False),
             # Script only.
-            (Titles.PHANTOM_JOKER_THE, StoryCredits(barks_script=True, other_art=True), True),
-            (Titles.PHANTOM_JOKER_THE, StoryCredits(barks_script=True), False),
-            (Titles.PHANTOM_JOKER_THE, StoryCredits(other_script=True, other_art=True), False),
-            # No bibliography entry: no role to disagree with.
-            (Titles.PIED_PIPER_OF_DUCKBURG_THE, StoryCredits(), True),
-            (Titles.PIED_PIPER_OF_DUCKBURG_THE, StoryCredits(other_script=True), True),
+            (Qualifier.SCRIPT_ONLY, StoryCredits(barks_script=True, other_art=True), True),
+            (Qualifier.SCRIPT_ONLY, StoryCredits(barks_script=True), False),
+            (Qualifier.SCRIPT_ONLY, StoryCredits(other_script=True, other_art=True), False),
         ],
     )
     def test_a_role_and_its_credits(
-        self, title: Titles, story_credits: StoryCredits, *, agrees: bool
+        self, role: Qualifier | None, story_credits: StoryCredits, *, agrees: bool
     ) -> None:
-        assert (disagreement(title, story_credits) is None) == agrees
+        assert (_role_disagreement(role, story_credits) is None) == agrees
+
+    def test_a_story_with_no_bibliography_entry_has_no_role_to_disagree_with(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setitem(globals(), "TITLE_TO_BIB_ENTRY", {})
+        assert disagreement(Titles.VACATION_TIME, StoryCredits(other_script=True)) is None
+
+    def test_a_story_takes_the_role_its_bibliography_entry_gives(self) -> None:
+        # One real story, to show the entry's role is the one the rules are asked about.
+        assert TITLE_TO_BIB_ENTRY[Titles.PHANTOM_JOKER_THE].effective_qualifier is (
+            Qualifier.SCRIPT_ONLY
+        )
+        assert disagreement(Titles.PHANTOM_JOKER_THE, StoryCredits(barks_script=True)) == (
+            "SCRIPT_ONLY, but the ini names no other artist"
+        )
 
 
 class TestEveryStoryCredits:

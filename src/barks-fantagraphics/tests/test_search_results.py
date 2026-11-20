@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from typing import TYPE_CHECKING
 
 import pytest
 from barks_fantagraphics import search_results, whoosh_search_engine
@@ -17,6 +18,9 @@ from barks_fantagraphics.search_results import (
     restrict_titles,
     subtract_titles,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _speech(group_id: str, *entity_types: str) -> SpeechInfo:
@@ -164,7 +168,9 @@ def test_hit_counts_are_bubbles_per_story() -> None:
     ],
     ids=["merge", "intersect", "subtract", "restrict"],
 )
-def test_no_operation_changes_its_arguments(operation) -> None:  # noqa: ANN001
+def test_no_operation_changes_its_arguments(
+    operation: Callable[[TitleDict, TitleDict], TitleDict],
+) -> None:
     """TitleInfo is mutable and a result may be cached, so the inputs must survive intact."""
     gold, mine = copy.deepcopy(GOLD), copy.deepcopy(MINE)
     result = operation(gold, mine)

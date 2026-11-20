@@ -11,8 +11,8 @@ from barks_fantagraphics.panel_boxes import PagePanelBoxes, PanelBox
 def make_panel_box(
     panel_num: int = 1, x0: int = 10, y0: int = 20, x1: int = 100, y1: int = 200
 ) -> PanelBox:
-    """Make a panel box whose width and height follow from its corners."""
-    return PanelBox(panel_num=panel_num, x0=x0, y0=y0, x1=x1, y1=y1, w=x1 - x0, h=y1 - y0)
+    """Make a panel box whose width and height follow from its corners, both inclusive."""
+    return PanelBox(panel_num=panel_num, x0=x0, y0=y0, x1=x1, y1=y1, w=x1 - x0 + 1, h=y1 - y0 + 1)
 
 
 def make_page_panel_boxes(

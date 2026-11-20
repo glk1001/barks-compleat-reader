@@ -66,9 +66,9 @@ class TestGetTitlesAndInfo:
         db.get_fanta_comic_book_info.assert_called_once_with("My Title")
         assert result == [("My Title", fanta_info)]
 
-    def test_an_issue_comes_back_as_its_story_title(self) -> None:
+    def test_an_issue_comes_back_as_its_story_title(self, db: ComicsDatabase) -> None:
         # The real database: "FC 9" has to go on as a title the other lookups know.
-        result = get_titles_and_info(ComicsDatabase(), [], "FC 9")
+        result = get_titles_and_info(db, [], "FC 9")
 
         assert [title for title, _ in result] == ["Donald Duck Finds Pirate Gold"]
         assert result[0][1].comic_book_info.get_title_str() == "Donald Duck Finds Pirate Gold"
@@ -228,8 +228,7 @@ class TestGetDisplayTitle:
 
         assert result == "Some Title"
 
-    def test_real_titles_are_bracketed_only_when_not_barks_own(self) -> None:
-        db = ComicsDatabase()
+    def test_real_titles_are_bracketed_only_when_not_barks_own(self, db: ComicsDatabase) -> None:
         assert get_display_title(db, "Lost in the Andes!") == "Lost in the Andes!"
         assert get_display_title(db, "The Victory Garden") == "(The Victory Garden)"
 

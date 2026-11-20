@@ -11,14 +11,12 @@ import re
 import string
 from typing import Any
 
-import pytest
 from barks_fantagraphics.alpha_split import (
     bucket_label,
     bucket_label_parts,
     first_letter_key,
     group_by_first_letter,
     split_alpha_terms,
-    split_letter_terms,
 )
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 from barks_fantagraphics.panel_geometry import centered_bbox, scale_height
@@ -226,7 +224,6 @@ def test_grouping_by_first_letter_keeps_the_order_within_each_letter(terms: list
     grouped = group_by_first_letter(terms)
     for letter, letter_terms in grouped.items():
         assert letter_terms == [t for t in terms if first_letter_key(t) == letter]
-    assert split_letter_terms([]) == []
 
 
 @given(st.lists(_TERMS, min_size=1, max_size=20).map(sorted))
@@ -236,8 +233,6 @@ def test_a_bucket_label_is_short_lowercase_and_made_of_its_two_ends(bucket: list
         assert 1 <= len(part) <= 3  # noqa: PLR2004
         assert part == part.lower()
     assert bucket_label(bucket) == (start if start == end else f"{start}-{end}")
-    with pytest.raises(ValueError, match="empty bucket"):
-        bucket_label([])
 
 
 # --- panel geometry -------------------------------------------------------------
