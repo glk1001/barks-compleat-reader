@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -31,38 +32,37 @@ def statistics_dir(tmp_path: Path) -> Path:
     return stats_dir
 
 
+@contextmanager
+def _without_the_kv_file() -> Generator[MagicMock]:
+    """Patch what a StatisticsScreen takes from its kv file; yield the dropdown class."""
+    with (
+        patch.object(FloatLayout, "__init__", autospec=True) as mock_layout_init,
+        patch.object(statistics_screen_module, "ReaderDropDown") as mock_dropdown_cls,
+        patch.object(statistics_screen_module, "Button"),
+    ):
+
+        def side_effect(instance: StatisticsScreen, **_kwargs: object) -> None:
+            instance.ids = {"stat_menu_layout": MagicMock(), "stat_image": MagicMock()}
+            instance._dropdown_nav_mode = False  # DropdownNavMixin needs this
+
+        mock_layout_init.side_effect = side_effect
+        yield mock_dropdown_cls
+
+
 @pytest.fixture
 def screen(statistics_dir: Path) -> Generator[StatisticsScreen]:
     """Fixture for the StatisticsScreen with mocked Kivy dependencies."""
     with (
-        patch.object(FloatLayout, "__init__", autospec=True) as mock_layout_init,
+        _without_the_kv_file() as mock_dropdown_cls,
         patch.object(statistics_screen_module, "StatMenuButton", spec=True) as mock_stat_button_cls,
-        patch.object(statistics_screen_module, "ReaderDropDown") as mock_dropdown_cls,
-        patch.object(statistics_screen_module, "Button"),
         patch.object(statistics_screen_module, "dp", side_effect=lambda x: x),
     ):
-        mock_ids = {
-            "stat_menu_layout": MagicMock(),
-            "stat_image": MagicMock(),
-        }
-
-        def side_effect(instance: StatisticsScreen, **_kwargs) -> None:  # noqa: ANN003
-            instance.ids = mock_ids
-            # DropdownNavMixin needs this
-            instance._dropdown_nav_mode = False
-
-        mock_layout_init.side_effect = side_effect
-
-        mock_dropdown = MagicMock()
-        mock_dropdown.container.children = [MagicMock(), MagicMock()]
-        mock_dropdown_cls.return_value = mock_dropdown
+        mock_dropdown_cls.return_value.container.children = [MagicMock(), MagicMock()]
 
         # This will be used by _build_menu inside __init__
-        mock_buttons = [MagicMock(spec=StatMenuButton) for _ in range(8)]
-        mock_stat_button_cls.side_effect = mock_buttons
+        mock_stat_button_cls.side_effect = [MagicMock(spec=StatMenuButton) for _ in range(8)]
 
-        screen_instance = StatisticsScreen(statistics_dir=statistics_dir)
-        yield screen_instance
+        yield StatisticsScreen(statistics_dir=statistics_dir)
 
 
 class TestStatisticsScreen:
@@ -296,17 +296,7 @@ def real_tabs_screen(statistics_dir: Path) -> Generator[StatisticsScreen]:
     Mock tabs take any state they are given, so two tabs marked at once, and a tab
     marked for a list nothing was chosen from, passed every test (2026-11-13).
     """
-    with (
-        patch.object(FloatLayout, "__init__", autospec=True) as mock_layout_init,
-        patch.object(statistics_screen_module, "ReaderDropDown"),
-        patch.object(statistics_screen_module, "Button"),
-    ):
-
-        def side_effect(instance: StatisticsScreen, **_kwargs) -> None:  # noqa: ANN003
-            instance.ids = {"stat_menu_layout": MagicMock(), "stat_image": MagicMock()}
-            instance._dropdown_nav_mode = False
-
-        mock_layout_init.side_effect = side_effect
+    with _without_the_kv_file():
         yield StatisticsScreen(statistics_dir=statistics_dir)
 
 
