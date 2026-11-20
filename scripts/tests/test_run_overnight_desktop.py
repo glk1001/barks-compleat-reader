@@ -32,6 +32,20 @@ if TYPE_CHECKING:
 LINUX_RUNNER = Path(rw.__file__).with_name("run_overnight.sh")
 
 
+def _log() -> MagicMock:
+    """Stand in for a stage's log: every command it runs passes, and prints a percentage."""
+    log = MagicMock(spec=rw.StageLog)
+    log.run.return_value = 0
+    log.capture.return_value = (0, "84.2\n")
+    return log
+
+
+def _stage_log(repo: Path, stage: str) -> Path:
+    """Return the one log the run under `repo` wrote for `stage`."""
+    (log,) = repo.glob(f"build/overnight/*/{stage}.log")
+    return log
+
+
 class TestStageTable:
     def test_every_stage_is_documented_in_order(self) -> None:
         listed = re.findall(r"^  ([a-z-]+) ", rw.list_text(), re.MULTILINE)
@@ -303,7 +317,7 @@ class TestRun:
         with patch.object(rw.Run, "run_stage", side_effect=stage):
             assert run.run() == 1
         assert _results(repo) == {"pytest": "FAILED", "validate": "passed"}
-        (log,) = repo.glob("build/overnight/*/pytest.log")
+        log = _stage_log(repo, "pytest")
         assert "OSError: boom" in log.read_text(encoding="utf-8")
 
     def test_ctrl_c_stops_the_run(self, repo: Path) -> None:
@@ -321,7 +335,7 @@ class TestRun:
         gui.assert_not_called()
         soak.assert_not_called()
         assert _results(repo) == {"gui": "FAILED", "soak": "FAILED"}
-        (log,) = repo.glob("build/overnight/*/gui.log")
+        log = _stage_log(repo, "gui")
         assert "gui-doctor.log" in log.read_text(encoding="utf-8")
 
     @pytest.mark.usefixtures("repo")
@@ -343,7 +357,7 @@ class TestRun:
         run.gui_ready = True
         assert run.run() == 0
         assert _results(repo) == {"built-app": "skipped"}
-        (log,) = repo.glob("build/overnight/*/built-app.log")
+        log = _stage_log(repo, "built-app")
         assert "fetch-build did not fetch" in log.read_text(encoding="utf-8")
 
     def test_fetch_build_skips_with_app(self, repo: Path) -> None:
@@ -486,7 +500,7 @@ class TestWikiCopy:
         pull = self._stage(repo, pulled=True, status=0)
         assert pull.call_args.kwargs == {"stage": "wiki-copy"}
         assert _results(repo) == {"wiki-copy": "passed"}
-        (log,) = repo.glob("build/overnight/*/wiki-copy.log")
+        log = _stage_log(repo, "wiki-copy")
         assert "wiki-copy: said" in log.read_text(encoding="utf-8")
 
     def test_a_wiki_that_could_not_be_pulled_warns_though_the_copy_matches_it(
@@ -546,7 +560,7 @@ class TestFetchBuild:
             patch.object(rw.Run, "_download", return_value=0) as download,
         ):
             run.run()
-        (log,) = repo.glob("build/overnight/*/fetch-build.log")
+        log = _stage_log(repo, "fetch-build")
         return download, log.read_text(encoding="utf-8")
 
     def test_this_commits_build(self, repo: Path) -> None:
@@ -617,7 +631,7 @@ class TestAppMemoryWatch:
     @staticmethod
     def _watch(tmp_path: Path, cap_mb: int = 3000) -> tuple[rw.AppMemoryWatch, MagicMock]:
         (tmp_path / "app.pid").write_text("4242\n", encoding="utf-8")
-        log = MagicMock(spec=rw.StageLog)
+        log = _log()
         return rw.AppMemoryWatch(log, cap_mb, tmp_path / "app.pid", 0.01), log
 
     def test_under_the_cap_is_only_noted(self, tmp_path: Path) -> None:
@@ -646,7 +660,7 @@ class TestAppMemoryWatch:
         assert "over the cap 1 time(s)" in watch.finish()
 
     def test_no_app_is_nothing(self, tmp_path: Path) -> None:
-        log = MagicMock(spec=rw.StageLog)
+        log = _log()
         watch = rw.AppMemoryWatch(log, 3000, tmp_path / "absent.pid", 0.01)
         watch.check()
         assert watch.peak_mb == 0
@@ -679,7 +693,7 @@ class TestGuiStageMemory:
         ):
             assert run.run() == 1
         gui.assert_not_called()
-        (log,) = repo.glob("build/overnight/*/gui.log")
+        log = _stage_log(repo, "gui")
         text = log.read_text(encoding="utf-8")
         assert "2,000 MB" in text
         assert "firefox.exe" in text
@@ -687,8 +701,7 @@ class TestGuiStageMemory:
     @pytest.mark.usefixtures("repo")
     def test_a_breach_fails_a_suite_that_passed(self) -> None:
         run = rw.Run(["gui"], None)
-        log = MagicMock(spec=rw.StageLog)
-        log.run.return_value = 0
+        log = _log()
 
         def breach(watch: rw.AppMemoryWatch) -> None:
             watch.breaches.append(4400)
@@ -700,18 +713,10 @@ class TestGuiStageMemory:
     @pytest.mark.usefixtures("repo")
     def test_a_clean_suite_passes(self) -> None:
         run = rw.Run(["gui"], None)
-        log = MagicMock(spec=rw.StageLog)
-        log.run.return_value = 0
+        log = _log()
         with patch.object(rw.AppMemoryWatch, "start"):
             assert run.gui_tests(log) == 0
         assert "peak" in log.line.call_args.args[0]
-
-
-def _log() -> MagicMock:
-    log = MagicMock(spec=rw.StageLog)
-    log.run.return_value = 0
-    log.capture.return_value = (0, "84.2\n")
-    return log
 
 
 @pytest.mark.usefixtures("repo")
@@ -989,5 +994,5 @@ class TestMacOS:
         with patch.object(rw, "ON_WINDOWS", False):  # noqa: FBT003
             assert run.run() == 0
         assert _results(repo) == {"fetch-build": "skipped", "built-app": "skipped"}
-        (log,) = repo.glob("build/overnight/*/fetch-build.log")
+        log = _stage_log(repo, "fetch-build")
         assert "with-soft-gl.sh" in log.read_text(encoding="utf-8")

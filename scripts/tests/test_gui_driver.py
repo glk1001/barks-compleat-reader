@@ -18,6 +18,7 @@ import pytest
 from barks_reader.core import log_markers
 from gui_driver import Driver, DriverError, Pick, boot_app_at, probe
 from okf_reader.core import log_markers as okf_log_markers
+from script_test_helpers import keys_recorded
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -110,11 +111,7 @@ class TestPressMenuButton:
 
     @staticmethod
     def _presses(driver: Driver, name: str, keys_pressed: KeysPressed) -> list[str]:
-        with (
-            patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
-            patch.object(Driver, "hold"),
-        ):
+        with keys_recorded() as (key, _):
             driver.press_menu_button(name)
         return keys_pressed(key)
 
@@ -165,11 +162,7 @@ class TestMainMenuButton:
 
     @staticmethod
     def _presses(driver: Driver, name: str, keys_pressed: KeysPressed) -> list[str]:
-        with (
-            patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
-            patch.object(Driver, "hold"),
-        ):
+        with keys_recorded() as (key, _):
             driver.main_menu_button(name)
         return keys_pressed(key)
 
@@ -221,13 +214,7 @@ class TestCloseReader:
     ) -> None:
         """After a goto-page, close is one Right on, not a fresh count from the start."""
         stub_driver._menu_focus = "goto_page"  # noqa: SLF001
-        with (
-            patch.object(Driver, "key") as key,
-            patch.object(
-                Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)
-            ) as wait,
-            patch.object(Driver, "hold"),
-        ):
+        with keys_recorded() as (key, wait):
             stub_driver.close_reader()
         assert keys_pressed(key) == ["Escape", "Right", "Return"]
         assert wait.call_args.args == ("Main screen is active", "Return")
@@ -240,10 +227,8 @@ class TestGotoPage:
     @staticmethod
     def _steps(driver: Driver, target: int, current: int, keys_pressed: KeysPressed) -> list[str]:
         with (
-            patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
+            keys_recorded() as (key, _),
             patch.object(Driver, "expect", return_value=nullcontext()),
-            patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=current),
         ):
             driver.goto_page(target)
@@ -261,10 +246,8 @@ class TestGotoPage:
     ) -> None:
         """Two-up the reader renders the unit's left page, so that is the line to wait on."""
         with (
-            patch.object(Driver, "key"),
-            patch.object(Driver, "key_then_wait"),
+            keys_recorded(),
             patch.object(Driver, "expect", return_value=nullcontext()) as expect,
-            patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=0),
         ):
             stub_driver.goto_page(12, shows=11)
@@ -285,10 +268,8 @@ class TestGotoPage:
 
     def test_waits_for_the_page_it_asked_for(self, stub_driver: Driver) -> None:
         with (
-            patch.object(Driver, "key"),
-            patch.object(Driver, "key_then_wait"),
+            keys_recorded(),
             patch.object(Driver, "expect", return_value=nullcontext()) as expect,
-            patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=4),
         ):
             stub_driver.goto_page(18)
@@ -303,10 +284,8 @@ class TestGotoPage:
     ) -> None:
         """The reader opens on whatever page the user cued, so it has to look."""
         with (
-            patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
+            keys_recorded() as (key, _),
             patch.object(Driver, "expect", return_value=nullcontext()),
-            patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=29) as where,
         ):
             stub_driver.goto_page(31)

@@ -42,6 +42,7 @@ from record_demo import (
     select_beats,
     validate,
 )
+from script_test_helpers import keys_recorded
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -60,6 +61,15 @@ XWININFO = """xwininfo: Window id: 0x2e0 (the root window) (has no name)
      0x200007 "Compleat Barks Disney Reader": ("barks-reader" "barks-reader")  \
 782x1225+59+10  +59+10
 """
+
+
+def _recorder(work_dir: Path | None = None) -> Recorder:
+    """Make a Recorder that has started nothing: no display, no profile, no ffmpeg."""
+    recorder = Recorder.__new__(Recorder)
+    recorder._ffmpeg = None  # noqa: SLF001
+    if work_dir is not None:
+        recorder.work_dir = work_dir
+    return recorder
 
 
 class TestEven:
@@ -113,15 +123,9 @@ class TestWholeScreenGrab:
         assert width % 2 == 0
         assert height % 2 == 0
 
-    @staticmethod
-    def _recorder() -> Recorder:
-        recorder = Recorder.__new__(Recorder)
-        recorder._ffmpeg = None  # noqa: SLF001
-        return recorder
-
     def test_a_window_beat_grabs_the_window(self) -> None:
         with patch.object(Recorder, "app_region", return_value=(782, 1224, 59, 10)):
-            grab = self._recorder().grab_for(Beat(name="b", node=["root"]))
+            grab = _recorder().grab_for(Beat(name="b", node=["root"]))
         assert grab == Grab(782, 1224, 59, 10)
 
     def test_a_whole_screen_beat_grabs_the_screen_fitted_to_the_window(self) -> None:
@@ -129,13 +133,13 @@ class TestWholeScreenGrab:
             patch.object(Recorder, "app_region", return_value=(782, 1224, 59, 10)),
             patch.object(Recorder, "root_size", return_value=(900, 1300)),
         ):
-            grab = self._recorder().grab_for(Beat(name="b", node=["root"], whole_screen=True))
+            grab = _recorder().grab_for(Beat(name="b", node=["root"], whole_screen=True))
         assert grab == Grab(900, 1300, 0, 0, fit=(782, 1128, 0, 48), out_size=(782, 1224))
 
     @staticmethod
     def _ffmpeg_argv(grab: Grab) -> list[str]:
         with patch.object(record_demo.subprocess, "Popen") as popen:
-            TestWholeScreenGrab._recorder()._start_ffmpeg(Path("x.mp4"), grab, Path("cap.txt"))  # noqa: SLF001
+            _recorder()._start_ffmpeg(Path("x.mp4"), grab, Path("cap.txt"))  # noqa: SLF001
         return popen.call_args.args[0]
 
     def test_the_screen_is_scaled_and_padded_before_the_caption(self) -> None:
@@ -271,11 +275,9 @@ def keys_of(new_stub_driver: Callable[[], Driver], keys_pressed: KeysPressed) ->
         driver = new_stub_driver()
         moves = iter(["Chronological", record_demo.BROWSE_RANGE])
         with (
-            patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)),
+            keys_recorded() as (key, _),
             patch.object(Driver, "expect", return_value=nullcontext()),
             patch.object(Driver, "settle"),
-            patch.object(Driver, "hold"),
             patch.object(Driver, "wait_title_fade"),
             patch.object(Driver, "select_node", side_effect=lambda _n: next(moves, None)),
         ):
@@ -312,17 +314,10 @@ class TestCutAlignment:
 class TestRecordClipHandling:
     """A clip only gets its final name once the beat ran and ffmpeg stopped cleanly."""
 
-    @staticmethod
-    def _recorder(tmp_path: Path) -> Recorder:
-        recorder = Recorder.__new__(Recorder)
-        recorder.work_dir = tmp_path
-        recorder._ffmpeg = None  # noqa: SLF001
-        return recorder
-
     def _record(
         self, tmp_path: Path, body: Callable[[Driver], None], failure: str | None = None
     ) -> Path | None:
-        recorder = self._recorder(tmp_path)
+        recorder = _recorder(tmp_path)
         item = Beat(name="b", node=["root"], body=body)
 
         def fake_start(partial: Path, *_a: object) -> None:

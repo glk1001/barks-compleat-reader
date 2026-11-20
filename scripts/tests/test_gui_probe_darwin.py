@@ -23,7 +23,13 @@ import gui_probe_darwin
 import gui_probe_win32
 import pytest
 from check_gui_keys import REMOTE_KEYS
-from gui_probe_darwin import WindowInfo, frontmost_normal_window, is_app_window, pick_app_window
+from gui_probe_darwin import (
+    DarwinBackend,
+    WindowInfo,
+    frontmost_normal_window,
+    is_app_window,
+    pick_app_window,
+)
 
 APP_TITLE = "Compleat Barks Disney Reader"
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -34,15 +40,36 @@ _CHILD_START_SECS = 10.0
 _on_macos = pytest.mark.skipif(sys.platform != "darwin", reason="calls the macOS window server")
 
 
-def _window(number: int, owner: str, title: str, layer: int = 0, pid: int = 100) -> WindowInfo:
+def _window(
+    number: int,
+    owner: str,
+    title: str,
+    layer: int = 0,
+    pid: int = 100,
+    bounds: tuple[int, int, int, int] = (874, 1365, 843, 25),
+    alpha: float = 1.0,
+) -> WindowInfo:
     return WindowInfo(
         number=number,
         owner_pid=pid,
         owner_name=owner,
         title=title,
         layer=layer,
-        bounds=(874, 1365, 843, 25),
+        bounds=bounds,
+        alpha=alpha,
     )
+
+
+def _backend(app_pid: int | None = None, title: str | None = None) -> DarwinBackend:
+    """Make the backend off macOS too: its one step at construction declares macOS calls.
+
+    `app_pid` and `title` are what bring_to_front and find_window would have left.
+    """
+    with patch.object(gui_probe_darwin, "_declare"):
+        backend = DarwinBackend()
+    backend._app_pid = app_pid  # noqa: SLF001
+    backend._title = title  # noqa: SLF001
+    return backend
 
 
 class TestKeys:
@@ -97,9 +124,7 @@ class TestWindowPicking:
     def test_a_shielded_window_comes_forward_by_activating_the_app_alone(self) -> None:
         """Nothing is in front of it; the app only has to be the active one."""
         shielded = _window(9, "python", APP_TITLE, layer=2147483628, pid=42)
-        backend = gui_probe_darwin.DarwinBackend.__new__(gui_probe_darwin.DarwinBackend)
-        backend._title = APP_TITLE  # noqa: SLF001
-        backend._app_pid = None  # noqa: SLF001
+        backend = _backend(title=APP_TITLE)
         with (
             patch.object(gui_probe_darwin, "window_list", return_value=[shielded]),
             patch.object(gui_probe_darwin, "_activate", return_value=True) as activate,
@@ -114,9 +139,7 @@ class TestWindowPicking:
         """The probe's failure says only that it did not come forward: this says why."""
         app = _window(9, "python", APP_TITLE, pid=42)
         dialog = _window(4, "Software Update", "Updates Available", pid=7)
-        backend = gui_probe_darwin.DarwinBackend.__new__(gui_probe_darwin.DarwinBackend)
-        backend._title = APP_TITLE  # noqa: SLF001
-        backend._app_pid = None  # noqa: SLF001
+        backend = _backend(title=APP_TITLE)
         with (
             patch.object(gui_probe_darwin, "window_list", return_value=[dialog, app]),
             patch.object(gui_probe_darwin, "_activate", return_value=True),
@@ -171,11 +194,10 @@ class TestFullscreenChange:
         titled = _window(5, "python", "The Compleat Barks Disney Reader")
         lists = [[self.STAND_IN], [self.STAND_IN], [titled]]
         with (
-            patch.object(gui_probe_darwin, "_declare"),
             patch.object(gui_probe_darwin, "window_list", side_effect=lists),
             patch.object(gui_probe_darwin.time, "sleep"),
         ):
-            assert gui_probe_darwin.DarwinBackend().find_window(APP_TITLE) == 5
+            assert _backend().find_window(APP_TITLE) == 5
 
     def test_a_window_replaced_after_it_was_found_is_found_again(self) -> None:
         """Leaving fullscreen the window found a moment ago goes; its successor is used."""
@@ -191,21 +213,15 @@ class TestFullscreenChange:
             calls += 1
             return [w for w in current if only is None or w.number == only]
 
-        with (
-            patch.object(gui_probe_darwin, "_declare"),
-            patch.object(gui_probe_darwin, "window_list", side_effect=listing),
-        ):
-            backend = gui_probe_darwin.DarwinBackend()
+        backend = _backend()
+        with patch.object(gui_probe_darwin, "window_list", side_effect=listing):
             assert backend.find_window(APP_TITLE) == 5
             assert backend.client_geometry(5) == new.bounds
 
     def test_with_nothing_of_the_apps_on_screen_the_lookup_answers_at_once(self) -> None:
         """As before a start: no stand-in, so no wait."""
-        with (
-            patch.object(gui_probe_darwin, "_declare"),
-            patch.object(gui_probe_darwin, "window_list", return_value=[]) as listing,
-        ):
-            assert gui_probe_darwin.DarwinBackend().find_window(APP_TITLE) is None
+        with patch.object(gui_probe_darwin, "window_list", return_value=[]) as listing:
+            assert _backend().find_window(APP_TITLE) is None
         listing.assert_called_once()
 
 
@@ -217,10 +233,7 @@ def _at(
     alpha: float = 1.0,
     title: str = "",
 ) -> WindowInfo:
-    return WindowInfo(
-        number=0, owner_pid=pid, owner_name=owner, title=title, layer=layer, bounds=bounds,
-        alpha=alpha,
-    )  # fmt: skip
+    return _window(0, owner, title, layer=layer, pid=pid, bounds=bounds, alpha=alpha)
 
 
 # The macOS 12 guest's own list, front to back, with the app's window under them all:
@@ -278,11 +291,8 @@ class TestClickTarget:
 
 class TestClickWait:
     @staticmethod
-    def _backend() -> gui_probe_darwin.DarwinBackend:
-        with patch.object(gui_probe_darwin, "_declare"):
-            backend = gui_probe_darwin.DarwinBackend()
-        backend._app_pid = _APP_PID  # noqa: SLF001 (as bring_to_front leaves it)
-        return backend
+    def _backend() -> DarwinBackend:
+        return _backend(app_pid=_APP_PID)
 
     def test_it_clicks_once_the_app_is_under_the_point(self) -> None:
         terminal = _at("Terminal", _SCREEN, pid=99)
@@ -316,8 +326,7 @@ class TestClickWait:
         mouse.assert_not_called()
 
     def test_before_the_app_was_found_it_clicks_unchecked(self) -> None:
-        with patch.object(gui_probe_darwin, "_declare"):
-            backend = gui_probe_darwin.DarwinBackend()
+        backend = _backend()
         with (
             patch.object(gui_probe_darwin, "window_list") as listed,
             patch.object(gui_probe_darwin, "_mouse") as mouse,
@@ -330,13 +339,8 @@ class TestClickWait:
 class TestKeyTarget:
     """Keys go to the app's process alone, never to whatever app is in front."""
 
-    @staticmethod
-    def _backend() -> gui_probe_darwin.DarwinBackend:
-        with patch.object(gui_probe_darwin, "_declare"):
-            return gui_probe_darwin.DarwinBackend()
-
     def test_no_key_is_sent_before_the_app_was_found_in_front(self) -> None:
-        backend = self._backend()
+        backend = _backend()
         with (
             patch.object(gui_probe_darwin, "_key") as key,
             pytest.raises(RuntimeError, match="no app process"),
@@ -345,7 +349,7 @@ class TestKeyTarget:
         key.assert_not_called()
 
     def test_keys_and_typed_text_go_to_the_apps_process(self) -> None:
-        backend = self._backend()
+        backend = _backend()
         app = _window(7, "python", "The Compleat Barks Disney Reader", pid=4321)
         with (
             patch.object(gui_probe_darwin, "window_list", return_value=[app]),
@@ -365,7 +369,7 @@ class TestKeyTarget:
 
 class TestLaunch:
     def test_the_workspace_app_runs_through_the_soft_gl_wrapper(self) -> None:
-        argv = gui_probe_darwin.DarwinBackend.workspace_app_argv(REPO_ROOT)
+        argv = DarwinBackend.workspace_app_argv(REPO_ROOT)
         assert argv[0] == "bash"
         assert Path(argv[1]) == REPO_ROOT / "scripts" / "macos" / "with-soft-gl.sh"
         assert Path(argv[1]).is_file()
@@ -373,12 +377,12 @@ class TestLaunch:
 
     def test_the_app_gets_a_session_of_its_own(self) -> None:
         """So the probe's Ctrl+C never reaches it, and one signal ends uv and Python together."""
-        assert gui_probe_darwin.DarwinBackend.start_new_session
-        assert gui_probe_darwin.DarwinBackend.creation_flags == 0
+        assert DarwinBackend.start_new_session
+        assert DarwinBackend.creation_flags == 0
 
     @_on_macos
     def test_the_probe_picks_this_backend_on_macos(self) -> None:
-        assert isinstance(gui_probe._backend(), gui_probe_darwin.DarwinBackend)  # noqa: SLF001
+        assert isinstance(gui_probe._backend(), DarwinBackend)  # noqa: SLF001
 
 
 @_on_macos
@@ -390,7 +394,7 @@ class TestLive:
 
     def test_a_running_process_is_alive_and_a_finished_one_is_not(self) -> None:
         process = subprocess.Popen(["sleep", "30"], start_new_session=True)  # noqa: S607
-        backend = gui_probe_darwin.DarwinBackend()
+        backend = DarwinBackend()
         try:
             assert backend.process_alive(process.pid)
         finally:
@@ -404,7 +408,7 @@ class TestLive:
             ["/bin/sh", "-c", "sleep 30 & wait"],
             start_new_session=True,
         )
-        backend = gui_probe_darwin.DarwinBackend()
+        backend = DarwinBackend()
         child: list[str] = []
         deadline = time.monotonic() + _CHILD_START_SECS
         while not child and time.monotonic() < deadline:  # the shell forks when it gets to
@@ -423,7 +427,7 @@ class TestLive:
     def test_killing_the_tree_of_a_finished_app_is_quiet(self) -> None:
         # An app that died at boot, not yet collected: its group refused the signal.
         process = subprocess.Popen(["true"], start_new_session=True)  # noqa: S607
-        backend = gui_probe_darwin.DarwinBackend()
+        backend = DarwinBackend()
         # Wait for it to finish without collecting it: uncollected is the case under test.
         # cspell:ignore waitid WEXITED WNOWAIT
         os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)

@@ -19,6 +19,12 @@ from check_gui_keys import REMOTE_KEYS
 KEYS_THE_SUITE_SENDS = (*sorted(REMOTE_KEYS), "Delete")
 
 
+def _backend() -> gui_probe_win32.Win32Backend:
+    """Make the backend off Windows too: constructing it declares Windows' own calls."""
+    with patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None):
+        return gui_probe_win32.Win32Backend()
+
+
 class TestWin32Keys:
     def test_every_key_the_suite_sends_has_a_windows_key(self) -> None:
         """The remote's six keys, and Delete, the one desktop key a test is waived to press."""
@@ -43,9 +49,8 @@ class TestWin32Keys:
             patch.object(gui_probe_win32, "_user32", user32),
             patch.object(gui_probe_win32, "_kernel32", kernel32),
             patch.object(gui_probe_win32, "_send") as send,
-            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
         ):
-            assert gui_probe_win32.Win32Backend().bring_to_front(222)
+            assert _backend().bring_to_front(222)
         send.assert_not_called()
         user32.SetForegroundWindow.assert_called_once_with(222)
         # Joined the foreground thread's input for the switch, and left it after.
@@ -69,9 +74,8 @@ class TestWin32Keys:
         with (
             patch.object(gui_probe_win32, "_user32", user32),
             patch.object(gui_probe_win32, "_ENUM_WINDOWS_PROC", lambda f: f),
-            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
         ):
-            backend = gui_probe_win32.Win32Backend()
+            backend = _backend()
             assert backend.find_window("Compleat Barks Disney Reader") == 2
             del windows[2]
             assert backend.find_window("Compleat Barks Disney Reader") is None
@@ -104,9 +108,8 @@ class TestWin32Close:
             patch.object(gui_probe_win32, "_process_parents", return_value={7: 4}),
             patch.object(gui_probe_win32, "find_window_of_processes", return_value=window) as find,
             patch.object(gui_probe_win32.subprocess, "run") as run,
-            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
         ):
-            gui_probe_win32.Win32Backend().kill_tree(4, max_secs=10)
+            _backend().kill_tree(4, max_secs=10)
         find.assert_called_once_with({4, 7})  # uv and the python under it
         return user32, kernel32, run
 

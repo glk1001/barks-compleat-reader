@@ -175,27 +175,30 @@ class TestCoverage:
             assert argv[-2] == "python"
             assert Path(argv[-1]).name == "main.py"
 
-    def test_a_build_is_never_run_under_coverage(self, run_dir: Path) -> None:
-        backend = MagicMock()
-        env = {gui_probe.COVERAGE_ENV_VAR: str(run_dir / "cov"), "BARKS_PROBE_APP": "app.exe"}
+    @staticmethod
+    def _launch_a_build(run_dir: Path, env: dict[str, str]) -> MagicMock:
+        """Launch with `env` and no pack folder named but by it; return the Popen mock."""
         with (
             patch.dict(os.environ, env),
             patch.object(gui_probe, "data_dir", return_value=run_dir),
             patch.object(gui_probe.subprocess, "Popen") as popen,
         ):
-            gui_probe.Probe(backend)._launch()  # noqa: SLF001
+            if gui_probe.DATA_PACK_DIR_ENV_VAR not in env:
+                os.environ.pop(gui_probe.DATA_PACK_DIR_ENV_VAR, None)
+            gui_probe.Probe(MagicMock())._launch()  # noqa: SLF001
+        return popen
+
+    def test_a_build_is_never_run_under_coverage(self, run_dir: Path) -> None:
+        env = {gui_probe.COVERAGE_ENV_VAR: str(run_dir / "cov"), "BARKS_PROBE_APP": "app.exe"}
+
+        popen = self._launch_a_build(run_dir, env)
+
         assert popen.call_args.args[0] == ["app.exe"]
 
     def test_a_build_looks_for_data_packs_only_in_an_empty_folder(self, run_dir: Path) -> None:
         """Beside a build in the repo root sit the published packs; a test once installed them."""
-        env = {"BARKS_PROBE_APP": "app.exe"}
-        with (
-            patch.dict(os.environ, env),
-            patch.object(gui_probe, "data_dir", return_value=run_dir),
-            patch.object(gui_probe.subprocess, "Popen") as popen,
-        ):
-            os.environ.pop(gui_probe.DATA_PACK_DIR_ENV_VAR, None)
-            gui_probe.Probe(MagicMock())._launch()  # noqa: SLF001
+        popen = self._launch_a_build(run_dir, {"BARKS_PROBE_APP": "app.exe"})
+
         packs = Path(popen.call_args.kwargs["env"][gui_probe.DATA_PACK_DIR_ENV_VAR])
         assert packs == gui_probe.no_data_packs_dir()
         assert packs.is_dir()
@@ -203,12 +206,9 @@ class TestCoverage:
 
     def test_a_build_keeps_a_pack_folder_its_caller_names(self, run_dir: Path) -> None:
         env = {"BARKS_PROBE_APP": "app.exe", gui_probe.DATA_PACK_DIR_ENV_VAR: "/test/packs"}
-        with (
-            patch.dict(os.environ, env),
-            patch.object(gui_probe, "data_dir", return_value=run_dir),
-            patch.object(gui_probe.subprocess, "Popen") as popen,
-        ):
-            gui_probe.Probe(MagicMock())._launch()  # noqa: SLF001
+
+        popen = self._launch_a_build(run_dir, env)
+
         assert popen.call_args.kwargs["env"][gui_probe.DATA_PACK_DIR_ENV_VAR] == "/test/packs"
 
     @pytest.mark.usefixtures("run_dir")
@@ -288,6 +288,15 @@ class TestInputLog:
         assert stray_key_presses(app_log + "\nKey pressed: 13 (enter).", input_text) == 1
 
 
+def _backend_with_an_app(run_dir: Path, *, in_front: bool = True) -> MagicMock:
+    """Stand in for a backend whose app is running, its 800x600 window at 100, 50."""
+    backend = MagicMock()
+    backend.bring_to_front.return_value = in_front
+    backend.client_geometry.return_value = (800, 600, 100, 50)
+    (run_dir / "app.pid").write_text("1234", encoding="utf-8")
+    return backend
+
+
 class TestCommands:
     @pytest.mark.skipif(
         sys.platform in {"win32", "darwin"}, reason="Windows and macOS have a backend"
@@ -299,9 +308,7 @@ class TestCommands:
         assert "gui-probe.sh" in capsys.readouterr().err
 
     def test_keys_go_to_the_window_only_once_it_is_in_front(self, run_dir: Path) -> None:
-        backend = MagicMock()
-        backend.bring_to_front.return_value = False
-        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
+        backend = _backend_with_an_app(run_dir, in_front=False)
         with pytest.raises(gui_probe.ProbeError, match="would not come to the front"):
             gui_probe.Probe(backend).key(["Down"])
         backend.send_key.assert_not_called()
@@ -310,9 +317,7 @@ class TestCommands:
         self, run_dir: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("BARKS_PROBE_KEY_GAP", "0")
-        backend = MagicMock()
-        backend.bring_to_front.return_value = True
-        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
+        backend = _backend_with_an_app(run_dir)
         gui_probe.Probe(backend).key(["Down", "Return"])
         assert [c.args[0] for c in backend.send_key.call_args_list] == ["Down", "Return"]
         logged = gui_probe.input_log().read_text(encoding="utf-8").splitlines()
@@ -348,10 +353,7 @@ class TestFailedLaunch:
 
 class TestTaps:
     def test_a_tap_clicks_at_the_window_pixel_and_is_logged_as_a_tap(self, run_dir: Path) -> None:
-        backend = MagicMock()
-        backend.bring_to_front.return_value = True
-        backend.client_geometry.return_value = (800, 600, 100, 50)
-        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
+        backend = _backend_with_an_app(run_dir)
         with patch.object(gui_probe.time, "sleep"):
             gui_probe.Probe(backend).tap(10, 20)
         backend.click.assert_called_once_with(110, 70)
@@ -359,10 +361,7 @@ class TestTaps:
         assert line.split(" ", 1)[1] == "tap 10 20"
 
     def test_a_click_presses_the_same_way_but_is_logged_as_a_click(self, run_dir: Path) -> None:
-        backend = MagicMock()
-        backend.bring_to_front.return_value = True
-        backend.client_geometry.return_value = (800, 600, 100, 50)
-        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
+        backend = _backend_with_an_app(run_dir)
         with patch.object(gui_probe.time, "sleep"):
             gui_probe.Probe(backend).click(10, 20)
         backend.move_pointer.assert_called_once_with(110, 70)
@@ -372,10 +371,7 @@ class TestTaps:
 
     def test_a_click_that_waited_for_its_target_says_so_in_the_log(self, run_dir: Path) -> None:
         """The macOS backend waits for the app's window under the point: the log shows it."""
-        backend = MagicMock()
-        backend.bring_to_front.return_value = True
-        backend.client_geometry.return_value = (800, 600, 100, 50)
-        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
+        backend = _backend_with_an_app(run_dir)
         with (
             patch.object(gui_probe.time, "sleep"),
             patch.object(gui_probe.time, "monotonic", side_effect=[100.0, 112.5]),

@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 import pytest
+from gui_driver import Driver
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Generator, Mapping
     from pathlib import Path
 
 # A bare "bash" on the Windows runner is WSL with no distro installed.
@@ -53,3 +56,21 @@ def git(repo: Path, *args: str) -> str:
         check=True,
     )
     return done.stdout.strip()
+
+
+@contextmanager
+def keys_recorded() -> Generator[tuple[MagicMock, MagicMock]]:
+    """Have a Driver press nothing, and record what it would have pressed.
+
+    Yields the ``key`` mock, which also gets the keys of every ``key_then_wait`` (so one
+    mock holds every press in order: the ``keys_pressed`` fixture lists them), and the
+    ``key_then_wait`` mock, for the line a press waited on. ``hold`` waits for nothing.
+    """
+    with (
+        patch.object(Driver, "key") as key,
+        patch.object(
+            Driver, "key_then_wait", side_effect=lambda _p, *k, **_kw: key(*k)
+        ) as key_then_wait,
+        patch.object(Driver, "hold"),
+    ):
+        yield key, key_then_wait

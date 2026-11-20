@@ -344,6 +344,11 @@ class TestPackManifest:
         with patch.object(data_manifest, "CACHE_PATH", tmp_path / "build" / "cache.json"):
             return data_manifest.main(list(args))
 
+    def _write_pack_manifest(self, tmp_path: Path, out: Path, reader_files: Path) -> int:
+        """Stamp version 7's manifest at `out`, as build-data-zips.sh does."""
+        args = ("--write-pack-manifest", str(out), "--version", "7")
+        return self._main(tmp_path, *args, "--reader-files", str(reader_files))
+
     def test_lists_the_entries_the_build_packs(self, capsys: pytest.CaptureFixture[str]) -> None:
         assert data_manifest.main(["--list-entries"]) == 0
         assert capsys.readouterr().out.splitlines() == list(data_manifest.READER_FILES_ENTRIES)
@@ -353,15 +358,7 @@ class TestPackManifest:
     ) -> None:
         out = tmp_path / "stage" / "Reader Files" / "data-pack.json"
         with patch.object(data_manifest.platform, "node", return_value="main-pc"):
-            status = self._main(
-                tmp_path,
-                "--write-pack-manifest",
-                str(out),
-                "--version",
-                "7",
-                "--reader-files",
-                str(reader_files),
-            )
+            status = self._write_pack_manifest(tmp_path, out, reader_files)
 
         assert status == 0
         info = DataPackInfo.from_json(out.read_text(encoding="utf-8"))
@@ -377,15 +374,7 @@ class TestPackManifest:
         (reader_files / "Barks Panels.zip").unlink()
         out = tmp_path / "data-pack.json"
 
-        status = self._main(
-            tmp_path,
-            "--write-pack-manifest",
-            str(out),
-            "--version",
-            "7",
-            "--reader-files",
-            str(reader_files),
-        )
+        status = self._write_pack_manifest(tmp_path, out, reader_files)
 
         assert status == 1
         assert not out.exists()
