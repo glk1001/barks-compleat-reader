@@ -20,7 +20,6 @@ from barks_reader.core import log_markers, reader_utils
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.search_chip_row import ChipRow
-from barks_reader.core.search_state import EraChoice, TagBasket, TagScope, WordBasket
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import (
     SearchModeContent,
@@ -48,7 +47,12 @@ if TYPE_CHECKING:
 
 
 def _make_bare_screen() -> SearchScreen:
-    """Create a SearchScreen with no state, for exercising individual methods."""
+    """Create a SearchScreen without its layout, for exercising individual methods.
+
+    The picks, filters and chip rows are the ones `_init_picks_and_filters` makes. The
+    rest of `__init__` needs the kv layout, so what a test reads of it is set here or
+    by the test.
+    """
     with patch.object(SearchScreen, "__init__", lambda _self, *_a, **_kw: None):
         screen = SearchScreen.__new__(SearchScreen)
     # The word search's typed-query state, which every word path reads: none yet.
@@ -63,31 +67,19 @@ def _make_bare_screen() -> SearchScreen:
     screen._offered_speakers = []
     screen._said_by_dropdown = _FakeSpeakerList(screen)
     screen._setup_dropdown_nav()
-    # The picked words: none, and their row, likewise over stand-ins.
-    screen._word_basket = WordBasket()
-    screen._basket_row = ChipRow(MagicMock(), _live_chip, screen._on_basket_chip_picked)
-    screen._basket_results = False
-    screen._nav_list_sub = "word"
-    # The picked tags: none, likewise.
-    screen._tag_basket = TagBasket()
-    screen._tag_basket_row = ChipRow(MagicMock(), _live_chip, screen._on_tag_basket_chip_picked)
-    screen._tag_basket_results = False
-    screen._tag_box_query = ""
+    # The picks and filters, and their chip rows, as the screen's own start sets them:
+    # over stand-in layouts and chips, with the test's eras.
+    with (
+        patch.object(SearchScreen, "ids", MagicMock()),
+        patch.object(SearchScreen, "_make_scope_chip", staticmethod(_live_chip)),
+        patch.object(search_screen, "_make_basket_chip", _live_chip),
+        patch.object(search_screen, "_make_era_chip", _live_chip),
+        patch.object(search_screen, "CHRONO_YEAR_RANGES", ERA_RANGES),
+    ):
+        screen._init_picks_and_filters()
     # The tag list's groups, and its open subgroup: none.
     screen._tag_chip_groups = set()
     screen._open_subgroup = None
-    # The era: all years, a row in each results panel, over stand-ins.
-    screen._listed_tag = ""
-    screen._era = EraChoice(ERA_RANGES)
-    screen._era_rows = {
-        mode: ChipRow(MagicMock(), _live_chip, screen._on_era_selected) for mode in ("Tag", "Word")
-    }
-    for row in screen._era_rows.values():
-        row.set_options(screen._era.options())
-    # The word search's tag scope: none offered.
-    screen._scope_row = ChipRow(MagicMock(), _live_chip, screen._on_scope_selected)
-    screen._scope = TagScope()
-    screen._scope_counts = {}
     # The background's rotation: none running. No listener: it changes nothing.
     screen._search_result_titles = []
     screen._image_change_event = None
@@ -3710,3 +3702,19 @@ class TestTagRowPages:
         screen._populate_title_results(rows, [andes], lambda _t: None, pages_of=lambda _t: "")
         (row,) = rows.children
         assert not row.detail.endswith("p ")
+
+
+@pytest.mark.parametrize(
+    ("make_chip", "chip_class"),
+    [
+        (search_screen._make_era_chip, "_EraChipButton"),
+        (search_screen._make_basket_chip, "_BasketChipButton"),
+    ],
+)
+def test_a_row_s_chips_are_of_its_own_class(
+    make_chip: Callable[[str, str], Button], chip_class: str
+) -> None:
+    """Their class is in the focus line the app logs, which the GUI tests match."""
+    chip = make_chip("1942-1946", "1942 to 1946")
+    assert type(chip).__name__ == chip_class
+    assert (chip.value, chip.text) == ("1942-1946", "1942 to 1946")
