@@ -21,32 +21,9 @@ from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoEr
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
 
 
-@pytest.fixture
-def mock_deps() -> dict[str, MagicMock]:
-    return {
-        "reader_settings": MagicMock(),
-        "comics_database": MagicMock(),
-        "renderer": MagicMock(),
-        "comic_reader_manager": MagicMock(),
-        "bottom_title_view_screen": MagicMock(),
-        "tree_view_screen": MagicMock(),
-        "screen_switchers": MagicMock(),
-        "special_fanta_overrides": MagicMock(),
-        "user_error_handler": MagicMock(),
-        "on_active_changed": MagicMock(),
-    }
-
-
-@pytest.fixture
-def nav_coord(mock_deps: dict[str, MagicMock]) -> NavigationCoordinator:
-    coord = NavigationCoordinator(**mock_deps)
-    coord.set_tree_view_manager(MagicMock())
-    return coord
-
-
 class TestNavigationCoordinator:
     def test_select_title_sets_current_fanta_info(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         mock_fanta_info = MagicMock()
         mock_fanta_info.comic_book_info.get_title_str.return_value = "Title"
@@ -55,12 +32,12 @@ class TestNavigationCoordinator:
         nav_coord.select_title(target)
 
         assert nav_coord.current_fanta_info == mock_fanta_info
-        mock_deps["renderer"].render_title.assert_called_with(
+        nav_coord_deps["renderer"].render_title.assert_called_with(
             mock_fanta_info, title_image_file=None, preserve_top_view=False
         )
 
     def test_navigate_to_chrono_title(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         image_info = ImageInfo(filename=Path("img.png"), from_title=Titles.ADVENTURE_DOWN_UNDER)
 
@@ -87,25 +64,25 @@ class TestNavigationCoordinator:
             nav_coord.navigate_to_chrono_title(image_info)
 
             assert nav_coord.current_fanta_info == mock_fanta_info
-            mock_deps["renderer"].render_title.assert_called_with(
+            nav_coord_deps["renderer"].render_title.assert_called_with(
                 mock_fanta_info, title_image_file=image_info.filename
             )
 
     def test_an_article_behind_a_background_image_is_read_not_looked_up_by_year(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """An article is under no year range: the goto of its image was a RuntimeError."""
         article = next(iter(NON_COMIC_TITLES))
 
         nav_coord.navigate_to_chrono_title(ImageInfo(from_title=article))
 
-        mock_deps["comic_reader_manager"].read_article_as_comic_book.assert_called_once()
-        mock_deps["renderer"].render_title.assert_not_called()
+        nav_coord_deps["comic_reader_manager"].read_article_as_comic_book.assert_called_once()
+        nav_coord_deps["renderer"].render_title.assert_not_called()
 
     def test_a_title_with_no_row_under_its_year_changes_nothing(
         self,
         nav_coord: NavigationCoordinator,
-        mock_deps: dict[str, MagicMock],
+        nav_coord_deps: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
         """The missing row went on as None, to fail a frame later inside the tree."""
@@ -134,11 +111,11 @@ class TestNavigationCoordinator:
         assert went_there is False
         tree_manager.deselect_and_close_open_nodes.assert_not_called()
         tree_manager.goto_node.assert_not_called()
-        mock_deps["renderer"].render_title.assert_not_called()
+        nav_coord_deps["renderer"].render_title.assert_not_called()
         assert any("ADVENTURE_DOWN_UNDER" in line and "no row" in line for line in loguru_sink)
 
     def test_navigate_to_chrono_title_one_pager_navigates_year_range_node(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """One-pagers navigate to the year-range group under the One Pagers node."""
         tree_manager = MagicMock()
@@ -167,7 +144,7 @@ class TestNavigationCoordinator:
             nav_coord.navigate_to_chrono_title(image_info)
 
         # Title view shown AND the correct year-range group is opened and navigated to.
-        mock_deps["renderer"].render_title.assert_called_with(
+        nav_coord_deps["renderer"].render_title.assert_called_with(
             mock_fanta_info, title_image_file=image_info.filename
         )
         mock_year_node.ensure_populated.assert_called_once()
@@ -240,7 +217,7 @@ class TestNavigationCoordinator:
         tree_manager.open_node_and_parent_nodes.assert_called_once_with(mock_year_node)
 
     def test_navigate_to_chrono_title_preserves_back_node(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         image_info = ImageInfo(filename=Path("img.png"), from_title=Titles.ADVENTURE_DOWN_UNDER)
 
@@ -253,7 +230,7 @@ class TestNavigationCoordinator:
         nav_coord.set_year_range_nodes({(1942, 1946): mock_year_node})
 
         mock_search_node = MagicMock()
-        mock_deps["tree_view_screen"].get_selected_node.return_value = mock_search_node
+        nav_coord_deps["tree_view_screen"].get_selected_node.return_value = mock_search_node
 
         with (
             patch.object(
@@ -269,29 +246,29 @@ class TestNavigationCoordinator:
         ):
             nav_coord.navigate_to_chrono_title(image_info)
 
-            mock_deps[
+            nav_coord_deps[
                 "tree_view_screen"
             ].ids.reader_tree_view.set_back_node.assert_called_once_with(mock_search_node)
 
     def test_read_comic_calls_comic_reader(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         mock_fanta_info = MagicMock()
         mock_fanta_info.comic_book_info.get_title_str.return_value = "Title"
         nav_coord._current_fanta_info = mock_fanta_info
 
-        mock_deps["bottom_title_view_screen"].goto_page_active = True
-        mock_deps["bottom_title_view_screen"].goto_page_num = "10"
-        mock_deps["bottom_title_view_screen"].use_overrides_active = False
-        mock_deps["bottom_title_view_screen"].tagged_pages = ["10", "11", "14"]
+        nav_coord_deps["bottom_title_view_screen"].goto_page_active = True
+        nav_coord_deps["bottom_title_view_screen"].goto_page_num = "10"
+        nav_coord_deps["bottom_title_view_screen"].use_overrides_active = False
+        nav_coord_deps["bottom_title_view_screen"].tagged_pages = ["10", "11", "14"]
         mock_comic = MagicMock()
-        mock_deps["comics_database"].get_comic_book.return_value = mock_comic
+        nav_coord_deps["comics_database"].get_comic_book.return_value = mock_comic
 
         result = nav_coord.read_comic()
 
         assert result is True
-        mock_deps["on_active_changed"].assert_called_once()
-        mock_deps["comic_reader_manager"].read_barks_comic_book.assert_called_once_with(
+        nav_coord_deps["on_active_changed"].assert_called_once()
+        nav_coord_deps["comic_reader_manager"].read_barks_comic_book.assert_called_once_with(
             mock_fanta_info,
             mock_comic,
             "10",
@@ -300,17 +277,17 @@ class TestNavigationCoordinator:
         )
 
     def test_read_comic_one_pager_opens_collection_at_its_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """Selecting a one-pager opens the collection at the one-pager's page."""
         mock_fanta_info = MagicMock()
         mock_fanta_info.comic_book_info.title = Titles.IF_THE_HAT_FITS  # a one-pager
         nav_coord._current_fanta_info = mock_fanta_info
-        mock_deps["bottom_title_view_screen"].use_overrides_active = False
+        nav_coord_deps["bottom_title_view_screen"].use_overrides_active = False
 
         mock_collection_info = MagicMock()
         mock_comic = MagicMock()
-        mock_deps["comics_database"].get_comic_book.return_value = mock_comic
+        nav_coord_deps["comics_database"].get_comic_book.return_value = mock_comic
 
         with (
             patch.object(
@@ -328,7 +305,7 @@ class TestNavigationCoordinator:
 
         assert result is True
         # Opens the collection comic with the collection's fanta_info, at page "7".
-        manager = mock_deps["comic_reader_manager"]
+        manager = nav_coord_deps["comic_reader_manager"]
         manager.read_barks_comic_book.assert_called_once()
         call = manager.read_barks_comic_book.call_args
         assert call.args[0] is mock_collection_info
@@ -340,17 +317,17 @@ class TestNavigationCoordinator:
         assert call.kwargs["history_title_str"] == ENUM_TO_STR_TITLE[Titles.IF_THE_HAT_FITS]
 
     def test_read_comic_cover_opens_collection_at_its_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """Selecting a cover opens the All Covers collection at the cover's page."""
         mock_fanta_info = MagicMock()
         mock_fanta_info.comic_book_info.title = Titles.FOUR_COLOR_189_COVER  # a cover
         nav_coord._current_fanta_info = mock_fanta_info
-        mock_deps["bottom_title_view_screen"].use_overrides_active = False
+        nav_coord_deps["bottom_title_view_screen"].use_overrides_active = False
 
         mock_collection_info = MagicMock()
         mock_comic = MagicMock()
-        mock_deps["comics_database"].get_comic_book.return_value = mock_comic
+        nav_coord_deps["comics_database"].get_comic_book.return_value = mock_comic
 
         with (
             patch.object(
@@ -367,7 +344,7 @@ class TestNavigationCoordinator:
             result = nav_coord.read_comic()
 
         assert result is True
-        manager = mock_deps["comic_reader_manager"]
+        manager = nav_coord_deps["comic_reader_manager"]
         manager.read_barks_comic_book.assert_called_once()
         call = manager.read_barks_comic_book.call_args
         assert call.args[0] is mock_collection_info
@@ -381,7 +358,7 @@ class TestNavigationCoordinator:
         assert call.kwargs["history_title_str"] == ENUM_TO_STR_TITLE[Titles.FOUR_COLOR_189_COVER]
 
     def test_read_comic_unlocated_one_pager_returns_false(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """A one-pager not present in the collection does not open anything."""
         mock_fanta_info = MagicMock()
@@ -396,10 +373,10 @@ class TestNavigationCoordinator:
             result = nav_coord.read_comic()
 
         assert result is False
-        mock_deps["comic_reader_manager"].read_barks_comic_book.assert_not_called()
+        nav_coord_deps["comic_reader_manager"].read_barks_comic_book.assert_not_called()
 
     def test_on_comic_closed_restores_view_state(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         nav_coord._read_comic_view_state = ViewStates.ON_INDEX_NODE
         mock_fanta_info = MagicMock()
@@ -407,60 +384,60 @@ class TestNavigationCoordinator:
 
         mock_last_page = MagicMock()
         mock_last_page.display_page_num = "5"
-        mock_deps["comic_reader_manager"].comic_closed.return_value = mock_last_page
+        nav_coord_deps["comic_reader_manager"].comic_closed.return_value = mock_last_page
 
         nav_coord.on_comic_closed()
 
-        mock_deps["renderer"].render_state.assert_called_with(ViewStates.ON_INDEX_NODE)
+        nav_coord_deps["renderer"].render_state.assert_called_with(ViewStates.ON_INDEX_NODE)
         assert nav_coord._read_comic_view_state is None
 
     @staticmethod
     def _close_comic_read_under_a_tag(
-        nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], last_read: str
+        nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock], last_read: str
     ) -> MagicMock:
         nav_coord._current_fanta_info = MagicMock()
-        bottom = mock_deps["bottom_title_view_screen"]
+        bottom = nav_coord_deps["bottom_title_view_screen"]
         bottom.tagged_pages = ["1", "14"]
         nav_coord.read_comic()
         bottom.tagged_pages = []  # what the panel holds now must not matter
         last_page = MagicMock()
         last_page.display_page_num = last_read
-        mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
+        nav_coord_deps["comic_reader_manager"].comic_closed.return_value = last_page
         bottom.show_goto_page.reset_mock()
         nav_coord.on_comic_closed()
         return bottom.show_goto_page
 
     def test_a_comic_closed_under_a_tag_offers_the_last_page_among_the_tags(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        offered = self._close_comic_read_under_a_tag(nav_coord, mock_deps, "9")
+        offered = self._close_comic_read_under_a_tag(nav_coord, nav_coord_deps, "9")
         offered.assert_called_once_with(
             GotoPageOffer.make("9", active=True, tagged_pages=("1", "14"))
         )
 
     def test_a_comic_closed_at_its_beginning_under_a_tag_offers_the_tags_first_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        offered = self._close_comic_read_under_a_tag(nav_coord, mock_deps, COMIC_BEGIN_PAGE)
+        offered = self._close_comic_read_under_a_tag(nav_coord, nav_coord_deps, COMIC_BEGIN_PAGE)
         offered.assert_called_once_with(
             GotoPageOffer.make("1", active=True, tagged_pages=("1", "14"))
         )
 
     def test_the_tags_pages_last_only_until_the_comic_closes(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        self._close_comic_read_under_a_tag(nav_coord, mock_deps, "9")
-        offered = mock_deps["bottom_title_view_screen"].show_goto_page
+        self._close_comic_read_under_a_tag(nav_coord, nav_coord_deps, "9")
+        offered = nav_coord_deps["bottom_title_view_screen"].show_goto_page
         offered.reset_mock()
         nav_coord.on_comic_closed()  # a comic opened some other way, e.g. a collection
         offered.assert_called_once_with(GotoPageOffer.make("9", active=True))
 
     @pytest.mark.parametrize("opener", ["collection", "article"])
     def test_a_comic_opened_another_way_drops_the_tags_pages_of_one_never_closed(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], opener: str
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock], opener: str
     ) -> None:
         nav_coord._current_fanta_info = MagicMock()
-        bottom = mock_deps["bottom_title_view_screen"]
+        bottom = nav_coord_deps["bottom_title_view_screen"]
         bottom.tagged_pages = ["1", "14"]
         nav_coord.read_comic()  # its reader never opened, so it never closed
         if opener == "collection":
@@ -471,7 +448,7 @@ class TestNavigationCoordinator:
             nav_coord.read_article(next(iter(NON_COMIC_TITLES)), ViewStates.ON_INDEX_NODE)
         last_page = MagicMock()
         last_page.display_page_num = "9"
-        mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
+        nav_coord_deps["comic_reader_manager"].comic_closed.return_value = last_page
         bottom.show_goto_page.reset_mock()
 
         nav_coord.on_comic_closed()
@@ -479,69 +456,69 @@ class TestNavigationCoordinator:
         bottom.show_goto_page.assert_called_once_with(GotoPageOffer.make("9", active=True))
 
     def test_a_comic_closed_at_its_beginning_with_no_tag_offers_no_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         nav_coord._current_fanta_info = MagicMock()
         last_page = MagicMock()
         last_page.display_page_num = COMIC_BEGIN_PAGE
-        mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
+        nav_coord_deps["comic_reader_manager"].comic_closed.return_value = last_page
 
         nav_coord.on_comic_closed()
 
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
             GotoPageOffer()
         )
 
     def test_on_document_closed_restores_view_state(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         nav_coord._doc_reader_close_view_state = ViewStates.ON_INTRO_NODE
 
         nav_coord.on_document_closed()
 
-        mock_deps["renderer"].render_state.assert_called_with(ViewStates.ON_INTRO_NODE)
+        nav_coord_deps["renderer"].render_state.assert_called_with(ViewStates.ON_INTRO_NODE)
         assert nav_coord._doc_reader_close_view_state is None
 
     def test_open_wiki_passes_no_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         bundle = Path("/bundle")
-        mock_deps["reader_settings"].wiki_bundle_dir = bundle
+        nav_coord_deps["reader_settings"].wiki_bundle_dir = bundle
 
         nav_coord.open_wiki()
 
-        mock_deps["on_active_changed"].assert_called_with(False)  # noqa: FBT003
-        mock_deps["screen_switchers"].switch_to_wiki_reader.assert_called_with(bundle, None)
+        nav_coord_deps["on_active_changed"].assert_called_with(False)  # noqa: FBT003
+        nav_coord_deps["screen_switchers"].switch_to_wiki_reader.assert_called_with(bundle, None)
 
     def test_open_wiki_page_for_title_no_bundle_is_noop(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        mock_deps["reader_settings"].wiki_bundle_dir = None
+        nav_coord_deps["reader_settings"].wiki_bundle_dir = None
 
         assert nav_coord.open_wiki_page_for_title(Titles.LOST_IN_THE_ANDES) is False
 
-        mock_deps["on_active_changed"].assert_not_called()
-        mock_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
+        nav_coord_deps["on_active_changed"].assert_not_called()
+        nav_coord_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
 
     def test_open_wiki_page_for_title_missing_page_is_noop(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        mock_deps["reader_settings"].wiki_bundle_dir = Path("/bundle")
+        nav_coord_deps["reader_settings"].wiki_bundle_dir = Path("/bundle")
 
         with patch.object(
             barks_reader.ui.navigation_coordinator, "wiki_page_for_title", return_value=None
         ):
             assert nav_coord.open_wiki_page_for_title(Titles.LOST_IN_THE_ANDES) is False
 
-        mock_deps["on_active_changed"].assert_not_called()
-        mock_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
+        nav_coord_deps["on_active_changed"].assert_not_called()
+        nav_coord_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
 
     def test_open_wiki_page_for_title_opens_wiki_at_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         bundle = Path("/bundle")
         page = bundle / "concept" / "stories" / "donald-duck" / "lost-in-the-andes.md"
-        mock_deps["reader_settings"].wiki_bundle_dir = bundle
+        nav_coord_deps["reader_settings"].wiki_bundle_dir = bundle
 
         with patch.object(
             barks_reader.ui.navigation_coordinator, "wiki_page_for_title", return_value=page
@@ -549,8 +526,8 @@ class TestNavigationCoordinator:
             assert nav_coord.open_wiki_page_for_title(Titles.LOST_IN_THE_ANDES) is True
 
         wiki_page_mock.assert_called_with(bundle, Titles.LOST_IN_THE_ANDES)
-        mock_deps["on_active_changed"].assert_called_with(False)  # noqa: FBT003
-        mock_deps["screen_switchers"].switch_to_wiki_reader.assert_called_with(bundle, page)
+        nav_coord_deps["on_active_changed"].assert_called_with(False)  # noqa: FBT003
+        nav_coord_deps["screen_switchers"].switch_to_wiki_reader.assert_called_with(bundle, page)
 
 
 class TestNavigateToSearchResult:
@@ -561,13 +538,13 @@ class TestNavigateToSearchResult:
     def _navigate(
         self,
         nav_coord: NavigationCoordinator,
-        mock_deps: dict[str, MagicMock],
+        nav_coord_deps: dict[str, MagicMock],
         tags: tuple[Tags, ...],
         *,
         title: str = TRAPPER,
         offers: bool = True,
     ) -> None:
-        mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
+        nav_coord_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title") as chrono:
             assert nav_coord.navigate_to_search_result(title, tags)
         # With pages to offer, this offer is the one: the chrono path makes none.
@@ -576,23 +553,23 @@ class TestNavigateToSearchResult:
         )
 
     def test_a_tag_with_a_page_in_the_title_sets_goto_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        self._navigate(nav_coord, mock_deps, (Tags.FIRST_DAISY,))
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+        self._navigate(nav_coord, nav_coord_deps, (Tags.FIRST_DAISY,))
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
             GotoPageOffer.make("2", active=True, tagged_pages=["2"], kept_page="")
         )
 
     def test_a_tag_with_no_page_in_the_title_adds_none(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        self._navigate(nav_coord, mock_deps, (Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY))
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+        self._navigate(nav_coord, nav_coord_deps, (Tags.GYRO_GEARLOOSE, Tags.FIRST_DAISY))
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
             GotoPageOffer.make("2", active=True, tagged_pages=["2"], kept_page="")
         )
 
     def test_a_basket_of_tags_offers_every_tags_pages_together(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """Only the first tag's pages were offered: the others' were dropped."""
         andes = Titles.LOST_IN_THE_ANDES
@@ -601,8 +578,8 @@ class TestNavigateToSearchResult:
             "BARKS_TAGGED_PAGES",
             {(Tags.AWFULTONIANS, andes): ["19", "26"], (Tags.SPLASH, andes): ["17", "26"]},
         ):
-            self._navigate(nav_coord, mock_deps, (Tags.AWFULTONIANS, Tags.SPLASH), title=ANDES)
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+            self._navigate(nav_coord, nav_coord_deps, (Tags.AWFULTONIANS, Tags.SPLASH), title=ANDES)
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
             GotoPageOffer.make("17", active=True, tagged_pages=["17", "19", "26"], kept_page="")
         )
 
@@ -610,11 +587,11 @@ class TestNavigateToSearchResult:
     def test_without_a_tagged_page_the_last_read_page_stands(
         self,
         nav_coord: NavigationCoordinator,
-        mock_deps: dict[str, MagicMock],
+        nav_coord_deps: dict[str, MagicMock],
         tags: tuple[Tags, ...],
     ) -> None:
-        self._navigate(nav_coord, mock_deps, tags, offers=False)
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
+        self._navigate(nav_coord, nav_coord_deps, tags, offers=False)
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
 
     def test_an_unknown_title_is_not_navigated_to(self, nav_coord: NavigationCoordinator) -> None:
         with patch.object(nav_coord, "navigate_to_chrono_title") as chrono:
@@ -624,7 +601,7 @@ class TestNavigateToSearchResult:
     def test_a_title_in_no_volume_is_a_notice_not_a_crash(
         self,
         nav_coord: NavigationCoordinator,
-        mock_deps: dict[str, MagicMock],
+        nav_coord_deps: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
         # Listed by Title search, but in no Fantagraphics volume.
@@ -633,7 +610,7 @@ class TestNavigateToSearchResult:
 
         assert nav_coord.navigate_to_search_result(f"({ENUM_TO_STR_TITLE[title]})")
 
-        error_type, error_info = mock_deps["user_error_handler"].handle_error.call_args.args
+        error_type, error_info = nav_coord_deps["user_error_handler"].handle_error.call_args.args
         assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
         assert error_info.title is title
         assert error_info.file_volume == -1
@@ -646,32 +623,34 @@ ANDES = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
 class TestAVolumeNotAvailable:
     """A comic whose volume is missing is reported to the user, not opened."""
 
-    def _not_found(self, mock_deps: dict[str, MagicMock]) -> None:
-        mock_deps["comics_database"].get_comic_book.side_effect = TitleNotFoundError("gone", ANDES)
+    def _not_found(self, nav_coord_deps: dict[str, MagicMock]) -> None:
+        nav_coord_deps["comics_database"].get_comic_book.side_effect = TitleNotFoundError(
+            "gone", ANDES
+        )
 
-    def _assert_reported(self, mock_deps: dict[str, MagicMock]) -> None:
-        handle_error = mock_deps["user_error_handler"].handle_error
+    def _assert_reported(self, nav_coord_deps: dict[str, MagicMock]) -> None:
+        handle_error = nav_coord_deps["user_error_handler"].handle_error
         error_type, error_info = handle_error.call_args.args
         assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
         assert error_info.title is Titles.LOST_IN_THE_ANDES
-        mock_deps["comic_reader_manager"].read_barks_comic_book.assert_not_called()
-        mock_deps["on_active_changed"].assert_not_called()
+        nav_coord_deps["comic_reader_manager"].read_barks_comic_book.assert_not_called()
+        nav_coord_deps["on_active_changed"].assert_not_called()
 
     def test_reading_a_story(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         nav_coord._current_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
-        self._not_found(mock_deps)
+        self._not_found(nav_coord_deps)
         assert nav_coord.read_comic() is False
-        self._assert_reported(mock_deps)
+        self._assert_reported(nav_coord_deps)
 
     def test_reading_a_page_of_a_collection(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         mock_fanta_info = MagicMock()
         mock_fanta_info.comic_book_info.title = Titles.IF_THE_HAT_FITS  # a one-pager
         nav_coord._current_fanta_info = mock_fanta_info
-        self._not_found(mock_deps)
+        self._not_found(nav_coord_deps)
         with (
             patch.object(
                 barks_reader.ui.navigation_coordinator,
@@ -683,7 +662,7 @@ class TestAVolumeNotAvailable:
             ),
         ):
             assert nav_coord.read_comic() is False
-        self._assert_reported(mock_deps)
+        self._assert_reported(nav_coord_deps)
 
 
 class TestYearRangeParentNode:
@@ -702,32 +681,32 @@ class TestNavigateToTitleWithPage:
     """From an index screen: to the title, and its goto-page set to the page indexed."""
 
     def test_an_article_is_read_rather_than_navigated_to(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         article = next(iter(NON_COMIC_TITLES))
         with patch.object(nav_coord, "navigate_to_chrono_title") as navigated:
             nav_coord.navigate_to_title_with_page(ImageInfo(from_title=article), "3")
         navigated.assert_not_called()
-        mock_deps["comic_reader_manager"].read_article_as_comic_book.assert_called_once()
+        nav_coord_deps["comic_reader_manager"].read_article_as_comic_book.assert_called_once()
 
     def test_an_article_closed_leaves_the_screen_it_was_opened_from(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """Closed, an article from the Main Index showed the Indexes view, not its letter."""
         article = next(iter(NON_COMIC_TITLES))
         nav_coord.navigate_to_title_with_page(ImageInfo(from_title=article), "3")
-        mock_deps["renderer"].render_state.reset_mock()
+        nav_coord_deps["renderer"].render_state.reset_mock()
 
         nav_coord.on_comic_closed()
 
-        mock_deps["renderer"].render_state.assert_not_called()
+        nav_coord_deps["renderer"].render_state.assert_not_called()
 
     def test_an_article_not_found_is_reported_with_the_main_screen_active_again(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """The screen was left inactive under no reader: no keys, and its bar soon gone."""
         article = next(iter(NON_COMIC_TITLES))
-        mock_deps[
+        nav_coord_deps[
             "comic_reader_manager"
         ].read_article_as_comic_book.side_effect = TitleNotFoundError(
             "gone", ENUM_TO_STR_TITLE[article]
@@ -735,41 +714,41 @@ class TestNavigateToTitleWithPage:
 
         nav_coord.read_article(article, ViewStates.ON_APPENDIX_NODE)
 
-        assert [c.args for c in mock_deps["on_active_changed"].call_args_list] == [
+        assert [c.args for c in nav_coord_deps["on_active_changed"].call_args_list] == [
             (False,),
             (True,),
         ]
-        error_type, error_info = mock_deps["user_error_handler"].handle_error.call_args.args
+        error_type, error_info = nav_coord_deps["user_error_handler"].handle_error.call_args.args
         assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
         assert error_info.title is article
         nav_coord.on_comic_closed()  # none comes, but nothing waits for one either
-        mock_deps["renderer"].render_state.assert_not_called()
+        nav_coord_deps["renderer"].render_state.assert_not_called()
 
     def test_a_story_goes_to_its_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         image_info = ImageInfo(from_title=Titles.LOST_IN_THE_ANDES)
-        mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
+        nav_coord_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title") as navigated:
             nav_coord.navigate_to_title_with_page(image_info, "12")
         navigated.assert_called_once_with(image_info, offer_page=False)  # this offer is the one
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
             GotoPageOffer.make("12", active=True, tagged_pages=(), kept_page="")
         )
 
     def test_a_title_under_a_tag_offers_all_its_tagged_pages(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         image_info = ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER)
-        mock_deps["comic_reader_manager"].get_last_read_page.return_value = None
+        nav_coord_deps["comic_reader_manager"].get_last_read_page.return_value = None
         with patch.object(nav_coord, "navigate_to_chrono_title"):
             nav_coord.navigate_to_title_with_page(image_info, "7", ("7", "13", "16", "17"))
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
             GotoPageOffer.make("7", active=True, tagged_pages=("7", "13", "16", "17"), kept_page="")
         )
 
     def test_the_page_last_read_stays_a_step_away_as_under_a_tag(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """The tree and tag search kept it; the index routes dropped it.
 
@@ -778,32 +757,32 @@ class TestNavigateToTitleWithPage:
         image_info = ImageInfo(from_title=Titles.ADVENTURE_DOWN_UNDER)
         last_page = MagicMock()
         last_page.display_page_num = "9"
-        mock_deps["comic_reader_manager"].get_last_read_page.return_value = last_page
+        nav_coord_deps["comic_reader_manager"].get_last_read_page.return_value = last_page
         with patch.object(nav_coord, "navigate_to_chrono_title"):
             nav_coord.navigate_to_title_with_page(image_info, "7", ("7", "13"))
-        mock_deps["comic_reader_manager"].get_last_read_page.assert_called_with(
+        nav_coord_deps["comic_reader_manager"].get_last_read_page.assert_called_with(
             "Adventure Down Under"
         )
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
             GotoPageOffer.make("7", active=True, tagged_pages=("7", "13"), kept_page="9")
         )
 
     def test_a_one_pager_sets_no_page(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         """Reading one deep-links to its page in the collection; the index's page would mislead."""
         with patch.object(nav_coord, "navigate_to_chrono_title"):
             nav_coord.navigate_to_title_with_page(ImageInfo(from_title=Titles.IF_THE_HAT_FITS), "1")
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
 
 
 def test_the_wiki_without_a_bundle_opens_nothing(
-    nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
 ) -> None:
-    mock_deps["reader_settings"].wiki_bundle_dir = None
+    nav_coord_deps["reader_settings"].wiki_bundle_dir = None
     nav_coord.open_wiki()
-    mock_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
-    mock_deps["on_active_changed"].assert_not_called()
+    nav_coord_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
+    nav_coord_deps["on_active_changed"].assert_not_called()
 
 
 class TestTitleSelectedUnderATag:
@@ -814,48 +793,48 @@ class TestTitleSelectedUnderATag:
     def _select(
         self,
         nav_coord: NavigationCoordinator,
-        mock_deps: dict[str, MagicMock],
+        nav_coord_deps: dict[str, MagicMock],
         last_read: str | None,
     ) -> MagicMock:
         last_page = None
         if last_read is not None:
             last_page = MagicMock()
             last_page.display_page_num = last_read
-        mock_deps["comic_reader_manager"].get_last_read_page.return_value = last_page
+        nav_coord_deps["comic_reader_manager"].get_last_read_page.return_value = last_page
         with patch.object(
             barks_reader.core.reader_utils,
             "BARKS_TAGGED_PAGES",
             {(Tags.AWFULTONIANS, Titles.LOST_IN_THE_ANDES): ["19", "26", "31"]},
         ):
             nav_coord.select_title(TitleTarget(fanta_info=self.ANDES, tag=Tags.AWFULTONIANS))
-        mock_deps["comic_reader_manager"].get_last_read_page.assert_called_with(
+        nav_coord_deps["comic_reader_manager"].get_last_read_page.assert_called_with(
             "Lost in the Andes!"
         )
-        return mock_deps["bottom_title_view_screen"].show_goto_page
+        return nav_coord_deps["bottom_title_view_screen"].show_goto_page
 
     def test_the_tags_first_page_is_offered_and_the_page_last_read_kept(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        offered = self._select(nav_coord, mock_deps, "25")
+        offered = self._select(nav_coord, nav_coord_deps, "25")
         assert offered.call_args_list[-1] == call(
             GotoPageOffer.make("19", active=True, tagged_pages=["19", "26", "31"], kept_page="25")
         )
 
     def test_with_nothing_read_only_the_tags_pages_are_offered(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
-        offered = self._select(nav_coord, mock_deps, None)
+        offered = self._select(nav_coord, nav_coord_deps, None)
         assert offered.call_args_list[-1] == call(
             GotoPageOffer.make("19", active=True, tagged_pages=["19", "26", "31"], kept_page="")
         )
 
 
 def test_a_tag_on_no_page_of_a_title_leaves_goto_page_alone(
-    nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], loguru_sink: list[str]
+    nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock], loguru_sink: list[str]
 ) -> None:
     with patch.object(barks_reader.core.reader_utils, "BARKS_TAGGED_PAGES", {}):
         nav_coord._set_tag_goto_page_checkbox(Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE, [])
-    mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
+    nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
     assert 'No pages for (Alaska, "Back to the Klondike").' in loguru_sink
 
 
@@ -869,7 +848,7 @@ def test_a_title_with_no_fanta_info_is_refused() -> None:
 
 @pytest.mark.parametrize("title", [Titles.IF_THE_HAT_FITS, Titles.COMICS_AND_STORIES_104_COVER])
 def test_a_one_pager_or_cover_closed_offers_no_page_of_its_collection(
-    nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock], title: Titles
+    nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock], title: Titles
 ) -> None:
     """A one-pager reads as a page of "All One-Pagers", a cover of "All Covers".
 
@@ -880,19 +859,21 @@ def test_a_one_pager_or_cover_closed_offers_no_page_of_its_collection(
     nav_coord._current_fanta_info.comic_book_info.title = title
     last_page = MagicMock()
     last_page.display_page_num = "2"
-    mock_deps["comic_reader_manager"].comic_closed.return_value = last_page
+    nav_coord_deps["comic_reader_manager"].comic_closed.return_value = last_page
 
     nav_coord.on_comic_closed()
 
-    mock_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(GotoPageOffer())
-    mock_deps["comic_reader_manager"].get_last_read_page.assert_not_called()
+    nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_called_once_with(
+        GotoPageOffer()
+    )
+    nav_coord_deps["comic_reader_manager"].get_last_read_page.assert_not_called()
 
 
 class TestNoPageOfferedForATitleNotGoneTo:
     """With no row in the tree the title view keeps the last title: its page row must too."""
 
     def test_an_index_rows_page_is_not_offered(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         image_info = ImageInfo(from_title=Titles.LOST_IN_THE_ANDES)
 
@@ -900,10 +881,10 @@ class TestNoPageOfferedForATitleNotGoneTo:
             nav_coord.navigate_to_title_with_page(image_info, "7", ("7", "13"))
 
         navigated.assert_called_once_with(image_info, offer_page=False)
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
 
     def test_a_search_results_tagged_pages_are_not_offered(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         with (
             patch.object(nav_coord, "navigate_to_chrono_title", return_value=False),
@@ -914,10 +895,10 @@ class TestNoPageOfferedForATitleNotGoneTo:
             found = nav_coord.navigate_to_search_result("Lost in the Andes!", (Tags.ALASKA,))
 
         assert found is True  # the title is a real one, as the result says
-        mock_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
+        nav_coord_deps["bottom_title_view_screen"].show_goto_page.assert_not_called()
 
     def test_a_title_gone_to_says_so(
-        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
     ) -> None:
         nav_coord.set_tree_view_manager(MagicMock())
         fanta_info = MagicMock()
@@ -939,4 +920,4 @@ class TestNoPageOfferedForATitleNotGoneTo:
             )
 
         assert went_there is True
-        mock_deps["renderer"].render_title.assert_called_once()
+        nav_coord_deps["renderer"].render_title.assert_called_once()

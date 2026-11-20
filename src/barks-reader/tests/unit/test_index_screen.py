@@ -34,6 +34,7 @@ from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 from kivy.clock import Clock
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
+from unit_helpers import run_at_once, run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -244,7 +245,7 @@ class TestIndexScreen:
         with patch.object(Clock, "schedule_once") as schedule:
             index_screen._schedule_sub_items(add_sub_items)
             index_screen._open_tag_button = None  # as on_letter_press leaves it
-            schedule.call_args.args[0](0.0)
+            run_last_scheduled(schedule)
 
         add_sub_items.assert_not_called()
         assert index_screen._sub_items_pending is False
@@ -259,7 +260,7 @@ class TestIndexScreen:
 
         with patch.object(Clock, "schedule_once") as schedule:
             index_screen._schedule_sub_items(add_sub_items)
-            schedule.call_args.args[0](0.0)
+            run_last_scheduled(schedule)
 
         add_sub_items.assert_not_called()
 
@@ -275,7 +276,7 @@ class TestIndexScreen:
             first_event = schedule.return_value
             index_screen._schedule_sub_items(second)
             first_event.cancel.assert_called_once_with()
-            schedule.call_args.args[0](0.0)
+            run_last_scheduled(schedule)
 
         first.assert_not_called()
         second.assert_called_once_with(0.0)
@@ -403,7 +404,7 @@ class TestIndexScreen:
             patch.object(Clock, "schedule_once") as schedule,
         ):
             index_screen._activate_focused_item()
-            schedule.call_args.args[0](0.0)  # the target's sub-items go in
+            run_last_scheduled(schedule)  # the target's sub-items go in
 
         assert index_screen._nav_focused_col == 1
         assert index_screen._nav_focused_item_idx == 2  # the target's first sub-item
@@ -1164,7 +1165,7 @@ def test_a_title_whose_volume_is_missing_is_reported(index_screen: ConcreteIndex
     item = IndexItem(id=Titles.LOST_IN_THE_ANDES, display_text="Lost in the Andes!")
     index_screen.on_goto_title = MagicMock(side_effect=TitleNotInFantaInfoError("Andes"))
     index_screen._user_error_handler = MagicMock()
-    with patch.object(_module.Clock, "schedule_once", side_effect=lambda f, _t: f(0)):
+    with patch.object(_module.Clock, "schedule_once", side_effect=run_at_once):
         index_screen._handle_title(MagicMock(), item)
     error_type, _info = index_screen._user_error_handler.handle_error.call_args.args
     assert error_type is ErrorTypes.ArchiveVolumeNotAvailable

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import zipfile
 from pathlib import Path
@@ -58,7 +59,7 @@ class TestReaderFilePaths:
     def test_set_barks_panels_source_dir(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path
     ) -> None:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
         assert reader_file_paths.barks_panels_are_encrypted is False
@@ -71,7 +72,7 @@ class TestReaderFilePaths:
     def test_set_barks_panels_source_zip(
         self, reader_file_paths: ReaderFilePaths, panels_zip: Path
     ) -> None:
-        with patch("os.path.expandvars", return_value=str(panels_zip)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_zip)):
             reader_file_paths.set_barks_panels_source(panels_zip, BarksPanelsExtType.JPG)
 
         assert reader_file_paths.barks_panels_are_encrypted is True
@@ -89,7 +90,7 @@ class TestReaderFilePaths:
             zf.writestr(f"{PanelDirNames.INSETS.value}/{EDITED_SUBDIR}/placeholder.txt", "")
 
         with (
-            patch("os.path.expandvars", return_value=str(zip_path)),
+            patch.object(os.path, "expandvars", return_value=str(zip_path)),
             pytest.raises(FileNotFoundError, match=r'"Covers" not found or is empty in zip'),
         ):
             reader_file_paths.set_barks_panels_source(zip_path, BarksPanelsExtType.JPG)
@@ -98,14 +99,14 @@ class TestReaderFilePaths:
         self, reader_file_paths: ReaderFilePaths, tmp_path: Path
     ) -> None:
         # Empty dir, missing sub dirs
-        with patch("os.path.expandvars", return_value=str(tmp_path)):  # noqa: SIM117
+        with patch.object(os.path, "expandvars", return_value=str(tmp_path)):  # noqa: SIM117
             with pytest.raises(FileNotFoundError):
                 reader_file_paths.set_barks_panels_source(tmp_path, BarksPanelsExtType.MOSTLY_PNG)
 
     def test_get_comic_cover_file(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path
     ) -> None:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.JPG)
 
         title = "Donald Duck Finds Pirate Gold"
@@ -133,7 +134,7 @@ class TestReaderFilePaths:
     def test_get_comic_inset_file(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path
     ) -> None:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
         title_enum = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
@@ -159,7 +160,7 @@ class TestReaderFilePaths:
         assert result_fallback == emergency_file
 
     def test_get_comic_bw_files(self, reader_file_paths: ReaderFilePaths, panels_dir: Path) -> None:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
         title = "Some Title"
@@ -185,7 +186,7 @@ class TestReaderFilePaths:
     def test_get_file_type_titles(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path
     ) -> None:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
         # Setup some covers
@@ -206,7 +207,7 @@ class TestSwitchingThePanelsSource:
 
     @staticmethod
     def _set(paths: ReaderFilePaths, source: Path, ext_type: BarksPanelsExtType) -> None:
-        with patch("os.path.expandvars", return_value=str(source)):
+        with patch.object(os.path, "expandvars", return_value=str(source)):
             paths.set_barks_panels_source(source, ext_type)
 
     def test_from_the_zip_to_folders_forgets_the_zip(
@@ -297,7 +298,7 @@ class TestPanelsSourceSetup:
     ) -> None:
         """`${HOME}`-style defaults only work if the raw path reaches `expandvars`."""
         monkeypatch.setenv("HOME", "/set/home")  # unset, ${HOME} is replaced before expandvars
-        with patch("os.path.expandvars", return_value=str(panels_dir)) as mock_expand:
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)) as mock_expand:
             reader_file_paths.set_barks_panels_source(
                 Path("${HOME}/panels"), BarksPanelsExtType.MOSTLY_PNG
             )
@@ -307,7 +308,7 @@ class TestPanelsSourceSetup:
     def test_a_directory_source_is_not_encrypted(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path
     ) -> None:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
         assert reader_file_paths.barks_panels_are_encrypted is False
@@ -316,7 +317,7 @@ class TestPanelsSourceSetup:
         self, reader_file_paths: ReaderFilePaths, panels_zip: Path
     ) -> None:
         """Only the bundled zip is encrypted; a loose directory is plain files."""
-        with patch("os.path.expandvars", return_value=str(panels_zip)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_zip)):
             reader_file_paths.set_barks_panels_source(panels_zip, BarksPanelsExtType.JPG)
 
         assert reader_file_paths.barks_panels_are_encrypted is True
@@ -335,7 +336,7 @@ class TestPanelsSourceSetup:
         ext_type: BarksPanelsExtType,
         expected_ext: str,
     ) -> None:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, ext_type)
 
         assert reader_file_paths.get_file_ext() == expected_ext
@@ -344,7 +345,7 @@ class TestPanelsSourceSetup:
 class TestInsetFileLookup:
     @pytest.fixture
     def paths(self, reader_file_paths: ReaderFilePaths, panels_dir: Path) -> ReaderFilePaths:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
         return reader_file_paths
 
@@ -442,7 +443,7 @@ class TestFileTypeTitles:
     def paths_with_covers(
         self, reader_file_paths: ReaderFilePaths, panels_dir: Path
     ) -> ReaderFilePaths:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
         covers = panels_dir / "Covers"
@@ -518,7 +519,7 @@ class TestFileTypeTitles:
             zf.writestr(f"{PanelDirNames.COVERS.value}/Title1.jpg", "")
             zf.writestr(f"{PanelDirNames.COVERS.value}/.DS_Store", "")
 
-        with patch("os.path.expandvars", return_value=str(zip_path)):
+        with patch.object(os.path, "expandvars", return_value=str(zip_path)):
             reader_file_paths.set_barks_panels_source(zip_path, BarksPanelsExtType.JPG)
 
         assert reader_file_paths.get_file_type_titles(FileTypes.COVER) == ["Title1"]
@@ -565,7 +566,7 @@ class TestTitleFiles:
 
     @pytest.fixture
     def paths(self, reader_file_paths: ReaderFilePaths, panels_dir: Path) -> ReaderFilePaths:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
         return reader_file_paths
 
@@ -657,7 +658,7 @@ class TestEditedFilesAreOptIn:
 
     @pytest.fixture
     def paths(self, reader_file_paths: ReaderFilePaths, panels_dir: Path) -> ReaderFilePaths:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
         return reader_file_paths
 
@@ -704,7 +705,7 @@ class TestEditedFilesAreOptIn:
 class TestEditedVersionIfPossible:
     @pytest.fixture
     def paths(self, reader_file_paths: ReaderFilePaths, panels_dir: Path) -> ReaderFilePaths:
-        with patch("os.path.expandvars", return_value=str(panels_dir)):
+        with patch.object(os.path, "expandvars", return_value=str(panels_dir)):
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
         return reader_file_paths
 

@@ -10,6 +10,7 @@ from barks_reader.ui import memory_census as ui_memory_census
 from barks_reader.ui import request_service
 from barks_reader.ui.request_service import install_request_service
 from kivy.clock import Clock
+from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -101,6 +102,6 @@ def test_a_memory_census_request_is_answered_by_its_id_alone(
 
     request_file.write_text("3\n", encoding="utf-8")
     with patch.object(ui_memory_census, "answer") as answer:
-        schedule.call_args.args[0](0)
+        run_last_scheduled(schedule)
 
     answer.assert_called_once_with("3")

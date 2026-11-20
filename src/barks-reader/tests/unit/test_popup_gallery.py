@@ -30,6 +30,7 @@ from kivy.metrics import dp
 from kivy.properties import ListProperty, NumericProperty  # ty: ignore[import-not-found]
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
+from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -111,7 +112,7 @@ class TestShowPopup:
             assert popup_gallery.show_popup(app, "quit", request="7") is True
             close.assert_called_once_with()
             opener.assert_not_called()
-            schedule.call_args.args[0](0)
+            run_last_scheduled(schedule)
         opener.assert_called_once_with(app)
         assert log_markers.POPUP_GALLERY_SHOWN.format(request="7", name="quit") in loguru_sink
 
@@ -164,7 +165,7 @@ class TestService:
             popup_gallery.install_popup_gallery_service(MagicMock())
         request_file.write_text("about", encoding="utf-8")
         with patch.object(popup_gallery, "show_popup") as show:
-            schedule.call_args.args[0](0)
+            run_last_scheduled(schedule)
         show.assert_not_called()
         assert log_markers.POPUP_GALLERY_UNKNOWN.format(request="?", name="about") in loguru_sink
 

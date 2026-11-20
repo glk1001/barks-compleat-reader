@@ -25,6 +25,7 @@ from barks_reader.ui.popup_frame import PopupFrame
 from kivy.animation import Animation
 from kivy.core.window import Window
 from kivy.uix.progressbar import ProgressBar
+from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -74,11 +75,11 @@ class _Loop:
 
     def start(self) -> None:
         """Run what the window handed the clock for its first frame: it opens."""
-        self.clock.schedule_once.call_args.args[0](0)
+        run_last_scheduled(self.clock.schedule_once)
 
     def tick(self) -> bool:
         """Run the window's repeating check once, as a frame would."""
-        return self.clock.schedule_interval.call_args.args[0](0)
+        return run_last_scheduled(self.clock.schedule_interval)
 
     @property
     def popup(self) -> PopupFrame:

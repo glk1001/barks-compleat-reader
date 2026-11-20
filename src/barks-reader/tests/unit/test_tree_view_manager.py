@@ -39,33 +39,12 @@ from barks_reader.ui.tree_view_nodes import (
     ReaderTreeView,
     TitleTreeViewNode,
 )
+from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     from barks_reader.core.navigation import Destination
-    from barks_reader.ui.screen_bundle import ScreenBundle
-
-
-@pytest.fixture
-def mock_dependencies(screens: ScreenBundle) -> dict[str, Any]:
-    nav_coordinator = MagicMock()
-    return {
-        "renderer": MagicMock(),
-        "screens": screens,
-        "nav_coordinator": nav_coordinator,
-    }
-
-
-@pytest.fixture
-def tree_view_manager(
-    mock_dependencies: dict[str, Any],
-    screen_mocks: dict[str, MagicMock],
-) -> TreeViewManager:
-    # We need to mock the bind calls in __init__
-    _mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
-
-    return TreeViewManager(**mock_dependencies)
 
 
 class TestTreeViewManager:
@@ -77,7 +56,7 @@ class TestTreeViewManager:
     def test_setup_and_select_node_title_node(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         fanta = fake_fanta_info()
@@ -92,7 +71,7 @@ class TestTreeViewManager:
             screen_mocks["tree_view"].open_all_parent_nodes.assert_called_with(node)
             screen_mocks["tree_view"].select_node.assert_called_with(node)
 
-            mock_dependencies["nav_coordinator"].select_title.assert_called_once()
+            tree_view_manager_deps["nav_coordinator"].select_title.assert_called_once()
 
             # Check scroll_to_node scheduled
             mock_clock.assert_called()
@@ -111,7 +90,7 @@ class TestTreeViewManager:
         node.trigger_action.assert_not_called()
 
     def test_setting_up_a_button_node_left_open_shows_its_view(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         """No expansion fires for a node that is open already, so it is shown here."""
         node = MagicMock(spec=ButtonTreeViewNode)
@@ -120,12 +99,12 @@ class TestTreeViewManager:
 
         tree_view_manager.setup_and_select_node(node)
 
-        mock_dependencies["renderer"].render.assert_called_with(
+        tree_view_manager_deps["renderer"].render.assert_called_with(
             IntroDestination(), preserve_top_view=False, preserve_fun_view=False
         )
 
     def test_set_view_state_for_node_renders_destination(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         # The generic handler bound as on_press for the simple index/search/statistics
         # nodes: it renders the node's destination (replacing ~7 boilerplate handlers).
@@ -134,7 +113,7 @@ class TestTreeViewManager:
 
         tree_view_manager.set_view_state_for_node(node)
 
-        mock_dependencies["renderer"].render.assert_called_with(
+        tree_view_manager_deps["renderer"].render.assert_called_with(
             MainIndexDestination(), preserve_top_view=False, preserve_fun_view=False
         )
 
@@ -151,19 +130,19 @@ class TestTreeViewManager:
     def test_deselect_and_close_open_nodes(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, MagicMock],
+        tree_view_manager_deps: dict[str, MagicMock],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         screen_mocks["tree_view"].deselect_and_close_open_nodes.return_value = 1
 
         tree_view_manager.deselect_and_close_open_nodes()
 
-        mock_dependencies["renderer"].render_state.assert_called_with(ViewStates.INITIAL)
+        tree_view_manager_deps["renderer"].render_state.assert_called_with(ViewStates.INITIAL)
 
     def test_go_back_to_previous_node(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, MagicMock],
+        tree_view_manager_deps: dict[str, MagicMock],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
@@ -184,12 +163,12 @@ class TestTreeViewManager:
             tree_view_manager.go_back_to_previous_node()
             # Under the images the node was left with, as a collapse keeps them.
             mock_setup.assert_called_with(prev_node, keep_images=True)
-        mock_dependencies["nav_coordinator"].open_wiki.assert_not_called()
+        tree_view_manager_deps["nav_coordinator"].open_wiki.assert_not_called()
 
     def test_setting_up_a_node_for_go_back_keeps_the_images_through_its_renders(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         screen_mocks: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
@@ -206,7 +185,7 @@ class TestTreeViewManager:
         tree_view.open_node.side_effect = lambda n: tree_view_manager.on_node_expanded(
             MagicMock(), n
         )
-        renderer = mock_dependencies["renderer"]
+        renderer = tree_view_manager_deps["renderer"]
 
         with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating"):
             tree_view_manager.setup_and_select_node(node, keep_images=True)
@@ -242,13 +221,13 @@ class TestTreeViewManager:
     def test_go_back_to_a_node_left_open_keeps_the_images(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.is_open = True
         node.destination = TitleSearchDestination()
         node.get_name.return_value = "Title Search"
-        renderer = mock_dependencies["renderer"]
+        renderer = tree_view_manager_deps["renderer"]
 
         tree_view_manager.setup_and_select_node(node, keep_images=True)
 
@@ -266,7 +245,7 @@ class TestTreeViewManager:
     def test_go_back_to_previous_node_reopens_wiki(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, MagicMock],
+        tree_view_manager_deps: dict[str, MagicMock],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         # Back to the 'Carl Barks Wiki' node re-opens the wiki reader (which resumes
@@ -280,13 +259,13 @@ class TestTreeViewManager:
             tree_view_manager.go_back_to_previous_node()
 
         screen_mocks["tree_view"].select_node.assert_called_with(wiki_node)
-        mock_dependencies["nav_coordinator"].open_wiki.assert_called_once_with()
+        tree_view_manager_deps["nav_coordinator"].open_wiki.assert_called_once_with()
         mock_setup.assert_not_called()
 
     def test_go_back_to_a_chapter_reopens_it_where_it_was_left(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, MagicMock],
+        tree_view_manager_deps: dict[str, MagicMock],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         # Back after a chapter's Go to Story opens the chapter again, at the page the
@@ -312,7 +291,7 @@ class TestTreeViewManager:
         screen_mocks["tree_view"].open_all_parent_nodes.assert_called_once_with(chapter_node)
         screen_mocks["tree_view"].select_node.assert_called_with(chapter_node)
         mock_scroll.assert_called_once_with(chapter_node)
-        mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
+        tree_view_manager_deps["nav_coordinator"].open_document.assert_called_once_with(
             Path("/docs/illustrated-history/04-becoming-himself"),
             "Becoming Himself",
             ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
@@ -323,7 +302,7 @@ class TestTreeViewManager:
     def test_on_node_collapsed(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, MagicMock],
+        tree_view_manager_deps: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
@@ -336,7 +315,7 @@ class TestTreeViewManager:
         # The row stays put as its children go.
         pin.assert_called_once_with(node)
         # A collapse renders the node's view under the images already on show.
-        mock_dependencies["renderer"].render.assert_called_with(
+        tree_view_manager_deps["renderer"].render.assert_called_with(
             IntroDestination(), preserve_top_view=True, preserve_fun_view=True
         )
         assert log_markers.NODE_IMAGES_KEPT.format(name="Themes") in loguru_sink
@@ -364,13 +343,13 @@ class TestTreeViewManager:
             patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock,
         ):
             tree_view_manager.scroll_to_node(node)
-            mock_clock.call_args.args[0](0)
+            run_last_scheduled(mock_clock)
 
         let_go.assert_called_once_with()
         screen_mocks["tree_view"].scroll_to_node.assert_called_once_with(node)
 
     def test_on_node_expanded(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.populate_callback = MagicMock()
@@ -386,12 +365,12 @@ class TestTreeViewManager:
 
             # The node populates itself under the pin, and marks itself populated.
             mock_pin.assert_called_with(node, populate=node.ensure_populated)
-            mock_dependencies["renderer"].render.assert_called_with(
+            tree_view_manager_deps["renderer"].render.assert_called_with(
                 IntroDestination(), preserve_top_view=False, preserve_fun_view=False
             )
 
     def test_a_node_opened_under_suppression_is_tracked_but_shows_no_view(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         # No pin runs on this path to lift the overlay's suppression: it is lifted here.
         node = MagicMock(spec=ButtonTreeViewNode)
@@ -406,13 +385,13 @@ class TestTreeViewManager:
         overlay.track_node.assert_called_once_with(node)
         overlay.end_suppression.assert_called_once_with()
         mock_pin.assert_not_called()
-        mock_dependencies["renderer"].render.assert_not_called()
+        tree_view_manager_deps["renderer"].render.assert_not_called()
 
     def test_opening_search_selects_and_shows_its_title_search(
         self,
         tree_view_manager: TreeViewManager,
         screen_mocks: dict[str, MagicMock],
-        mock_dependencies: dict[str, MagicMock],
+        tree_view_manager_deps: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
         children = []
@@ -437,7 +416,7 @@ class TestTreeViewManager:
             tree_view_manager.on_node_expanded(MagicMock(), node)
 
         screen_mocks["tree_view"].select_node.assert_called_once_with(titles)
-        mock_dependencies["renderer"].render.assert_called_once_with(
+        tree_view_manager_deps["renderer"].render.assert_called_once_with(
             TitleSearchDestination(), preserve_top_view=False, preserve_fun_view=False
         )
         assert log_markers.NODE_OPENED_ON_CHILD.format(name="Search", child="Titles") in loguru_sink
@@ -446,7 +425,7 @@ class TestTreeViewManager:
         self,
         tree_view_manager: TreeViewManager,
         screen_mocks: dict[str, MagicMock],
-        mock_dependencies: dict[str, MagicMock],
+        tree_view_manager_deps: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
         """Go Back (and the saved-node restore) land on Search itself, not its Titles.
@@ -476,7 +455,9 @@ class TestTreeViewManager:
             tree_view_manager.setup_and_select_node(node)
 
         tree_view.select_node.assert_called_once_with(node)
-        rendered = [call.args[0] for call in mock_dependencies["renderer"].render.call_args_list]
+        rendered = [
+            call.args[0] for call in tree_view_manager_deps["renderer"].render.call_args_list
+        ]
         assert SearchDestination() in rendered
         assert TitleSearchDestination() not in rendered
         assert not any("opened on its child" in line for line in loguru_sink)
@@ -556,7 +537,7 @@ class TestTreeViewManager:
         screen_mocks["tree_view"].ids.reader_tree_view.toggle_node.assert_called_with(sibling)
 
     def test_on_title_row_button_pressed(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         fanta = fake_fanta_info()
         button = MagicMock()
@@ -566,12 +547,12 @@ class TestTreeViewManager:
 
         tree_view_manager.on_title_row_button_pressed(button)
 
-        mock_dependencies["nav_coordinator"].select_title.assert_called_once()
-        kwargs = mock_dependencies["nav_coordinator"].select_title.call_args.kwargs
+        tree_view_manager_deps["nav_coordinator"].select_title.assert_called_once()
+        kwargs = tree_view_manager_deps["nav_coordinator"].select_title.call_args.kwargs
         assert kwargs["preserve_top_view"] is False
 
     def test_on_title_row_button_pressed_with_tag(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         fanta = fake_fanta_info()
         button = MagicMock()
@@ -580,10 +561,10 @@ class TestTreeViewManager:
 
         tree_view_manager.on_title_row_button_pressed(button)
 
-        mock_dependencies["nav_coordinator"].select_title.assert_called_once()
+        tree_view_manager_deps["nav_coordinator"].select_title.assert_called_once()
 
     def test_on_title_row_button_pressed_under_random_titles_keeps_top_view(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         # A pick under a 'Choose for me' node keeps the themed top view
         # (character/decade backdrop) instead of re-rolling a generic image.
@@ -594,11 +575,11 @@ class TestTreeViewManager:
 
         tree_view_manager.on_title_row_button_pressed(button)
 
-        kwargs = mock_dependencies["nav_coordinator"].select_title.call_args.kwargs
+        kwargs = tree_view_manager_deps["nav_coordinator"].select_title.call_args.kwargs
         assert kwargs["preserve_top_view"] is True
 
     def test_render_title_node_without_scroll(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
     ) -> None:
         fanta = fake_fanta_info()
         node = MagicMock(spec=TitleTreeViewNode)
@@ -607,12 +588,12 @@ class TestTreeViewManager:
         with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             tree_view_manager.render_title_node(node)
 
-        target = mock_dependencies["nav_coordinator"].select_title.call_args.args[0]
+        target = tree_view_manager_deps["nav_coordinator"].select_title.call_args.args[0]
         assert target.fanta_info is fanta
         mock_clock.assert_not_called()
 
     def test_render_title_node_under_random_titles_keeps_top_view(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
     ) -> None:
         # Arrow-key navigation renders titles through render_title_node: picks
         # under a 'Choose for me' node keep the themed top view there too.
@@ -622,11 +603,11 @@ class TestTreeViewManager:
 
         tree_view_manager.render_title_node(node)
 
-        kwargs = mock_dependencies["nav_coordinator"].select_title.call_args.kwargs
+        kwargs = tree_view_manager_deps["nav_coordinator"].select_title.call_args.kwargs
         assert kwargs["preserve_top_view"] is True
 
     def test_render_title_node_under_a_tag_offers_the_tags_pages(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
     ) -> None:
         # Arrow keys and the saved-node restore at boot render titles here: one under a
         # tag carries the tag, as a click on its row does, so its goto page is offered.
@@ -636,11 +617,11 @@ class TestTreeViewManager:
 
         tree_view_manager.render_title_node(node)
 
-        target = mock_dependencies["nav_coordinator"].select_title.call_args.args[0]
+        target = tree_view_manager_deps["nav_coordinator"].select_title.call_args.args[0]
         assert target.tag is Tags.AWFULTONIANS
 
     def test_render_title_node_outside_a_tag_carries_none(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
     ) -> None:
         node = MagicMock(spec=TitleTreeViewNode)
         node.destination = TitleDestination(fanta_info=fake_fanta_info())
@@ -648,11 +629,11 @@ class TestTreeViewManager:
 
         tree_view_manager.render_title_node(node)
 
-        target = mock_dependencies["nav_coordinator"].select_title.call_args.args[0]
+        target = tree_view_manager_deps["nav_coordinator"].select_title.call_args.args[0]
         assert target.tag is None
 
     def test_render_title_node_with_scroll(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
     ) -> None:
         node = MagicMock(spec=TitleTreeViewNode)
         node.destination = TitleDestination(fanta_info=fake_fanta_info())
@@ -660,13 +641,13 @@ class TestTreeViewManager:
         with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             tree_view_manager.render_title_node(node, scroll_to=True)
 
-        mock_dependencies["nav_coordinator"].select_title.assert_called_once()
+        tree_view_manager_deps["nav_coordinator"].select_title.assert_called_once()
         mock_clock.assert_called_once()
 
     def test_activate_node_title_selects_renders_and_scrolls(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         node = MagicMock(spec=TitleTreeViewNode)
@@ -676,11 +657,11 @@ class TestTreeViewManager:
             tree_view_manager.activate_node(node)
 
         screen_mocks["tree_view"].select_node.assert_called_with(node)
-        mock_dependencies["nav_coordinator"].select_title.assert_called_once()
+        tree_view_manager_deps["nav_coordinator"].select_title.assert_called_once()
         mock_clock.assert_called_once()
 
     def test_on_article_node_pressed(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.destination = ArticleDestination(
@@ -689,12 +670,12 @@ class TestTreeViewManager:
         )
 
         tree_view_manager.on_article_node_pressed(node)
-        mock_dependencies["nav_coordinator"].read_article.assert_called_with(
+        tree_view_manager_deps["nav_coordinator"].read_article.assert_called_with(
             Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, ViewStates.ON_INTRO_NODE
         )
 
     def test_on_document_node_pressed(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.destination = DocumentDestination(
@@ -704,7 +685,7 @@ class TestTreeViewManager:
         )
 
         tree_view_manager.on_document_node_pressed(node)
-        mock_dependencies["nav_coordinator"].open_document.assert_called_with(
+        tree_view_manager_deps["nav_coordinator"].open_document.assert_called_with(
             Path("/docs/illustrated-history/04-becoming-himself"),
             "Becoming Himself",
             ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
@@ -714,14 +695,14 @@ class TestTreeViewManager:
     def test_the_intro_node_opens_the_introduction_and_comes_back_to_itself(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
     ) -> None:
         paths = MagicMock()
         tree_view_manager._sys_file_paths = paths
 
         tree_view_manager.on_intro_doc_pressed(MagicMock())
 
-        mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
+        tree_view_manager_deps["nav_coordinator"].open_document.assert_called_once_with(
             paths.get_intro_doc_dir.return_value,
             "The Compleat Barks Disney Reader",
             ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
@@ -730,7 +711,7 @@ class TestTreeViewManager:
     def test_the_how_to_node_opens_the_how_to_a_page_at_a_time(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
     ) -> None:
         """As the dots menu opens it, but closing comes back to the node."""
         paths = MagicMock()
@@ -738,7 +719,7 @@ class TestTreeViewManager:
 
         tree_view_manager.on_how_to_doc_pressed(MagicMock())
 
-        mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
+        tree_view_manager_deps["nav_coordinator"].open_document.assert_called_once_with(
             paths.get_how_to_doc_dir.return_value,
             "How to Use the Barks Reader",
             ViewStates.ON_INTRO_HOW_TO_NODE,
@@ -748,7 +729,7 @@ class TestTreeViewManager:
     def test_on_node_expanded_with_one_title_child_selects_that_title(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         screen_mocks: dict[str, MagicMock],
         loguru_sink: list[str],
     ) -> None:
@@ -770,12 +751,12 @@ class TestTreeViewManager:
             tree_view_manager.on_node_expanded(MagicMock(), node)
 
         screen_mocks["tree_view"].select_node.assert_called_once_with(only_title)
-        select_title = mock_dependencies["nav_coordinator"].select_title
+        select_title = tree_view_manager_deps["nav_coordinator"].select_title
         target = select_title.call_args.args[0]
         assert target.fanta_info is fanta
         assert target.tag is TagGroups.AFRICA
         assert select_title.call_args.kwargs["preserve_top_view"] is True
-        mock_dependencies["renderer"].render.assert_not_called()
+        tree_view_manager_deps["renderer"].render.assert_not_called()
         assert "Single-child node 'Africa': auto-selecting only title." in loguru_sink
 
     def test_close_siblings_of_a_root_node_toggles_nothing(
@@ -799,7 +780,7 @@ class TestTreeViewManager:
 
         with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             on_pressed(node)
-            mock_clock.call_args.args[0](0)
+            run_last_scheduled(mock_clock)
 
         tree_view.ids.reader_tree_view.toggle_node.assert_called_once_with(node)
         tree_view.select_node.assert_called_once_with(node)
@@ -847,7 +828,7 @@ class TestTreeViewManager:
 
         with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             on_pressed(node)
-            mock_clock.call_args.args[0](0)
+            run_last_scheduled(mock_clock)
 
         tree_view.ids.reader_tree_view.toggle_node.assert_not_called()
         tree_view.select_node.assert_called_once_with(node)
@@ -868,30 +849,30 @@ class TestNodesThatDoNothingMore:
     def test_activating_an_intro_text_node_only_selects_it(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         node = MagicMock(spec=IntroTextTreeViewNode)
         tree_view_manager.activate_node(node)
         screen_mocks["tree_view"].select_node.assert_called_once_with(node)
-        mock_dependencies["nav_coordinator"].select_title.assert_not_called()
-        mock_dependencies["renderer"].render.assert_not_called()
+        tree_view_manager_deps["nav_coordinator"].select_title.assert_not_called()
+        tree_view_manager_deps["renderer"].render.assert_not_called()
 
     def test_setting_up_an_intro_text_node_opens_and_selects_it_only(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         node = MagicMock(spec=IntroTextTreeViewNode)
         tree_view_manager.setup_and_select_node(node)
         screen_mocks["tree_view"].open_node.assert_called_once_with(node)
         screen_mocks["tree_view"].select_node.assert_called_once_with(node)
-        mock_dependencies["nav_coordinator"].select_title.assert_not_called()
-        mock_dependencies["renderer"].render.assert_not_called()
+        tree_view_manager_deps["nav_coordinator"].select_title.assert_not_called()
+        tree_view_manager_deps["renderer"].render.assert_not_called()
 
     def test_an_open_button_node_with_no_destination_renders_nothing(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.is_open = True
@@ -899,7 +880,7 @@ class TestNodesThatDoNothingMore:
 
         tree_view_manager.setup_and_select_node(node)
 
-        mock_dependencies["renderer"].render.assert_not_called()
+        tree_view_manager_deps["renderer"].render.assert_not_called()
 
     def test_going_to_a_node_without_scrolling_selects_it_next_frame(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
@@ -910,7 +891,7 @@ class TestNodesThatDoNothingMore:
             patch.object(tree_view_manager, "scroll_to_node") as scroll,
         ):
             tree_view_manager.goto_node(node)
-            mock_clock.call_args.args[0](0)
+            run_last_scheduled(mock_clock)
 
         screen_mocks["tree_view"].select_node.assert_called_once_with(node)
         scroll.assert_not_called()
@@ -976,14 +957,14 @@ class TestPressesOnARealTree:
 
     @pytest.fixture
     def manager(
-        self, tree: ReaderTreeView, mock_dependencies: dict[str, Any]
+        self, tree: ReaderTreeView, tree_view_manager_deps: dict[str, Any]
     ) -> Generator[TreeViewManager]:
         screens = MagicMock()
         screens.tree_view = _TreeScreen(tree)
         manager = TreeViewManager(
-            renderer=mock_dependencies["renderer"],
+            renderer=tree_view_manager_deps["renderer"],
             screens=screens,
-            nav_coordinator=mock_dependencies["nav_coordinator"],
+            nav_coordinator=tree_view_manager_deps["nav_coordinator"],
         )
         with (
             patch.object(manager._scroll_pinner, "pin_while_populating"),
@@ -1017,7 +998,7 @@ class TestPressesOnARealTree:
         return self._add(tree, "Words", SpeechWordsDestination(), parent=speech)
 
     def test_go_back_to_a_group_node_leaves_it_open_and_shows_it_once(
-        self, tree: ReaderTreeView, manager: TreeViewManager, mock_dependencies: dict[str, Any]
+        self, tree: ReaderTreeView, manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
     ) -> None:
         stories = self._add(tree, "The Stories", StoriesDestination())
         self._add(tree, "Chronological", ChronologicalDestination(), parent=stories)
@@ -1027,7 +1008,7 @@ class TestPressesOnARealTree:
 
         assert stories.is_open
         assert tree.selected_node is stories
-        mock_dependencies["renderer"].render.assert_called_once_with(
+        tree_view_manager_deps["renderer"].render.assert_called_once_with(
             StoriesDestination(), preserve_top_view=True, preserve_fun_view=True
         )
 
@@ -1037,7 +1018,7 @@ class TestPressesOnARealTree:
         manager: TreeViewManager,
         speech: ButtonTreeViewNode,
         words: ButtonTreeViewNode,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
     ) -> None:
         self._lay_out(tree)
 
@@ -1045,7 +1026,7 @@ class TestPressesOnARealTree:
 
         assert speech.is_open
         assert tree.selected_node is words
-        mock_dependencies["renderer"].render.assert_called_once_with(
+        tree_view_manager_deps["renderer"].render.assert_called_once_with(
             SpeechWordsDestination(), preserve_top_view=False, preserve_fun_view=False
         )
 
@@ -1055,14 +1036,14 @@ class TestPressesOnARealTree:
         manager: TreeViewManager,
         speech: ButtonTreeViewNode,
         words: ButtonTreeViewNode,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         loguru_sink: list[str],
     ) -> None:
         """Its press once selected Words, the row the collapse was about to hide."""
         self._lay_out(tree)
         manager.activate_node(speech)
         self._lay_out(tree)
-        renderer = mock_dependencies["renderer"]
+        renderer = tree_view_manager_deps["renderer"]
         renderer.render.reset_mock()
 
         manager.activate_node(speech)
@@ -1082,14 +1063,14 @@ class TestPressesOnARealTree:
         manager: TreeViewManager,
         speech: ButtonTreeViewNode,
         words: ButtonTreeViewNode,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         loguru_sink: list[str],
     ) -> None:
         words.bind(on_press=manager.set_view_state_for_node)
         with manager.suppress_view_state_changes():
             tree.toggle_node(speech)
         self._lay_out(tree)
-        renderer = mock_dependencies["renderer"]
+        renderer = tree_view_manager_deps["renderer"]
 
         manager.activate_node(words)
         assert words.is_open
@@ -1154,12 +1135,12 @@ class TestWhatOnlyTheGuiTestsRan:
     def test_the_wiki_node_opens_the_wiki(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         loguru_sink: list[str],
     ) -> None:
         tree_view_manager.on_wiki_index_node_pressed(MagicMock())
 
-        nav = mock_dependencies["nav_coordinator"]
+        nav = tree_view_manager_deps["nav_coordinator"]
         nav.open_wiki.assert_called_once_with()
         nav.open_corpus_stats.assert_not_called()
         assert "Wiki index node pressed." in loguru_sink
@@ -1167,25 +1148,25 @@ class TestWhatOnlyTheGuiTestsRan:
     def test_the_by_the_numbers_node_opens_the_corpus_statistics(
         self,
         tree_view_manager: TreeViewManager,
-        mock_dependencies: dict[str, Any],
+        tree_view_manager_deps: dict[str, Any],
         loguru_sink: list[str],
     ) -> None:
         tree_view_manager.on_corpus_stats_node_pressed(MagicMock())
 
-        nav = mock_dependencies["nav_coordinator"]
+        nav = tree_view_manager_deps["nav_coordinator"]
         nav.open_corpus_stats.assert_called_once_with()
         nav.open_wiki.assert_not_called()
         assert '"By the Numbers" node pressed.' in loguru_sink
 
     def test_the_censorship_fixes_node_opens_its_appendix(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
     ) -> None:
         paths = MagicMock()
         tree_view_manager._sys_file_paths = paths
 
         tree_view_manager.on_censorship_fixes_doc_pressed(MagicMock())
 
-        mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
+        tree_view_manager_deps["nav_coordinator"].open_document.assert_called_once_with(
             paths.get_censorship_fixes_doc_dir.return_value,
             barks_reader.ui.tree_view_manager.APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
             ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
@@ -1217,7 +1198,7 @@ class TestWhatOnlyTheGuiTestsRan:
         ):
             tree_view_manager.goto_node(node, scroll_to=True)
             scroll.assert_not_called()  # not before the frame
-            mock_clock.call_args.args[0](0)
+            run_last_scheduled(mock_clock)
 
         screen_mocks["tree_view"].select_node.assert_called_once_with(node)
         scroll.assert_called_once_with(node)

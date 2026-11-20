@@ -23,7 +23,8 @@ from barks_reader.core.image_pipeline import (
     read_raw_bytes,
     resize_contain,
 )
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+from unit_helpers import image_bytes, write_zip
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,21 +34,11 @@ def _make_png_bytes(
     size: tuple[int, int] = (20, 10),
     color: tuple[int, int, int] = (255, 0, 0),
 ) -> bytes:
-    buf = io.BytesIO()
-    Image.new("RGB", size, color).save(buf, format="PNG")
-    return buf.getvalue()
+    return image_bytes("PNG", size, color)
 
 
 def _make_jpg_bytes(size: tuple[int, int] = (20, 10)) -> bytes:
-    buf = io.BytesIO()
-    Image.new("RGB", size, (0, 0, 255)).save(buf, format="JPEG")
-    return buf.getvalue()
-
-
-def _write_zip(zip_path: Path, entries: dict[str, bytes]) -> None:
-    with zipfile.ZipFile(zip_path, "w") as zf:
-        for name, data in entries.items():
-            zf.writestr(name, data)
+    return image_bytes("JPEG", size, (0, 0, 255))
 
 
 class TestReadRawBytes:
@@ -61,7 +52,7 @@ class TestReadRawBytes:
     def test_read_from_zip_path_unencrypted(self, tmp_path: Path) -> None:
         data = _make_png_bytes()
         zip_path = tmp_path / "archive.zip"
-        _write_zip(zip_path, {"images/p1.png": data})
+        write_zip(zip_path, {"images/p1.png": data})
 
         with zipfile.ZipFile(zip_path, "r") as zf:
             result = read_raw_bytes(zipfile.Path(zf, at="images/p1.png"))
@@ -148,7 +139,7 @@ class TestDecodePil:
         assert pil.size == (12, 6)
 
     def test_invalid_bytes_raises(self) -> None:
-        with pytest.raises(Exception):  # noqa: B017, PT011
+        with pytest.raises(UnidentifiedImageError):
             decode_pil(b"not an image")
 
     @pytest.mark.parametrize("ext", [None, ".jpg"])
@@ -191,7 +182,7 @@ class TestLoadPil:
 
     def test_load_pil_from_unencrypted_zip(self, tmp_path: Path) -> None:
         zip_path = tmp_path / "a.zip"
-        _write_zip(zip_path, {"dir/x.png": _make_png_bytes((16, 8))})
+        write_zip(zip_path, {"dir/x.png": _make_png_bytes((16, 8))})
 
         with zipfile.ZipFile(zip_path, "r") as zf:
             pil = load_pil(
@@ -210,7 +201,7 @@ class TestLoadPil:
         ``load_pil_image_from_zip`` rather than decrypting here.
         """
         zip_path = tmp_path / "enc.zip"
-        _write_zip(zip_path, {"p.png": b"cipher"})
+        write_zip(zip_path, {"p.png": b"cipher"})
         sentinel = Image.new("RGB", (5, 5))
 
         with (
@@ -233,7 +224,7 @@ class TestLoadPil:
         """
         data = _make_png_bytes((6, 3))
         zip_path = tmp_path / "plain.zip"
-        _write_zip(zip_path, {"q.png": data})
+        write_zip(zip_path, {"q.png": data})
         sentinel = Image.new("RGB", (5, 5))
 
         with (
@@ -322,7 +313,7 @@ class TestEndToEndPipeline:
     def test_full_pipeline_from_real_zip(self, tmp_path: Path) -> None:
         source_bytes = _make_png_bytes((1000, 500), color=(10, 20, 30))
         zip_path = tmp_path / "book.cbz"
-        _write_zip(zip_path, {"images/p01.png": source_bytes})
+        write_zip(zip_path, {"images/p01.png": source_bytes})
 
         with zipfile.ZipFile(zip_path, "r") as zf:
             pil = load_pil(

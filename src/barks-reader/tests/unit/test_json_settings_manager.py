@@ -13,21 +13,7 @@ from barks_reader.core.json_settings_manager import (
     SettingsManager,
 )
 from barks_reader.core.saved_page_info import SavedPageInfo
-
-
-class _FakeTreeViewNode:
-    """A minimal node satisfying `SavableTreeViewNode` structurally."""
-
-    def __init__(self, name: str, level: int, parent: _FakeTreeViewNode | None = None) -> None:
-        self._name = name
-        self.level = level
-        self.parent_node = parent
-        self.nodes: list[_FakeTreeViewNode] = []
-        self.is_open = False
-        self.saved_state: dict[str, Any] = {}
-
-    def get_name(self) -> str:
-        return self._name
+from unit_helpers import FakeTreeViewNode
 
 
 def _a_saved_page() -> SavedPageInfo:
@@ -250,9 +236,9 @@ class TestLastSelectedNode:
         store_path = tmp_path / "store.json"
         manager = SettingsManager(store_path)
 
-        root = _FakeTreeViewNode("ignored-for-root", level=0)
-        stories = _FakeTreeViewNode("The Stories", level=1, parent=root)
-        chrono = _FakeTreeViewNode("Chronological", level=2, parent=stories)
+        root = FakeTreeViewNode("ignored-for-root", level=0)
+        stories = FakeTreeViewNode("The Stories", level=1, parent=root)
+        chrono = FakeTreeViewNode("Chronological", level=2, parent=stories)
         chrono.saved_state["open"] = True
 
         manager.save_last_selected_node_path(cast("SavableTreeViewNode", chrono))
@@ -442,5 +428,5 @@ class TestScreenSizesWarned:
         """The reader settings are rewritten whole; the warned sizes are kept apart."""
         manager = SettingsManager(tmp_path / "store.json")
         manager.save_screen_size_warned("1366x768")
-        manager.save_last_selected_node_path(cast("SavableTreeViewNode", _FakeTreeViewNode("A", 0)))
+        manager.save_last_selected_node_path(cast("SavableTreeViewNode", FakeTreeViewNode("A", 0)))
         assert SettingsManager(tmp_path / "store.json").is_screen_size_warned("1366x768")

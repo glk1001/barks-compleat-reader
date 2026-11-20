@@ -39,6 +39,7 @@ from barks_reader.ui.comic_book_reader import (
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from PIL import Image as PilImage
+from unit_helpers import run_frames
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -1187,15 +1188,6 @@ class TestComicBookReaderScreen:
 
         log_geometry.assert_called_once_with(reason)
 
-    @staticmethod
-    def _run_frames(clock: MagicMock, frames: int) -> None:
-        """Run what the reader scheduled, a frame at a time, as the clock would."""
-        for _ in range(frames):
-            if not clock.schedule_once.call_args_list:
-                return
-            callback = clock.schedule_once.call_args_list.pop(0).args[0]
-            callback(0)
-
     def test_a_reader_already_filling_the_window_closes_a_frame_later(
         self, screen: ComicBookReaderScreen, loguru_sink: list[str]
     ) -> None:
@@ -1210,7 +1202,7 @@ class TestComicBookReaderScreen:
         ):
             screen._finish_closing_once_laid_out()
             fin.assert_not_called()
-            self._run_frames(clock, 1)
+            run_frames(clock, 1)
 
         fin.assert_called_once_with()
         screen._on_close_reader.assert_called_once_with()

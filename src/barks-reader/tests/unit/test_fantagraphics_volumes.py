@@ -1189,7 +1189,9 @@ class TestArchiveContentsEdges:
 
 class TestLoadErrorMessages:
     @staticmethod
-    def _single_volume_archives(tmp_path: Path, image_names: list[str]):  # noqa: ANN205
+    def _single_volume_archives(
+        tmp_path: Path, image_names: list[str]
+    ) -> FantagraphicsVolumeArchives:
         archive_root = tmp_path / "archive"
         override_root = tmp_path / "override"
         archive_root.mkdir()

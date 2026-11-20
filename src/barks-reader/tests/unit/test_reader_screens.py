@@ -482,14 +482,26 @@ class TestReaderScreen:
             mock_init.assert_called_once()
             assert screen.app_icon_filepath == ""
 
-    def test_methods_exist(self) -> None:
-        # Just verifying the interface exists and doesn't crash
+    @pytest.mark.parametrize(
+        "hook",
+        [
+            "on_comic_closed",
+            "on_document_reader_closed",
+            "on_wiki_reader_closed",
+            "on_corpus_stats_closed",
+        ],
+    )
+    def test_a_screen_that_overrides_no_close_hook_does_nothing_on_it(self, hook: str) -> None:
+        """The screen manager calls each on whichever screen is shown: all must be there."""
         with patch.object(Screen, "__init__", autospec=True, return_value=None):
             screen = ReaderScreen()
-            screen.is_active(active=True)
-            screen.on_comic_closed()
-            screen.on_document_reader_closed()
-            screen.on_wiki_reader_closed()
+        assert getattr(screen, hook)() is None
+
+    def test_a_screen_that_does_not_care_can_be_told_it_is_active(self) -> None:
+        with patch.object(Screen, "__init__", autospec=True, return_value=None):
+            screen = ReaderScreen()
+        assert screen.is_active(active=True) is None
+        assert screen.is_active(active=False) is None
 
     def test_entering_and_leaving_log_the_screen_name(self, loguru_sink: list[str]) -> None:
         """Kivy fires these when a transition completes: the one marker for that."""

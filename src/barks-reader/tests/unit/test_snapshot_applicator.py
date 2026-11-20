@@ -35,7 +35,7 @@ def applicator(screens: ScreenBundle) -> Generator[SnapshotApplicator]:
     with patch.object(barks_reader.ui.snapshot_applicator, "PanelTextureLoader") as mock_loader_cls:
         mock_loader = mock_loader_cls.return_value
 
-        def side_effect(_filename, callback):  # noqa: ANN001, ANN202
+        def side_effect(_filename: object, callback: Callable[[object, object], None]) -> None:
             callback(MagicMock(), None)
 
         mock_loader.load_texture.side_effect = side_effect

@@ -31,7 +31,6 @@ from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
 from barks_reader.ui.popup_frame import PopupFrame
-from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_renderer import ImageThemesChange, ImageThemesToUse
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
@@ -42,21 +41,11 @@ from kivy.uix.widget import Widget
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from barks_reader.ui.screen_bundle import ScreenBundle
+
 
 @pytest.fixture
-def mock_dependencies() -> dict[str, Any]:
-    screens = ScreenBundle(
-        tree_view=MagicMock(),
-        bottom_title_view=MagicMock(),
-        fun_image_view=MagicMock(),
-        main_index=MagicMock(),
-        speech_index=MagicMock(),
-        names_index=MagicMock(),
-        locations_index=MagicMock(),
-        statistics=MagicMock(),
-        history=MagicMock(),
-        search=MagicMock(),
-    )
+def mock_dependencies(screens: ScreenBundle) -> dict[str, Any]:
     return {
         "comics_database": MagicMock(),
         "reader_settings": MagicMock(),

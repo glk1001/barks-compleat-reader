@@ -34,6 +34,7 @@ from kivy.uix import filechooser
 from kivy.uix.label import Label
 from kivy.uix.settings import ContentPanel, SettingsPanel
 from kivy.uix.widget import Widget
+from unit_helpers import run_at_once, run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
@@ -664,7 +665,7 @@ class TestTypingAPath:
             patch.object(settings_fix, "Path", side_effect=RuntimeError("no home")),
         ):
             SettingLongPathPopup.update_file_chooser_path(chooser, "~nobody/comics")
-            clock.schedule_once.call_args.args[0](0.5)
+            run_last_scheduled(clock.schedule_once, 0.5)
 
         assert 'Invalid path in long path file chooser: "~nobody/comics"' in loguru_sink
         chooser.ids.file_chooser.set_path.assert_not_called()
@@ -752,7 +753,7 @@ class TestLongPathPopupStart:
 
     @pytest.fixture(autouse=True)
     def _clock_runs_at_once(self) -> Iterator[None]:
-        with patch.object(settings_fix.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)):
+        with patch.object(settings_fix.Clock, "schedule_once", side_effect=run_at_once):
             yield
 
     @staticmethod

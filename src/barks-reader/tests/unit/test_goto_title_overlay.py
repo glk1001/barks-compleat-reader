@@ -10,30 +10,12 @@ import pytest
 from barks_reader.ui import goto_title_overlay
 from barks_reader.ui.goto_title_overlay import OVERLAY_BUTTON_WIDTH, GotoTitleOverlay
 from barks_reader.ui.ui_helpers import TouchExpandedButton
-from kivy.factory import Factory
 from kivy.metrics import dp
-from kivy.properties import ListProperty, NumericProperty  # ty: ignore[import-not-found]
-from kivy.uix.label import Label
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from kivy.uix.label import Label
 
-
-class _BgColorLabel(Label):
-    """Stand in for the app's BgColorLabel, defined in main_screen.kv, which is not loaded here."""
-
-    background_color = ListProperty([0, 0, 0, 0])
-    sizing_factor_x = NumericProperty(1.0)
-
-
-@pytest.fixture(autouse=True)
-def _bg_color_label() -> Iterator[None]:
-    if "BgColorLabel" in Factory.classes:
-        yield
-        return
-    Factory.register("BgColorLabel", cls=_BgColorLabel)
-    yield
-    Factory.unregister("BgColorLabel")
+pytestmark = pytest.mark.usefixtures("bg_color_label")  # cspell:ignore pytestmark
 
 
 def _overlay(**kwargs: object) -> GotoTitleOverlay:

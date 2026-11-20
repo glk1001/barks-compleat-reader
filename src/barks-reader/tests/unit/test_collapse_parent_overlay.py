@@ -15,33 +15,18 @@ import pytest
 from barks_reader.ui import collapse_parent_overlay
 from barks_reader.ui.collapse_parent_overlay import CollapseParentOverlay
 from barks_reader.ui.tree_view_nodes import ButtonTreeViewNode
-from kivy.factory import Factory
 from kivy.metrics import dp
-from kivy.properties import ColorProperty  # ty: ignore[import-not-found]
-from kivy.uix.label import Label
+from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
 
-class _BgColorLabel(Label):
-    """Stand in for the app's BgColorLabel, defined in main_screen.kv, which is not loaded here."""
-
-    background_color = ColorProperty((0, 0, 0, 0))
+pytestmark = pytest.mark.usefixtures("bg_color_label")  # cspell:ignore pytestmark
 
 
 _SCROLL_VIEW_TOP = 500
-
-
-@pytest.fixture(autouse=True)
-def _bg_color_label() -> Iterator[None]:
-    if "BgColorLabel" in Factory.classes:
-        yield
-        return
-    Factory.register("BgColorLabel", cls=_BgColorLabel)
-    yield
-    Factory.unregister("BgColorLabel")
 
 
 @pytest.fixture
@@ -139,7 +124,7 @@ class TestShowing:
 
         overlay.end_suppression()
         assert not overlay.is_visible
-        overlay.clock.schedule_once.call_args.args[0](0)
+        run_last_scheduled(overlay.clock.schedule_once)
         assert overlay.is_visible
 
     def test_a_parent_collapsed_some_other_way_stops_being_tracked(

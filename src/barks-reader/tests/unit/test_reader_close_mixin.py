@@ -10,6 +10,7 @@ import pytest
 from barks_reader.ui import reader_close_mixin as mixin_module
 from barks_reader.ui.action_bar_helpers import ActionBarVisibility
 from barks_reader.ui.reader_close_mixin import ReaderCloseMixin
+from unit_helpers import run_frames
 
 
 class _Reader(ReaderCloseMixin):
@@ -32,15 +33,6 @@ class _Reader(ReaderCloseMixin):
         return self.action_bar
 
 
-def _run_frames(clock: MagicMock, frames: int) -> None:
-    """Run what the reader scheduled, a frame at a time, as the clock would."""
-    for _ in range(frames):
-        if not clock.schedule_once.call_args_list:
-            return
-        callback = clock.schedule_once.call_args_list.pop(0).args[0]
-        callback(0)
-
-
 def test_a_reader_not_yet_resized_waits_until_it_fills_the_window() -> None:
     """Closed from a window into full screen: the old size must not fall out."""
     reader = _Reader(782, 1225)
@@ -49,11 +41,11 @@ def test_a_reader_not_yet_resized_waits_until_it_fills_the_window() -> None:
         patch.object(mixin_module, "Window", width=900, height=1300),
     ):
         reader._finish_closing_once_laid_out()
-        _run_frames(clock, 3)
+        run_frames(clock, 3)
         reader.finished.assert_not_called()
 
         reader.width, reader.height = 901, 1300  # laid out, a pixel apart as a resize can land
-        _run_frames(clock, 2)
+        run_frames(clock, 2)
 
     reader.finished.assert_called_once_with()
 
@@ -68,7 +60,7 @@ def test_a_reader_that_never_fills_the_window_still_closes() -> None:
         frames = 0
         while clock.schedule_once.call_args_list:
             frames += 1
-            _run_frames(clock, 1)
+            run_frames(clock, 1)
 
     assert frames == ReaderCloseMixin._CLOSE_LAYOUT_MAX_FRAMES
     reader.finished.assert_called_once_with()
@@ -89,7 +81,7 @@ def test_a_reader_with_its_own_frame_count_waits_that_long() -> None:
         frames = 0
         while clock.schedule_once.call_args_list:
             frames += 1
-            _run_frames(clock, 1)
+            run_frames(clock, 1)
 
     assert frames == 30  # noqa: PLR2004
     reader.finished.assert_called_once_with()
@@ -103,12 +95,12 @@ def test_a_mode_change_finishing_closes_only_a_closing_reader() -> None:
         patch.object(mixin_module, "Window", width=900, height=1300),
     ):
         reader._close_if_closing("windowed")
-        _run_frames(clock, 2)
+        run_frames(clock, 2)
         reader.finished.assert_not_called()
 
         reader._is_closing = True
         reader._close_if_closing("windowed")
-        _run_frames(clock, 2)
+        run_frames(clock, 2)
 
     reader.finished.assert_called_once_with()
 

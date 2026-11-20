@@ -14,6 +14,11 @@ from zipfile import ZipFile
 import pytest
 from kivy.config import ConfigParser as KivyConfigParser
 from loguru import logger
+from unit_helpers import (
+    progress_with_a_window,
+    progress_with_a_window_logging_a_failed_follow_on,
+    write_zip,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -49,13 +54,6 @@ def _info(version: int) -> DataPackInfo:
     }
     built = datetime(2026, 10, 29, tzinfo=UTC)
     return DataPackInfo(version, f"data-v{version}", built, "main-pc", entries)
-
-
-def _make_zip(zip_path: Path, entries: dict[str, str]) -> Path:
-    with ZipFile(zip_path, "w") as zf:
-        for name, text in entries.items():
-            zf.writestr(name, text)
-    return zip_path
 
 
 class TestConfigureFantaVolumes:
@@ -208,7 +206,7 @@ class _Install:
         if first is not None:
             packs[0] = first
         for name, pack in zip(DATA_PACK_FILE_NAMES, packs, strict=True):
-            _make_zip(self.exe_dir / name, pack)
+            write_zip(self.exe_dir / name, pack)
 
     def error_message(self) -> str:
         return self.error_popup.call_args.kwargs["message"]
@@ -308,12 +306,7 @@ class TestMain:
         install.write_packs()
         end_loop = MagicMock()
 
-        def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
-            result = work()
-            show_next(result, end_loop)
-            return result, True
-
-        install.progress.side_effect = with_a_window
+        install.progress.side_effect = progress_with_a_window(end_loop)
 
         first_run_installer.main()
 
@@ -585,21 +578,7 @@ class TestMain:
         install.write_packs()
         install.success_message.side_effect = RuntimeError("no font")
 
-        def with_a_window(
-            work: Any,  # noqa: ANN401
-            *_args: Any,  # noqa: ANN401
-            show_next: Any,  # noqa: ANN401
-            report_not_shown: str,
-            **_kwargs: Any,  # noqa: ANN401
-        ) -> Any:  # noqa: ANN401
-            result = work()
-            try:
-                show_next(result, MagicMock())
-            except RuntimeError:
-                logger.exception(report_not_shown)
-            return result, True
-
-        install.progress.side_effect = with_a_window
+        install.progress.side_effect = progress_with_a_window_logging_a_failed_follow_on()
 
         first_run_installer.main()
 

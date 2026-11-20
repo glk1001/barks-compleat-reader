@@ -31,7 +31,6 @@ from barks_reader.core.navigation import (
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.testing import fake_fanta_info
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
-from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
     TitleTreeViewNode,
@@ -39,24 +38,9 @@ from barks_reader.ui.tree_view_nodes import (
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-    from barks_reader.ui.screen_bundle import ScreenBundle
+    from barks_reader.ui.tree_view_manager import TreeViewManager
 
 # --- Shared fixtures ------------------------------------------------------
-
-
-@pytest.fixture
-def tvm_deps(screens: ScreenBundle) -> dict[str, Any]:
-    nav_coordinator = MagicMock()
-    return {
-        "renderer": MagicMock(),
-        "screens": screens,
-        "nav_coordinator": nav_coordinator,
-    }
-
-
-@pytest.fixture
-def tree_view_manager(tvm_deps: dict[str, Any]) -> TreeViewManager:
-    return TreeViewManager(**tvm_deps)
 
 
 def _make_title_node(fanta_info: FantaComicBookInfo) -> MagicMock:
@@ -70,14 +54,14 @@ def _make_title_node(fanta_info: FantaComicBookInfo) -> MagicMock:
 
 
 def test_title_node_selection_passes_fanta_info_in_title_target(
-    tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
+    tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
 ) -> None:
     fanta = fake_fanta_info()
     node = _make_title_node(fanta)
 
     tree_view_manager._handle_title_node_selection(node)
 
-    nav = tvm_deps["nav_coordinator"]
+    nav = tree_view_manager_deps["nav_coordinator"]
     nav.select_title.assert_called_once()
     (target,), _ = nav.select_title.call_args
     assert isinstance(target, TitleTarget)
@@ -89,7 +73,7 @@ def test_title_node_selection_passes_fanta_info_in_title_target(
 
 
 def test_title_row_button_pressed_no_tag_when_parent_has_no_tag_destination(
-    tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
+    tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
 ) -> None:
     fanta = fake_fanta_info()
     button = MagicMock()
@@ -98,13 +82,13 @@ def test_title_row_button_pressed_no_tag_when_parent_has_no_tag_destination(
 
     tree_view_manager.on_title_row_button_pressed(button)
 
-    (target,), _ = tvm_deps["nav_coordinator"].select_title.call_args
+    (target,), _ = tree_view_manager_deps["nav_coordinator"].select_title.call_args
     assert target.fanta_info is fanta
     assert target.tag is None
 
 
 def test_title_row_button_pressed_extracts_tag_from_tag_parent(
-    tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
+    tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
 ) -> None:
     fanta = fake_fanta_info()
     button = MagicMock()
@@ -113,13 +97,13 @@ def test_title_row_button_pressed_extracts_tag_from_tag_parent(
 
     tree_view_manager.on_title_row_button_pressed(button)
 
-    (target,), _ = tvm_deps["nav_coordinator"].select_title.call_args
+    (target,), _ = tree_view_manager_deps["nav_coordinator"].select_title.call_args
     assert target.fanta_info is fanta
     assert target.tag is Tags.AIRPLANES
 
 
 def test_title_row_button_pressed_extracts_tag_from_tag_group_parent(
-    tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
+    tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
 ) -> None:
     fanta = fake_fanta_info()
     button = MagicMock()
@@ -128,7 +112,7 @@ def test_title_row_button_pressed_extracts_tag_from_tag_group_parent(
 
     tree_view_manager.on_title_row_button_pressed(button)
 
-    (target,), _ = tvm_deps["nav_coordinator"].select_title.call_args
+    (target,), _ = tree_view_manager_deps["nav_coordinator"].select_title.call_args
     assert target.fanta_info is fanta
     assert target.tag is TagGroups.AFRICA
 
@@ -150,7 +134,7 @@ def _parent_with_single_title_child(
 
 def test_auto_select_single_child_selects_child_and_calls_nav_with_preserve_top_view(
     tree_view_manager: TreeViewManager,
-    tvm_deps: dict[str, Any],
+    tree_view_manager_deps: dict[str, Any],
     screen_mocks: dict[str, MagicMock],
 ) -> None:
     parent, child, fanta = _parent_with_single_title_child()
@@ -158,7 +142,7 @@ def test_auto_select_single_child_selects_child_and_calls_nav_with_preserve_top_
     tree_view_manager._auto_select_single_child(parent, child)
 
     screen_mocks["tree_view"].select_node.assert_called_with(child)
-    nav = tvm_deps["nav_coordinator"]
+    nav = tree_view_manager_deps["nav_coordinator"]
     (target,), kwargs = nav.select_title.call_args
     assert target.fanta_info is fanta
     assert target.tag is None
@@ -166,20 +150,20 @@ def test_auto_select_single_child_selects_child_and_calls_nav_with_preserve_top_
 
 
 def test_auto_select_single_child_extracts_tag_from_tag_parent(
-    tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
+    tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
 ) -> None:
     parent, child, fanta = _parent_with_single_title_child(TagDestination(tag=Tags.ALASKA))
 
     tree_view_manager._auto_select_single_child(parent, child)
 
-    (target,), kwargs = tvm_deps["nav_coordinator"].select_title.call_args
+    (target,), kwargs = tree_view_manager_deps["nav_coordinator"].select_title.call_args
     assert target.fanta_info is fanta
     assert target.tag is Tags.ALASKA
     assert kwargs == {"preserve_top_view": True}
 
 
 def test_auto_select_single_child_extracts_tag_from_tag_group_parent(
-    tree_view_manager: TreeViewManager, tvm_deps: dict[str, Any]
+    tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, Any]
 ) -> None:
     parent, child, fanta = _parent_with_single_title_child(
         TagGroupDestination(tag_group=TagGroups.AFRICA)
@@ -187,7 +171,7 @@ def test_auto_select_single_child_extracts_tag_from_tag_group_parent(
 
     tree_view_manager._auto_select_single_child(parent, child)
 
-    (target,), kwargs = tvm_deps["nav_coordinator"].select_title.call_args
+    (target,), kwargs = tree_view_manager_deps["nav_coordinator"].select_title.call_args
     assert target.fanta_info is fanta
     assert target.tag is TagGroups.AFRICA
     assert kwargs == {"preserve_top_view": True}
@@ -216,29 +200,6 @@ def test_auto_select_target_is_none_for_a_node_without_a_destination(
 
 
 # --- NavigationCoordinator.navigate_to_chrono_title: year-range boundaries
-
-
-@pytest.fixture
-def nav_coord_deps() -> dict[str, MagicMock]:
-    return {
-        "reader_settings": MagicMock(),
-        "comics_database": MagicMock(),
-        "renderer": MagicMock(),
-        "comic_reader_manager": MagicMock(),
-        "bottom_title_view_screen": MagicMock(),
-        "tree_view_screen": MagicMock(),
-        "screen_switchers": MagicMock(),
-        "special_fanta_overrides": MagicMock(),
-        "user_error_handler": MagicMock(),
-        "on_active_changed": MagicMock(),
-    }
-
-
-@pytest.fixture
-def nav_coord(nav_coord_deps: dict[str, MagicMock]) -> NavigationCoordinator:
-    coord = NavigationCoordinator(**nav_coord_deps)
-    coord.set_tree_view_manager(MagicMock())
-    return coord
 
 
 @pytest.mark.parametrize("year_range", CHRONO_YEAR_RANGES)

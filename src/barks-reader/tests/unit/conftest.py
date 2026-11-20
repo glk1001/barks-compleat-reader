@@ -15,8 +15,9 @@ import os
 import sys
 from dataclasses import fields
 from pathlib import Path
-from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 from loguru import logger
@@ -24,7 +25,9 @@ from loguru import logger
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from barks_reader.ui.navigation_coordinator import NavigationCoordinator
     from barks_reader.ui.screen_bundle import ScreenBundle
+    from barks_reader.ui.tree_view_manager import TreeViewManager
 
 _HEADLESS_CI = os.environ.get("KIVY_HEADLESS_CI", "") == "1"
 
@@ -158,3 +161,106 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
             continue
         if _test_imports_ui(item):
             item.add_marker(skip_marker)
+
+
+@pytest.fixture
+def nav_coord_deps() -> dict[str, MagicMock]:
+    """Make a stand-in for each collaborator a NavigationCoordinator is built with."""
+    return {
+        "reader_settings": MagicMock(),
+        "comics_database": MagicMock(),
+        "renderer": MagicMock(),
+        "comic_reader_manager": MagicMock(),
+        "bottom_title_view_screen": MagicMock(),
+        "tree_view_screen": MagicMock(),
+        "screen_switchers": MagicMock(),
+        "special_fanta_overrides": MagicMock(),
+        "user_error_handler": MagicMock(),
+        "on_active_changed": MagicMock(),
+    }
+
+
+@pytest.fixture
+def nav_coord(nav_coord_deps: dict[str, MagicMock]) -> NavigationCoordinator:
+    """Make a NavigationCoordinator over `nav_coord_deps`, with a stand-in tree manager."""
+    from barks_reader.ui.navigation_coordinator import NavigationCoordinator  # noqa: PLC0415
+
+    coord = NavigationCoordinator(**nav_coord_deps)
+    coord.set_tree_view_manager(MagicMock())
+    return coord
+
+
+@pytest.fixture
+def tree_view_manager_deps(screens: ScreenBundle) -> dict[str, Any]:
+    """Make what a TreeViewManager is built with: the screen bundle and two stand-ins."""
+    return {"renderer": MagicMock(), "screens": screens, "nav_coordinator": MagicMock()}
+
+
+@pytest.fixture
+def tree_view_manager(tree_view_manager_deps: dict[str, Any]) -> TreeViewManager:
+    """Make a TreeViewManager over `tree_view_manager_deps`."""
+    from barks_reader.ui.tree_view_manager import TreeViewManager  # noqa: PLC0415
+
+    return TreeViewManager(**tree_view_manager_deps)
+
+
+@pytest.fixture
+def bg_color_label() -> Generator[None]:
+    """Register a stand-in for the app's BgColorLabel, which main_screen.kv defines.
+
+    That kv file is not loaded in a unit test, and an overlay's own kv rule names
+    the class.
+    """
+    from kivy.factory import Factory  # noqa: PLC0415
+    from kivy.properties import (  # noqa: PLC0415  # ty: ignore[import-not-found]
+        ColorProperty,
+        NumericProperty,
+    )
+    from kivy.uix.label import Label  # noqa: PLC0415
+
+    if "BgColorLabel" in Factory.classes:
+        yield
+        return
+
+    class BgColorLabel(Label):
+        background_color = ColorProperty((0, 0, 0, 0))
+        sizing_factor_x = NumericProperty(1.0)
+
+    Factory.register("BgColorLabel", cls=BgColorLabel)
+    yield
+    Factory.unregister("BgColorLabel")
+
+
+@pytest.fixture
+def index_settings() -> MagicMock:
+    """Make the settings a speech or entity index screen reads when it is built."""
+    settings = MagicMock()
+    settings.file_paths.barks_panels_are_encrypted = False
+    settings.sys_file_paths.get_barks_reader_indexes_dir.return_value = "indexes_dir"
+    return settings
+
+
+@pytest.fixture
+def speech_index_patches() -> Generator[SimpleNamespace]:
+    """Patch what a SpeechIndexScreen (and so an entity one) builds, so no kv file is needed.
+
+    Yields the three patched classes a test reads back: `search_cls`, `image_selector_cls`
+    and `texture_loader_cls`. The alphabet menu and `ids` are the test's own to patch:
+    they sit on whichever screen class it builds.
+    """
+    import barks_reader.ui.index_screen  # noqa: PLC0415
+    import barks_reader.ui.speech_index_screen as module  # noqa: PLC0415
+
+    with (
+        patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"),
+        patch.object(module, "ComicSearch") as search_cls,
+        patch.object(module, "ImageSelector") as image_selector_cls,
+        patch.object(module, "ReaderFilePathsResolver"),
+        patch.object(module, "PanelTextureLoader") as texture_loader_cls,
+        patch.object(module, "create_speech_bubble_popup", return_value=(MagicMock(), MagicMock())),
+    ):
+        yield SimpleNamespace(
+            search_cls=search_cls,
+            image_selector_cls=image_selector_cls,
+            texture_loader_cls=texture_loader_cls,
+        )

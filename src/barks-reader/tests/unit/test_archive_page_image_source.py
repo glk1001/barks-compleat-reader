@@ -6,7 +6,6 @@ Uses real ZIP archives with real PNG bytes on disk to exercise the prebuilt
 
 from __future__ import annotations
 
-import io
 import threading
 import zipfile
 from pathlib import Path
@@ -21,24 +20,15 @@ from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.fantagraphics_volumes import FantagraphicsArchive
 from PIL import Image
+from unit_helpers import image_bytes, write_zip
 
 
 def _make_png_bytes(size: tuple[int, int], color: tuple[int, int, int] = (40, 80, 120)) -> bytes:
-    buf = io.BytesIO()
-    Image.new("RGB", size, color).save(buf, format="PNG")
-    return buf.getvalue()
+    return image_bytes("PNG", size, color)
 
 
 def _make_jpg_bytes(size: tuple[int, int]) -> bytes:
-    buf = io.BytesIO()
-    Image.new("RGB", size, (40, 80, 120)).save(buf, format="JPEG")
-    return buf.getvalue()
-
-
-def _write_cbz(zip_path: Path, entries: dict[str, bytes]) -> None:
-    with zipfile.ZipFile(zip_path, "w") as zf:
-        for name, data in entries.items():
-            zf.writestr(name, data)
+    return image_bytes("JPEG", size, (40, 80, 120))
 
 
 def _make_page_info(filename: str, index: int = 0) -> PageInfo:
@@ -57,7 +47,7 @@ def _make_page_info(filename: str, index: int = 0) -> PageInfo:
 def prebuilt_cbz(tmp_path: Path) -> Path:
     """Real CBZ with one 1000x500 page under images/p01.png."""
     cbz = tmp_path / "book.cbz"
-    _write_cbz(cbz, {"images/p01.png": _make_png_bytes((1000, 500))})
+    write_zip(cbz, {"images/p01.png": _make_png_bytes((1000, 500))})
     return cbz
 
 
@@ -95,10 +85,14 @@ class TestArchivePageImageSourcePrebuilt:
             max_height=100,
         )
         source.open()
+        archive = source._archive  # noqa: SLF001
+        assert archive is not None
+        assert archive.fp is not None
+
         source.close()
 
-        # Second close is a no-op.
-        source.close()
+        assert archive.fp is None  # the zip's file handle is let go, not left to the collector
+        source.close()  # a second close is a no-op: the loader thread may close too
 
     def test_an_archive_page_cannot_be_read_while_the_archive_is_shut(
         self, prebuilt_cbz: Path
@@ -404,7 +398,7 @@ class TestReadImageDelegation:
     ) -> tuple[ArchivePageImageSource, MagicMock]:
         """Return a volume whose page 101 is a 400x200 JPEG scan, and its stand-in builder."""
         volume_zip = tmp_path / "vol1.zip"
-        _write_cbz(volume_zip, {"arch/101.jpg": _make_jpg_bytes((400, 200))})
+        write_zip(volume_zip, {"arch/101.jpg": _make_jpg_bytes((400, 200))})
         fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
         source = _fanta_source(fanta, use_overrides=False)
         source._archive_path = volume_zip  # noqa: SLF001
@@ -477,7 +471,7 @@ class TestReadImageDelegation:
 
     def test_override_pages_are_read_from_the_encrypted_override_zip(self, tmp_path: Path) -> None:
         override_zip_path = tmp_path / "overrides.zip"
-        _write_cbz(override_zip_path, {"over/101.png": _make_png_bytes((4, 4))})
+        write_zip(override_zip_path, {"over/101.png": _make_png_bytes((4, 4))})
         fanta = _make_fanta_archive(
             archive={"101": "arch/101.jpg"}, overrides={"101": "over/101.png"}
         )
@@ -554,7 +548,7 @@ class TestReadImageDelegation:
         extension (JPEG bytes forced through a `.png` hint do not decode).
         """
         override_zip_path = tmp_path / "overrides.zip"
-        _write_cbz(override_zip_path, {"over/101.png": _make_png_bytes((4, 4))})
+        write_zip(override_zip_path, {"over/101.png": _make_png_bytes((4, 4))})
         fanta = _make_fanta_archive(
             archive={"101": "arch/101.jpg"}, overrides={"101": "over/101.png"}
         )
@@ -579,7 +573,7 @@ class TestReadImageDelegation:
 
     def test_fantagraphics_pages_are_rebuilt_by_the_image_builder(self, tmp_path: Path) -> None:
         volume_zip = tmp_path / "vol1.zip"
-        _write_cbz(volume_zip, {"arch/101.jpg": _make_png_bytes((4, 4))})
+        write_zip(volume_zip, {"arch/101.jpg": _make_png_bytes((4, 4))})
         fanta = _make_fanta_archive(archive={"101": "arch/101.jpg"})
         builder = MagicMock()
         source = _fanta_source(fanta, use_overrides=False, builder=builder)

@@ -40,6 +40,7 @@ from barks_reader.core.saved_page_info import SavedPageInfo
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.stateful import RuleBasedStateMachine, invariant, rule, run_state_machine_as_test
+from unit_helpers import FakeTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -160,21 +161,6 @@ def test_the_setters_read_back_what_they_were_set_here_and_after_a_reload(
 # --- the JSON store ---------------------------------------------------------------------
 
 
-class _FakeTreeViewNode:
-    """A minimal node satisfying `SavableTreeViewNode` structurally."""
-
-    def __init__(self, name: str, level: int, parent: _FakeTreeViewNode | None = None) -> None:
-        self._name = name
-        self.level = level
-        self.parent_node = parent
-        self.nodes: list[_FakeTreeViewNode] = []
-        self.is_open = False
-        self.saved_state: dict[str, Any] = {}
-
-    def get_name(self) -> str:
-        return self._name
-
-
 # The store's own sections sit beside the titles; a title named like one would collide.
 _TITLES = st.text(min_size=1, max_size=30).filter(lambda t: not t.startswith("AAA_"))
 _NAMES = st.text(min_size=1, max_size=20)
@@ -225,10 +211,10 @@ class SettingsStoreMachine(RuleBasedStateMachine):
 
     @rule(names=st.lists(_NAMES, min_size=1, max_size=4), state=_STATES)
     def save_the_selected_node(self, names: list[str], state: dict[str, Any]) -> None:
-        root = _FakeTreeViewNode("root-name-is-ignored", level=0)
+        root = FakeTreeViewNode("root-name-is-ignored", level=0)
         node = root
         for level, name in enumerate(names, start=1):
-            node = _FakeTreeViewNode(name, level, parent=node)
+            node = FakeTreeViewNode(name, level, parent=node)
         node.saved_state = dict(state)
         self.store.save_last_selected_node_path(cast("SavableTreeViewNode", node))
         path = [*reversed(names), "root"]

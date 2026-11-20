@@ -9,7 +9,7 @@ because we want to verify the orchestration, not re-test the pipeline.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -26,33 +26,19 @@ from barks_reader.core.navigation import (
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.view_pipeline import ImageThemes
 from barks_reader.core.view_request import ViewRequest
-from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_renderer import (
     ImageThemesChange,
     ImageThemesToUse,
     ViewRenderer,
 )
 
+if TYPE_CHECKING:
+    from barks_reader.ui.screen_bundle import ScreenBundle
+
 
 def _rendered_request(deps: dict[str, Any]) -> ViewRequest:
     """Return the `ViewRequest` passed to the most recent `pipeline.render` call."""
     return deps["pipeline"].render.call_args.args[0]
-
-
-@pytest.fixture
-def mock_screens() -> ScreenBundle:
-    return ScreenBundle(
-        tree_view=MagicMock(),
-        bottom_title_view=MagicMock(),
-        fun_image_view=MagicMock(),
-        main_index=MagicMock(),
-        speech_index=MagicMock(),
-        names_index=MagicMock(),
-        locations_index=MagicMock(),
-        statistics=MagicMock(),
-        history=MagicMock(),
-        search=MagicMock(),
-    )
 
 
 @pytest.fixture
@@ -65,13 +51,13 @@ def mock_pipeline() -> MagicMock:
 
 @pytest.fixture
 def renderer(
-    mock_pipeline: MagicMock, mock_screens: ScreenBundle
+    mock_pipeline: MagicMock, screens: ScreenBundle
 ) -> tuple[ViewRenderer, dict[str, Any]]:
     deps: dict[str, Any] = {
         "reader_settings": MagicMock(),
         "pipeline": mock_pipeline,
         "applicator": MagicMock(),
-        "screens": mock_screens,
+        "screens": screens,
         "nav_model": NavigationModel(),
         "on_view_state_changed": MagicMock(),
     }
@@ -217,20 +203,20 @@ class TestRefresh:
         deps["applicator"].apply.assert_called_once()
 
     def test_refresh_forces_fresh_fun_image_when_fun_view_visible(
-        self, renderer: tuple[ViewRenderer, dict[str, Any]], mock_screens: ScreenBundle
+        self, renderer: tuple[ViewRenderer, dict[str, Any]], screens: ScreenBundle
     ) -> None:
         view_renderer, deps = renderer
-        mock_screens.fun_image_view.is_visible = True
+        screens.fun_image_view.is_visible = True
 
         view_renderer.refresh()
 
         assert deps["pipeline"].render.call_args.kwargs["force_fresh_fun_image"] is True
 
     def test_refresh_keeps_fun_image_when_fun_view_hidden(
-        self, renderer: tuple[ViewRenderer, dict[str, Any]], mock_screens: ScreenBundle
+        self, renderer: tuple[ViewRenderer, dict[str, Any]], screens: ScreenBundle
     ) -> None:
         view_renderer, deps = renderer
-        mock_screens.fun_image_view.is_visible = False
+        screens.fun_image_view.is_visible = False
 
         view_renderer.refresh()
 

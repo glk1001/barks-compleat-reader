@@ -17,6 +17,10 @@ from barks_reader.core import minimal_config_info as minimal_config_info_module
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES, PACK_MEMBER, DataPackInfo
 from barks_reader.ui import kivy_standalone_error_popup, kivy_standalone_show_message
 from loguru import logger
+from unit_helpers import (
+    progress_with_a_window,
+    progress_with_a_window_logging_a_failed_follow_on,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -163,13 +167,10 @@ class TestMain:
         update.write_packs()
         end_loop = MagicMock()
 
-        def with_a_window(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
-            result = work()
-            show_next(result, end_loop)
-            update.spawn.assert_not_called()  # not while the popup is up
-            return result, True
-
-        update.progress.side_effect = with_a_window
+        update.progress.side_effect = progress_with_a_window(
+            end_loop,
+            before_return=update.spawn.assert_not_called,  # not while the popup is up
+        )
 
         assert data_pack_installer.main() == 0
 
@@ -185,12 +186,7 @@ class TestMain:
         update.install_old_data()
         update.write_packs()
 
-        def closed_by_the_desktop(work: Any, *_args: Any, show_next: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
-            result = work()
-            show_next(result, MagicMock())
-            return result, True
-
-        update.progress.side_effect = closed_by_the_desktop
+        update.progress.side_effect = progress_with_a_window()  # closed by the desktop
 
         assert data_pack_installer.main() == 0
 
@@ -205,21 +201,7 @@ class TestMain:
         update.write_packs()
         update.success.side_effect = RuntimeError("no font")
 
-        def with_a_window(
-            work: Any,  # noqa: ANN401
-            *_args: Any,  # noqa: ANN401
-            show_next: Any,  # noqa: ANN401
-            report_not_shown: str,
-            **_kwargs: Any,  # noqa: ANN401
-        ) -> Any:  # noqa: ANN401
-            result = work()
-            try:
-                show_next(result, MagicMock())
-            except RuntimeError:
-                logger.exception(report_not_shown)
-            return result, True
-
-        update.progress.side_effect = with_a_window
+        update.progress.side_effect = progress_with_a_window_logging_a_failed_follow_on()
 
         assert data_pack_installer.main() == 0
 

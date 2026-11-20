@@ -39,72 +39,53 @@ from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from types import SimpleNamespace
 
     from kivy.uix.widget import Widget
 
 
 @pytest.fixture
-def mock_settings() -> MagicMock:
-    settings = MagicMock()
-    settings.file_paths.barks_panels_are_encrypted = False
-    settings.sys_file_paths.get_barks_reader_indexes_dir.return_value = "indexes_dir"
-    return settings
-
-
-@pytest.fixture
 def speech_index_screen(
-    mock_settings: MagicMock,
+    index_settings: MagicMock,
     mock_font_manager: MagicMock,
     mock_user_error_handler: MagicMock,
+    speech_index_patches: SimpleNamespace,
 ) -> Generator[SpeechIndexScreen]:
-    # Patch IndexScreen.__init__ to avoid Kivy widget initialization
-    with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
-        with (
-            patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
-            patch.object(barks_reader.ui.speech_index_screen, "ImageSelector") as mock_random_cls,
-            patch.object(barks_reader.ui.speech_index_screen, "ReaderFilePathsResolver"),
-            patch.object(
-                barks_reader.ui.speech_index_screen, "PanelTextureLoader"
-            ) as mock_loader_cls,
-            patch.object(
-                barks_reader.ui.speech_index_screen,
-                "create_speech_bubble_popup",
-                return_value=(MagicMock(), MagicMock()),
-            ),
-            patch.object(SpeechIndexScreen, "_populate_alphabet_menu"),
-        ):
-            # Setup mock search engine
-            mock_indexer = mock_search_cls.return_value
-            # Required structure: {letter: {prefix: [terms]}}
-            mock_indexer.get_alpha_split_terms.return_value = {
-                "a": {"apple": ["apple", "apples"], "ant": ["ant"]},
-                "b": {"banana": ["banana"]},
-            }
+    mock_random_cls = speech_index_patches.image_selector_cls
+    mock_loader_cls = speech_index_patches.texture_loader_cls
+    with patch.object(SpeechIndexScreen, "_populate_alphabet_menu"):
+        mock_indexer = speech_index_patches.search_cls.return_value
+        # Required structure: {letter: {prefix: [terms]}}
+        mock_indexer.get_alpha_split_terms.return_value = {
+            "a": {"apple": ["apple", "apples"], "ant": ["ant"]},
+            "b": {"banana": ["banana"]},
+        }
 
-            screen = SpeechIndexScreen(mock_settings, mock_font_manager, mock_user_error_handler)
+        screen = SpeechIndexScreen(index_settings, mock_font_manager, mock_user_error_handler)
 
-            # Manual init of attributes skipped by patching IndexScreen.__init__
-            screen.ids = MagicMock()
-            screen.ids.alphabet_top_split_layout = MagicMock()
-            screen.ids.left_column_layout = MagicMock()
-            screen.ids.right_column_layout = MagicMock()
-            screen.ids.index_scroll_view = MagicMock()
+        # Manual init of attributes skipped by patching IndexScreen.__init__
+        screen.ids = MagicMock()
+        screen.ids.alphabet_top_split_layout = MagicMock()
+        screen.ids.left_column_layout = MagicMock()
+        screen.ids.right_column_layout = MagicMock()
+        screen.ids.index_scroll_view = MagicMock()
 
-            screen.index_theme = MagicMock()
-            screen._font_manager = mock_font_manager
-            screen._random_title_images = mock_random_cls.return_value
-            screen._texture_loader = mock_loader_cls.return_value
-            screen._search = mock_indexer
+        screen.index_theme = MagicMock()
+        screen._font_manager = mock_font_manager
+        screen._random_title_images = mock_random_cls.return_value
+        screen._texture_loader = mock_loader_cls.return_value
+        screen._search = mock_indexer
 
-            screen.treeview_index_node = MagicMock()
-            screen.treeview_index_node.saved_state = {}
-            screen._alphabet_buttons = {}
-            screen.on_after_popup_goto_title = None
+        screen.treeview_index_node = MagicMock()
+        screen.treeview_index_node.saved_state = {}
+        screen._alphabet_buttons = {}
+        screen.on_after_popup_goto_title = None
 
-            yield screen
+        yield screen
 
 
 def _mock_prefix_button(prefix: str, letter: str, text: str) -> MagicMock:
@@ -977,7 +958,7 @@ class TestEnterOnAPrefix:
 
     @staticmethod
     def _next_frame(scheduled: MagicMock) -> None:
-        scheduled.call_args.args[0](0)
+        run_last_scheduled(scheduled)
 
     def test_the_focus_enters_the_new_grid_on_the_next_frame(
         self, entered: tuple[MagicMock, MagicMock]
@@ -1266,7 +1247,7 @@ def test_a_bubble_goto_with_no_focus_hand_off_still_goes_to_the_title(
     speech_index_screen.on_after_popup_goto_title = None
     with patch.object(Clock, "schedule_once") as schedule:
         speech_index_screen._handle_title_from_bubble_press("Donald Duck Finds Pirate Gold", "5")
-    schedule.call_args.args[0](0)
+    run_last_scheduled(schedule)
     goto.assert_called_once()
 
 
@@ -1281,7 +1262,7 @@ def test_a_bubble_goto_to_a_title_in_no_volume_is_a_notice_not_a_crash(
     speech_index_screen.on_after_popup_goto_title = hand_off
     with patch.object(Clock, "schedule_once") as schedule:
         speech_index_screen._handle_title_from_bubble_press(ENUM_TO_STR_TITLE[title], "5")
-    schedule.call_args.args[0](0)
+    run_last_scheduled(schedule)
 
     error_type, error_info = mock_user_error_handler.handle_error.call_args.args
     assert error_type is ErrorTypes.ArchiveVolumeNotAvailable

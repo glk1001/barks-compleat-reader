@@ -19,7 +19,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Sequence
+    from collections.abc import Callable, Generator, Sequence
 
 
 @pytest.fixture
@@ -171,7 +171,7 @@ class TestMainIndexScreen:
             # Capture lambdas
             callbacks = []
 
-            def side_effect(func, _dt):  # noqa: ANN001, ANN202
+            def side_effect(func: Callable[[float], None], _dt: float) -> None:
                 callbacks.append(func)
 
             mock_schedule.side_effect = side_effect

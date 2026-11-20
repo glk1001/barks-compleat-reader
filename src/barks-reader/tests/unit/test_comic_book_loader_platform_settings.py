@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,10 +19,19 @@ from barks_reader.core.comic_book_loader_platform_settings import (
     release_freed_memory,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 
 @pytest.fixture(autouse=True)
-def _reset_platform_caches() -> None:
-    """Reset module-level caches between tests so each test starts clean."""
+def _reset_platform_caches() -> Iterator[None]:
+    """Clear the process-wide prefetch cache before each test, and again after it.
+
+    After as well: the last test here fills it under a made-up machine, and a later
+    test elsewhere would get that machine's limits.
+    """
+    platform_settings_module._get_prefetch_params.cache_clear()  # noqa: SLF001
+    yield
     platform_settings_module._get_prefetch_params.cache_clear()  # noqa: SLF001
 
 

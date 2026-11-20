@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 from barks_reader.ui import platform_window_win32 as win32_module
 from barks_reader.ui.platform_window_utils import WindowState
 from barks_reader.ui.platform_window_win32 import Win32WindowBackend
+from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -775,7 +776,7 @@ def test_a_recovery_kivy_refuses_is_logged_and_the_move_still_tried_again(
         patch.object(win32_module, "Clock") as clock,
     ):
         backend._set_window_rect(*_SAVED)
-        clock.schedule_once.call_args.args[0](0)
+        run_last_scheduled(clock.schedule_once)
 
     assert "Window.size recovery failed: no GL context" in loguru_sink
     assert move_window.call_count == 2  # noqa: PLR2004
@@ -791,7 +792,7 @@ def test_a_window_gone_by_the_next_frame_is_not_moved_again(loguru_sink: list[st
     ):
         backend._set_window_rect(*_SAVED)
         backend._hwnd = None  # the app is closing
-        clock.schedule_once.call_args.args[0](0)
+        run_last_scheduled(clock.schedule_once)
 
     move_window.assert_called_once()
     assert not any(line.startswith("Win32 retry:") for line in loguru_sink)

@@ -38,6 +38,7 @@ from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
+from unit_helpers import run_at_once
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Iterator
@@ -568,7 +569,7 @@ class TestTypedQuery:
         with (
             patch.object(screen, "_blur_all_inputs"),
             patch.object(screen, "_draw_result_focus") as draw,
-            patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
+            patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once),
         ):
             screen._focus_after_query()
         assert screen._nav_focus_area == "results"
@@ -581,7 +582,7 @@ class TestTypedQuery:
             patch.object(screen, "_get_word_chip_buttons", return_value=[query_row, suggestion]),
             patch.object(screen, "_blur_all_inputs"),
             patch.object(screen, "_draw_chip_focus") as draw,
-            patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
+            patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once),
         ):
             screen._focus_after_query()
         assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 1)
@@ -1335,7 +1336,7 @@ class TestSearchInputEnter:
             patch.object(SearchScreen, "_get_active_chip_buttons", return_value=[chip]),
             patch.object(SearchScreen, "_blur_all_inputs") as blur,
             patch.object(SearchScreen, "_draw_chip_focus") as draw,
-            patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
+            patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once),
         ):
             screen.on_search_input_enter()
 
@@ -1356,7 +1357,7 @@ class TestSearchInputEnter:
             patch.object(SearchScreen, "_get_active_chip_buttons", return_value=chips),
             patch.object(SearchScreen, "_blur_all_inputs"),
             patch.object(SearchScreen, "_draw_chip_focus") as draw,
-            patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
+            patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once),
         ):
             screen.on_search_input_enter()
 
@@ -3021,7 +3022,7 @@ class TestBackgroundAndGoto:
         screen._bubble_title_pages = ("3", "7", "8")  # the row's pages, the popup's title's
         title = ENUM_TO_STR_TITLE[HELMET]
         with (
-            patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)),
+            patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once),
             patch.object(screen, "_goto_title_with_page") as goto,
         ):
             screen._handle_bubble_title_press(title, "3")
@@ -3399,7 +3400,7 @@ class TestTagListKeys:
         screen._nav_active = True
         screen._nav_focus_area = "tags"
         screen._nav_focused_chip_idx = 0
-        with patch.object(search_screen.Clock, "schedule_once", side_effect=lambda cb, *_a: cb(0)):
+        with patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once):
             screen._on_tag_chip_pressed("Duckburg")
         chips = screen._get_tag_chip_buttons()
         assert chips[screen._nav_focused_chip_idx].text == "Duckburg"

@@ -11,6 +11,7 @@ from barks_reader.core.popup_frame import PopupSize
 from barks_reader.ui import popup_frame, popup_widgets
 from barks_reader.ui.popup_frame import PopupFrame, popup_fonts
 from kivy.uix.label import Label
+from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -129,7 +130,7 @@ class TestMessagePopup:
                 title="T", text="x", ok_text="", on_ok=None, cancel_text="Close", on_cancel=None
             )
             frame.open.assert_not_called()  # ty: ignore[missing-attribute]
-            clock.schedule_once.call_args.args[0](0)
+            run_last_scheduled(clock.schedule_once)
         frame.open.assert_called_once_with()  # ty: ignore[missing-attribute]
         assert 'Message popup opened: "T".' in loguru_sink
 

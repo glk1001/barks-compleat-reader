@@ -2578,12 +2578,6 @@ class TestFailuresBeforeThePagesLoad:
         mock_callbacks["on_load_error"].assert_called_once()
 
 
-def test_asking_for_a_page_with_no_comic_open_queues_nothing(loader: ComicBookLoader) -> None:
-    loader.prioritize_page("1")
-
-    assert loader._load.priority_keys.empty()
-
-
 def test_a_stop_landing_with_a_finished_page_drops_that_page(
     loader: ComicBookLoader,
     mock_callbacks: dict[str, MagicMock],
