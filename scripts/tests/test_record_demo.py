@@ -11,9 +11,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import signal
+import subprocess
+import sys
 from contextlib import nullcontext
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,6 +24,7 @@ import record_demo
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_reader.core import log_markers
 from barks_reader.core.main_layout import MATCH_THE_SCREEN, MainLayoutMode, choose_main_layout
+from check_gui_keys import REMOTE_KEYS
 from record_demo import (
     OUTPUTS,
     POSTER_BEAT,
@@ -42,7 +46,7 @@ from record_demo import (
     select_beats,
     validate,
 )
-from script_test_helpers import keys_recorded
+from script_test_helpers import keys_recorded, write_tree
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -665,3 +669,348 @@ class TestTheLogLevel:
             pytest.raises(BeatError, match="log_level is INFO"),
         ):
             Recorder(tmp_path, work_dir=tmp_path)
+
+
+class TestEveryBeatRuns:
+    """Each beat's setup and body, start to end, against a driver whose waits all pass."""
+
+    @pytest.mark.parametrize("name", record_demo.beat_names())
+    def test_it_runs_to_its_end_on_the_remote_s_keys_alone(
+        self, name: str, keys_of: KeysOf
+    ) -> None:
+        """The demo shows the app as a remote drives it: six keys, and typed search words."""
+        item = find_beat(name)
+        with (
+            patch.object(Driver, "type_slowly"),
+            patch.object(Driver, "current_page", return_value=3),
+            patch.object(Driver, "in_menu_mode", return_value=False),
+            patch.object(Driver, "match_count", return_value=0),
+            patch.object(Driver, "last_line", return_value=""),
+            patch.object(Driver, "wait_for"),
+            # The fullscreen beat sizes the real window through X: not from a test.
+            patch.object(record_demo, "fit_app_window_to_screen"),
+        ):
+            keys = (keys_of(item.setup) if item.setup else []) + keys_of(item.body)
+
+        assert keys, f"{name} pressed nothing"
+        assert set(keys) <= REMOTE_KEYS
+
+
+class TestStopFfmpeg:
+    """A clip is only kept when ffmpeg stopped cleanly: each way it can fail to is told apart."""
+
+    @staticmethod
+    def _stop(process: MagicMock) -> str | None:
+        recorder = _recorder()
+        recorder._ffmpeg = process  # noqa: SLF001
+        failure = recorder._stop_ffmpeg()  # noqa: SLF001
+        assert recorder._ffmpeg is None  # noqa: SLF001
+        return failure
+
+    @staticmethod
+    def _ffmpeg(*, running: bool, status: int, stderr: bytes = b"") -> MagicMock:
+        process = MagicMock(returncode=status)
+        process.poll.return_value = None if running else status
+        process.communicate.return_value = (b"", stderr)
+        return process
+
+    def test_with_no_recording_there_is_nothing_to_stop(self) -> None:
+        assert _recorder()._stop_ffmpeg() is None  # noqa: SLF001
+
+    @pytest.mark.parametrize("status", [0, 255])
+    def test_an_interrupt_is_a_clean_stop_whichever_status_ffmpeg_gives_it(
+        self, status: int
+    ) -> None:
+        process = self._ffmpeg(running=True, status=status)
+
+        assert self._stop(process) is None
+        process.send_signal.assert_called_once_with(signal.SIGINT)
+        process.kill.assert_not_called()
+
+    def test_what_a_clean_stop_wrote_to_stderr_is_passed_on(self) -> None:
+        process = self._ffmpeg(running=True, status=255, stderr=b"  deprecated pixel format\n")
+        with patch.object(record_demo, "say") as say:
+            assert self._stop(process) is None
+
+        say.assert_called_once_with("record-demo: ffmpeg: deprecated pixel format")
+
+    def test_ffmpeg_gone_before_it_was_asked_is_a_failure_and_is_not_signalled(self) -> None:
+        process = self._ffmpeg(running=False, status=1, stderr=b"x11grab: cannot open display")
+
+        failure = self._stop(process)
+
+        assert failure == "ffmpeg exited during the beat (status 1): x11grab: cannot open display"
+        process.send_signal.assert_not_called()
+
+    def test_any_other_status_is_a_failure(self) -> None:
+        process = self._ffmpeg(running=True, status=1, stderr=b"No space left on device")
+
+        assert self._stop(process) == "ffmpeg failed (status 1): No space left on device"
+
+    def test_an_ffmpeg_that_will_not_stop_is_killed(self) -> None:
+        process = self._ffmpeg(running=True, status=-9)
+        process.communicate.side_effect = [subprocess.TimeoutExpired("ffmpeg", 10), (b"", b"")]
+
+        failure = self._stop(process)
+
+        assert (
+            failure == f"ffmpeg did not stop within {Recorder.FFMPEG_STOP_TIMEOUT}s and was killed"
+        )
+        process.kill.assert_called_once_with()
+
+
+class TestChaptersAndPosters:
+    @staticmethod
+    def _beats() -> list[str]:
+        return record_demo.beat_names()[:2]
+
+    def test_a_duration_is_what_ffprobe_prints_or_nothing(self) -> None:
+        with patch.object(record_demo.subprocess, "run", return_value=MagicMock(stdout="12.5\n")):
+            assert record_demo.duration_of(Path("a.mp4")) == 12.5  # noqa: PLR2004
+        with patch.object(record_demo.subprocess, "run", return_value=MagicMock(stdout="")):
+            assert record_demo.duration_of(Path("gone.mp4")) == 0.0
+
+    def test_each_beat_starts_where_the_one_before_it_ended(self, tmp_path: Path) -> None:
+        first, second = self._beats()
+        with patch.object(record_demo, "duration_of", side_effect=[3.004, 4.5]) as duration:
+            chapters = record_demo.chapter_list([first, second], tmp_path)
+
+        assert [(c.beat, c.start, c.end) for c in chapters] == [
+            (first, 0.0, 3.0),
+            (second, 3.0, 7.5),
+        ]
+        assert chapters[0].title == (find_beat(first).label or first)
+        assert [c.args[0] for c in duration.call_args_list] == [
+            tmp_path / f"{first}.mp4",
+            tmp_path / f"{second}.mp4",
+        ]
+
+    @pytest.mark.parametrize(("video_runs", "warned"), [(7.6, False), (9.0, True)])
+    def test_the_manifest_is_written_beside_the_video_and_checked_against_it(
+        self, tmp_path: Path, video_runs: float, warned: bool
+    ) -> None:
+        video = tmp_path / "demo.mp4"
+        with (
+            patch.object(record_demo, "duration_of", side_effect=[3.0, 4.5, video_runs]),
+            patch.object(record_demo, "say") as say,
+        ):
+            manifest = record_demo.write_chapters(video, self._beats(), tmp_path)
+
+        assert manifest == tmp_path / "demo-chapters.json"
+        written = json.loads(manifest.read_text(encoding="utf-8"))
+        assert [(c["beat"], c["start"], c["end"]) for c in written] == [
+            (self._beats()[0], 0.0, 3.0),
+            (self._beats()[1], 3.0, 7.5),
+        ]
+        assert say.called is warned
+        if warned:
+            assert "demo-chapters.json ends at 7.5s but demo.mp4 runs 9.0s" in say.call_args.args[0]
+
+    @staticmethod
+    def _poster(tmp_path: Path, want: str | None, files: list[str]) -> list[str] | None:
+        """Make the poster of demo.mp4 with `files` present; return ffmpeg's arguments, if run."""
+        write_tree(tmp_path, dict.fromkeys(files, b"mp4"))
+        posters = {} if want is None else {"demo.mp4": want}
+
+        def ffmpeg(args: list[str]) -> None:
+            Path(args[-1]).write_bytes(b"jpg")
+
+        with (
+            patch.object(record_demo, "POSTERS", posters),
+            patch.object(record_demo, "_run_ffmpeg", side_effect=ffmpeg) as run,
+            patch.object(record_demo, "say"),
+        ):
+            record_demo.write_poster(tmp_path / "demo.mp4", tmp_path / "work")
+        return run.call_args.args[0] if run.called else None
+
+    def test_a_poster_is_the_video_s_first_frame_unless_a_beat_is_named(
+        self, tmp_path: Path
+    ) -> None:
+        args = self._poster(tmp_path, None, ["demo.mp4"])
+
+        assert args is not None
+        assert args[:2] == ["-i", str(tmp_path / "demo.mp4")]
+        assert args[-1] == str(tmp_path / "demo-poster.jpg")
+
+    def test_a_named_beat_s_last_frame_is_taken_from_its_own_clip(self, tmp_path: Path) -> None:
+        args = self._poster(tmp_path, "reading", ["demo.mp4", "work/reading.mp4"])
+
+        assert args is not None
+        assert args[:4] == ["-sseof", "-0.5", "-i", str(tmp_path / "work" / "reading.mp4")]
+
+    def test_without_that_clip_the_video_s_own_last_frame_serves(self, tmp_path: Path) -> None:
+        args = self._poster(tmp_path, "reading", ["demo.mp4"])
+
+        assert args is not None
+        assert args[:4] == ["-sseof", "-0.5", "-i", str(tmp_path / "demo.mp4")]
+
+    def test_no_video_means_no_poster(self, tmp_path: Path) -> None:
+        assert self._poster(tmp_path, None, []) is None
+
+    @pytest.mark.parametrize(
+        ("size", "shown"),
+        [(512, "512B"), (2048, "2.0K"), (3 * 1024**2, "3.0M"), (5 * 1024**3, "5.0G")],
+    )
+    def test_a_file_s_size_is_shown_in_the_unit_that_fits(self, size: int, shown: str) -> None:
+        clip = MagicMock()
+        clip.stat.return_value.st_size = size
+
+        assert record_demo._human_size(clip) == shown  # noqa: SLF001
+
+    def test_ffmpeg_is_run_quietly_overwriting_and_must_succeed(self) -> None:
+        with patch.object(record_demo.subprocess, "run") as run:
+            record_demo._run_ffmpeg(["-i", "a.mp4", "b.mp4"])  # noqa: SLF001
+
+        assert run.call_args.args[0][1:] == ["-y", "-loglevel", "error", "-i", "a.mp4", "b.mp4"]
+        assert run.call_args.kwargs == {"check": True}
+
+
+class TestCaptionFile:
+    def test_a_caption_is_handed_to_ffmpeg_in_a_file_that_is_gone_afterwards(self) -> None:
+        label = 'Find a story by name: it\'s "quoted", 100%'
+        with record_demo._caption_file(label) as path:  # noqa: SLF001
+            assert path is not None
+            assert path.read_text(encoding="utf-8") == label
+
+        assert not path.exists()
+
+    def test_a_beat_with_no_caption_gets_no_file(self) -> None:
+        with record_demo._caption_file("") as path:  # noqa: SLF001
+            assert path is None
+
+
+# A recording hooks SIGHUP, which Windows does not have; the demo is recorded on Linux.
+records_on_posix = pytest.mark.skipif(sys.platform == "win32", reason="hooks SIGHUP")
+
+
+class TestRecordAll:
+    def test_with_no_beats_to_record_nothing_is_started(self, tmp_path: Path) -> None:
+        with patch.object(record_demo, "Recorder") as recorder:
+            record_demo.record_all([], tmp_path)
+
+        recorder.assert_not_called()
+
+    @records_on_posix
+    def test_each_beat_is_recorded_and_the_config_put_back(self, tmp_path: Path) -> None:
+        names = record_demo.beat_names()[:2]
+        with (
+            patch.object(record_demo, "Recorder") as recorder,
+            patch.object(record_demo.signal, "signal", return_value="the handler before") as hook,
+        ):
+            record_demo.record_all(names, tmp_path)
+
+        recorder.assert_called_once_with(tmp_path)
+        recorded = [c.args[0].name for c in recorder.return_value.record.call_args_list]
+        assert recorded == names
+        recorder.return_value.close.assert_called_once_with()
+        assert os.environ["BARKS_PROBE_SCREEN"] == record_demo.DEMO_SCREEN
+        # Hooked for the recording, then each put back as it was.
+        signals = (signal.SIGTERM, signal.SIGHUP)
+        assert [c.args for c in hook.call_args_list] == [
+            *((s, record_demo._raise_on_signal) for s in signals),  # noqa: SLF001
+            *((s, "the handler before") for s in signals),
+        ]
+
+    @records_on_posix
+    def test_a_beat_that_fails_still_puts_the_config_back(self, tmp_path: Path) -> None:
+        names = record_demo.beat_names()[:2]
+        with (
+            patch.object(record_demo, "Recorder") as recorder,
+            patch.object(record_demo.signal, "signal") as hook,
+        ):
+            recorder.return_value.record.side_effect = BeatError("beat stalled")
+            with pytest.raises(BeatError, match="beat stalled"):
+                record_demo.record_all(names, tmp_path)
+
+        recorder.return_value.record.assert_called_once()
+        recorder.return_value.close.assert_called_once_with()
+        assert hook.call_count == 4  # noqa: PLR2004
+
+    def test_a_signal_becomes_an_error_so_the_config_is_put_back(self) -> None:
+        with pytest.raises(BeatError, match="stopped by SIGTERM"):
+            record_demo._raise_on_signal(signal.SIGTERM, None)  # noqa: SLF001
+
+
+class TestBuildOutputs:
+    OUTPUTS: ClassVar = {"demo.mp4": ["browse_tree", "open_comic"], "reading.mp4": ["reading"]}
+
+    def _build(self, only: str | None, tmp_path: Path) -> tuple[MagicMock, MagicMock]:
+        with (
+            patch.object(record_demo, "OUTPUTS", self.OUTPUTS),
+            patch.object(
+                record_demo, "stitch", side_effect=lambda name, *_a: tmp_path / name
+            ) as stitch,
+            patch.object(record_demo, "write_poster") as poster,
+        ):
+            record_demo.build_outputs(only, tmp_path)
+        return stitch, poster
+
+    def test_every_output_is_stitched_and_given_its_poster(self, tmp_path: Path) -> None:
+        stitch, poster = self._build(None, tmp_path)
+
+        assert [c.args[:2] for c in stitch.call_args_list] == list(self.OUTPUTS.items())
+        assert [c.args[0] for c in poster.call_args_list] == [
+            tmp_path / "demo.mp4",
+            tmp_path / "reading.mp4",
+        ]
+
+    def test_one_named_output_is_built_alone(self, tmp_path: Path) -> None:
+        stitch, _ = self._build("reading.mp4", tmp_path)
+
+        assert [c.args[0] for c in stitch.call_args_list] == ["reading.mp4"]
+
+
+class TestMain:
+    @staticmethod
+    def _main(tmp_path: Path, *argv: str, fails: bool = False) -> tuple[int, MagicMock, MagicMock]:
+        with (
+            patch.object(record_demo, "WORK_DIR", tmp_path / "work"),
+            patch.object(record_demo, "validate"),
+            patch.object(record_demo, "record_all") as record,
+            patch.object(record_demo, "build_outputs") as build,
+        ):
+            if fails:
+                record.side_effect = BeatError("the app never became ready")
+            status = record_demo.main(["--out", str(tmp_path / "out"), *argv])
+        return status, record, build
+
+    def test_list_names_the_beats_and_records_nothing(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        status, record, _ = self._main(tmp_path, "--list")
+
+        assert status == 0
+        assert capsys.readouterr().out.splitlines() == record_demo.beat_names()
+        record.assert_not_called()
+
+    def test_every_beat_is_recorded_then_the_videos_built(self, tmp_path: Path) -> None:
+        status, record, build = self._main(tmp_path)
+
+        assert status == 0
+        record.assert_called_once_with(record_demo.beat_names(), tmp_path / "out")
+        assert (tmp_path / "out").is_dir()
+        assert (tmp_path / "work").is_dir()
+        build.assert_called_once_with(None, tmp_path / "out")
+
+    def test_one_beat_and_one_output_can_be_named(self, tmp_path: Path) -> None:
+        _, record, build = self._main(tmp_path, "--only", "reading", "--output", "reading.mp4")
+
+        record.assert_called_once_with(["reading"], tmp_path / "out")
+        build.assert_called_once_with("reading.mp4", tmp_path / "out")
+
+    def test_clean_throws_the_cached_clips_away_first(self, tmp_path: Path) -> None:
+        write_tree(tmp_path / "work", {"browse_tree.mp4": b"mp4", "notes.txt": "kept"})
+
+        _, record, _ = self._main(tmp_path, "--clean")
+
+        assert sorted(p.name for p in (tmp_path / "work").iterdir()) == ["notes.txt"]
+        assert record.call_args.args[0] == record_demo.beat_names()
+
+    def test_a_beat_that_fails_is_said_and_nothing_is_stitched(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        status, _, build = self._main(tmp_path, fails=True)
+
+        assert status == 1
+        assert capsys.readouterr().err == "record-demo: the app never became ready\n"
+        build.assert_not_called()
