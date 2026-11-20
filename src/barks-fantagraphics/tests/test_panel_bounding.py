@@ -151,22 +151,27 @@ class TestScaleHeight:
 
 
 class TestGetRequiredPanelsBboxWidthHeight:
-    def test_returns_comic_and_required_dimensions(self) -> None:
-        pages = [_body_page(bbox=BoundingBox(0, 0, 999, 1499))]
-        srce_dim, required_dim = get_required_panels_bbox_width_height(pages, 3200, 20)
-
-        assert isinstance(srce_dim, ComicDimensions)
-        assert isinstance(required_dim, RequiredDimensions)
-
-    def test_min_max_computed_correctly(self) -> None:
+    def test_every_dimension_of_two_unlike_pages(self) -> None:
         pages = [
             _body_page("a.jpg", BoundingBox(0, 0, 799, 1199)),  # w=800, h=1200
             _body_page("b.jpg", BoundingBox(0, 0, 999, 1499)),  # w=1000, h=1500
         ]
-        srce_dim, _ = get_required_panels_bbox_width_height(pages, 3200, 20)
+        srce_dim, required_dim = get_required_panels_bbox_width_height(pages, 3200, 20)
 
-        assert srce_dim.min_panels_bbox_width == 800
-        assert srce_dim.max_panels_bbox_width == 1000
+        # Page a is more than the margin shorter than b, so the averages are b's alone.
+        assert srce_dim == ComicDimensions(
+            min_panels_bbox_width=800,
+            max_panels_bbox_width=1000,
+            min_panels_bbox_height=1200,
+            max_panels_bbox_height=1500,
+            av_panels_bbox_width=1000,
+            av_panels_bbox_height=1500,
+        )
+        # Height: 1500 * 1920 / 1000. Page number: the 320 pixels left over put the
+        # centre of the top margin's top half at 80, and half the number's 20 comes off.
+        assert required_dim == RequiredDimensions(
+            panels_bbox_width=REQUIRED_WIDTH, panels_bbox_height=2880, page_num_y_bottom=70
+        )
 
     def test_required_width_uses_target_minus_margins(self) -> None:
         pages = [_body_page(bbox=BoundingBox(0, 0, 999, 1499))]
@@ -262,11 +267,8 @@ class TestSetDestPanelBoundingBoxes:
 
         set_dest_panel_bounding_boxes(srce_dim, required_dim, pages)
 
-        bb = dest_page.panels_bbox
-        assert bb.x_min >= 0
-        assert bb.y_min >= 0
-        assert bb.x_max > bb.x_min
-        assert bb.y_max > bb.y_min
+        # 1920 x 2880 on the 2120 x 3200 page: 100 at each side, 160 above and below.
+        assert dest_page.panels_bbox == BoundingBox(100, 160, 2019, 3039)
 
     def test_full_page_bbox_for_no_panels_page(self) -> None:
         srce_page = _front_page()
@@ -316,9 +318,29 @@ class TestGetDestPanelsBoundingBox:
 
         set_dest_panel_bounding_boxes(srce_dim, required_dim, pages)
 
-        # Short page gets a different (smaller) required height
-        bb = dest_page.panels_bbox
-        assert bb.get_height() != 2880
+        # Its own height at the required width, 1300 * 1920 / 1000 = 2496, centred.
+        assert dest_page.panels_bbox == BoundingBox(100, 352, 2019, 2847)
+
+    @pytest.mark.parametrize(
+        ("srce_height", "dest_height"),
+        [
+            pytest.param(1400, 2880, id="at the margin: the required height"),
+            pytest.param(1399, 2686, id="one pixel under: its own scaled height"),
+        ],
+    )
+    def test_the_margin_below_the_average_is_inclusive(
+        self, srce_height: int, dest_height: int
+    ) -> None:
+        av_h = 1400 + PANELS_BBOX_HEIGHT_SIMILARITY_MARGIN
+        srce_page = _body_page(bbox=BoundingBox(0, 0, 999, srce_height - 1))
+        dest_page = CleanPage("1-01.jpg", PageType.BODY)
+        pages = SrceAndDestPages([srce_page], [dest_page])
+
+        set_dest_panel_bounding_boxes(
+            _make_srce_dim(av_h=av_h, max_h=av_h), _make_required_dim(h=2880), pages
+        )
+
+        assert dest_page.panels_bbox.get_height() == dest_height
 
     def test_dest_bbox_centered_horizontally(self) -> None:
         srce_page = _body_page(bbox=BoundingBox(0, 0, 999, 1499))
