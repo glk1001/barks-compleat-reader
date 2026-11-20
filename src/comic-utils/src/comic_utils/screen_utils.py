@@ -14,10 +14,10 @@ def get_primary_monitor_offset() -> tuple[int, int]:
     safely add per-app ``--win-left``/``--win-top`` offsets without further
     error handling.
     """
-    import screeninfo  # noqa: PLC0415
-
     # noinspection PyBroadException
     try:
+        import screeninfo  # noqa: PLC0415
+
         monitors = screeninfo.get_monitors()
     except Exception:  # noqa: BLE001
         return 0, 0
@@ -36,10 +36,10 @@ def get_centred_position_on_primary_monitor(win_width: int, win_height: int) -> 
     Falls back to ``(100, 100)`` when ``screeninfo`` can't import, raises, or
     reports no monitors.
     """
-    import screeninfo  # noqa: PLC0415
-
     # noinspection PyBroadException
     try:
+        import screeninfo  # noqa: PLC0415
+
         monitors = screeninfo.get_monitors()
         primary = next((m for m in monitors if m.is_primary), monitors[0] if monitors else None)
         if primary:
