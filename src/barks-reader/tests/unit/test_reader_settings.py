@@ -636,3 +636,69 @@ class TestWikiBundleIndexGate:
         (bundle / "INDEX.MD").write_text("not the right name")
 
         assert reader_settings._is_valid_wiki_bundle_dir(bundle) is False
+
+
+class TestEachSettingReadsItsOwnKey:
+    """A getter returns its own key's value: the config here answers for one key only."""
+
+    @pytest.mark.parametrize(
+        ("getter", "key"),
+        [
+            ("record_reading_history", reader_settings_module.RECORD_READING_HISTORY),
+            ("confirm_quit", reader_settings_module.CONFIRM_QUIT),
+            ("goto_fullscreen_on_app_start", reader_settings_module.GOTO_FULLSCREEN_ON_APP_START),
+            ("goto_fullscreen_on_comic_read", reader_settings_module.GOTO_FULLSCREEN_ON_COMIC_READ),
+            ("decode_pages_whole", reader_settings_module.DECODE_PAGES_WHOLE),
+            ("show_top_view_title_info", reader_settings_module.SHOW_TOP_VIEW_TITLE_INFO),
+            ("show_fun_view_title_info", reader_settings_module.SHOW_FUN_VIEW_TITLE_INFO),
+            ("use_virtual_keyboard", reader_settings_module.USE_VIRTUAL_KEYBOARD),
+        ],
+    )
+    def test_a_switch(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock, getter: str, key: str
+    ) -> None:
+        mock_config.getboolean.side_effect = lambda section, asked: (
+            (section, asked)
+            == (
+                BARKS_READER_SECTION,
+                key,
+            )
+        )
+        assert getattr(reader_settings, getter) is True
+
+        mock_config.getboolean.side_effect = lambda _section, asked: asked != key
+        assert getattr(reader_settings, getter) is False
+
+    @pytest.mark.parametrize(
+        ("getter", "key"),
+        [
+            ("color_theme", reader_settings_module.COLOR_THEME),
+            ("main_screen_layout", reader_settings_module.MAIN_SCREEN_LAYOUT),
+            ("read_cue", reader_settings_module.READ_CUE),
+        ],
+    )
+    def test_a_choice(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock, getter: str, key: str
+    ) -> None:
+        mock_config.get.side_effect = lambda section, asked: f"{section}/{asked}"
+        assert getattr(reader_settings, getter) == f"{BARKS_READER_SECTION}/{key}"
+
+    def test_the_two_path_lookups_are_the_ones_it_was_built_with(
+        self,
+        reader_settings: ReaderSettings,
+        mock_reader_file_paths: MagicMock,
+        mock_sys_file_paths: MagicMock,
+    ) -> None:
+        assert reader_settings.file_paths is mock_reader_file_paths
+        assert reader_settings.sys_file_paths is mock_sys_file_paths
+
+    @pytest.mark.parametrize("use_png", [True, False])
+    def test_the_panels_source_follows_the_png_setting(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock, use_png: bool
+    ) -> None:
+        mock_config.getboolean.side_effect = lambda _section, asked: (
+            use_png if asked == reader_settings_module.USE_PNG_IMAGES else not use_png
+        )
+        with patch.object(reader_settings, "force_barks_panels_dir") as force:
+            reader_settings.set_barks_panels_dir()
+        force.assert_called_once_with(use_png)

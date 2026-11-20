@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core.keys import (
+    KEY_DOWN,
+    KEY_ENTER,
     KEY_ESCAPE,
     KEY_LEFT,
+    KEY_NUMPAD_ENTER,
     KEY_PAGE_DOWN,
     KEY_PAGE_UP,
     KEY_RIGHT,
@@ -18,10 +22,14 @@ from barks_reader.ui.reader_keyboard_nav import (
     _FOCUS_BINDING_ATTR,
     ActionBarNavMixin,
     DropdownNavMixin,
+    NavExitMixin,
     clear_focus_highlight,
     draw_focus_highlight,
     open_dropdown,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 def _make_widget() -> MagicMock:
@@ -398,3 +406,175 @@ class TestDropdownPageKeys:
         assert screen._handle_menu_key(KEY_PAGE_DOWN) is False
         assert screen._handle_menu_key(KEY_PAGE_UP) is False
         assert screen._dropdown_focused_idx == 0
+
+
+def _bar_buttons(screen: ActionBarNavMixin) -> list[MagicMock]:
+    """Return the screen's bar buttons as the stand-ins the test gave it."""
+    return cast("list[MagicMock]", screen._menu_buttons)
+
+
+class _PageTurningScreen(_StubScreen):
+    """A reader: its bar's buttons, and page turns it only counts."""
+
+    def __init__(self, buttons: list) -> None:
+        super().__init__(buttons)
+        self.turns: list[str] = []
+
+    def _reading_next_page(self) -> None:
+        self.turns.append("next")
+
+    def _reading_prev_page(self) -> None:
+        self.turns.append("prev")
+
+
+class TestTheMenuKeys:
+    """In the menu the remote's keys walk the bar, press its button and leave it."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[_PageTurningScreen]:
+        with (
+            patch.object(nav_module, "update_focus_in_list") as self.focus,
+            patch.object(nav_module, "clear_focus_in_list") as self.clear,
+        ):
+            screen = _PageTurningScreen([MagicMock(name=f"button {i}") for i in range(3)])
+            screen._enter_menu_mode()
+            self.focus.reset_mock()
+            yield screen
+
+    def _focused(self) -> int:
+        buttons, index, group = self.focus.call_args.args
+        assert group == nav_module.MENU_FOCUS_HIGHLIGHT_GROUP
+        assert len(buttons) == 3  # noqa: PLR2004
+        return index
+
+    def test_right_goes_to_the_next_button_and_round_from_the_last(
+        self, screen: _PageTurningScreen
+    ) -> None:
+        visited = []
+        for _ in range(3):
+            assert screen._handle_reader_key(KEY_RIGHT) is True
+            visited.append(self._focused())
+        assert visited == [1, 2, 0]
+        assert screen.turns == []  # the menu has the keys: no page turns under it
+
+    def test_left_goes_to_the_button_before_and_round_from_the_first(
+        self, screen: _PageTurningScreen
+    ) -> None:
+        visited = []
+        for _ in range(2):
+            assert screen._handle_reader_key(KEY_LEFT) is True
+            visited.append(self._focused())
+        assert visited == [2, 1]
+        assert screen.turns == []
+
+    @pytest.mark.parametrize("enter", [KEY_ENTER, KEY_NUMPAD_ENTER])
+    def test_enter_presses_the_focused_button_and_leaves_the_menu(
+        self, screen: _PageTurningScreen, enter: int
+    ) -> None:
+        screen._handle_reader_key(KEY_RIGHT)
+
+        assert screen._handle_reader_key(enter) is True
+
+        first, second, third = _bar_buttons(screen)
+        second.trigger_action.assert_called_once_with()
+        first.trigger_action.assert_not_called()
+        third.trigger_action.assert_not_called()
+        assert screen._menu_mode is False
+        assert screen._menu_action_by_keyboard is True
+        assert screen._last_used_btn_idx == 1  # where the menu opens next time
+
+    def test_escape_leaves_the_menu_pressing_nothing(self, screen: _PageTurningScreen) -> None:
+        assert screen._handle_reader_key(KEY_ESCAPE) is True
+
+        assert screen._menu_mode is False
+        self.clear.assert_called_once_with(
+            screen._menu_buttons, nav_module.MENU_FOCUS_HIGHLIGHT_GROUP
+        )
+        for button in _bar_buttons(screen):
+            button.trigger_action.assert_not_called()
+
+    @pytest.mark.parametrize("key", [KEY_UP, KEY_DOWN, KEY_PAGE_DOWN])
+    def test_any_other_key_is_not_the_menu_s(self, screen: _PageTurningScreen, key: int) -> None:
+        assert screen._handle_reader_key(key) is False
+        assert screen._menu_mode is True
+        self.focus.assert_not_called()
+
+    def test_out_of_the_menu_the_same_keys_turn_pages(self, screen: _PageTurningScreen) -> None:
+        screen._handle_reader_key(KEY_ESCAPE)
+
+        assert screen._handle_reader_key(KEY_RIGHT) is True
+        assert screen._handle_reader_key(KEY_LEFT) is True
+        assert screen.turns == ["next", "prev"]
+
+    def test_a_key_reading_has_no_use_for_is_passed_by(self, screen: _PageTurningScreen) -> None:
+        screen._handle_reader_key(KEY_ESCAPE)
+
+        assert screen._handle_reader_key(KEY_DOWN) is False
+        assert screen._menu_mode is False
+
+    def test_a_bar_with_no_lists_never_has_one_open(self, screen: _PageTurningScreen) -> None:
+        assert screen._has_list_open() is False
+
+
+class TestTheMenuKeysUnderADropdown:
+    """A screen with a dropdown gives the keys to its open list, else to the bar."""
+
+    def test_with_no_list_open_the_bar_has_the_keys(self) -> None:
+        screen = _StubDropdownScreen()
+        with (
+            patch.object(nav_module, "update_focus_in_list"),
+            patch.object(nav_module, "clear_focus_in_list"),
+        ):
+            screen._enter_menu_mode()
+            assert screen._has_list_open() is False
+            assert screen._handle_menu_key(KEY_ENTER) is True
+        _bar_buttons(screen)[0].trigger_action.assert_called_once_with()
+
+    def test_an_open_list_has_them(self) -> None:
+        screen = _StubDropdownScreen()
+        with (
+            patch.object(nav_module, "draw_focus_highlight"),
+            patch.object(nav_module, "clear_focus_highlight"),
+        ):
+            screen._enter_dropdown_nav()
+            assert screen._has_list_open() is True
+            assert screen._handle_menu_key(KEY_DOWN) is True
+            assert screen._handle_menu_key(KEY_ENTER) is True
+        first, second = screen._items
+        second.trigger_action.assert_called_once_with()
+        first.trigger_action.assert_not_called()
+        _bar_buttons(screen)[0].trigger_action.assert_not_called()
+
+    def test_a_list_that_does_not_wrap_stops_at_its_ends(self) -> None:
+        screen = _PagedDropdownScreen(2)
+        screen._dropdown_wraps = False
+        with (
+            patch.object(nav_module, "draw_focus_highlight") as draw,
+            patch.object(nav_module, "clear_focus_highlight"),
+        ):
+            screen._enter_dropdown_nav()
+            draw.reset_mock()
+            assert screen._handle_menu_key(KEY_UP) is True  # taken, though nothing moves
+            assert screen._dropdown_focused_idx == 0
+            draw.assert_not_called()
+            screen._handle_menu_key(KEY_DOWN)
+            assert screen._handle_menu_key(KEY_DOWN) is True
+            assert screen._dropdown_focused_idx == 1
+
+    def test_a_list_that_wraps_goes_round(self) -> None:
+        screen = _StubDropdownScreen()
+        with (
+            patch.object(nav_module, "draw_focus_highlight"),
+            patch.object(nav_module, "clear_focus_highlight"),
+        ):
+            screen._enter_dropdown_nav()
+            screen._handle_menu_key(KEY_UP)
+            assert screen._dropdown_focused_idx == 1
+            screen._handle_menu_key(KEY_DOWN)
+            assert screen._dropdown_focused_idx == 0
+
+
+class TestNavExit:
+    def test_a_screen_must_clear_its_own_focus(self) -> None:
+        with pytest.raises(NotImplementedError):
+            NavExitMixin().exit_nav_focus()

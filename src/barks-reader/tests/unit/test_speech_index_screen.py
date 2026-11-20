@@ -11,6 +11,7 @@ import barks_reader.ui.speech_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.entity_types import EntityType
+from barks_reader.core import log_markers as _log_markers
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.index_items import IndexItem
 from barks_reader.core.keys import (
@@ -1331,3 +1332,221 @@ def test_the_terms_are_read_when_first_wanted_and_only_once(
 
     assert first is again is search.get_alpha_split_terms.return_value
     search.get_alpha_split_terms.assert_called_once_with()
+
+
+# ---------------------------------------------------------------------------
+# What only the GUI tests ran: the keys with no popup up, the ring on a title row
+# and on its speech button, a term's own row, and a term pressed.
+# ---------------------------------------------------------------------------
+
+
+class TestTheKeysWithNoPopupOpen:
+    @pytest.fixture
+    def screen(self, speech_index_screen: SpeechIndexScreen) -> SpeechIndexScreen:
+        cast("MagicMock", speech_index_screen._popup_nav).is_open = False
+        speech_index_screen._nav_active = True
+        return speech_index_screen
+
+    @pytest.mark.parametrize(
+        ("panel", "handler"),
+        [
+            (_IndexNavPanel.PREFIX, "_handle_prefix_key"),
+            (_IndexNavPanel.ALPHABET, "_handle_alphabet_key"),
+            (_IndexNavPanel.ITEMS, "_handle_items_key"),
+        ],
+    )
+    def test_the_focused_panel_has_them(
+        self, screen: SpeechIndexScreen, panel: _IndexNavPanel, handler: str
+    ) -> None:
+        screen._nav_panel = panel
+        with patch.object(screen, handler, return_value=True) as handle:
+            assert screen.handle_key(KEY_LEFT) is True
+        handle.assert_called_once_with(KEY_LEFT)
+        cast("MagicMock", screen._popup_nav).handle_key.assert_not_called()
+
+    def test_a_screen_without_the_keys_takes_none(self, screen: SpeechIndexScreen) -> None:
+        screen._nav_active = False
+        screen._nav_panel = _IndexNavPanel.PREFIX
+        with patch.object(screen, "_handle_prefix_key") as handle:
+            assert screen.handle_key(KEY_LEFT) is False
+        handle.assert_not_called()
+
+    def test_right_from_the_alphabet_goes_to_the_prefix_bar(
+        self, screen: SpeechIndexScreen
+    ) -> None:
+        screen._nav_panel = _IndexNavPanel.ALPHABET
+        with patch.object(screen, "_enter_prefix_panel") as enter_bar:
+            assert screen.handle_key(KEY_RIGHT) is True
+        enter_bar.assert_called_once_with()
+
+
+class TestTheRingOnATitleRow:
+    """The ring is on the title row, or with Right on the speech button beside it."""
+
+    @pytest.fixture
+    def row(self, speech_index_screen: SpeechIndexScreen) -> Generator[tuple[Button, Button]]:
+        screen = speech_index_screen
+        title_btn = _SpeechIndexTitleItemButton(text="Title One, 3")
+        speech_btn = TitleShowSpeechButton()
+        parent = BoxLayout()
+        parent.add_widget(title_btn)
+        parent.add_widget(speech_btn)
+        screen._nav_focused_col = 0
+        screen._nav_focused_item_idx = 0
+        screen._nav_focused_btn = None
+        screen._nav_filled_item_btn = None
+        screen._grid_version = 7
+        screen._nav_saved_grid_version = 0
+        screen.index_theme.ITEM_BG_FOCUS = [0, 0, 1, 1]
+        with (
+            patch.object(screen, "_get_col_buttons", return_value=[title_btn]),
+            patch.object(_speech_module, "draw_focus_highlight") as self.speech_ring,
+            patch.object(barks_reader.ui.index_screen, "draw_focus_highlight") as self.row_ring,
+        ):
+            yield title_btn, speech_btn
+
+    def test_on_the_row_the_title_has_it(
+        self, speech_index_screen: SpeechIndexScreen, row: tuple[Button, Button]
+    ) -> None:
+        title_btn, _ = row
+        speech_index_screen._nav_on_speech_btn = False
+
+        speech_index_screen._draw_item_focus()
+
+        self.row_ring.assert_called_once_with(
+            title_btn, barks_reader.ui.index_screen.INDEX_NAV_FOCUS_GROUP
+        )
+        self.speech_ring.assert_not_called()
+        assert speech_index_screen._nav_filled_item_btn is title_btn
+        scroll_view = cast("MagicMock", speech_index_screen.ids.index_scroll_view)
+        scroll_view.scroll_into_view.assert_called_once_with(title_btn)
+
+    @pytest.mark.parametrize("scroll", [True, False])
+    def test_on_the_speech_button_it_has_the_ring_and_the_fill(
+        self, speech_index_screen: SpeechIndexScreen, row: tuple[Button, Button], scroll: bool
+    ) -> None:
+        title_btn, speech_btn = row
+        speech_index_screen._nav_on_speech_btn = True
+
+        speech_index_screen._draw_item_focus(scroll=scroll)
+
+        self.speech_ring.assert_called_once_with(
+            speech_btn, barks_reader.ui.index_screen.INDEX_NAV_FOCUS_GROUP
+        )
+        self.row_ring.assert_not_called()
+        assert speech_index_screen._nav_filled_item_btn is speech_btn
+        assert speech_btn.background_color == [0, 0, 1, 1]
+        # The row is still the focused one: Left comes back to it.
+        assert speech_index_screen._nav_focused_btn is title_btn
+        # The focus is the present grid's, so the next key does not resync it.
+        assert speech_index_screen._nav_saved_grid_version == 7  # noqa: PLR2004
+        scroll_view = cast("MagicMock", speech_index_screen.ids.index_scroll_view)
+        if scroll:
+            scroll_view.scroll_into_view.assert_called_once_with(speech_btn)
+        else:
+            scroll_view.scroll_into_view.assert_not_called()
+
+
+class TestATermsRow:
+    def test_it_shows_the_term_in_the_index_font_and_opens_it_when_pressed(
+        self, speech_index_screen: SpeechIndexScreen, mock_font_manager: MagicMock
+    ) -> None:
+        mock_font_manager.speech_index_item_font_name = "Roboto"
+        mock_font_manager.speech_index_item_font_size = 15
+        item = IndexItem("duck", "duck…")
+
+        button = speech_index_screen._create_index_button(item)
+
+        assert (button.text, button.font_name, button.font_size) == ("duck…", "Roboto", 15)
+        assert button.bold is False
+        assert button.height == _speech_module.INDEX_ITEM_ROW_HEIGHT
+        with patch.object(speech_index_screen, "_on_index_item_press") as pressed:
+            button.dispatch("on_release")
+        pressed.assert_called_once_with(button, item)
+
+    def test_a_term_is_never_a_title_to_go_to(self, speech_index_screen: SpeechIndexScreen) -> None:
+        item = IndexItem("duck", "duck")
+        assert speech_index_screen._handle_terminal_item(MagicMock(), item) is False
+
+    def test_a_term_pressed_opens_its_titles_on_the_next_frame(
+        self, speech_index_screen: SpeechIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        button, item = MagicMock(), IndexItem("duck", "duck")
+        with patch.object(speech_index_screen, "_schedule_sub_items") as schedule:
+            speech_index_screen._handle_item_expansion(button, item)
+
+        assert 'Handling index term: "duck".' in loguru_sink
+        assert speech_index_screen._open_tag_button is button
+        assert speech_index_screen._open_tag_item is item
+        schedule.assert_called_once_with(speech_index_screen._add_title_sub_items)
+
+    def test_a_term_not_searched_before_is_searched_and_kept(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        item = IndexItem("duck", "duck")
+        speech_index_screen._found_words_cache.clear()
+        with (
+            patch.object(speech_index_screen, "_find_words_for_item") as find,
+            patch.object(_speech_module, "speech_hit_rows") as rows,
+        ):
+            assert speech_index_screen._get_sub_items_data(item) is rows.return_value
+            speech_index_screen._get_sub_items_data(item)
+
+        find.assert_called_once_with(item)
+        assert speech_index_screen._found_words_cache[item] is find.return_value
+        rows.assert_called_with(
+            find.return_value, max_len=_speech_module.MAX_TITLE_AND_PAGES_LEN, sortable=True
+        )
+
+
+def test_a_speech_button_pressed_shows_the_terms_bubbles_and_keeps_the_story_s_pages(
+    speech_index_screen: SpeechIndexScreen, mock_font_manager: MagicMock, loguru_sink: list[str]
+) -> None:
+    mock_font_manager.speech_bubble_text_font_size = 17
+    info = MagicMock()
+    info.fanta_pages = {"21": MagicMock(comic_page="3"), "25": MagicMock(comic_page="7")}
+    with patch.object(_speech_module, "show_speech_bubbles_popup") as show:
+        speech_index_screen._show_title_speech_bubbles("Title One", "duck", info)
+
+    show.assert_called_once_with(
+        speech_index_screen._speech_bubble_browser_popup,
+        "Title One",
+        "duck",
+        info,
+        speech_index_screen._handle_title_from_bubble_press,
+        text_font_size=17,
+    )
+    # A bubble pressed offers all the story's pages, not only the one pressed.
+    assert speech_index_screen._bubble_title_pages == ("3", "7")
+    expected = _log_markers.SHOW_BUBBLES_FOR_INDEX_TERMS.format(title="Title One", terms="duck")
+    assert expected in loguru_sink
+
+
+def test_a_word_that_names_entities_is_listed_as_each_of_them(
+    speech_index_screen: SpeechIndexScreen,
+) -> None:
+    screen = speech_index_screen
+    screen._cleaned_alpha_split_terms = {"d": {"d-du": ["donald", "duck"]}}
+    screen._context_entity_map = {
+        "donald": [(EntityType.PERSON, "Donald Duck"), (EntityType.PERSON, "Donald Mallard")]
+    }
+    button = _mock_prefix_button("d-du", "D", "d-du")
+    with patch.object(screen, "_populate_index_grid") as populate:
+        screen.on_letter_prefix_press(cast("IndexPrefixButton", button))
+
+    assert [(i.id, i.display_text, i.entity_type) for i in screen._item_index["D"]] == [
+        ("Donald Duck", "Donald Duck", EntityType.PERSON),
+        ("Donald Mallard", "Donald Mallard", EntityType.PERSON),
+        ("duck", "duck", None),
+    ]
+    populate.assert_called_once_with("D")
+
+
+def test_clearing_the_bar_s_focus_clears_every_prefix_shown(
+    speech_index_screen: SpeechIndexScreen,
+) -> None:
+    first, second = MagicMock(), MagicMock()
+    speech_index_screen.ids.alphabet_top_split_layout.children = [second, first]  # Kivy: last first
+    with patch.object(_speech_module, "clear_focus_in_list") as clear:
+        speech_index_screen._clear_prefix_focus()
+    clear.assert_called_once_with([first, second], _speech_module.INDEX_NAV_FOCUS_GROUP)

@@ -900,3 +900,105 @@ class TestSettingsContentPanel:
     def test_a_bare_content_panel_is_its_own(self) -> None:
         panel = ContentPanel()
         assert settings_fix.settings_content_panel(panel) is panel
+
+
+class TestTypingWhileTheListIsMoving:
+    """Typing waits for a pause: each keystroke puts off the last one's update."""
+
+    def test_a_change_the_chooser_itself_made_to_the_box_schedules_nothing(self) -> None:
+        chooser = MagicMock()
+        chooser._updating = True
+        waiting = chooser._update_event
+        with patch.object(settings_fix, "Clock") as clock:
+            SettingLongPathPopup.update_file_chooser_path(chooser, "/library")
+        clock.schedule_once.assert_not_called()
+        waiting.cancel.assert_not_called()
+
+    def test_another_keystroke_cancels_the_update_waiting_and_schedules_its_own(self) -> None:
+        chooser = MagicMock()
+        chooser._updating = False
+        waiting = chooser._update_event
+        with patch.object(settings_fix, "Clock") as clock:
+            SettingLongPathPopup.update_file_chooser_path(chooser, "/library")
+        waiting.cancel.assert_called_once_with()
+        assert chooser._update_event is clock.schedule_once.return_value
+
+
+class TestAFolderPickedInTheList:
+    """The box shows the folder picked, from its start, without the list chasing the box."""
+
+    @staticmethod
+    def _picked(selection: list[str], *, typing_pending: bool = False) -> tuple[MagicMock, Any]:
+        chooser = MagicMock()
+        chooser._updating = False
+        chooser.ids.path_input.text = "/typed"
+        chooser.ids.path_input.cursor = (6, 0)
+        chooser.ids.file_chooser.path = "/library/comics"
+        waiting = chooser._update_event
+        if not typing_pending:
+            chooser._update_event = None
+        with patch.object(settings_fix, "Clock") as clock:
+            SettingLongPathPopup.on_file_selection(chooser, MagicMock(), selection)
+            # Its own change to the box is not typing: the flag is up until it has landed.
+            assert chooser._updating is True
+            allow_typing, delay = clock.schedule_once.call_args.args
+        assert delay == 0.6  # noqa: PLR2004  (longer than the typing pause of 0.5)
+        allow_typing(delay)
+        assert chooser._updating is False
+        return chooser, waiting
+
+    def test_the_box_shows_the_folder_from_its_start(self) -> None:
+        chooser, _ = self._picked(["/library/comics/Fantagraphics"])
+        assert chooser.ids.path_input.text == "/library/comics/Fantagraphics"
+        assert chooser.ids.path_input.cursor == (0, 0)
+
+    @pytest.mark.parametrize("up", ["/library/comics/../", "/library/comics/.."])
+    def test_the_up_row_shows_the_folder_the_list_is_in(self, up: str) -> None:
+        chooser, _ = self._picked([up])
+        assert chooser.ids.path_input.text == "/library/comics"
+
+    def test_nothing_picked_leaves_the_box_s_text(self) -> None:
+        chooser, _ = self._picked([])
+        assert chooser.ids.path_input.text == "/typed"
+        assert chooser.ids.path_input.cursor == (0, 0)
+
+    def test_an_update_waiting_on_typing_is_dropped(self) -> None:
+        chooser, waiting = self._picked(["/library/comics/Fantagraphics"], typing_pending=True)
+        waiting.cancel.assert_called_once_with()
+        assert chooser._update_event is None
+
+
+def test_the_list_s_first_selection_is_set_and_its_rows_redrawn() -> None:
+    listing = MagicMock()
+    settings_fix.CustomFileChooserListView.set_initial_selection(listing, ["/library"])
+    assert listing.selection == ["/library"]
+    listing._update_files.assert_called_once_with()
+
+
+def test_a_new_path_is_the_long_path_setting_s_value() -> None:
+    setting = _stand_in(value="/old")
+    settings_fix.SettingLongPath.update_setting_value(setting, "/library")
+    assert setting.value == "/library"
+
+
+@pytest.mark.parametrize(
+    ("setting_class", "opens"),
+    [
+        (settings_fix.SettingLongPath, "_create_popup"),
+        (settings_fix.SettingAltEscapeKey, "_open_capture_popup"),
+    ],
+)
+def test_a_setting_row_with_a_popup_opens_it_when_pressed(
+    setting_class: type[settings_fix.SettingItem], opens: str
+) -> None:
+    with (
+        patch.object(settings_fix.SettingItem, "__init__", return_value=None) as item_init,
+        patch.object(setting_class, "bind") as bind,
+        patch.object(settings_fix.SettingAltEscapeKey, "_refresh_display_text") as refresh,
+    ):
+        setting = setting_class(title="A Setting")
+
+    item_init.assert_called_once_with(title="A Setting")
+    bind.assert_called_once_with(on_release=getattr(setting, opens))
+    # The key row shows the key it has from the start.
+    assert refresh.call_count == (setting_class is settings_fix.SettingAltEscapeKey)

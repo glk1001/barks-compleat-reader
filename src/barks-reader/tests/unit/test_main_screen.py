@@ -1718,3 +1718,130 @@ class TestWhatTheMainScreenHandsOn:
 
         exit_menu_mode.assert_called_once_with()
         window.unbind.assert_called_once_with(on_key_down=main_screen._on_key_down)
+
+
+class _IdsByAttribute(dict):
+    """The screen's kv ids, by attribute as by key, as Kivy's are."""
+
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+        try:
+            return self[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+
+class TestTheBarAndItsDotsMenuByKeyboard:
+    """Enter on a bar button presses it; on the dots it opens the menu and walks its rows."""
+
+    @pytest.fixture
+    def screen(self, main_screen: MainScreen) -> MainScreen:
+        main_screen.ids = _IdsByAttribute(main_screen.ids)
+        return main_screen
+
+    def _focus(self, screen: MainScreen, button_id: str) -> MagicMock:
+        button = screen.ids[button_id]
+        screen._focused_btn_idx = screen._menu_buttons.index(button)
+        return button
+
+    def test_enter_on_the_dots_opens_the_menu_by_keyboard(self, screen: MainScreen) -> None:
+        dots = self._focus(screen, "menu_button")
+        with patch.object(screen, "_open_menu_dots_for_keyboard") as open_dots:
+            screen._activate_focused_button()
+
+        open_dots.assert_called_once_with()
+        dots.trigger_action.assert_not_called()  # a press would open it as the mouse does
+        assert screen._menu_action_by_keyboard is True
+        assert screen._last_used_btn_idx == screen._focused_btn_idx
+
+    def test_enter_on_any_other_button_presses_it(self, screen: MainScreen) -> None:
+        go_back = self._focus(screen, "go_back_button")
+        with (
+            patch.object(screen, "_open_menu_dots_for_keyboard") as open_dots,
+            patch.object(screen, "_clear_menu_focus"),
+        ):
+            screen._activate_focused_button()
+
+        go_back.trigger_action.assert_called_once_with()
+        open_dots.assert_not_called()
+
+    def test_the_menu_opens_under_the_dots_button(self, screen: MainScreen) -> None:
+        dots = screen.ids["menu_button"]
+        with patch.object(
+            barks_reader.ui.main_screen, "open_dropdown", return_value=True
+        ) as open_dropdown:
+            assert screen.open_menu_dots(dots) is True
+        open_dropdown.assert_called_once_with(screen.menu_dots_dropdown, dots)
+
+    def test_a_menu_that_opened_takes_the_keys_at_its_first_row(self, screen: MainScreen) -> None:
+        with (
+            patch.object(screen, "open_menu_dots", return_value=True) as open_dots,
+            patch.object(screen, "_clear_menu_focus") as clear,
+            patch.object(screen, "_update_menu_focus") as redraw,
+            patch.object(screen, "_enter_dropdown_nav") as enter_dropdown,
+        ):
+            screen._open_menu_dots_for_keyboard()
+
+        open_dots.assert_called_once_with(screen.ids["menu_button"])
+        clear.assert_called_once_with()  # the ring leaves the bar for the list
+        enter_dropdown.assert_called_once_with(initial_idx=0)
+        redraw.assert_not_called()
+
+    def test_a_menu_that_did_not_open_leaves_the_ring_on_the_bar(self, screen: MainScreen) -> None:
+        with (
+            patch.object(screen, "open_menu_dots", return_value=False),
+            patch.object(screen, "_clear_menu_focus"),
+            patch.object(screen, "_update_menu_focus") as redraw,
+            patch.object(screen, "_enter_dropdown_nav") as enter_dropdown,
+        ):
+            screen._open_menu_dots_for_keyboard()
+
+        redraw.assert_called_once_with()
+        enter_dropdown.assert_not_called()
+
+    def test_the_menu_s_rows_are_walked_top_to_bottom(self, screen: MainScreen) -> None:
+        top, middle, bottom = MagicMock(), MagicMock(), MagicMock()
+        screen.menu_dots_dropdown.container.children = [bottom, middle, top]  # Kivy: last first
+        assert screen._get_dropdown_buttons() == [top, middle, bottom]
+
+    def test_the_menu_closing_ends_its_keys(self, screen: MainScreen) -> None:
+        with patch.object(screen, "_on_dropdown_dismissed") as dismissed:
+            screen._on_menu_dropdown_dismissed(screen.menu_dots_dropdown)
+        dismissed.assert_called_once_with(screen.menu_dots_dropdown)
+
+
+class TestTheShapeOfTheContent:
+    def test_the_spread_is_wider_for_its_height_than_the_single_page(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen.layout_mode = MainLayoutMode.SPREAD.value
+        spread = main_screen.content_aspect_ratio()
+        main_screen.layout_mode = MainLayoutMode.SINGLE.value
+        single = main_screen.content_aspect_ratio()
+
+        assert spread == barks_reader.ui.main_screen.content_aspect_ratio(MainLayoutMode.SPREAD)
+        assert single == barks_reader.ui.main_screen.content_aspect_ratio(MainLayoutMode.SINGLE)
+        assert spread < single
+
+    def test_a_page_is_the_whole_width_alone_and_one_side_of_the_spread(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen.width = 2000
+        main_screen.layout_mode = MainLayoutMode.SINGLE.value
+        assert main_screen.page_width() == 2000  # noqa: PLR2004
+
+        main_screen.layout_mode = MainLayoutMode.SPREAD.value
+        assert main_screen.page_width() == barks_reader.ui.main_screen.page_width(2000)
+        assert main_screen.page_width() < 2000 / 2 + 1
+
+
+def test_a_settings_close_button_still_on_the_window_is_taken_off_it(
+    main_screen: MainScreen,
+) -> None:
+    button = MagicMock()
+    parent = button.parent
+    main_screen._settings_close_button = button
+
+    main_screen._remove_settings_close_button()
+
+    parent.remove_widget.assert_called_once_with(button)
+    assert main_screen._settings_close_button is None

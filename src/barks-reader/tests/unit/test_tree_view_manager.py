@@ -1102,3 +1102,144 @@ class TestPressesOnARealTree:
         renderer.render.assert_called_once_with(
             SpeechWordsDestination(), preserve_top_view=False, preserve_fun_view=False
         )
+
+
+class TestWhatOnlyTheGuiTestsRan:
+    """The plain hand-offs: a node made is kept or given to its screen; one pressed opens."""
+
+    @pytest.mark.parametrize(
+        ("created", "screen"),
+        [
+            ("on_main_index_node_created", "main_index"),
+            ("on_speech_index_node_created", "speech_index"),
+            ("on_names_index_node_created", "names_index"),
+            ("on_locations_index_node_created", "locations_index"),
+        ],
+    )
+    def test_an_index_s_node_is_given_to_its_own_screen(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        created: str,
+        screen: str,
+    ) -> None:
+        for mock in screen_mocks.values():
+            mock.treeview_index_node = None
+        node = MagicMock()
+
+        getattr(tree_view_manager, created)(node)
+
+        holders = [name for name, mock in screen_mocks.items() if mock.treeview_index_node is node]
+        assert holders == [screen]
+
+    @pytest.mark.parametrize(
+        ("created", "kept"),
+        [
+            ("on_statistics_node_created", "statistics_node"),
+            ("on_history_node_created", "history_node"),
+        ],
+    )
+    def test_a_node_the_manager_keeps_is_the_one_created(
+        self, tree_view_manager: TreeViewManager, created: str, kept: str
+    ) -> None:
+        assert getattr(tree_view_manager, kept) is None
+        node = MagicMock()
+
+        getattr(tree_view_manager, created)(node)
+
+        assert getattr(tree_view_manager, kept) is node
+        others = {"statistics_node", "history_node"} - {kept}
+        assert all(getattr(tree_view_manager, other) is None for other in others)
+
+    def test_the_wiki_node_opens_the_wiki(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+        loguru_sink: list[str],
+    ) -> None:
+        tree_view_manager.on_wiki_index_node_pressed(MagicMock())
+
+        nav = mock_dependencies["nav_coordinator"]
+        nav.open_wiki.assert_called_once_with()
+        nav.open_corpus_stats.assert_not_called()
+        assert "Wiki index node pressed." in loguru_sink
+
+    def test_the_by_the_numbers_node_opens_the_corpus_statistics(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+        loguru_sink: list[str],
+    ) -> None:
+        tree_view_manager.on_corpus_stats_node_pressed(MagicMock())
+
+        nav = mock_dependencies["nav_coordinator"]
+        nav.open_corpus_stats.assert_called_once_with()
+        nav.open_wiki.assert_not_called()
+        assert '"By the Numbers" node pressed.' in loguru_sink
+
+    def test_the_censorship_fixes_node_opens_its_appendix(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+    ) -> None:
+        paths = MagicMock()
+        tree_view_manager._sys_file_paths = paths
+
+        tree_view_manager.on_censorship_fixes_doc_pressed(MagicMock())
+
+        mock_dependencies["nav_coordinator"].open_document.assert_called_once_with(
+            paths.get_censorship_fixes_doc_dir.return_value,
+            barks_reader.ui.tree_view_manager.APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
+            ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
+        )
+
+    def test_opening_a_node_and_its_parents_shows_none_of_their_views(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        node = MagicMock()
+        allowed_while_opening: list[bool] = []
+        screen_mocks["tree_view"].open_node_and_all_parent_nodes.side_effect = lambda _node: (
+            allowed_while_opening.append(tree_view_manager._allow_view_state_change)
+        )
+        with patch.object(tree_view_manager._scroll_pinner, "cancel_pending_reveals") as cancel:
+            tree_view_manager.open_node_and_parent_nodes(node)
+
+        screen_mocks["tree_view"].open_node_and_all_parent_nodes.assert_called_once_with(node)
+        assert allowed_while_opening == [False]
+        assert tree_view_manager._allow_view_state_change is True  # and allowed again after
+        cancel.assert_called_once_with()
+
+    def test_going_to_a_node_with_scrolling_scrolls_to_it_once_selected(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        node = MagicMock()
+        with (
+            patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock,
+            patch.object(tree_view_manager, "scroll_to_node") as scroll,
+        ):
+            tree_view_manager.goto_node(node, scroll_to=True)
+            scroll.assert_not_called()  # not before the frame
+            mock_clock.call_args.args[0](0)
+
+        screen_mocks["tree_view"].select_node.assert_called_once_with(node)
+        scroll.assert_called_once_with(node)
+
+    def test_a_node_the_model_names_no_child_for_opens_on_none(
+        self, tree_view_manager: TreeViewManager
+    ) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = MagicMock()
+        node.nodes = [MagicMock(spec=ButtonTreeViewNode)]
+        with patch.object(
+            tree_view_manager._nav_model, "child_to_open_on", return_value=None
+        ) as child_to_open_on:
+            assert tree_view_manager._child_to_open_on(node) is None
+        child_to_open_on.assert_called_once_with(node.destination)
+
+    def test_a_node_with_no_destination_opens_on_no_child_and_selects_no_title(
+        self, tree_view_manager: TreeViewManager
+    ) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = None
+        node.nodes = [MagicMock(spec=ButtonTreeViewNode), MagicMock(spec=TitleTreeViewNode)]
+
+        assert tree_view_manager._child_to_open_on(node) is None
+        assert tree_view_manager._auto_select_target_node(node) is None
