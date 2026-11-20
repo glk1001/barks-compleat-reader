@@ -1156,6 +1156,8 @@ def _process_archive_filenames(
             RuntimeError,
             ValueError,
             OSError,
+            # A truncated copy of a volume: not an OSError, and it stopped the whole run.
+            zipfile.BadZipFile,
         ) as exc:
             state.error_volumes.add(fanta_volume)
             phase.add(f"Volume {fanta_volume}: {type(exc).__name__}: {exc}")
