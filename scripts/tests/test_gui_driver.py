@@ -302,9 +302,9 @@ class TestExpect:
         `gui-probe wait` greps the whole log and would return instantly on the
         previous story's line, carrying on before this one had drawn.
         """
-        counts = iter([1, 1, 2])
+        counts = [1, 1, 2]
         with (
-            patch.object(Driver, "match_count", side_effect=lambda _p: next(counts)),
+            patch.object(Driver, "match_count", side_effect=counts),
             patch.object(Driver, "key") as key,
             patch.object(gui_driver.time, "sleep"),
         ):
@@ -322,10 +322,10 @@ class TestExpect:
 
     def test_wraps_any_block(self, stub_driver: Driver) -> None:
         """A composite move inside the block counts, not just a single key."""
-        counts = iter([0, 1])
+        counts = [0, 1]
         ran: list[str] = []
         with (
-            patch.object(Driver, "match_count", side_effect=lambda _p: next(counts)),
+            patch.object(Driver, "match_count", side_effect=counts),
             patch.object(gui_driver.time, "sleep"),
             stub_driver.expect("Main screen is active", 5),
         ):
@@ -481,9 +481,9 @@ class TestExpectNoNew:
             stub_driver.expect_no_new("Closing app", 2.0)
 
     def test_raises_on_a_new_match(self, stub_driver: Driver) -> None:
-        counts = iter([2, 3])
+        counts = [2, 3]
         with (
-            patch.object(Driver, "match_count", side_effect=lambda _p: next(counts)),
+            patch.object(Driver, "match_count", side_effect=counts),
             patch.object(gui_driver.time, "sleep"),
             patch.object(gui_driver.time, "monotonic", return_value=0.0),
             pytest.raises(DriverError, match="unexpected new"),
