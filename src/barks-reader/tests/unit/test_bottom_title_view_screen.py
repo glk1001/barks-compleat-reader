@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
@@ -84,38 +85,7 @@ class ScreenFixtureBase:
 
         self.mock_font_manager = MagicMock()
 
-        # Patch dependencies
-        self.patcher_loader = patch.object(bottom_title_view_screen, "PanelTextureLoader")
-        self.mock_loader_cls = self.patcher_loader.start()
-        self.mock_loader = self.mock_loader_cls.return_value
-
-        self.patcher_formatter = patch.object(bottom_title_view_screen, "ReaderFormatter")
-        self.mock_formatter_cls = self.patcher_formatter.start()
-        self.mock_formatter = self.mock_formatter_cls.return_value
-        self.mock_formatter.get_main_title.return_value = "Main Title"
-        self.mock_formatter.get_title_info.return_value = "Title Info"
-        self.mock_formatter.get_title_extra_info.return_value = "Extra Info"
-
-        self.patcher_anim = patch.object(bottom_title_view_screen, "Animation")
-        self.mock_anim_cls = self.patcher_anim.start()
-        self.mock_anim = self.mock_anim_cls.return_value
-
-        self.patcher_utils = patch.object(bottom_title_view_screen, "title_needs_footnote")
-        self.mock_needs_footnote = self.patcher_utils.start()
-        self.mock_needs_footnote.return_value = False
-
-        self.patcher_update_focus = patch.object(bottom_title_view_screen, "update_focus_in_list")
-        self.mock_update_focus = self.patcher_update_focus.start()
-        self.patcher_clear_focus = patch.object(bottom_title_view_screen, "clear_focus_in_list")
-        self.mock_clear_focus = self.patcher_clear_focus.start()
-
-        # Patch FloatLayout.__init__ to inject mock ids
-        self.patcher_layout = patch.object(
-            bottom_title_view_screen.FloatLayout, "__init__", autospec=True
-        )
-        self.mock_layout_init = self.patcher_layout.start()
-
-        def side_effect(instance: Widget, **_kwargs) -> None:  # noqa: ANN003
+        def ids_in_place_of_the_kv_file(instance: Widget, **_kwargs: object) -> None:
             instance.ids = MagicMock()
             instance.ids.use_overrides_checkbox = MagicMock()
             instance.ids.use_overrides_layout = MagicMock()
@@ -127,22 +97,46 @@ class ScreenFixtureBase:
             instance.ids.bottom_view_box.opacity = 1.0
             instance.ids.title_show_button = MagicMock()
 
-        self.mock_layout_init.side_effect = side_effect
+        # The stack undoes every patch even when building the screen below raises:
+        # FloatLayout.__init__ left patched would break every Kivy test after this one.
+        with ExitStack() as patches:
+            module = bottom_title_view_screen
+            self.mock_loader_cls = patches.enter_context(patch.object(module, "PanelTextureLoader"))
+            self.mock_loader = self.mock_loader_cls.return_value
 
-        self.screen = BottomTitleViewScreen(self.mock_settings, self.mock_font_manager)
+            self.mock_formatter_cls = patches.enter_context(patch.object(module, "ReaderFormatter"))
+            self.mock_formatter = self.mock_formatter_cls.return_value
+            self.mock_formatter.get_main_title.return_value = "Main Title"
+            self.mock_formatter.get_title_info.return_value = "Title Info"
+            self.mock_formatter.get_title_extra_info.return_value = "Extra Info"
 
-        self.mock_overrides = MagicMock()
-        self.screen.set_special_fanta_overrides(self.mock_overrides)
+            self.mock_anim_cls = patches.enter_context(patch.object(module, "Animation"))
+            self.mock_anim = self.mock_anim_cls.return_value
 
-        yield
+            self.mock_needs_footnote = patches.enter_context(
+                patch.object(module, "title_needs_footnote", return_value=False)
+            )
+            self.mock_update_focus = patches.enter_context(
+                patch.object(module, "update_focus_in_list")
+            )
+            self.mock_clear_focus = patches.enter_context(
+                patch.object(module, "clear_focus_in_list")
+            )
+            self.mock_layout_init = patches.enter_context(
+                patch.object(
+                    module.FloatLayout,
+                    "__init__",
+                    autospec=True,
+                    side_effect=ids_in_place_of_the_kv_file,
+                )
+            )
 
-        self.patcher_loader.stop()
-        self.patcher_formatter.stop()
-        self.patcher_anim.stop()
-        self.patcher_utils.stop()
-        self.patcher_update_focus.stop()
-        self.patcher_clear_focus.stop()
-        self.patcher_layout.stop()
+            self.screen = BottomTitleViewScreen(self.mock_settings, self.mock_font_manager)
+
+            self.mock_overrides = MagicMock()
+            self.screen.set_special_fanta_overrides(self.mock_overrides)
+
+            yield
 
 
 class TestBottomTitleViewScreen(ScreenFixtureBase):
