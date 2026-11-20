@@ -113,8 +113,21 @@ class TestPrune:
     def test_the_freed_size_is_reported(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        _versions(tmp_path, "1.0.0.602", "1.0.0.601")
+        _kept, removed = _versions(tmp_path, "1.0.0.602", "1.0.0.601")
+        # Sparse: three megabytes by size, none on disk. In a subfolder, so the walk counts.
+        big = removed / "lib" / "big.so"
+        big.touch()
+        os.truncate(big, 3 * 1024 * 1024)
+        stamp = 1_800_000_000 - 86_400
+        os.utime(removed, (stamp, stamp))  # writing into it made it the newest
+
         poc.prune(tmp_path, 1, [])
+
         out = capsys.readouterr().out
-        assert "1.0.0.601: removed" in out
-        assert "freed 0 MB" in out
+        assert "1.0.0.601: removed (3 MB)" in out
+        assert "freed 3 MB" in out
+
+    def test_a_folder_s_size_is_every_file_under_it(self, tmp_path: Path) -> None:
+        (folder,) = _versions(tmp_path, "1.0.0.602")
+
+        assert poc.folder_size(folder) == 1500  # noqa: PLR2004 - the two files _versions writes

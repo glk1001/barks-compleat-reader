@@ -10,6 +10,7 @@ calls into the window server and the process handling run on macOS only.
 
 from __future__ import annotations
 
+import os
 import string
 import subprocess
 import sys
@@ -21,10 +22,14 @@ import gui_probe
 import gui_probe_darwin
 import gui_probe_win32
 import pytest
+from check_gui_keys import REMOTE_KEYS
 from gui_probe_darwin import WindowInfo, frontmost_normal_window, is_app_window, pick_app_window
 
 APP_TITLE = "Compleat Barks Disney Reader"
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# How long a live test waits for a child process to start or end on a loaded machine.
+_CHILD_START_SECS = 10.0
 
 _on_macos = pytest.mark.skipif(sys.platform != "darwin", reason="calls the macOS window server")
 
@@ -43,7 +48,7 @@ def _window(number: int, owner: str, title: str, layer: int = 0, pid: int = 100)
 class TestKeys:
     def test_every_key_the_suite_sends_has_a_mac_key(self) -> None:
         """The remote's six keys, and Delete, the one desktop key a test is waived to press."""
-        for name in ("Escape", "Return", "Up", "Down", "Left", "Right", "Delete"):
+        for name in (*sorted(REMOTE_KEYS), "Delete"):
             assert name in gui_probe_darwin.VIRTUAL_KEYS
 
     def test_it_knows_every_key_name_the_windows_probe_knows(self) -> None:
@@ -281,9 +286,12 @@ class TestClickWait:
 
     def test_it_clicks_once_the_app_is_under_the_point(self) -> None:
         terminal = _at("Terminal", _SCREEN, pid=99)
-        lists = iter([[terminal, _APP], [terminal, _APP], [_APP]])
         with (
-            patch.object(gui_probe_darwin, "window_list", side_effect=lambda: next(lists)),
+            patch.object(
+                gui_probe_darwin,
+                "window_list",
+                side_effect=[[terminal, _APP], [terminal, _APP], [_APP]],
+            ),
             patch.object(gui_probe_darwin.time, "sleep") as sleep,
             patch.object(gui_probe_darwin, "_mouse") as mouse,
         ):
@@ -297,11 +305,10 @@ class TestClickWait:
 
     def test_it_never_clicks_what_stays_over_the_app_and_says_what_it_is(self) -> None:
         terminal = _at("Terminal", _SCREEN, pid=99)
-        clock = iter(range(0, 1000, 5))
         with (
             patch.object(gui_probe_darwin, "window_list", return_value=[terminal, _APP]),
             patch.object(gui_probe_darwin.time, "sleep"),
-            patch.object(gui_probe_darwin.time, "monotonic", side_effect=lambda: next(clock)),
+            patch.object(gui_probe_darwin.time, "monotonic", side_effect=range(0, 1000, 5)),
             patch.object(gui_probe_darwin, "_mouse") as mouse,
             pytest.raises(RuntimeError, match=r"would not reach the app: a Terminal window"),
         ):
@@ -369,9 +376,8 @@ class TestLaunch:
         assert gui_probe_darwin.DarwinBackend.start_new_session
         assert gui_probe_darwin.DarwinBackend.creation_flags == 0
 
+    @_on_macos
     def test_the_probe_picks_this_backend_on_macos(self) -> None:
-        if sys.platform != "darwin":
-            pytest.skip("macOS picks it")
         assert isinstance(gui_probe._backend(), gui_probe_darwin.DarwinBackend)  # noqa: SLF001
 
 
@@ -399,13 +405,16 @@ class TestLive:
             start_new_session=True,
         )
         backend = gui_probe_darwin.DarwinBackend()
-        time.sleep(0.3)
-        child = subprocess.run(  # noqa: S603
-            ["pgrep", "-P", str(process.pid)],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.split()
+        child: list[str] = []
+        deadline = time.monotonic() + _CHILD_START_SECS
+        while not child and time.monotonic() < deadline:  # the shell forks when it gets to
+            child = subprocess.run(  # noqa: S603
+                ["pgrep", "-P", str(process.pid)],  # noqa: S607
+                capture_output=True,
+                text=True,
+                check=False,
+            ).stdout.split()
+            time.sleep(0.05)
         assert child
         backend.kill_tree(process.pid, max_secs=5)
         assert not backend.process_alive(process.pid)
@@ -415,6 +424,8 @@ class TestLive:
         # An app that died at boot, not yet collected: its group refused the signal.
         process = subprocess.Popen(["true"], start_new_session=True)  # noqa: S607
         backend = gui_probe_darwin.DarwinBackend()
-        time.sleep(0.3)
+        # Wait for it to finish without collecting it: uncollected is the case under test.
+        # cspell:ignore waitid WEXITED WNOWAIT
+        os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)
         backend.kill_tree(process.pid, max_secs=5)
         assert not backend.process_alive(process.pid)

@@ -49,9 +49,8 @@ class TestSelectNode:
         down.assert_not_called()
 
     def test_each_down_waits_for_the_selection_line(self, stub_driver: Driver) -> None:
-        reads = iter(["Categories", "Search", "Themes"])
         with (
-            patch.object(Driver, "current_node", side_effect=lambda: next(reads)),
+            patch.object(Driver, "current_node", side_effect=["Categories", "Search", "Themes"]),
             patch.object(Driver, "key_then_wait") as down,
             patch.object(Driver, "hold") as hold,
         ):
@@ -61,9 +60,8 @@ class TestSelectNode:
         hold.assert_not_called()
 
     def test_a_paced_walk_rests_after_each_down(self, stub_driver: Driver) -> None:
-        reads = iter(["Categories", "Themes"])
         with (
-            patch.object(Driver, "current_node", side_effect=lambda: next(reads)),
+            patch.object(Driver, "current_node", side_effect=["Categories", "Themes"]),
             patch.object(Driver, "key_then_wait"),
             patch.object(Driver, "hold") as hold,
         ):
@@ -294,7 +292,7 @@ class TestGotoPage:
             patch.object(Driver, "current_page", return_value=4),
         ):
             stub_driver.goto_page(18)
-        waited_on = [call.args[0] for call in expect.call_args_list]
+        waited_on = [c.args[0] for c in expect.call_args_list]
         # Anchored past the number: "Showed page 3" is a prefix of "Showed page 34".
         assert "Showed page 18 in " in waited_on
         # The pick's Return is held until the dropdown has let go of the keys.
@@ -410,9 +408,8 @@ class TestWaitTitleFade:
         assert stub_driver._latest_fade_finished() is True  # noqa: SLF001
 
     def test_waits_while_the_latest_fade_runs(self, stub_driver: Driver) -> None:
-        states = iter([False, False, True])
         with (
-            patch.object(Driver, "_latest_fade_finished", side_effect=lambda: next(states)),
+            patch.object(Driver, "_latest_fade_finished", side_effect=[False, False, True]),
             patch.object(gui_driver.time, "sleep") as sleep,
         ):
             stub_driver.wait_title_fade()
@@ -648,15 +645,22 @@ class TestTypeSlowly:
         assert sleep.call_count == THREE_TURNS
 
 
+@contextmanager
+def _stalls(_pattern: str, _timeout: float = 15) -> Generator[None]:
+    """Stand in for a wait on a line that never comes."""
+    yield
+    msg = "beat stalled"
+    raise gui_driver.DriverError(msg)
+
+
+@contextmanager
+def _answers(_pattern: str, _timeout: float = 15) -> Generator[None]:
+    """Stand in for a wait whose line comes."""
+    yield
+
+
 class TestTypeSlowlyReady:
     """A box that has lost the keyboard stops the typing with the reason, not a stall."""
-
-    @staticmethod
-    @contextmanager
-    def _stalls(_pattern: str, _timeout: float = 15) -> Generator[None]:
-        yield
-        msg = "beat stalled"
-        raise gui_driver.DriverError(msg)
 
     def test_a_box_that_lost_the_keyboard_is_not_typed_into(self, stub_driver: Driver) -> None:
         reasons = iter([None, "the box lost the keyboard"])
@@ -672,7 +676,7 @@ class TestTypeSlowlyReady:
         reasons = iter([None, "the box lost the keyboard"])
         with (
             patch.object(Driver, "_run"),
-            patch.object(Driver, "expect", side_effect=self._stalls),
+            patch.object(Driver, "expect", side_effect=_stalls),
             patch.object(Driver, "match_count", return_value=0),
             pytest.raises(gui_driver.DriverError, match="stalled at 'a': the box lost") as raised,
         ):
@@ -683,7 +687,7 @@ class TestTypeSlowlyReady:
         """The key reached the app (its key line was logged): the app did not answer it."""
         with (
             patch.object(Driver, "_run") as run,
-            patch.object(Driver, "expect", side_effect=self._stalls),
+            patch.object(Driver, "expect", side_effect=_stalls),
             patch.object(Driver, "match_count", side_effect=[0, 1]),
             pytest.raises(gui_driver.DriverError, match=r"^beat stalled$"),
         ):
@@ -697,7 +701,7 @@ class TestTypeSlowlyLostKey:
     def test_a_key_the_app_never_got_is_typed_again(
         self, stub_driver: Driver, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        waits = iter([TestTypeSlowlyReady._stalls, _answers])  # noqa: SLF001
+        waits = iter([_stalls, _answers])
         with (
             patch.object(Driver, "_run") as run,
             patch.object(Driver, "expect", side_effect=lambda p, t=15: next(waits)(p, t)),
@@ -710,7 +714,7 @@ class TestTypeSlowlyLostKey:
     def test_it_is_typed_again_only_once(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "_run") as run,
-            patch.object(Driver, "expect", side_effect=TestTypeSlowlyReady._stalls),  # noqa: SLF001
+            patch.object(Driver, "expect", side_effect=_stalls),
             patch.object(Driver, "match_count", return_value=0),
             pytest.raises(gui_driver.DriverError, match=r"^beat stalled$"),
         ):
@@ -721,11 +725,6 @@ class TestTypeSlowlyLostKey:
         logged = log_markers.KEY_PRESSED.format(key=ord("d"), name="d")
         expected = gui_driver.KEY_PRESSED_LINE.format(key=ord("d"))
         assert logged.startswith(expected)
-
-
-@contextmanager
-def _answers(_pattern: str, _timeout: float = 15) -> Generator[None]:
-    yield
 
 
 class TestFrameCapture:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -51,7 +52,7 @@ class TestMain:
         indexes.mkdir()
         terms = [[f"word{i}", 100 - i] for i in range(12)]
         (indexes / "most-common-unstemmed-terms.json").write_text(
-            __import__("json").dumps(terms), encoding="utf-8"
+            json.dumps(terms), encoding="utf-8"
         )
         gen.gen_word_statistics(tmp_path, indexes)
         assert (tmp_path / MOST_FREQUENT_FILE).is_file()

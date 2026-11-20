@@ -4,11 +4,15 @@
 
 from __future__ import annotations
 
+import ast
 import struct
 import sys
+from pathlib import Path
 
 import gui_touch
 import pytest
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # struct uinput_user_dev: name[80], input_id (4 x u16), ff_effects_max, 4 x abs[64].
 USER_DEV_SIZE = 80 + 8 + 4 + 4 * 64 * 4
@@ -37,9 +41,24 @@ def test_the_device_is_named_and_has_its_axes() -> None:
     assert absmax[gui_touch.ABS_MT_POSITION_Y] == gui_touch.AXIS_MAX
 
 
+def _names_the_app_skips() -> set[str]:
+    """Read the app's own list from its source: importing the module would import Kivy."""
+    source = _REPO_ROOT / "src/barks-reader/src/barks_reader/ui/touch_keyboard.py"
+    for node in ast.parse(source.read_text(encoding="utf-8")).body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "_EXCLUDE_DEVICE_NAMES"
+            for target in node.targets
+        ):
+            return set(ast.literal_eval(node.value))
+    pytest.fail("touch_keyboard.py no longer has _EXCLUDE_DEVICE_NAMES: follow where it went")
+
+
 def test_the_name_is_not_one_the_app_skips() -> None:
-    """The app ignores devices named like a touchpad, mouse or pen (touch_keyboard.py)."""
-    assert not any(word in gui_touch.DEVICE_NAME.lower() for word in ("touchpad", "mouse", "pen"))
+    """The app ignores devices named like a touchpad, mouse or pen: its list, not a copy."""
+    skipped = _names_the_app_skips()
+
+    assert "touchpad" in skipped  # the list was found, and is the one meant
+    assert not any(word in gui_touch.DEVICE_NAME.lower() for word in skipped)
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="the kernel's event layout is Linux's")

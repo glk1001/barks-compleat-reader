@@ -9,9 +9,11 @@ is tested here, on every platform, is the parsing and the verdicts.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import check_windows_overnight_host as ch
 import pytest
+import run_overnight_desktop as rw
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -131,3 +133,48 @@ class TestMain:
     def test_windows_only(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(ch.sys, "platform", "linux")
         assert ch.main() == 2  # noqa: PLR2004
+
+
+class TestMemoryCheck:
+    """Free memory judged as a GUI stage will judge it; the macOS check uses this one too."""
+
+    @pytest.fixture(autouse=True)
+    def _no_minimum_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("BARKS_OVERNIGHT_MIN_FREE_MB", "-")
+        monkeypatch.delenv("BARKS_OVERNIGHT_MIN_FREE_MB")
+
+    def test_the_minimum_follows_the_machine(self) -> None:
+        """Judged by the runner's machine-sized minimum, not a fixed 6 GB."""
+        with (
+            patch.object(rw, "available_mb", return_value=3000),
+            patch.object(rw, "machine_memory_defaults", return_value=(2048, 3072)),
+        ):
+            status, text = ch.memory_check()
+
+        assert status == "OK"
+        assert "needs 2,048" in text
+
+    def test_too_little_warns_naming_what_holds_the_most(self) -> None:
+        """Only a warning: tonight's free memory may differ from now's."""
+        with (
+            patch.object(rw, "available_mb", return_value=1000),
+            patch.object(rw, "machine_memory_defaults", return_value=(2048, 3072)),
+            patch.object(rw, "biggest_apps", return_value=[("firefox", 4096), ("code", 1500)]),
+        ):
+            status, text = ch.memory_check()
+
+        assert status == "WARN"
+        assert text.endswith(": firefox 4,096 MB, code 1,500 MB")
+
+    def test_a_minimum_set_for_the_run_is_the_one_used(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BARKS_OVERNIGHT_MIN_FREE_MB", "500")
+        with (
+            patch.object(rw, "available_mb", return_value=1000),
+            patch.object(rw, "machine_memory_defaults", return_value=(2048, 3072)),
+        ):
+            status, text = ch.memory_check()
+
+        assert status == "OK"
+        assert "needs 500" in text

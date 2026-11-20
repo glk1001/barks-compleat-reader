@@ -12,13 +12,10 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import check_macos_overnight_host as ch
-import check_windows_overnight_host as shared
-import run_overnight_desktop as rw
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import pytest
 
 NOT_THIS_PLATFORM = 2  # main()'s exit status off macOS
 
@@ -70,15 +67,3 @@ class TestMachine:
 def test_off_macos_it_says_so() -> None:
     with patch.object(ch.sys, "platform", "linux"):
         assert ch.main() == NOT_THIS_PLATFORM
-
-
-def test_the_free_memory_minimum_follows_the_machine(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The shared check judges free memory by the runner's machine-sized minimum, not 6 GB."""
-    monkeypatch.delenv("BARKS_OVERNIGHT_MIN_FREE_MB", raising=False)
-    with (
-        patch.object(rw, "available_mb", return_value=3000),
-        patch.object(rw, "machine_memory_defaults", return_value=(2048, 3072)),
-    ):
-        status, text = shared.memory_check()
-    assert status == "OK"
-    assert "needs 2,048" in text

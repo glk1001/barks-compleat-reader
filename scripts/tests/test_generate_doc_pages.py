@@ -41,6 +41,41 @@ def _sources(tmp_path: Path, markdown: str) -> tuple[Path, Path]:
     return md_path, css_path
 
 
+def _background(tmp_path: Path, size: tuple[int, int] = PAGE_SIZE) -> Path:
+    background = tmp_path / "background.png"
+    Image.new("RGB", size, BLUE).save(background)
+    return background
+
+
+class TestHowToCommand:
+    def test_it_says_what_it_wrote(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        md_path, css_path = _sources(tmp_path, "One.\n\n# Two\n")
+
+        how_to.main(md_path, css_path, tmp_path / "out")
+
+        out = capsys.readouterr().out.splitlines()
+        assert out == [f"Wrote 2 page(s) to {tmp_path / 'out'}:", "  page-1.png", "  page-2.png"]
+
+    @pytest.mark.parametrize(
+        ("missing", "says"),
+        [("doc.md", "Markdown file not found"), ("style.css", "CSS file not found")],
+    )
+    def test_a_missing_source_is_named_and_exits_1(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], missing: str, says: str
+    ) -> None:
+        md_path, css_path = _sources(tmp_path, "One.\n")
+        (tmp_path / missing).unlink()
+
+        with pytest.raises(how_to.typer.Exit) as refused:
+            how_to.main(md_path, css_path, tmp_path / "out")
+
+        assert refused.value.exit_code == 1
+        assert f"{says}: {tmp_path / missing}" in capsys.readouterr().err
+        assert not (tmp_path / "out").exists()
+
+
 class TestHowToPages:
     def test_each_page_is_a_transparent_image_of_the_page_size(self, tmp_path: Path) -> None:
         md_path, css_path = _sources(tmp_path, "One.\n\n# Two\n\nMore.\n")
@@ -71,8 +106,7 @@ class TestHowToPages:
 class TestIntroPage:
     def test_the_text_is_laid_over_the_background_as_one_jpeg(self, tmp_path: Path) -> None:
         md_path, css_path = _sources(tmp_path, "Welcome.\n")
-        background = tmp_path / "background.png"
-        Image.new("RGB", PAGE_SIZE, BLUE).save(background)
+        background = _background(tmp_path)
 
         written = intro.build_page(md_path, css_path, background, tmp_path / "out")
 
@@ -87,8 +121,7 @@ class TestIntroPage:
 
     def test_text_that_takes_a_second_page_is_refused(self, tmp_path: Path) -> None:
         md_path, css_path = _sources(tmp_path, "One.\n\n# Two\n")
-        background = tmp_path / "background.png"
-        Image.new("RGB", PAGE_SIZE, BLUE).save(background)
+        background = _background(tmp_path)
 
         with pytest.raises(intro.IntroPageError, match="takes 2"):
             intro.build_page(md_path, css_path, background, tmp_path / "out")
@@ -97,8 +130,7 @@ class TestIntroPage:
 
     def test_a_background_of_another_size_is_refused(self, tmp_path: Path) -> None:
         md_path, css_path = _sources(tmp_path, "Welcome.\n")
-        background = tmp_path / "background.png"
-        Image.new("RGB", (100, 100), BLUE).save(background)
+        background = _background(tmp_path, (100, 100))
 
         with pytest.raises(intro.IntroPageError, match="100x100 and the page 200x300"):
             intro.build_page(md_path, css_path, background, tmp_path / "out")
@@ -107,15 +139,15 @@ class TestIntroPage:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         md_path, css_path = _sources(tmp_path, "Welcome.\n")
-        background = tmp_path / "background.png"
-        Image.new("RGB", PAGE_SIZE, BLUE).save(background)
+        background = _background(tmp_path)
 
         with (
             patch.object(intro, "build_page", side_effect=intro.IntroPageError("too long")),
-            pytest.raises(intro.typer.Exit),
+            pytest.raises(intro.typer.Exit) as refused,
         ):
             intro.main(md_path, css_path, background, tmp_path / "out")
 
+        assert refused.value.exit_code == 1
         assert "too long" in capsys.readouterr().err
 
     def test_the_command_names_a_missing_file(
@@ -123,7 +155,8 @@ class TestIntroPage:
     ) -> None:
         md_path, css_path = _sources(tmp_path, "Welcome.\n")
 
-        with pytest.raises(intro.typer.Exit):
+        with pytest.raises(intro.typer.Exit) as refused:
             intro.main(md_path, css_path, tmp_path / "no-such.png", tmp_path / "out")
 
+        assert refused.value.exit_code == 1
         assert "no-such.png" in capsys.readouterr().err

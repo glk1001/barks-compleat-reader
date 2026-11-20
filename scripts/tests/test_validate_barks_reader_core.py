@@ -891,17 +891,27 @@ class TestPhase13SearchIndex:
         # A subset of titles cannot say what else the index should hold.
         assert _run_index_phase(_index(tmp_path / "f", docs), titles_filter=[ANDES]).errors == []
 
-    def test_the_volumes_file(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        ("volumes", "kind"),
+        [
+            pytest.param("", "index_volumes_missing", id="no file"),
+            pytest.param("nonsense", "index_volumes_unreadable", id="not JSON"),
+            pytest.param("[]", "index_volumes_bad", id="an empty list"),
+            pytest.param("[0]", "index_volumes_bad", id="no such volume"),
+            pytest.param('["7"]', "index_volumes_bad", id="a volume as text"),
+            pytest.param("7", "index_volumes_bad", id="not a list"),
+        ],
+    )
+    def test_a_volumes_file_that_cannot_be_used_is_the_one_error(
+        self, tmp_path: Path, volumes: str, kind: str
+    ) -> None:
+        """Without a volume list no story is required, so only the list is reported."""
         docs = [_bubble(ANDES, "041", "0", "EGGS!")]
-        missing = _run_index_phase(_index(tmp_path / "a", docs, volumes=""))
-        assert _kinds(missing) == ["kind=index_volumes_missing"]
-        unreadable = _run_index_phase(_index(tmp_path / "b", docs, volumes="nonsense"))
-        assert _kinds(unreadable) == ["kind=index_volumes_unreadable"]
-        for i, bad in enumerate(("[]", "[0]", '["7"]', "7")):
-            phase = _run_index_phase(_index(tmp_path / f"bad{i}", docs, volumes=bad))
-            assert _kinds(phase) == ["kind=index_volumes_bad"], bad
-        # Without a volume list no story is required, so only the list is reported.
-        assert len(missing.errors) == 1
+
+        phase = _run_index_phase(_index(tmp_path, docs, volumes=volumes))
+
+        assert _kinds(phase) == [f"kind={kind}"]
+        assert len(phase.errors) == 1
 
     def test_sidecars_that_disagree_with_the_bubbles(self, tmp_path: Path) -> None:
         docs = [_bubble(ANDES, "041", "0", _DUK_DUK, "Donald", person="Duk Duk,Qwak Qwaks")]

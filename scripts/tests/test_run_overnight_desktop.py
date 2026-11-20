@@ -24,7 +24,10 @@ import pytest
 import run_overnight_desktop as rw
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
+
+    # What stands in for StageLog.capture: a command's status and what it printed.
+    Capture = Callable[[list[str]], tuple[int, str]]
 
 LINUX_RUNNER = Path(rw.__file__).with_name("run_overnight.sh")
 
@@ -76,18 +79,12 @@ class TestSelectStages:
         assert rw.select_stages(["soak", "update"], []) == ["update", "soak"]
 
     def test_skip(self) -> None:
-        chosen = rw.select_stages([], ["fetch-build", "built-app"])
-        assert chosen == [
-            "update",
-            "data",
-            "wiki-copy",
-            "pytest",
-            "validate",
-            "gui",
-            "soak",
-            "coverage",
-            "tidy",
-        ]
+        skipped = {"fetch-build", "built-app"}
+        assert skipped < set(rw.STAGES)
+
+        chosen = rw.select_stages([], sorted(skipped))
+
+        assert chosen == [stage for stage in rw.STAGES if stage not in skipped]
 
     def test_an_unknown_name(self) -> None:
         with pytest.raises(ValueError, match="no stage called nope"):
@@ -511,7 +508,7 @@ class TestWikiCopy:
 
 def _ci(
     builds: dict[str, int], changed: dict[str, str], *, pushed: bool = True, gh_ok: bool = True
-) -> object:
+) -> Capture:
     """Fake git and gh for fetch-build: HEAD c3, then c2 and c1 before it.
 
     builds: the commits CI built, and their run ids; changed: each earlier commit's
@@ -539,7 +536,7 @@ def _ci(
 
 class TestFetchBuild:
     @staticmethod
-    def _fetch(repo: Path, capture: object) -> tuple[MagicMock, str]:
+    def _fetch(repo: Path, capture: Capture) -> tuple[MagicMock, str]:
         """Run fetch-build on Windows with git and gh faked; return the download and log."""
         run = rw.Run(["fetch-build"], None)
         with (
@@ -793,9 +790,8 @@ class TestOtherUvProcesses:
     def test_the_system_read_names_this_runs_ancestors(self) -> None:
         """Run from pytest, none of this process's ancestors is reported as another uv."""
         ancestors = {p.pid for p in psutil.Process().parents()}
-        assert not any(
-            f"({pid})" in found for pid in ancestors for found in rw.other_uv_processes()
-        )
+        others = rw.other_uv_processes()  # read once: it walks every process
+        assert not any(f"({pid})" in found for pid in ancestors for found in others)
 
 
 class TestTidy:

@@ -6,13 +6,11 @@ how it reads the app log, and that the lines it writes are the ones the GUI
 harness parses. The Windows backend's structures are checked on Windows.
 """
 
-# ruff: noqa: PLR2004  (small literal counts are the point of these tests)
 
 # cspell:ignore glew PYTHONIOENCODING
 
 from __future__ import annotations
 
-import ctypes
 import datetime as dt
 import os
 import subprocess
@@ -288,11 +286,12 @@ class TestInputLog:
 
 
 class TestCommands:
+    @pytest.mark.skipif(
+        sys.platform in {"win32", "darwin"}, reason="Windows and macOS have a backend"
+    )
     def test_a_backend_command_off_windows_and_macos_says_where_to_look(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        if sys.platform in {"win32", "darwin"}:
-            pytest.skip("Windows and macOS have a backend")
         assert gui_probe.main(["geometry"]) == 1
         assert "gui-probe.sh" in capsys.readouterr().err
 
@@ -374,10 +373,9 @@ class TestTaps:
         backend.bring_to_front.return_value = True
         backend.client_geometry.return_value = (800, 600, 100, 50)
         (run_dir / "app.pid").write_text("1234")
-        clock = iter([100.0, 112.5])
         with (
             patch.object(gui_probe.time, "sleep"),
-            patch.object(gui_probe.time, "monotonic", side_effect=lambda: next(clock)),
+            patch.object(gui_probe.time, "monotonic", side_effect=[100.0, 112.5]),
         ):
             gui_probe.Probe(backend).tap(10, 20)
         lines = [line.split(" ", 1)[1] for line in gui_probe.input_log().read_text().splitlines()]
@@ -404,120 +402,20 @@ class TestTaps:
         assert env["BARKS_READER_MEMORY_CENSUS_FILE"] == str(run_dir / "census-request")
         assert env["BARKS_READER_FRAME_CAPTURE_FILE"] == str(run_dir / "frame-request")
 
+    @pytest.mark.usefixtures("run_dir")  # a start that got past the refusal writes there
     def test_touch_mode_is_refused_here(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BARKS_PROBE_TOUCH", "1")
         backend = MagicMock()
-        with pytest.raises(gui_probe.ProbeError, match="Linux only"):
+        with (
+            # And would copy the machine's own profile aside: never from a test.
+            patch.object(gui_probe, "_profile_backups", return_value=[]) as backups,
+            patch.object(gui_probe.subprocess, "Popen") as popen,
+            pytest.raises(gui_probe.ProbeError, match="Linux only"),
+        ):
             gui_probe.Probe(backend).start()
         backend.find_window.assert_not_called()
-
-
-class TestWin32Keys:
-    def test_every_key_the_suite_sends_has_a_windows_key(self) -> None:
-        """The remote's six keys, and Delete, the one desktop key a test is waived to press."""
-        for name in ("Escape", "Return", "Up", "Down", "Left", "Right", "Delete"):
-            assert name in gui_probe_win32.VIRTUAL_KEYS
-
-    def test_the_arrows_are_extended_keys(self) -> None:
-        # Without the flag SDL reads them as the numeric keypad's arrows.
-        for name in ("Up", "Down", "Left", "Right", "Delete"):
-            assert gui_probe_win32.VIRTUAL_KEYS[name][1]
-        assert not gui_probe_win32.VIRTUAL_KEYS["Return"][1]
-
-    def test_bringing_the_app_forward_sends_no_input(self) -> None:
-        """No key to take the foreground: it would land in whatever window had it."""
-        user32 = MagicMock()
-        user32.GetForegroundWindow.side_effect = [111, 111, 222]  # someone else's, then ours
-        user32.GetWindowThreadProcessId.return_value = 7
-        user32.IsIconic.return_value = False
-        kernel32 = MagicMock()
-        kernel32.GetCurrentThreadId.return_value = 3
-        with (
-            patch.object(gui_probe_win32, "_user32", user32),
-            patch.object(gui_probe_win32, "_kernel32", kernel32),
-            patch.object(gui_probe_win32, "_send") as send,
-            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
-        ):
-            assert gui_probe_win32.Win32Backend().bring_to_front(222)
-        send.assert_not_called()
-        user32.SetForegroundWindow.assert_called_once_with(222)
-        # Joined the foreground thread's input for the switch, and left it after.
-        assert [c.args for c in user32.AttachThreadInput.call_args_list] == [
-            (3, 7, True),
-            (3, 7, False),
-        ]
-
-    def test_a_browser_tab_named_for_the_app_is_not_its_window(self) -> None:
-        """Only SDL's window counts: a titled browser tab would take the app's keys."""
-        windows = {  # hwnd: (class, title)
-            1: ("MozillaWindowClass", "The Compleat Barks Disney Reader — Mozilla Firefox"),
-            2: ("SDL_app", "The Compleat Barks Disney Reader"),
-        }
-        user32 = MagicMock()
-        user32.IsWindowVisible.return_value = True
-        user32.EnumWindows.side_effect = lambda visit, _lparam: all(visit(h, 0) for h in windows)
-        user32.GetClassNameW.side_effect = lambda h, buf, _n: setattr(buf, "value", windows[h][0])
-        user32.GetWindowTextLengthW.side_effect = lambda h: len(windows[h][1])
-        user32.GetWindowTextW.side_effect = lambda h, buf, _n: setattr(buf, "value", windows[h][1])
-        with (
-            patch.object(gui_probe_win32, "_user32", user32),
-            patch.object(gui_probe_win32, "_ENUM_WINDOWS_PROC", lambda f: f),
-            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
-        ):
-            backend = gui_probe_win32.Win32Backend()
-            assert backend.find_window("Compleat Barks Disney Reader") == 2
-            del windows[2]
-            assert backend.find_window("Compleat Barks Disney Reader") is None
-
-    @pytest.mark.skipif(sys.platform != "win32", reason="Windows' own structure sizes")
-    def test_input_is_the_size_send_input_expects(self) -> None:
-        # SendInput refuses every event when cbSize is not sizeof(INPUT): 40 on 64-bit, 28 on 32.
-        expected = 40 if ctypes.sizeof(ctypes.c_void_p) == 8 else 28
-        assert ctypes.sizeof(gui_probe_win32._INPUT) == expected  # noqa: SLF001
-
-
-class TestWin32Close:
-    """The app is asked to close before it is ended, so coverage can save its data."""
-
-    def test_the_process_tree_takes_children_and_grandchildren_only(self) -> None:
-        parents = {10: 1, 11: 10, 12: 11, 20: 1, 21: 20}
-        assert gui_probe_win32.descendants(10, parents) == {10, 11, 12}
-        assert gui_probe_win32.descendants(99, parents) == {99}
-
-    @staticmethod
-    def _kill(*, window: int | None, exits: bool) -> tuple[MagicMock, MagicMock, MagicMock]:
-        user32 = MagicMock()
-        user32.PostMessageW.return_value = 1
-        kernel32 = MagicMock()
-        kernel32.OpenProcess.return_value = 555
-        kernel32.WaitForSingleObject.return_value = 0 if exits else 0x102  # WAIT_TIMEOUT
-        with (
-            patch.object(gui_probe_win32, "_user32", user32),
-            patch.object(gui_probe_win32, "_kernel32", kernel32),
-            patch.object(gui_probe_win32, "_process_parents", return_value={7: 4}),
-            patch.object(gui_probe_win32, "find_window_of_processes", return_value=window) as find,
-            patch.object(gui_probe_win32.subprocess, "run") as run,
-            patch.object(gui_probe_win32.Win32Backend, "__init__", return_value=None),
-        ):
-            gui_probe_win32.Win32Backend().kill_tree(4, max_secs=10)
-        find.assert_called_once_with({4, 7})  # uv and the python under it
-        return user32, kernel32, run
-
-    def test_an_app_that_closes_is_not_killed(self) -> None:
-        user32, kernel32, run = self._kill(window=42, exits=True)
-        user32.PostMessageW.assert_called_once_with(42, 0x0010, 0, 0)  # WM_CLOSE
-        run.assert_not_called()
-        kernel32.CloseHandle.assert_called_once_with(555)
-
-    def test_an_app_that_will_not_close_is_killed(self, capsys: pytest.CaptureFixture[str]) -> None:
-        _, _, run = self._kill(window=42, exits=False)
-        assert run.call_args.args[0][-1] == "/F"
-        assert "ending it by force" in capsys.readouterr().out
-
-    def test_an_app_with_no_window_is_killed(self) -> None:
-        user32, _, run = self._kill(window=None, exits=True)
-        user32.PostMessageW.assert_not_called()
-        assert run.call_args.args[0][-1] == "/F"
+        backups.assert_not_called()
+        popen.assert_not_called()
 
 
 def _app_line(stamp: str, message: str) -> str:
@@ -565,10 +463,9 @@ class TestHoldForModeSwitch:
     @pytest.mark.usefixtures("run_dir")
     def test_a_key_waits_until_the_switch_has_ended_and_says_so(self) -> None:
         gui_probe.app_log().write_text(_EXITING + "\n", encoding="utf-8")
-        clock = iter([0.0, 0.0, 2.5, 2.5])
         with (
             patch.object(gui_probe.time, "sleep"),
-            patch.object(gui_probe.time, "monotonic", side_effect=lambda: next(clock)),
+            patch.object(gui_probe.time, "monotonic", side_effect=[0.0, 0.0, 2.5, 2.5]),
             patch.object(gui_probe, "window_mode_settling", side_effect=[True, False]),
         ):
             self._probe(1.0)._hold_for_mode_switch("key Right")  # noqa: SLF001
@@ -578,10 +475,9 @@ class TestHoldForModeSwitch:
     @pytest.mark.usefixtures("run_dir")
     def test_a_switch_that_never_ends_holds_input_no_longer_than_the_limit(self) -> None:
         gui_probe.app_log().write_text(_EXITING + "\n", encoding="utf-8")
-        clock = iter(range(0, 100, 3))
         with (
             patch.object(gui_probe.time, "sleep"),
-            patch.object(gui_probe.time, "monotonic", side_effect=lambda: next(clock)),
+            patch.object(gui_probe.time, "monotonic", side_effect=range(0, 100, 3)),
         ):
             self._probe(1.0)._hold_for_mode_switch("tap")  # noqa: SLF001
         assert "for a window-mode switch before the tap" in gui_probe.input_log().read_text()

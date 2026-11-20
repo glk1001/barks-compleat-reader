@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import os
-import platform
 from dataclasses import asdict
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -154,18 +153,18 @@ class TestComparePack:
     def _pack(entries: dict[str, dict]) -> DataPackInfo:
         return DataPackInfo(5, "data-v5", datetime(2026, 9, 29, tzinfo=UTC), "main-pc", entries)
 
+    @staticmethod
+    def _found() -> dict[str, Fingerprint | None]:
+        return {name: Fingerprint(1, 2, "m") for name in data_manifest.READER_FILES_ENTRIES}
+
     def test_a_pack_holding_this_data_is_no_difference(self) -> None:
-        found: dict[str, Fingerprint | None] = {
-            name: Fingerprint(1, 2, "m") for name in data_manifest.READER_FILES_ENTRIES
-        }
+        found = self._found()
         pack = self._pack({name: asdict(fp) for name, fp in found.items() if fp is not None})
 
         assert compare_pack(pack, found) == []
 
     def test_a_changed_missing_or_unpacked_entry_is_named(self) -> None:
-        found: dict[str, Fingerprint | None] = {
-            name: Fingerprint(1, 2, "m") for name in data_manifest.READER_FILES_ENTRIES
-        }
+        found = self._found()
         entries = {name: asdict(Fingerprint(1, 2, "m")) for name in found}
         entries["Indexes"]["md5"] = "rebuilt"
         del entries["Statistics"]
@@ -174,9 +173,7 @@ class TestComparePack:
         assert compare_pack(self._pack(entries), found) == ["Indexes", "Statistics", "Various"]
 
     def test_a_changed_wiki_copy_does_not_make_a_pack_due(self) -> None:
-        found: dict[str, Fingerprint | None] = {
-            name: Fingerprint(1, 2, "m") for name in data_manifest.READER_FILES_ENTRIES
-        }
+        found = self._found()
         entries = {name: asdict(Fingerprint(1, 2, "m")) for name in found}
         entries[data_manifest.WIKI_ENTRY]["md5"] = "edited"
 
@@ -268,10 +265,10 @@ class TestMain:
     def test_on_the_main_pc_the_plain_check_also_holds_the_data_to_the_pack(
         self, tmp_path: Path, data: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        self._main(tmp_path, data, "--write")
-        record = self._write_pack_record(tmp_path, data, indexes_changed=True)
-
-        with patch.object(data_manifest.platform, "node", return_value=platform.node()):
+        # The main PC is the one the manifest was written on: one name for both.
+        with patch.object(data_manifest.platform, "node", return_value="main-pc"):
+            self._main(tmp_path, data, "--write")
+            record = self._write_pack_record(tmp_path, data, indexes_changed=True)
             status = self._main_with_pack(tmp_path, data, record)
 
         assert status == data_manifest.DIFFER_EXIT

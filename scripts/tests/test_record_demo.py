@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     KeysPressed = Callable[[MagicMock], list[str]]
+    KeysOf = Callable[[Callable[[Driver], None]], list[str]]
 
 EXPECTED_REGION = (782, 1224, 59, 10)
 ODD_HEIGHT, EVEN_HEIGHT = 1225, 1224
@@ -263,12 +264,10 @@ class TestBeatRegistry:
 
 
 @pytest.fixture
-def keys_of(
-    new_stub_driver: Callable[[], Driver], keys_pressed: KeysPressed
-) -> Callable[[object], list[str]]:
+def keys_of(new_stub_driver: Callable[[], Driver], keys_pressed: KeysPressed) -> KeysOf:
     """Every key a beat or setup presses, in order, each run on a fresh driver."""
 
-    def _keys_of(run: object) -> list[str]:
+    def _keys_of(run: Callable[[Driver], None]) -> list[str]:
         driver = new_stub_driver()
         moves = iter(["Chronological", record_demo.BROWSE_RANGE])
         with (
@@ -280,7 +279,7 @@ def keys_of(
             patch.object(Driver, "wait_title_fade"),
             patch.object(Driver, "select_node", side_effect=lambda _n: next(moves, None)),
         ):
-            run(driver)  # ty: ignore[call-non-callable]
+            run(driver)
         return keys_pressed(key)
 
     return _keys_of
@@ -289,9 +288,7 @@ def keys_of(
 class TestCutAlignment:
     """browse_tree and open_comic must land on the same story, or the cut jumps."""
 
-    def test_open_comic_setup_replays_the_same_keys_as_browse_tree(
-        self, keys_of: Callable[[object], list[str]]
-    ) -> None:
+    def test_open_comic_setup_replays_the_same_keys_as_browse_tree(self, keys_of: KeysOf) -> None:
         """Same keys in the same order, or the tree ends up scrolled differently.
 
         browse_tree does its collapse in its setup and the rest in its body;
@@ -305,9 +302,7 @@ class TestCutAlignment:
     def test_both_beats_start_from_the_same_node(self) -> None:
         assert find_beat("open_comic").node == find_beat("browse_tree").node
 
-    def test_the_replay_walks_the_shared_number_of_steps(
-        self, keys_of: Callable[[object], list[str]]
-    ) -> None:
+    def test_the_replay_walks_the_shared_number_of_steps(self, keys_of: KeysOf) -> None:
         setup = find_beat("open_comic").setup
         assert setup is not None
         downs = [k for k in keys_of(setup) if k == "Down"]
@@ -324,9 +319,11 @@ class TestRecordClipHandling:
         recorder._ffmpeg = None  # noqa: SLF001
         return recorder
 
-    def _record(self, tmp_path: Path, body: object, failure: str | None = None) -> Path | None:
+    def _record(
+        self, tmp_path: Path, body: Callable[[Driver], None], failure: str | None = None
+    ) -> Path | None:
         recorder = self._recorder(tmp_path)
-        item = Beat(name="b", node=["root"], body=body)  # ty: ignore[invalid-argument-type]
+        item = Beat(name="b", node=["root"], body=body)
 
         def fake_start(partial: Path, *_a: object) -> None:
             partial.write_bytes(b"mp4")
