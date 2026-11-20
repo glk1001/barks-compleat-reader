@@ -20,8 +20,6 @@ from barks_fantagraphics.speech_groupers import (
     _get_speech_text_list,
     _has_speech_page_group_changed,
     _is_page_number,
-    _save_speech_page_group,
-    _save_speech_page_group_json,
     get_speech_page_group,
     join_line_breaks,
 )
@@ -630,7 +628,7 @@ class TestHasSpeechPageGroupChanged:
 
 
 # ---------------------------------------------------------------------------
-# _save_speech_page_group
+# SpeechPageGroup.save_group
 # ---------------------------------------------------------------------------
 
 
@@ -641,7 +639,7 @@ class TestSaveSpeechPageGroup:
         f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
-        result = _save_speech_page_group(spg, to_file=f, backup_file=None)
+        result = spg.save_group(to_file=f, backup_file=None)
 
         assert result is False
         assert not f.exists()
@@ -652,7 +650,7 @@ class TestSaveSpeechPageGroup:
         f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
-        result = _save_speech_page_group(spg, to_file=f, backup_file=None)
+        result = spg.save_group(to_file=f, backup_file=None)
 
         assert result is True
         assert f.exists()
@@ -665,7 +663,7 @@ class TestSaveSpeechPageGroup:
         f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
-        _save_speech_page_group(spg, to_file=f, backup_file=None)
+        spg.save_group(to_file=f, backup_file=None)
 
         assert json_data["groups"]["1"]["ai_text"] == "Updated"
 
@@ -676,7 +674,7 @@ class TestSaveSpeechPageGroup:
         f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
-        assert _save_speech_page_group(spg, to_file=f, backup_file=None) is True
+        assert spg.save_group(to_file=f, backup_file=None) is True
         assert json.loads(f.read_text())["groups"]["1"]["ai_text"] == "A [b]SUCCESS[/b]!"
 
     def test_speaker_keys_survive_a_text_save(self, tmp_path: Path) -> None:
@@ -691,7 +689,7 @@ class TestSaveSpeechPageGroup:
         f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
 
-        assert _save_speech_page_group(spg, to_file=f, backup_file=None) is True
+        assert spg.save_group(to_file=f, backup_file=None) is True
 
         saved = json.loads(f.read_text())["groups"]["1"]
         assert saved["ai_text"] == "New"
@@ -718,7 +716,7 @@ class TestGroupsWithTextChanges:
 
 
 # ---------------------------------------------------------------------------
-# _save_speech_page_group_json
+# SpeechPageGroup.save_json
 # ---------------------------------------------------------------------------
 
 
@@ -728,7 +726,7 @@ class TestSaveSpeechPageGroupJson:
         f = tmp_path / "out.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=f)
 
-        _save_speech_page_group_json(spg, to_file=f, backup_file=None)
+        spg.save_json(to_file=f, backup_file=None)
 
         saved = json.loads(f.read_text())
         assert saved == json_data
@@ -743,7 +741,7 @@ class TestSaveSpeechPageGroupJson:
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
 
         with pytest.raises(TypeError):
-            _save_speech_page_group_json(spg, to_file=original, backup_file=None)
+            spg.save_json(to_file=original, backup_file=None)
 
         assert json.loads(original.read_text()) == {"old": True}
         assert list(tmp_path.iterdir()) == [original]
@@ -753,7 +751,7 @@ class TestSaveSpeechPageGroupJson:
         f = tmp_path / "default.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=f)
 
-        _save_speech_page_group_json(spg, to_file=None, backup_file=None)
+        spg.save_json(to_file=None, backup_file=None)
 
         assert f.exists()
         saved = json.loads(f.read_text())
@@ -766,7 +764,7 @@ class TestSaveSpeechPageGroupJson:
         backup = tmp_path / "backup" / "original.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
 
-        _save_speech_page_group_json(spg, to_file=original, backup_file=backup)
+        spg.save_json(to_file=original, backup_file=backup)
 
         assert backup.exists()
         assert json.loads(backup.read_text()) == {"old": True}
@@ -793,7 +791,7 @@ class TestSaveSpeechPageGroupJson:
 
         monkeypatch.setattr(Path, "rename", _refuse_cross_device)
 
-        _save_speech_page_group_json(spg, to_file=original, backup_file=backup)
+        spg.save_json(to_file=original, backup_file=backup)
 
         assert json.loads(backup.read_text()) == {"old": True}
         assert json.loads(original.read_text()) == json_data
@@ -805,7 +803,7 @@ class TestSaveSpeechPageGroupJson:
         backup = tmp_path / "backup" / "brand-new.json"
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
 
-        _save_speech_page_group_json(spg, to_file=original, backup_file=backup)
+        spg.save_json(to_file=original, backup_file=backup)
 
         assert not backup.exists()
         assert json.loads(original.read_text()) == json_data
