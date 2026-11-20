@@ -453,14 +453,16 @@ class TestBootAppAt:
     ) -> None:
         monkeypatch.delenv(gui_driver.RANDOM_SEED_ENV_VAR, raising=False)  # restored after
         config = tmp_path / "barks-reader.json"
-        config.write_text(json.dumps({"AAA_Settings": {"x": 1}, "Voodoo Hoodoo": {"a": 1}}))
+        config.write_text(
+            json.dumps({"AAA_Settings": {"x": 1}, "Voodoo Hoodoo": {"a": 1}}), encoding="utf-8"
+        )
         cues: dict[str, dict[str, int | str] | None] = {
             "Lost in the Andes!": {"page_index": 34},
             "Voodoo Hoodoo": None,
         }
         with patch.object(gui_driver, "probe") as start:
             boot_app_at(["Reading", "root"], config=config, seed=7, cues=cues)
-        written = json.loads(config.read_text())
+        written = json.loads(config.read_text(encoding="utf-8"))
         assert written["AAA_Settings"] == {"x": 1, "last_selected_node": ["Reading", "root"]}
         assert written["Lost in the Andes!"] == {"last_read_page": {"page_index": 34}}
         assert "Voodoo Hoodoo" not in written
@@ -469,11 +471,11 @@ class TestBootAppAt:
 
     def test_reads_from_the_template_when_given(self, tmp_path: Path) -> None:
         config, template = tmp_path / "cfg.json", tmp_path / "pristine.json"
-        config.write_text(json.dumps({"stale": True}))
-        template.write_text(json.dumps({"fresh": True}))
+        config.write_text(json.dumps({"stale": True}), encoding="utf-8")
+        template.write_text(json.dumps({"fresh": True}), encoding="utf-8")
         with patch.object(gui_driver, "probe"):
             boot_app_at(["root"], config=config, seed=None, template=template)
-        written = json.loads(config.read_text())
+        written = json.loads(config.read_text(encoding="utf-8"))
         assert "fresh" in written
         assert "stale" not in written
 
@@ -481,7 +483,7 @@ class TestBootAppAt:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         config = tmp_path / "cfg.json"
-        config.write_text("{}")
+        config.write_text("{}", encoding="utf-8")
         monkeypatch.setenv(gui_driver.RANDOM_SEED_ENV_VAR, "5")
         with patch.object(gui_driver, "probe"):
             boot_app_at(["root"], config=config, seed=None)
@@ -528,11 +530,11 @@ class TestBootFromConfigDir:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv(gui_driver.CONFIG_DIR_ENV_VAR, raising=False)  # restored after
-        (tmp_path / "barks-reader.json").write_text("{}")
+        (tmp_path / "barks-reader.json").write_text("{}", encoding="utf-8")
         with patch.object(gui_driver, "probe") as start:
             boot_app_at(["root"], config_dir=tmp_path)
         assert gui_driver.os.environ[gui_driver.CONFIG_DIR_ENV_VAR] == str(tmp_path)
-        written = json.loads((tmp_path / "barks-reader.json").read_text())
+        written = json.loads((tmp_path / "barks-reader.json").read_text(encoding="utf-8"))
         assert written["AAA_Settings"]["last_selected_node"] == ["root"]
         start.assert_called_once_with("start")
 

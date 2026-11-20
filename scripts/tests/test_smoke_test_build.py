@@ -15,15 +15,13 @@ from __future__ import annotations
 
 import os
 import subprocess
-import sys
 from pathlib import Path
 
-import pytest
+from script_test_helpers import needs_bash
 
 SMOKE_TEST = Path(__file__).resolve().parent.parent / "smoke-test-build.sh"
 
-# A bare "bash" on the Windows runner is WSL with no distro installed.
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="needs a real bash")
+pytestmark = needs_bash
 
 # The launched process starts itself again as the child and waits, as the onefile
 # bootstrap waits on the program it unpacked; the child prints TRACEBACK_FILE when

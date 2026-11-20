@@ -15,8 +15,10 @@ from unittest.mock import patch
 import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
+# And this directory, for ``script_test_helpers``: the importlib import mode adds none.
+for _importable in (SCRIPTS_DIR, Path(__file__).resolve().parent):
+    if str(_importable) not in sys.path:
+        sys.path.insert(0, str(_importable))
 
 from gui_driver import Driver  # noqa: E402
 
@@ -39,6 +41,19 @@ def _environment_as_it_was() -> Iterator[None]:
     for name in os.environ.keys() - before.keys():
         del os.environ[name]
     os.environ.update(before)
+
+
+@pytest.fixture
+def no_outer_git(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep a test's throwaway repository from reaching this one or the machine's settings.
+
+    Run from a git hook (pre-push runs the suite), ``GIT_DIR`` and the like are set, and
+    they beat ``-C``: every git command would reach this repository instead.
+    """
+    for name in [n for n in os.environ if n.startswith("GIT_")]:
+        monkeypatch.delenv(name)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")  # cspell:ignore NOSYSTEM
 
 
 @pytest.fixture

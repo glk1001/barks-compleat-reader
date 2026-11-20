@@ -51,6 +51,7 @@ from barks_reader.core.statistics_series import (
 )
 from barks_reader.core.system_file_paths import SystemFilePaths
 from PIL import Image
+from script_test_helpers import write_tree
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -136,7 +137,7 @@ class TestPhase10Layout:
     @staticmethod
     def _write_segment_files(segments_root: Path, *stems: str) -> None:
         for stem in stems:
-            (segments_root / VOLUME_DIR / f"{stem}.json").write_text("{}")
+            (segments_root / VOLUME_DIR / f"{stem}.json").write_text("{}", encoding="utf-8")
 
     @staticmethod
     def _run(sys_paths: MagicMock, title: str = ANDES) -> core.PhaseResult:
@@ -296,7 +297,7 @@ class TestKnownMissingInsets:
 
     def test_the_file_skips_comments_and_blank_lines(self, tmp_path: Path) -> None:
         path = tmp_path / "known.txt"
-        path.write_text("# a comment\n\n  Lost in the Andes!  \nCoffee for Two\n")
+        path.write_text("# a comment\n\n  Lost in the Andes!  \nCoffee for Two\n", encoding="utf-8")
         assert core.load_known_missing_insets(path) == {"Lost in the Andes!", "Coffee for Two"}
 
     def test_no_file_is_an_empty_list(self, tmp_path: Path) -> None:
@@ -336,7 +337,7 @@ class TestCheckSegmentsJson:
 
     def _write_json(self, tmp_path: Path, offset: float) -> None:
         json_path = tmp_path / "001.json"
-        json_path.write_text("{}")
+        json_path.write_text("{}", encoding="utf-8")
         mtime = time.mktime((*self.SRCE_TIME, 0, 0, -1)) + offset
         os.utime(json_path, (mtime, mtime))
 
@@ -367,14 +368,11 @@ class TestCheckSegmentsJson:
 
 def _write_bundle(bundle: Path, pages: dict[str, str | None]) -> Path:
     """Write a bundle root and story pages: relative path under stories -> title (None: none)."""
-    bundle.mkdir(parents=True, exist_ok=True)
-    (bundle / "index.md").write_text("---\ntitle: Index\n---\n")
+    files = {"index.md": "---\ntitle: Index\n---\n"}
     for rel, title in pages.items():
-        page = bundle / "concept" / "stories" / rel
-        page.parent.mkdir(parents=True, exist_ok=True)
         frontmatter = f'title: "{title}"' if title is not None else "type: concept"
-        page.write_text(f"---\n{frontmatter}\n---\n\nBody.\n")
-    return bundle
+        files[f"concept/stories/{rel}"] = f"---\n{frontmatter}\n---\n\nBody.\n"
+    return write_tree(bundle, files)
 
 
 def _run_wiki(
@@ -520,7 +518,7 @@ _SPLASH_PAGE = [[0, 0, 400, 100], *[[0, 0, 100, 100]] * 4]
 
 def _write_segments(segments_dir: Path, stem: str, panels: list[list[int]]) -> None:
     segments = {"overall_bounds": [0, 0, 800, 100], "panels": panels}
-    (segments_dir / f"{stem}.json").write_text(json.dumps(segments))
+    (segments_dir / f"{stem}.json").write_text(json.dumps(segments), encoding="utf-8")
 
 
 class TestFindTitleSplashPages:
@@ -798,7 +796,7 @@ def _index(
     folder.mkdir(parents=True)
     build_test_index(folder, docs)
     if volumes:
-        (folder / core.INDEX_VOLUMES_FILE).write_text(volumes)
+        (folder / core.INDEX_VOLUMES_FILE).write_text(volumes, encoding="utf-8")
     if terms is None:
         terms = {}
         for doc in docs:
@@ -806,13 +804,15 @@ def _index(
                 if key.startswith("entities_") and names:
                     terms.setdefault(key.removeprefix("entities_"), []).extend(names.split(","))
     for entity_type, names in terms.items():
-        (folder / f"entities-{entity_type}-terms.json").write_text(json.dumps(sorted(set(names))))
+        (folder / f"entities-{entity_type}-terms.json").write_text(
+            json.dumps(sorted(set(names))), encoding="utf-8"
+        )
     if speakers is None:
         speakers = {}
         for doc in docs:
             if doc["speaker"]:
                 speakers[doc["speaker"]] = speakers.get(doc["speaker"], 0) + 1
-    (folder / "speakers.json").write_text(json.dumps(speakers))
+    (folder / "speakers.json").write_text(json.dumps(speakers), encoding="utf-8")
     sys_paths = MagicMock()
     sys_paths.get_barks_reader_indexes_dir.return_value = folder
     return sys_paths

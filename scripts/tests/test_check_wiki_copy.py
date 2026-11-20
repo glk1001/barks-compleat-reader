@@ -9,25 +9,19 @@ from unittest.mock import patch
 import check_wiki_copy
 import pytest
 from check_wiki_copy import differences, report_staleness
+from script_test_helpers import write_tree
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _bundle(root: Path, pages: dict[str, str]) -> Path:
-    for rel, text in pages.items():
-        (root / rel).parent.mkdir(parents=True, exist_ok=True)
-        (root / rel).write_text(text)
-    return root
-
-
 class TestDifferences:
     def test_missing_extra_and_changed_pages_are_told_apart(self, tmp_path: Path) -> None:
-        copy = _bundle(
+        copy = write_tree(
             tmp_path / "copy",
             {"index.md": "x", "concept/stories/a.md": "old", "concept/stories/gone.md": "g"},
         )
-        fresh = _bundle(
+        fresh = write_tree(
             tmp_path / "fresh",
             {"index.md": "x", "concept/stories/a.md": "new", "concept/stories/b.md": "b"},
         )
@@ -39,7 +33,7 @@ class TestDifferences:
 
     def test_an_identical_copy_has_none(self, tmp_path: Path) -> None:
         pages = {"index.md": "x", "concept/stories/a.md": "same"}
-        copy, fresh = _bundle(tmp_path / "copy", pages), _bundle(tmp_path / "fresh", pages)
+        copy, fresh = write_tree(tmp_path / "copy", pages), write_tree(tmp_path / "fresh", pages)
         assert differences(copy, fresh) == {"missing": [], "extra": [], "changed": []}
 
 

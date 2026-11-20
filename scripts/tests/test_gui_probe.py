@@ -40,13 +40,15 @@ def run_dir(tmp_path: Path) -> Iterator[Path]:
 class TestEnvRuntime:
     def test_a_quoted_value(self, tmp_path: Path) -> None:
         env = tmp_path / ".env.runtime"
-        env.write_text('BARKS_READER_CONFIG_DIR="${HOME}/opt/barks-reader/config"\n')
+        env.write_text(
+            'BARKS_READER_CONFIG_DIR="${HOME}/opt/barks-reader/config"\n', encoding="utf-8"
+        )
         value = gui_probe.env_runtime_value("BARKS_READER_CONFIG_DIR", env)
         assert value == "${HOME}/opt/barks-reader/config"
 
     def test_an_unquoted_value_and_a_missing_one(self, tmp_path: Path) -> None:
         env = tmp_path / ".env.runtime"
-        env.write_text("BARKS_READER_DATA_DIR=C:/BarksReader\nOTHER=1\n")
+        env.write_text("BARKS_READER_DATA_DIR=C:/BarksReader\nOTHER=1\n", encoding="utf-8")
         assert gui_probe.env_runtime_value("BARKS_READER_DATA_DIR", env) == "C:/BarksReader"
         assert gui_probe.env_runtime_value("BARKS_ZIPS_KEY", env) == ""
 
@@ -84,7 +86,8 @@ class TestDoctor:
             "prebuilt_dir = /nowhere/prebuilt\n"
             "use_prebuilt_comics = 0\n"
             "png_barks_panels_dir = /nowhere/pngs\n"
-            "use_png_images = 1\n"
+            "use_png_images = 1\n",
+            encoding="utf-8",
         )
         found = gui_probe.dir_setting_checks(ini)
         checks = {text.split()[0]: status for status, text in found}
@@ -249,17 +252,17 @@ class TestLogWaits:
 
     @pytest.mark.usefixtures("run_dir")
     def test_wait_sees_a_line_already_there(self) -> None:
-        gui_probe.app_log().write_text("Screen 'main' entered.\n")
+        gui_probe.app_log().write_text("Screen 'main' entered.\n", encoding="utf-8")
         assert gui_probe.wait_for("Screen 'main' entered", timeout=1)
 
     @pytest.mark.usefixtures("run_dir")
     def test_wait_times_out_without_the_line(self) -> None:
-        gui_probe.app_log().write_text("nothing yet\n")
+        gui_probe.app_log().write_text("nothing yet\n", encoding="utf-8")
         assert not gui_probe.wait_for("never", timeout=0.1)
 
     @pytest.mark.usefixtures("run_dir")
     def test_the_wait_command_fails_on_a_timeout(self, capsys: pytest.CaptureFixture[str]) -> None:
-        gui_probe.app_log().write_text("")
+        gui_probe.app_log().write_text("", encoding="utf-8")
         assert gui_probe.main(["wait", "never", "0.1"]) == 1
         assert "timed out" in capsys.readouterr().err
 
@@ -280,7 +283,7 @@ class TestInputLog:
             f"2026-09-23 12:00:00.000 | INFO | Key pressed: {code} ({name})."
             for code, name in ((274, "down"), (97, "a"), (98, "b"))
         )
-        input_text = gui_probe.input_log().read_text()
+        input_text = gui_probe.input_log().read_text(encoding="utf-8")
         assert stray_key_presses(app_log, input_text) == 0
         assert stray_key_presses(app_log + "\nKey pressed: 13 (enter).", input_text) == 1
 
@@ -298,7 +301,7 @@ class TestCommands:
     def test_keys_go_to_the_window_only_once_it_is_in_front(self, run_dir: Path) -> None:
         backend = MagicMock()
         backend.bring_to_front.return_value = False
-        (run_dir / "app.pid").write_text("1234")
+        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
         with pytest.raises(gui_probe.ProbeError, match="would not come to the front"):
             gui_probe.Probe(backend).key(["Down"])
         backend.send_key.assert_not_called()
@@ -309,10 +312,10 @@ class TestCommands:
         monkeypatch.setenv("BARKS_PROBE_KEY_GAP", "0")
         backend = MagicMock()
         backend.bring_to_front.return_value = True
-        (run_dir / "app.pid").write_text("1234")
+        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
         gui_probe.Probe(backend).key(["Down", "Return"])
         assert [c.args[0] for c in backend.send_key.call_args_list] == ["Down", "Return"]
-        logged = gui_probe.input_log().read_text().splitlines()
+        logged = gui_probe.input_log().read_text(encoding="utf-8").splitlines()
         assert [line.split(" ", 1)[1] for line in logged] == ["key Down", "key Return"]
 
 
@@ -348,23 +351,23 @@ class TestTaps:
         backend = MagicMock()
         backend.bring_to_front.return_value = True
         backend.client_geometry.return_value = (800, 600, 100, 50)
-        (run_dir / "app.pid").write_text("1234")
+        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
         with patch.object(gui_probe.time, "sleep"):
             gui_probe.Probe(backend).tap(10, 20)
         backend.click.assert_called_once_with(110, 70)
-        [line] = gui_probe.input_log().read_text().splitlines()
+        [line] = gui_probe.input_log().read_text(encoding="utf-8").splitlines()
         assert line.split(" ", 1)[1] == "tap 10 20"
 
     def test_a_click_presses_the_same_way_but_is_logged_as_a_click(self, run_dir: Path) -> None:
         backend = MagicMock()
         backend.bring_to_front.return_value = True
         backend.client_geometry.return_value = (800, 600, 100, 50)
-        (run_dir / "app.pid").write_text("1234")
+        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
         with patch.object(gui_probe.time, "sleep"):
             gui_probe.Probe(backend).click(10, 20)
         backend.move_pointer.assert_called_once_with(110, 70)
         backend.click.assert_called_once_with(110, 70)
-        [line] = gui_probe.input_log().read_text().splitlines()
+        [line] = gui_probe.input_log().read_text(encoding="utf-8").splitlines()
         assert line.split(" ", 1)[1] == "click 10 20"
 
     def test_a_click_that_waited_for_its_target_says_so_in_the_log(self, run_dir: Path) -> None:
@@ -372,13 +375,16 @@ class TestTaps:
         backend = MagicMock()
         backend.bring_to_front.return_value = True
         backend.client_geometry.return_value = (800, 600, 100, 50)
-        (run_dir / "app.pid").write_text("1234")
+        (run_dir / "app.pid").write_text("1234", encoding="utf-8")
         with (
             patch.object(gui_probe.time, "sleep"),
             patch.object(gui_probe.time, "monotonic", side_effect=[100.0, 112.5]),
         ):
             gui_probe.Probe(backend).tap(10, 20)
-        lines = [line.split(" ", 1)[1] for line in gui_probe.input_log().read_text().splitlines()]
+        lines = [
+            line.split(" ", 1)[1]
+            for line in gui_probe.input_log().read_text(encoding="utf-8").splitlines()
+        ]
         assert lines == ["tap 10 20", "wait 12.5s for the app's window under the tap"]
 
     def test_a_tap_targets_request_is_written_whole(self, run_dir: Path) -> None:
@@ -469,7 +475,10 @@ class TestHoldForModeSwitch:
             patch.object(gui_probe, "window_mode_settling", side_effect=[True, False]),
         ):
             self._probe(1.0)._hold_for_mode_switch("key Right")  # noqa: SLF001
-        lines = [line.split(" ", 1)[1] for line in gui_probe.input_log().read_text().splitlines()]
+        lines = [
+            line.split(" ", 1)[1]
+            for line in gui_probe.input_log().read_text(encoding="utf-8").splitlines()
+        ]
         assert lines == ["wait 2.5s for a window-mode switch before the key Right"]
 
     @pytest.mark.usefixtures("run_dir")
@@ -480,7 +489,9 @@ class TestHoldForModeSwitch:
             patch.object(gui_probe.time, "monotonic", side_effect=range(0, 100, 3)),
         ):
             self._probe(1.0)._hold_for_mode_switch("tap")  # noqa: SLF001
-        assert "for a window-mode switch before the tap" in gui_probe.input_log().read_text()
+        assert "for a window-mode switch before the tap" in gui_probe.input_log().read_text(
+            encoding="utf-8"
+        )
 
     @pytest.mark.usefixtures("run_dir")
     def test_a_backend_that_does_not_ask_never_waits(self) -> None:

@@ -105,8 +105,8 @@ class TestNeverRan:
 
 class TestNamedIn:
     def test_a_name_counts_only_as_a_whole_word(self, tmp_path: Path) -> None:
-        (tmp_path / "x.py").write_text("dead_code_helper()\nhelper_two = 1\n")
-        (tmp_path / "y.kv").write_text("on_press: root.on_goto()\n")
+        (tmp_path / "x.py").write_text("dead_code_helper()\nhelper_two = 1\n", encoding="utf-8")
+        (tmp_path / "y.kv").write_text("on_press: root.on_goto()\n", encoding="utf-8")
         assert named_in([tmp_path / "x.py", tmp_path / "y.kv"], {"helper", "on_press"}) == {
             "on_press"
         }
@@ -114,7 +114,7 @@ class TestNamedIn:
     def test_copies_of_the_code_are_not_uses(self, tmp_path: Path) -> None:
         for folder in (".venv/lib", "mutants/src", "build", "pkg/__pycache__"):
             (tmp_path / folder).mkdir(parents=True)
-            (tmp_path / folder / "copy.py").write_text("dead()\n")
+            (tmp_path / folder / "copy.py").write_text("dead()\n", encoding="utf-8")
         files = dead_code_report._python_and_kv_files([tmp_path])  # noqa: SLF001
         assert named_in(files, {"dead"}) == set()
 
@@ -122,7 +122,7 @@ class TestNamedIn:
         """barks-comic-building has src/barks_comic_building/build/."""
         package = tmp_path / "src" / "pkg" / "build"
         package.mkdir(parents=True)
-        (package / "build_comics.py").write_text("get_max_timestamp(pages)\n")
+        (package / "build_comics.py").write_text("get_max_timestamp(pages)\n", encoding="utf-8")
         files = dead_code_report._python_and_kv_files([tmp_path])  # noqa: SLF001
         assert named_in(files, {"get_max_timestamp"}) == {"get_max_timestamp"}
 
@@ -136,7 +136,7 @@ def measured(tmp_path: Path) -> tuple[Path, Path]:
     """Return a tree with MODULE in it, and coverage data in which only ``used`` ran."""
     module = tmp_path / "src" / "mod.py"
     module.parent.mkdir()
-    module.write_text(MODULE)
+    module.write_text(MODULE, encoding="utf-8")
     data_file = tmp_path / ".coverage"
     data = coverage.CoverageData(basename=str(data_file))
     # The module's top-level statements (import time) and used()'s body.
@@ -163,7 +163,7 @@ class TestReport:
     ) -> None:
         root, data_file = measured
         kv = root / "screen.kv"
-        kv.write_text("on_release: root.kv_handler()\n")
+        kv.write_text("on_release: root.kv_handler()\n", encoding="utf-8")
 
         result = report(_findings(), data_file, [kv], root=root)
 

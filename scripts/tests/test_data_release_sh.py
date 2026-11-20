@@ -4,18 +4,16 @@ The constants match the ones core/data_pack.py owns, and the size check holds a 
 GitHub's limit on a release asset.
 """
 
-# cspell:ignore pytestmark
-
 from __future__ import annotations
 
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 from barks_reader.core.data_pack import DATA_PACK_FILE_NAMES, PACK_MEMBER
+from script_test_helpers import needs_bash
 
 _RELEASE_SH = Path(__file__).resolve().parent.parent / "_data_release.sh"
 
@@ -32,9 +30,6 @@ def test_the_pack_names_and_the_version_member_are_the_readers() -> None:
 
 
 GIB = 1024**3
-
-# A bare "bash" on the Windows runner is WSL with no distro installed.
-needs_bash = pytest.mark.skipif(sys.platform == "win32", reason="needs a real bash")
 
 
 def _run_sourced(command: str, *args: str) -> subprocess.CompletedProcess[str]:

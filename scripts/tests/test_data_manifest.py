@@ -24,21 +24,15 @@ from data_manifest import (
     fingerprints,
     manifest_json,
 )
+from script_test_helpers import write_tree
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _folder(root: Path, files: dict[str, bytes]) -> Path:
-    for rel, content in files.items():
-        (root / rel).parent.mkdir(parents=True, exist_ok=True)
-        (root / rel).write_bytes(content)
-    return root
-
-
 class TestFingerprint:
     def test_counts_and_sizes_the_files_under_a_folder(self, tmp_path: Path) -> None:
-        root = _folder(tmp_path / "d", {"a.json": b"12345", "sub/b.json": b"678"})
+        root = write_tree(tmp_path / "d", {"a.json": b"12345", "sub/b.json": b"678"})
         found = fingerprint(root, {})
         assert found is not None
         assert (found.files, found.bytes) == (2, 8)
@@ -55,13 +49,13 @@ class TestFingerprint:
 
     def test_a_same_size_edit_changes_it(self, tmp_path: Path) -> None:
         """Size alone misses this: Vol. 26's 027.json changed at the same size (2026-10-19)."""
-        root = _folder(tmp_path / "d", {"027.json": b"aaaa"})
+        root = write_tree(tmp_path / "d", {"027.json": b"aaaa"})
         before = fingerprint(root, {})
         (root / "027.json").write_bytes(b"bbbb")
         assert fingerprint(root, {}) != before
 
     def test_an_added_removed_or_renamed_file_changes_it(self, tmp_path: Path) -> None:
-        root = _folder(tmp_path / "d", {"a": b"x", "b": b"y"})
+        root = write_tree(tmp_path / "d", {"a": b"x", "b": b"y"})
         before = fingerprint(root, {})
         (root / "c").write_bytes(b"z")
         assert fingerprint(root, {}) != before
@@ -72,27 +66,27 @@ class TestFingerprint:
 
     def test_the_same_content_anywhere_has_the_same_fingerprint(self, tmp_path: Path) -> None:
         files = {"a": b"x", "sub/b": b"y"}
-        here = fingerprint(_folder(tmp_path / "here", files), {})
-        there = fingerprint(_folder(tmp_path / "there", files), {})
+        here = fingerprint(write_tree(tmp_path / "here", files), {})
+        there = fingerprint(write_tree(tmp_path / "there", files), {})
         assert here == there
 
     def test_what_a_desktop_leaves_is_not_data(self, tmp_path: Path) -> None:
-        root = _folder(tmp_path / "d", {"a": b"x"})
+        root = write_tree(tmp_path / "d", {"a": b"x"})
         before = fingerprint(root, {})
-        _folder(root, {".DS_Store": b"1", "Thumbs.db": b"2", "desktop.ini": b"3", "._a": b"4"})
+        write_tree(root, {".DS_Store": b"1", "Thumbs.db": b"2", "desktop.ini": b"3", "._a": b"4"})
         assert fingerprint(root, {}) == before
 
 
 class TestCache:
     def test_an_unchanged_file_is_not_hashed_again(self, tmp_path: Path) -> None:
-        root = _folder(tmp_path / "d", {"a": b"x"})
+        root = write_tree(tmp_path / "d", {"a": b"x"})
         cache: data_manifest.Cache = {}
         first = fingerprint(root, cache)
         cache[str(root / "a")][2] = "planted"  # same size and time: the cached md5 is used
         assert fingerprint(root, cache) != first
 
     def test_a_file_whose_time_moved_is_hashed_again(self, tmp_path: Path) -> None:
-        root = _folder(tmp_path / "d", {"a": b"x"})
+        root = write_tree(tmp_path / "d", {"a": b"x"})
         cache: data_manifest.Cache = {}
         first = fingerprint(root, cache)
         cache[str(root / "a")][2] = "planted"
@@ -183,7 +177,7 @@ class TestComparePack:
 class TestMain:
     @pytest.fixture
     def data(self, tmp_path: Path) -> Path:
-        return _folder(tmp_path / "Indexes", {"MAIN.seg": b"segment", "volumes.json": b"{}"})
+        return write_tree(tmp_path / "Indexes", {"MAIN.seg": b"segment", "volumes.json": b"{}"})
 
     def _main(self, tmp_path: Path, data: Path, *args: str) -> int:
         with (
@@ -343,7 +337,7 @@ class TestPackManifest:
                 root.mkdir(exist_ok=True)
                 (root / name).write_bytes(b"zip")
             else:
-                _folder(root / name, {"a.json": b"{}"})
+                write_tree(root / name, {"a.json": b"{}"})
         return root
 
     def _main(self, tmp_path: Path, *args: str) -> int:

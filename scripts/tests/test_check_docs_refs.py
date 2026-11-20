@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from check_docs_refs import RULES, Repo, check_docs, looks_like_path, main
+from script_test_helpers import write_tree
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,11 +21,7 @@ if TYPE_CHECKING:
 
 def _repo(root: Path, files: dict[str, str]) -> Repo:
     """Lay ``files`` (relative path to text) under ``root`` and return the Repo over them."""
-    for rel, text in files.items():
-        path = root / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-    return Repo(root, frozenset(files))
+    return Repo(write_tree(root, files), frozenset(files))
 
 
 def _doc(root: Path, rel: str, text: str) -> Path:

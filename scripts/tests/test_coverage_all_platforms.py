@@ -1,16 +1,14 @@
 """Tests for coverage_all_platforms.py: picking one commit's runs and mapping every platform."""
 
-# cspell:ignore gpgsign
-
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import coverage
 import coverage_all_platforms as cap
 import pytest
+from script_test_helpers import git, write_tree
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -101,30 +99,17 @@ class TestRuns:
         assert not same("ffffffff", "eeeeeeee")  # neither known: no tree to compare
         assert not same("aaaaaaaa", "ffffffff")
 
-    def test_the_src_tree_follows_src_alone(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    @pytest.mark.usefixtures("no_outer_git")
+    def test_the_src_tree_follows_src_alone(self, tmp_path: Path) -> None:
         """A real repository: docs- and tests-only commits keep it, a code commit changes it."""
-        # Run from a git hook (pre-push runs the suite), git's GIT_DIR and the like
-        # are set, and they beat -C: every command here would reach this repo instead.
-        for name in [n for n in os.environ if n.startswith("GIT_")]:
-            monkeypatch.delenv(name)
-        git = [
-            *("git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t"),
-            *("-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"),
-        ]
 
         def commit(path: str, text: str) -> str:
-            (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
-            (tmp_path / path).write_text(text, encoding="utf-8")
-            cap.subprocess.run([*git, "add", "-A"], check=True)
-            cap.subprocess.run([*git, "commit", "-qm", path], check=True)
-            head = [*git, "rev-parse", "HEAD"]
-            return cap.subprocess.run(
-                head, capture_output=True, text=True, check=True
-            ).stdout.strip()
+            write_tree(tmp_path, {path: text})
+            git(tmp_path, "add", "-A")
+            git(tmp_path, "commit", "-qm", path)
+            return git(tmp_path, "rev-parse", "HEAD")
 
-        cap.subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+        git(tmp_path, "init", "-q")
         first = commit("src/pkg/src/a.py", "a = 1\n")
         docs = commit("docs/notes.md", "notes\n")
         tests = commit("src/pkg/tests/test_a.py", "def test_a(): ...\n")

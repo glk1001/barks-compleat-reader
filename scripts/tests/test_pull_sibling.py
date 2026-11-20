@@ -5,45 +5,27 @@ from a git hook (pre-push runs the suite), git's GIT_DIR and the like are set an
 beat -C, so they are cleared, and the throwaway repos run no hooks.
 """
 
-# cspell:ignore NOSYSTEM gpgsign
-
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from script_test_helpers import git
 
 SCRIPT = Path(__file__).resolve().parent.parent / "pull_sibling.py"
 
 
 @pytest.fixture(autouse=True)
-def _no_outer_git(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in [n for n in os.environ if n.startswith("GIT_")]:
-        monkeypatch.delenv(name)
-    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
-    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
-
-
-def _git(repo: Path, *args: str) -> str:
-    done = subprocess.run(  # noqa: S603 (git on a throwaway repo, fixed arguments)
-        [
-            *("git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t"),
-            *("-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *args),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return done.stdout.strip()
+def _no_outer_git(no_outer_git: None) -> None:
+    """Every test here makes its own repositories."""
 
 
 def _commit(repo: Path, name: str, text: str) -> None:
     (repo / name).write_text(text, encoding="utf-8")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", name)
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", name)
 
 
 @pytest.fixture
@@ -51,7 +33,7 @@ def repos(tmp_path: Path) -> tuple[Path, Path]:
     """Return an upstream with one commit, and a clone of it tracking its branch."""
     upstream, sibling = tmp_path / "upstream", tmp_path / "barks-sibling"
     upstream.mkdir()
-    _git(upstream, "init", "-q", "-b", "main")
+    git(upstream, "init", "-q", "-b", "main")
     _commit(upstream, "a.txt", "a\n")
     subprocess.run(  # noqa: S603 (cloning the throwaway upstream)
         ["git", "clone", "-q", str(upstream), str(sibling)],  # noqa: S607
@@ -86,20 +68,20 @@ def test_behind_and_clean_is_fast_forwarded(repos: tuple[Path, Path]) -> None:
 
     assert done.returncode == 0
     assert "pulled 2 commit(s), now at" in done.stdout
-    assert _git(sibling, "rev-parse", "HEAD") == _git(upstream, "rev-parse", "HEAD")
+    assert git(sibling, "rev-parse", "HEAD") == git(upstream, "rev-parse", "HEAD")
 
 
 def test_uncommitted_changes_are_never_pulled_over(repos: tuple[Path, Path]) -> None:
     upstream, sibling = repos
     _commit(upstream, "b.txt", "b\n")
     (sibling / "a.txt").write_text("being edited\n", encoding="utf-8")
-    before = _git(sibling, "rev-parse", "HEAD")
+    before = git(sibling, "rev-parse", "HEAD")
 
     done = _pull(sibling)
 
     assert done.returncode == 1
     assert "1 commit(s) behind, with uncommitted changes; not pulled" in done.stdout
-    assert _git(sibling, "rev-parse", "HEAD") == before
+    assert git(sibling, "rev-parse", "HEAD") == before
     assert (sibling / "a.txt").read_text(encoding="utf-8") == "being edited\n"
 
 
@@ -117,13 +99,13 @@ def test_a_diverged_branch_is_left_as_it_is(repos: tuple[Path, Path]) -> None:
     upstream, sibling = repos
     _commit(upstream, "b.txt", "b\n")
     _commit(sibling, "local.txt", "local\n")
-    before = _git(sibling, "rev-parse", "HEAD")
+    before = git(sibling, "rev-parse", "HEAD")
 
     done = _pull(sibling)
 
     assert done.returncode == 1
     assert "1 commit(s) behind and 1 ahead of its upstream (diverged)" in done.stdout
-    assert _git(sibling, "rev-parse", "HEAD") == before
+    assert git(sibling, "rev-parse", "HEAD") == before
 
 
 def test_ahead_only_is_up_to_date(repos: tuple[Path, Path]) -> None:
@@ -137,7 +119,7 @@ def test_ahead_only_is_up_to_date(repos: tuple[Path, Path]) -> None:
 
 def test_a_branch_with_no_upstream_is_tested_as_it_is(repos: tuple[Path, Path]) -> None:
     _, sibling = repos
-    _git(sibling, "checkout", "-q", "-b", "experiment")
+    git(sibling, "checkout", "-q", "-b", "experiment")
     done = _pull(sibling)
     assert done.returncode == 1
     assert "its branch has no upstream" in done.stdout

@@ -176,7 +176,9 @@ class TestKeyMethodDefinitions:
 class TestMain:
     @pytest.fixture
     def gui_dir(self, tmp_path: Path) -> Path:
-        (tmp_path / "test_ok.py").write_text('def test_it(d):\n    d.key("Return")\n')
+        (tmp_path / "test_ok.py").write_text(
+            'def test_it(d):\n    d.key("Return")\n', encoding="utf-8"
+        )
         return tmp_path
 
     def test_passes_a_clean_tree(self, gui_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -186,7 +188,9 @@ class TestMain:
     def test_fails_a_desktop_key_with_its_file_and_line(
         self, gui_dir: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        (gui_dir / "test_bad.py").write_text('def test_it(d):\n\n    d.key("Tab")\n')
+        (gui_dir / "test_bad.py").write_text(
+            'def test_it(d):\n\n    d.key("Tab")\n', encoding="utf-8"
+        )
         assert main([str(gui_dir)]) == 1
         out = capsys.readouterr().out
         assert "test_bad.py:3: 'Tab' is not a remote key" in out
@@ -196,7 +200,7 @@ class TestMain:
         self, gui_dir: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         (gui_dir / "test_waived.py").write_text(
-            'def test_it(d):\n    d.key("Delete")  # desktop key: because\n'
+            'def test_it(d):\n    d.key("Delete")  # desktop key: because\n', encoding="utf-8"
         )
         assert main([str(gui_dir)]) == 0
         assert "(1 waived as desktop keys)" in capsys.readouterr().out
