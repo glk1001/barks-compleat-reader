@@ -1848,6 +1848,44 @@ class TestSpeakerFilter:
         assert screen._said_by._dropdown_focused_idx == 1  # Donald, the one picked now
         assert screen.has_list_open_without_the_keys() is False
 
+    def test_the_keys_taken_onto_the_list_leave_no_ring_behind(self, screen: SearchScreen) -> None:
+        """The ring was on the era row when the mouse opened the list: one focus mark, not two."""
+        screen._selected_word = "money"
+        _offer_speakers(screen, "Donald")
+        screen._focus.area = FocusArea.ERA
+        screen._era_rows["Word"].enter_focus(0)
+        with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
+            _press(_said_by_chip(screen))
+        with (
+            patch.object(screen._said_by, "_update_dropdown_focus"),
+            patch.object(screen, "_clear_result_focus"),
+            patch.object(screen, "_clear_chip_focus"),
+            patch.object(screen, "_clear_clear_focus"),
+        ):
+            screen.take_keys_onto_open_list(MagicMock())
+        assert screen._era_rows["Word"].focused is None
+        assert screen._focus.area == "said_by_list"
+
+    def test_leaving_the_screen_closes_a_list_the_keys_are_on(self, screen: SearchScreen) -> None:
+        """Closed later, the list gave the keys to its chip on a screen without them."""
+        screen._selected_word = "money"
+        _offer_speakers(screen, "Donald")
+        with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
+            _press(_said_by_chip(screen))
+        with (
+            patch.object(screen._said_by, "_update_dropdown_focus"),
+            patch.object(screen, "_clear_result_focus"),
+            patch.object(screen, "_clear_chip_focus"),
+            patch.object(screen, "_clear_clear_focus"),
+            patch.object(screen, "_blur_all_inputs"),
+        ):
+            screen.take_keys_onto_open_list(MagicMock())
+            screen.exit_nav_focus()
+        assert not cast("_FakeSpeakerList", screen._said_by.dropdown).is_open
+        assert screen._said_by._dropdown_nav_mode is False
+        assert screen._said_by.row.focused is None
+        assert (screen._focus.active, screen._focus.area) == (False, "input")
+
     def test_picking_a_speaker_reruns_the_search_filtered(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:

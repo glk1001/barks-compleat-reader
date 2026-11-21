@@ -1299,6 +1299,8 @@ class SearchScreen(FloatLayout):
     def take_keys_onto_open_list(self, on_exit_request: Callable) -> None:
         """Take the keys onto the open speaker list, the ring on the speaker picked now.
 
+        The ring the keys left elsewhere (a story, a chip) goes: the list has them now.
+
         Args:
             on_exit_request: Called when the keys ask to leave the screen.
 
@@ -1306,6 +1308,7 @@ class SearchScreen(FloatLayout):
         self._nav_on_exit_request = on_exit_request
         self._focus.active = True
         self._blur_all_inputs()
+        self._clear_all_nav_focus()
         self._said_by.take_keys_onto_list()
 
     # --- The era, for both searches ---
@@ -1830,7 +1833,13 @@ class SearchScreen(FloatLayout):
         self._draw_result_focus()
 
     def exit_nav_focus(self) -> None:
-        """Give up the keyboard: every focus ring cleared, every box blurred."""
+        """Give up the keyboard: every focus ring cleared, every box blurred.
+
+        A speaker list the keys are on closes first: closed later, it gave the keys
+        back to its chip, on a screen that no longer has them.
+        """
+        if self._focus.area == FocusArea.SAID_BY_LIST:
+            self._said_by.close_list()
         self._blur_all_inputs()
         self._clear_all_nav_focus()
         self._focus.active = False
