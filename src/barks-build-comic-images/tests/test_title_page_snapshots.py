@@ -16,13 +16,16 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 from barks_build_comic_images.image_io import open_image_for_reading
-from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.pages import EMPTY_IMAGE_FILEPATH
 from PIL import Image, ImageChops, ImageDraw
+
+if TYPE_CHECKING:
+    from barks_fantagraphics.comics_database import ComicsDatabase
 
 _SNAPSHOT_DIR = Path(__file__).parent / "data" / "title-pages"
 _UPDATE_SNAPSHOTS = os.environ.get("UPDATE_TITLE_PAGE_SNAPSHOTS") == "1"
@@ -48,11 +51,6 @@ _SNAPSHOTS = {
 }
 
 
-@pytest.fixture(scope="module")
-def db() -> ComicsDatabase:
-    return ComicsDatabase(for_building_comics=False)
-
-
 def _make_inset(directory: Path, size: tuple[int, int]) -> Path:
     """Return a made-up inset: a sun on a sky, outlined in black to show the scaling."""
     width, height = size
@@ -76,10 +74,14 @@ def _get_title_page(db: ComicsDatabase, title: str, inset: Path) -> Image.Image:
     ids=list(_SNAPSHOTS),
 )
 def test_the_title_page_matches_its_snapshot(
-    db: ComicsDatabase, tmp_path: Path, title: str, snapshot: str, inset_size: tuple[int, int]
+    comics_database: ComicsDatabase,
+    tmp_path: Path,
+    title: str,
+    snapshot: str,
+    inset_size: tuple[int, int],
 ) -> None:
     inset = _make_inset(tmp_path, inset_size)
-    page = _get_title_page(db, title, inset).convert("RGB")
+    page = _get_title_page(comics_database, title, inset).convert("RGB")
     snapshot_file = _SNAPSHOT_DIR / snapshot
 
     if _UPDATE_SNAPSHOTS:

@@ -30,13 +30,13 @@ from barks_build_comic_images.build_comic_images import (
 )
 from barks_fantagraphics.comic_book_info import TITLES_WITHOUT_TITLE_PAGE
 from barks_fantagraphics.comics_consts import DEST_TARGET_WIDTH
-from barks_fantagraphics.comics_database import ComicsDatabase
 from PIL import Image
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from barks_fantagraphics.comic_book import ComicBook
+    from barks_fantagraphics.comics_database import ComicsDatabase
 
 # The small words that join two parts of a title, as against an article like "the" that
 # belongs to the noun after it ("The Day / the Mountain / Shook").
@@ -135,12 +135,11 @@ def _get_split_names(title: str) -> list[str]:
 
 
 @pytest.fixture(scope="module")
-def comics() -> list[ComicBook]:
+def comics(comics_database: ComicsDatabase) -> list[ComicBook]:
     """Every story with a title page, read from its ini file."""
-    db = ComicsDatabase(for_building_comics=False)
     return [
-        db.get_comic_book(title)
-        for title in db.get_all_story_titles()
+        comics_database.get_comic_book(title)
+        for title in comics_database.get_all_story_titles()
         if title not in TITLES_WITHOUT_TITLE_PAGE
     ]
 
