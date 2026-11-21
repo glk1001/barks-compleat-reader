@@ -777,6 +777,19 @@ class TestWordBasket:
         screen.ids.word_results_layout.clear_widgets.assert_not_called()
         assert screen._word_query == '"gold"'
 
+    def test_a_lone_match_typed_is_not_searched_over_the_baskets_results(
+        self, screen: SearchScreen
+    ) -> None:
+        """Typed to be added to the picked words: their stories stay until it is pressed."""
+        screen._toggle_basket_word("gold")
+        screen._search.get_words_matching.return_value = TermMatches(["mine"], 1)
+
+        screen.on_word_search_text("mine")
+
+        screen._search.find_words.assert_not_called()
+        assert (screen._basket_results, screen._word_query) == (True, '"gold"')
+        assert screen._selected_word == ""
+
     def test_picking_a_word_alone_ends_the_baskets_results(self, screen: SearchScreen) -> None:
         screen._toggle_basket_word("gold")
         screen._search.find_words.return_value = {}

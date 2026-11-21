@@ -923,7 +923,14 @@ class SearchScreen(FloatLayout):
                 )
             )
 
-        if matches.total == 1 and not is_query and not self._query_follows:
+        # A lone match is searched as typed; not over the picked words' stories, which
+        # stay while more words are found (its + adds it, a press searches it alone).
+        if (
+            matches.total == 1
+            and not is_query
+            and not self._query_follows
+            and not self._basket_results
+        ):
             self._on_word_chip_selected(matches.words[0])
 
     def _make_word_row(self, word: str, row_index: int) -> _WordRow:
