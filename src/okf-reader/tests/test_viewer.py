@@ -16,7 +16,6 @@ from __future__ import annotations
 import gc
 import os
 import weakref
-from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -27,6 +26,7 @@ from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.treeview import TreeViewLabel
 from okf_reader.core.actions import PageAction
 from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.render import Block, TableBlock
@@ -228,7 +228,7 @@ class TestUnreadablePage:
 class TestMouse:
     def test_the_back_button_goes_back(self, viewer: OKFViewer) -> None:
         viewer.show_page(viewer.bundle / "concept" / "a.md")
-        assert viewer.on_touch_down(SimpleNamespace(button="mouse4")) is True
+        assert viewer.on_touch_down(MagicMock(button="mouse4")) is True
         assert _page(viewer) == "index.md"
 
     def test_a_press_drops_the_keyboard_focus_out_of_the_bar(self, viewer: OKFViewer) -> None:
@@ -286,8 +286,8 @@ class TestSearchFocus:
     def test_any_focus_is_logged_a_tap_too(self, viewer: OKFViewer) -> None:
         """A test waits on this line after tapping the box, before it types."""
         with patch.object(viewer_module.trace, "search_focused") as focused:
-            viewer._on_search_focus(None, focused=True)  # as a tap focuses it
-            viewer._on_search_focus(None, focused=False)
+            viewer._on_search_focus(viewer.search_field, focused=True)  # as a tap focuses it
+            viewer._on_search_focus(viewer.search_field, focused=False)
         focused.assert_called_once()
 
     def test_focus_search_is_logged_once(self, viewer: OKFViewer) -> None:
@@ -357,26 +357,26 @@ class TestSearchIndexFailure:
 
     def test_a_provider_that_needs_no_warming_is_ready_at_once(self, viewer: OKFViewer) -> None:
         viewer._searcher = _Hits([])  # no `warm` to call
-        viewer._on_search_focus(None, focused=True)
+        viewer._on_search_focus(viewer.search_field, focused=True)
         assert viewer._search_ready is True
 
     def test_warm_search_starts_one_build_however_often_asked(self, viewer: OKFViewer) -> None:
         """The host's call at open and the box's first focus share one build."""
         with patch.object(viewer_module.threading, "Thread") as thread:
             viewer.warm_search()
-            viewer._on_search_focus(None, focused=True)
+            viewer._on_search_focus(viewer.search_field, focused=True)
             viewer.warm_search()
         thread.assert_called_once()
         thread.return_value.start.assert_called_once_with()
 
     def test_a_focus_before_any_warming_starts_the_build(self, viewer: OKFViewer) -> None:
         with patch.object(viewer_module.threading, "Thread") as thread:
-            viewer._on_search_focus(None, focused=True)
+            viewer._on_search_focus(viewer.search_field, focused=True)
         assert thread.call_args.kwargs["target"] == viewer._warm_search_index
 
     def test_losing_focus_starts_no_build(self, viewer: OKFViewer) -> None:
         with patch.object(viewer_module.threading, "Thread") as thread:
-            viewer._on_search_focus(None, focused=False)
+            viewer._on_search_focus(viewer.search_field, focused=False)
         thread.assert_not_called()
 
 
@@ -626,7 +626,7 @@ class TestTreeKeys:
 
     def test_a_folder_without_an_index_page_opens_no_page(self, viewer: OKFViewer) -> None:
         viewer._on_node(_concept(viewer))
-        viewer._on_node(SimpleNamespace())  # neither a page nor a folder
+        viewer._on_node(TreeViewLabel())  # neither a page nor a folder
         assert _page(viewer) == "index.md"
 
     def test_a_folder_with_an_index_page_opens_it(self, viewer: OKFViewer) -> None:
@@ -1588,7 +1588,7 @@ class TestTheRemoteInTheTree:
     def test_right_on_an_open_folder_with_nothing_in_it_stays_put(self, viewer: OKFViewer) -> None:
         concept = _concept(viewer)
         viewer._focus_tree_node(concept)
-        empty = SimpleNamespace(is_leaf=False, is_open=True, nodes=[])
+        empty = TreeViewLabel(is_leaf=False, is_open=True)
 
         viewer._tree_expand(empty)
 
@@ -1603,6 +1603,13 @@ class TestTheRemoteInTheTree:
 
         assert _page(viewer) == "concept/a.md"
         assert viewer._focus_region is FocusRegion.PAGE
+
+
+def _node_at(top: float) -> TreeViewLabel:
+    """Return a tree node whose top edge is at `top`."""
+    node = TreeViewLabel(text="A")
+    node.top = top
+    return node
 
 
 class TestTheTreeScrolledToANode:
@@ -1628,17 +1635,17 @@ class TestTheTreeScrolledToANode:
         self, tall: OKFViewer, node_top: int, expected: float
     ) -> None:
         tall.tree_scroll.scroll_y = 0.5
-        tall._scroll_tree_node_into_view(SimpleNamespace(top=node_top))
+        tall._scroll_tree_node_into_view(_node_at(node_top))
         assert tall.tree_scroll.scroll_y == pytest.approx(expected)
 
     def test_a_tree_that_fits_is_left_where_it_is(self, tall: OKFViewer) -> None:
         tall.tree.height = 80
         tall.tree_scroll.scroll_y = 0.5
-        tall._scroll_tree_node_into_view(SimpleNamespace(top=40))
+        tall._scroll_tree_node_into_view(_node_at(40))
         assert tall.tree_scroll.scroll_y == 0.5  # noqa: PLR2004
 
     def test_it_waits_for_two_frames_to_agree(self, tall: OKFViewer) -> None:
-        node = SimpleNamespace(top=500, text="A")
+        node = _node_at(500)
         with _clock_patched() as clock, patch.object(tall, "_scroll_tree_node_into_view") as scroll:
             tall._reveal_tree_node_when_settled(node)
             _run_scheduled(clock)  # the first look: nothing to compare with
@@ -1653,7 +1660,7 @@ class TestTheTreeScrolledToANode:
     def test_a_tree_that_never_settles_is_scrolled_after_its_frame_limit(
         self, tall: OKFViewer
     ) -> None:
-        node = SimpleNamespace(top=0, text="A")
+        node = _node_at(0)
         with _clock_patched() as clock, patch.object(tall, "_scroll_tree_node_into_view") as scroll:
             tall._reveal_tree_node_when_settled(node)
             for _ in range(viewer_module._TREE_REVEAL_MAX_FRAMES):

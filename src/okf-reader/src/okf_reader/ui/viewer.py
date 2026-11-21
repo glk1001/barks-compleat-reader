@@ -17,7 +17,6 @@ from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from functools import cache
 from itertools import accumulate
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from kivy.app import App
@@ -88,10 +87,14 @@ from .keynav import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection
+    from collections.abc import Callable, Collection, Iterable
+    from pathlib import Path
+
+    from kivy.input.motionevent import MotionEvent
 
     from okf_reader.core.actions import PageAction, PageActionProvider
     from okf_reader.core.backgrounds import ImageProvider
+    from okf_reader.core.bundle import ConceptNode
     from okf_reader.core.search import SearchHit, SearchProvider
 
 BODY_LINE_HEIGHT = 1.25
@@ -224,7 +227,7 @@ class _IconToggleButton(ActionToggleButton):
     while down.
     """
 
-    def __init__(self, on_icon: str, off_icon: str, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, on_icon: str, off_icon: str, **kwargs: object) -> None:
         self._on_icon = on_icon
         self._off_icon = off_icon
         super().__init__(icon=on_icon, mipmap=True, **kwargs)
@@ -253,7 +256,7 @@ def _tint_bar_icon(button: ActionButton, tint: tuple[float, float, float, float]
         size_hint=(None, None),
     )
 
-    def _sync(*_args) -> None:  # noqa: ANN002
+    def _sync(*_args: object) -> None:
         overlay.pos = (button.x + dp(4), button.y + dp(4))
         overlay.size = (button.width - dp(8), button.height - dp(8))
 
@@ -262,16 +265,17 @@ def _tint_bar_icon(button: ActionButton, tint: tuple[float, float, float, float]
     _sync()
 
 
-def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
+def _add_text_backing(widget: BoxLayout, alpha: float) -> Color:
     """Draw the translucent rounded band behind ``widget`` (see BLOCK_BG_COLOR),
     kept glued through pos/size changes. Returns the band's Color instruction so
     the caller can retune its alpha later (the Contrast toggle).
     """  # noqa: D205
-    with widget.canvas.before:
+    # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
+    with widget.canvas.before:  # ty: ignore[missing-union-attribute]
         color = Color(rgba=(*BLOCK_BG_COLOR[:3], alpha))
         rect = RoundedRectangle(radius=[dp(BLOCK_BG_RADIUS)])
 
-    def sync(_widget, _value) -> None:  # noqa: ANN001
+    def sync(_widget: Widget, _value: object) -> None:
         rect.pos = widget.pos
         rect.size = widget.size
 
@@ -347,7 +351,7 @@ def _bar_separator(color: tuple[float, float, float, float], width_dp: float = 1
         Color(rgba=color)
         line = Rectangle()
 
-    def sync(_widget, _value) -> None:  # noqa: ANN001
+    def sync(_widget: Widget, _value: object) -> None:
         line.pos = (separator.center_x - dp(0.5), separator.y)
         line.size = (dp(1), separator.height)
 
@@ -356,7 +360,7 @@ def _bar_separator(color: tuple[float, float, float, float], width_dp: float = 1
     return separator
 
 
-def _scroll_view(theme: ViewerThemeSpec, **kwargs) -> ScrollView:  # noqa: ANN003
+def _scroll_view(theme: ViewerThemeSpec, **kwargs: object) -> ScrollView:
     """Build a ScrollView with the Barks Reader's scroll behavior (barks_kivy_ui.scrolling).
 
     ScrollEffect instead of the default DampedScrollEffect: scrolling stops dead
@@ -502,6 +506,33 @@ _NAV_NOOP_KEYS = frozenset(
 )
 
 
+class _DirNode(TreeViewLabel):
+    """A folder in the contents tree: its children are loaded the first time it opens."""
+
+    def __init__(self, bundle_path: Path, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self.bundle_path = bundle_path
+        self.loaded = False
+
+
+class _PageNode(TreeViewLabel):
+    """A page in the contents tree."""
+
+    def __init__(self, file_path: Path, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self.file_path = file_path
+
+
+class _PageLabel(Label):
+    """A label of a page's text: it knows its page, which its links are relative to."""
+
+    def __init__(self, page_path: Path, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self.page_path = page_path
+        # The text as rendered, kept while one of its links wears the focus color.
+        self.orig_markup: str | None = None
+
+
 @dataclass
 class _HistoryEntry:
     """One visited page, remembering where it was scrolled to when left (1.0 == top)."""
@@ -523,7 +554,7 @@ class OKFViewer(RelativeLayout):
         state_path: Path | None = None,
         on_exit: Callable[[], None] | None = None,
         search_provider: SearchProvider | None = None,
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
         self.bundle = bundle
@@ -869,13 +900,16 @@ class OKFViewer(RelativeLayout):
         self._bar_home_btn = hitbox  # the bar's keyboard focus activates the home icon via this
         return icon_box
 
-    def _add_tree_nodes(self, nodes, parent) -> None:  # noqa: ANN001
+    def _add_tree_nodes(
+        self, nodes: Iterable[BundleDir | ConceptNode], parent: TreeViewLabel | None
+    ) -> None:
         # Bind one level of the Kivy-free bundle model (okf_reader.core list_children)
         # to TreeView widgets; the frontmatter reads for this level already happened there.
         for node in nodes:
             if isinstance(node, BundleDir):
                 tv = self.tree.add_node(
-                    TreeViewLabel(
+                    _DirNode(
+                        node.path,
                         text=node.title or node.name,
                         font_size=sp(TREE_PANEL_FONT_SIZE),
                         bold=True,
@@ -889,11 +923,10 @@ class OKFViewer(RelativeLayout):
                 # Disclosure triangle only when there is something to open (cheap
                 # existence scan); the real children still load lazily on expand.
                 tv.is_leaf = not has_children(node.path)
-                tv.bundle_path = node.path
-                tv.loaded = False
                 tv.bind(is_open=self._on_dir_open)
             else:  # ConceptNode
-                tv = TreeViewLabel(
+                tv = _PageNode(
+                    node.path,
                     text=node.title,
                     font_size=sp(TREE_PANEL_FONT_SIZE),
                     color=self._theme.title_text,
@@ -901,10 +934,9 @@ class OKFViewer(RelativeLayout):
                     even_color=self._theme.row_stripe_even,
                     odd_color=self._theme.row_stripe_odd,
                 )
-                tv.file_path = node.path
                 self.tree.add_node(tv, parent)
 
-    def _on_dir_open(self, dir_node, is_open) -> None:  # noqa: ANN001
+    def _on_dir_open(self, dir_node: _DirNode, is_open: bool) -> None:
         # Fires on both open and close; populate a directory's children once, lazily.
         if not is_open:
             trace.tree_branch_closed(dir_node.text)
@@ -915,7 +947,7 @@ class OKFViewer(RelativeLayout):
         self._close_other_branches(dir_node)
         trace.tree_branch_opened(dir_node.text)
 
-    def _close_other_branches(self, opened) -> None:  # noqa: ANN001
+    def _close_other_branches(self, opened: TreeViewLabel) -> None:
         """Close every open node outside ``opened``'s ancestor chain.
 
         The Barks Reader's accordion rule: one open path at a time. Other
@@ -930,13 +962,13 @@ class OKFViewer(RelativeLayout):
             keep.add(node)
             node = node.parent_node
 
-        def close_subtree(node) -> None:  # noqa: ANN001
+        def close_subtree(node: TreeViewLabel) -> None:
             for child in node.nodes:
                 if child.is_open:
                     close_subtree(child)
                     self.tree.toggle_node(child)
 
-        def walk(parent) -> None:  # noqa: ANN001
+        def walk(parent: TreeViewLabel) -> None:
             for child in parent.nodes:
                 if not child.is_open:
                     continue
@@ -948,23 +980,21 @@ class OKFViewer(RelativeLayout):
 
         walk(self.tree.root)
 
-    def _on_node(self, node) -> None:  # noqa: ANN001
+    def _on_node(self, node: TreeViewLabel | None) -> None:
         if self._syncing_tree:
             return  # programmatic selection mirroring the page already on display
-        path = getattr(node, "file_path", None)
-        if path:
-            self._show(Path(path), push=True)
+        if isinstance(node, _PageNode):
+            self._show(node.file_path, push=True)
             return
         # A directory: show its reserved index.md listing when it has one. Its
         # relative links resolve against the directory (resolve_link gets the
         # index.md as the page path), so the listing is navigable.
-        bundle_path = getattr(node, "bundle_path", None)
-        if bundle_path is not None:
-            index = Path(bundle_path) / "index.md"
+        if isinstance(node, _DirNode):
+            index = node.bundle_path / "index.md"
             if index.is_file():
                 self._show(index, push=True)
 
-    def _on_search_focus(self, _field, focused: bool) -> None:  # noqa: ANN001
+    def _on_search_focus(self, _field: TextInput, focused: bool) -> None:
         """On the field's first focus, warm the search index (`warm_search`).
 
         Starting it on focus (before the user has typed) keeps the field
@@ -1079,7 +1109,7 @@ class OKFViewer(RelativeLayout):
                 text = self.search_field.text
                 self._show_results(self._searcher.search(text), text)
 
-    def _on_search_text(self, _field, text: str) -> None:  # noqa: ANN001
+    def _on_search_text(self, _field: TextInput, text: str) -> None:
         """Swap the left column between the tree, a wait note, the results, or an error."""
         has_text = bool(text)
         self.search_clear_btn.opacity = 1 if has_text else 0
@@ -1100,7 +1130,7 @@ class OKFViewer(RelativeLayout):
         self.search_field.focus = False
         trace.search_cleared()
 
-    def _on_search_enter(self, _field) -> None:  # noqa: ANN001
+    def _on_search_enter(self, _field: TextInput) -> None:
         """Open the top hit when the search field is submitted (Enter), once ready."""
         if not self._search_ready or self._search_failed:
             return
@@ -1335,7 +1365,7 @@ class OKFViewer(RelativeLayout):
             self._state_path, self.bundle, self.history[-1].path, self.body_scroll.scroll_y
         )
 
-    def on_touch_down(self, touch) -> bool:  # noqa: ANN001
+    def on_touch_down(self, touch: MotionEvent) -> bool:
         """Route the mouse's back button (button 4) to Back, wherever it lands."""
         if self._focus_region is FocusRegion.TOP_BAR:
             # A pointer press takes over from the keyboard (the comic reader's
@@ -1360,7 +1390,8 @@ class OKFViewer(RelativeLayout):
         in results mode.
         """
         self._focus_region = FocusRegion.PAGE
-        self._page_links: list[tuple[Label, str, int]] = []  # (label, ref, occurrence-in-label)
+        # (label, ref, occurrence-in-label)
+        self._page_links: list[tuple[_PageLabel, str, int]] = []
         self._focused_link: int | None = None
         self._sidebar_index: int | None = None
         self._results_scroll: ScrollView | None = None
@@ -1604,7 +1635,7 @@ class OKFViewer(RelativeLayout):
             self.body_scroll.scroll_y, self.body_scroll.height, self.body.height, delta_px
         )
 
-    def _build_page_links(self) -> list[tuple[Label, str, int]]:
+    def _build_page_links(self) -> list[tuple[_PageLabel, str, int]]:
         """Collect the page's links in document order: (label, ref, occurrence-in-label)."""
         return [
             (lbl, ref, i)
@@ -1619,7 +1650,7 @@ class OKFViewer(RelativeLayout):
         if idx is None:
             return
         lbl, ref, occurrence = self._page_links[idx]
-        lbl._orig_markup = lbl.text  # noqa: SLF001
+        lbl.orig_markup = lbl.text
         # The colour the page's links were rendered in: a host may have themed it.
         lbl.text = highlight_ref_occurrence(
             lbl.text, occurrence, self._theme.link_hex, LINK_FOCUS_COLOR
@@ -1633,10 +1664,9 @@ class OKFViewer(RelativeLayout):
         if self._focused_link is None:
             return
         lbl, _ref, _occurrence = self._page_links[self._focused_link]
-        orig = getattr(lbl, "_orig_markup", None)
-        if orig is not None:
-            lbl.text = orig
-            lbl._orig_markup = None  # noqa: SLF001
+        if lbl.orig_markup is not None:
+            lbl.text = lbl.orig_markup
+            lbl.orig_markup = None
 
     def _clear_link_focus(self) -> None:
         self._restore_focused_link_markup()
@@ -1698,7 +1728,7 @@ class OKFViewer(RelativeLayout):
             new_idx = step_index(idx, len(nodes), delta)
         self._focus_tree_node(nodes[new_idx])
 
-    def _tree_expand(self, node) -> None:  # noqa: ANN001
+    def _tree_expand(self, node: TreeViewLabel | None) -> None:
         """Right in the tree: drill rightward — expand a directory, or cross to the page.
 
         The spatial continuum for a 6-button remote: Right keeps moving
@@ -1718,7 +1748,7 @@ class OKFViewer(RelativeLayout):
         elif node.nodes:
             self._focus_tree_node(node.nodes[0])
 
-    def _tree_collapse(self, node) -> None:  # noqa: ANN001
+    def _tree_collapse(self, node: TreeViewLabel | None) -> None:
         """Close the focused directory, or move the focus band to the parent."""
         if node is None:
             return
@@ -1727,7 +1757,7 @@ class OKFViewer(RelativeLayout):
         elif node.parent_node is not None and node.parent_node is not self.tree.root:
             self._focus_tree_node(node.parent_node)
 
-    def _tree_activate(self, node) -> None:  # noqa: ANN001
+    def _tree_activate(self, node: TreeViewLabel | None) -> None:
         """Open the focused leaf's page, or toggle a directory open/closed.
 
         Enter on a page leaf behaves exactly like Right: it opens the page and
@@ -1746,12 +1776,12 @@ class OKFViewer(RelativeLayout):
         if not was_open:
             self._on_node(node)
 
-    def _open_leaf_and_cross_to_page(self, node) -> None:  # noqa: ANN001
+    def _open_leaf_and_cross_to_page(self, node: TreeViewLabel) -> None:
         """Open a page leaf's page and hand the keys to the page panel."""
         self._on_node(node)
         self._set_focus_region(FocusRegion.PAGE)
 
-    def _focus_tree_node(self, node) -> None:  # noqa: ANN001
+    def _focus_tree_node(self, node: TreeViewLabel) -> None:
         """Move the tree's selection band to ``node`` without navigating."""
         self._syncing_tree = True
         try:
@@ -1759,7 +1789,7 @@ class OKFViewer(RelativeLayout):
         finally:
             self._syncing_tree = False
         self._scroll_tree_node_into_view(node)
-        trace.tree_focus(getattr(node, "text", ""))
+        trace.tree_focus(node.text)
 
     def _handle_results_key(self, key: int) -> bool:
         """Walk the search-result rows with a drawn focus ring."""
@@ -1879,11 +1909,12 @@ class OKFViewer(RelativeLayout):
             rel = path.resolve().relative_to(self.bundle.resolve())
         except ValueError:
             return
-        dir_node = None  # the directory node walked to so far (None == tree root)
+        # The directory node walked to so far (None == tree root).
+        dir_node: _DirNode | None = None
         children = self.tree.root.nodes
         for part in rel.parts[:-1]:
             dir_node = next(
-                (n for n in children if Path(getattr(n, "bundle_path", "")).name == part),
+                (n for n in children if isinstance(n, _DirNode) and n.bundle_path.name == part),
                 None,
             )
             if dir_node is None:
@@ -1894,6 +1925,7 @@ class OKFViewer(RelativeLayout):
             if not dir_node.is_open:
                 self.tree.toggle_node(dir_node)
             children = dir_node.nodes
+        target: TreeViewLabel | None
         if rel.name == "index.md":  # a directory's own page selects the directory node
             target = dir_node  # None for the bundle root's index — no visible node
         else:
@@ -1902,7 +1934,7 @@ class OKFViewer(RelativeLayout):
                 (
                     n
                     for n in children
-                    if getattr(n, "file_path", None) and Path(n.file_path).resolve() == resolved
+                    if isinstance(n, _PageNode) and n.file_path.resolve() == resolved
                 ),
                 None,
             )
@@ -1917,7 +1949,7 @@ class OKFViewer(RelativeLayout):
         # single-frame deferral is not enough after a large expansion.
         self._reveal_tree_node_when_settled(target)
 
-    def _reveal_tree_node_when_settled(self, node) -> None:  # noqa: ANN001
+    def _reveal_tree_node_when_settled(self, node: TreeViewLabel) -> None:
         """Scroll ``node`` into view once the tree's geometry has stopped moving.
 
         Right after a page sync or a fresh open, a large lazy expansion (e.g.
@@ -1949,7 +1981,7 @@ class OKFViewer(RelativeLayout):
 
         Clock.schedule_once(check, 0)
 
-    def _scroll_tree_node_into_view(self, node) -> None:  # noqa: ANN001
+    def _scroll_tree_node_into_view(self, node: TreeViewLabel) -> None:
         """Scroll the tree panel so ``node`` sits about a quarter of the way down.
 
         ScrollView.scroll_to would stop as soon as the node is visible, typically
@@ -2073,9 +2105,10 @@ class OKFViewer(RelativeLayout):
         self.body.add_widget(box)
         return box
 
-    def _body_label(self, blk: Block, path: Path) -> Label:
+    def _body_label(self, blk: Block, path: Path) -> _PageLabel:
         """Build one body block's self-sizing, ref-navigable Label."""
-        lbl = Label(
+        lbl = _PageLabel(
+            path,
             text=blk.markup,
             markup=True,
             font_size=blk.font_size,
@@ -2086,7 +2119,6 @@ class OKFViewer(RelativeLayout):
         )
         lbl.bind(width=lambda inst, w: inst.setter("text_size")(inst, (w, None)))
         lbl.bind(texture_size=lambda inst, ts: inst.setter("height")(inst, ts[1]))
-        lbl._page_path = path  # noqa: SLF001
         lbl.bind(on_ref_press=self._on_ref)
         if "[ref=" in blk.markup:
             self._link_labels.append(lbl)
@@ -2121,7 +2153,7 @@ class OKFViewer(RelativeLayout):
         row.add_widget(marker)
         row.add_widget(lbl)
 
-        def sync_height(_lbl, height: float) -> None:  # noqa: ANN001
+        def sync_height(_lbl: Label, height: float) -> None:
             row.height = height
             marker.height = height
 
@@ -2236,7 +2268,8 @@ class OKFViewer(RelativeLayout):
             minimum_width=stack.setter("width"),
         )
         for row in blk.rows:
-            lbl = Label(
+            lbl = _PageLabel(
+                path,
                 text=row,
                 markup=True,
                 font_name=TABLE_FONT_NAME,
@@ -2244,7 +2277,6 @@ class OKFViewer(RelativeLayout):
                 size_hint=(None, None),
             )
             lbl.bind(texture_size=lbl.setter("size"))
-            lbl._page_path = path  # noqa: SLF001
             lbl.bind(on_ref_press=self._on_ref)
             if "[ref=" in row:
                 self._link_labels.append(lbl)
@@ -2271,14 +2303,14 @@ class OKFViewer(RelativeLayout):
         fit_height()
         return scroller
 
-    def _on_ref(self, label, ref: str) -> None:  # noqa: ANN001
+    def _on_ref(self, label: _PageLabel, ref: str) -> None:
         if ref.startswith("fn:"):
             markup = self._anchors.get(ref)  # tapped [id] → its definition, in a popup
             if markup is not None:
-                self._show_footnote_popup(markup, label._page_path)  # noqa: SLF001
+                self._show_footnote_popup(markup, label.page_path)
                 trace.footnote_opened(ref)
             return
-        target = resolve_link(label._page_path, ref, self.bundle)  # noqa: SLF001
+        target = resolve_link(label.page_path, ref, self.bundle)
         if target:
             self._show(target, push=True)
 
@@ -2288,7 +2320,7 @@ class OKFViewer(RelativeLayout):
         ``_link_labels`` holds the current page's link-bearing labels — the hit-test
         candidates (see ``_ref_under``); ``_show`` rebuilds it with the page.
         """
-        self._link_labels: list[Label] = []
+        self._link_labels: list[_PageLabel] = []
         self._popup_link_label: Label | None = None  # an open footnote popup's label
         self._hand_cursor = False
         from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
@@ -2383,7 +2415,7 @@ class OKFApp(App):
         top_bar: TopBarSpec | None = None,
         state_path: Path | None = None,
         search_provider: SearchProvider | None = None,
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
         self._bundle = bundle
@@ -2434,7 +2466,14 @@ class OKFApp(App):
         if self._viewer is not None:
             self._viewer.save_session()
 
-    def _on_keyboard(self, _window, key, _scancode, _codepoint, modifiers) -> bool:  # noqa: ANN001
+    def _on_keyboard(
+        self,
+        _window: object,
+        key: int,
+        _scancode: int,
+        _codepoint: str | None,
+        modifiers: list[str],
+    ) -> bool:
         """Ctrl+F focuses search; Alt+Left navigates back; the viewer owns the rest.
 
         Everything else defers to the viewer's own keyboard navigation
@@ -2457,7 +2496,7 @@ class OKFApp(App):
             return True
         return self._handle_back_key(key, modifiers)
 
-    def _handle_back_key(self, key, modifiers) -> bool:  # noqa: ANN001
+    def _handle_back_key(self, key: int, modifiers: list[str]) -> bool:
         """Handle the keys the viewer's handle_key refused.
 
         Alt+Left goes back; Escape arrives here only while the search field
