@@ -396,17 +396,25 @@ Left over from the read marks and *November in Barks*:
       proposal step (issues, then a strategy table, then confirmation) is the way
       to start each one; a golden dump of real output before and after, as the
       `render.py` round used, is the proof where the code is pure.
-- [ ] **`barks_reader/ui/search_screen.py` — a controller per search pane** — 2,529
-      lines, 19 classes, 179 defs; `SearchScreen` alone has 204 distinct `self`
-      attributes and the repo's most complex method (`_handle_tags_enter_by_key`,
-      radon 19). Title, tag, word, said-by, era and scope searches share one class,
-      the mode visible in the method prefixes (`_tag_*`, `_word_*`, `_said_by_*`).
-      The Kivy-free state already went to `core/search_state.py` (the word and tag
-      baskets, era, scope); the UI half never followed. Two moves: a controller per
-      pane (tag, word) owning its chips, rows and key handling, and the twelve small
-      chip and button classes at the top of the file into a widgets module of their
-      own. The 621-line `search_screen.kv` shrinks with them. Nets:
-      `test_search_screen.py`, `test_search_state.py`, the search GUI tests.
+- [ ] **`barks_reader/ui/search_screen.py` — a class per search pane** — begun
+      2026-11-21, three steps of six done. `SearchScreen` was one class of 2,314
+      lines and 169 methods: the title, tag and word searches, the said-by, era and
+      scope filters, and 676 lines of key handling, the largest part and the most
+      tangled (20 references into the tag code, 18 back). Done: the nineteen small
+      widget classes are `ui/search_widgets.py`, with their kv rules; where the
+      keyboard is is one `SearchFocus` (`core/search_focus.py`) that a part of the
+      screen can be handed; and the speaker filter is `SaidByFilter`
+      (`ui/search_said_by.py`), which showed the pattern holds: a class the screen
+      owns, given the focus and four callbacks. `search_screen.py` is 2,300 lines,
+      from 2,695. Left, each to take its own key handling with it, or it gains
+      nothing: the era and scope rows (with the panel-row keys); the word pane
+      (list, basket, suggestions, results); the tag pane, last and hardest, where
+      `_handle_tags_enter_by_key` should be split by the kind of chip focused. The
+      screen would keep the mode switch, the title search, the result rows' focus
+      and the background image. The cost is the tests: `test_search_screen.py`
+      builds the screen without its constructor and sets its fields by name, so
+      each step renames some and `_make_bare_screen` must build each new class.
+      Nets: that file, `test_search_state.py`, the search and tap GUI tests.
 - [ ] **`scripts/validate_barks_reader_core.py` — a package of phases** — 2,772
       lines, 13 phases, 78 top-level defs, one 172-line title-files check
       (`_validate_title_files`), 64 `noqa` of which 43 are SLF001 reaching into

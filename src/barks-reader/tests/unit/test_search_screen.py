@@ -21,7 +21,8 @@ from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.search_chip_row import ChipRow
 from barks_reader.core.search_focus import FocusArea, RowPart, SearchFocus
-from barks_reader.ui import search_screen
+from barks_reader.ui import search_said_by, search_screen, search_widgets
+from barks_reader.ui.search_said_by import SaidByFilter
 from barks_reader.ui.search_screen import SearchScreen
 from barks_reader.ui.search_widgets import (
     SearchModeContent,
@@ -66,11 +67,21 @@ def _make_bare_screen() -> SearchScreen:
     # The speaker filter: anyone; its chip's row over a stand-in layout, its chip a
     # stand-in too (`_speaker_chip`); an index with no speakers, so no chip shows
     # (`_offer_speakers` gives it some); and its list, a stand-in.
-    screen._speaker = ""
-    screen._speaker_row = ChipRow(MagicMock(), _speaker_chip, screen._on_said_by_chip_pressed)
-    screen._offered_speakers = []
-    screen._said_by_dropdown = _FakeSpeakerList(screen)
-    screen._setup_dropdown_nav()
+    # It reads the screen through calls made when it asks (hence the lambdas), so a
+    # test may stub the screen's search, or a method it calls, after the screen is made.
+    with (
+        patch.object(search_said_by, "_make_said_by_chip", _speaker_chip),
+        patch.object(search_said_by, "ReaderDropDown", lambda **_kw: _FakeSpeakerList(screen)),
+    ):
+        screen._said_by = SaidByFilter(
+            MagicMock(),
+            screen._focus,
+            indexed_speakers=lambda: screen._search.get_speakers(),  # noqa: PLW0108
+            searched=lambda: screen._searched_for_said_by(),  # noqa: PLW0108
+            find_stories=lambda speaker: screen._find_word_stories(speaker),  # noqa: PLW0108
+            on_picked=lambda: screen._rerun_word_results(),  # noqa: PLW0108
+        )
+    screen._said_by._offered = []
     # The picks and filters, and their chip rows, as the screen's own start sets them:
     # over stand-in layouts and chips, with the test's eras.
     with (
@@ -148,7 +159,9 @@ def _bare_screen(
             stack.enter_context(extra)
         bare = _make_bare_screen()
         if nav is not None:
-            bare._focus = SearchFocus(active=True, area=FocusArea(nav))
+            # In place: the speaker filter holds the same focus.
+            bare._focus.active = True
+            bare._focus.area = FocusArea(nav)
         attrs = {**_NAV_ADOPTED, **state} if nav is not None else state
         for name, value in attrs.items():
             if name.startswith("focus_"):
@@ -170,26 +183,29 @@ class _FakeSpeakerList:
         self.is_open = False
 
     @property
-    def rows(self) -> list[search_screen._SaidByItem]:
+    def rows(self) -> list[search_widgets._SaidByItem]:
         return list(reversed(self.container.children))  # Kivy: last first
 
     def clear_widgets(self) -> None:
         self.container.children = []
 
-    def add_widget(self, row: search_screen._SaidByItem) -> None:
+    def add_widget(self, row: search_widgets._SaidByItem) -> None:
         self.container.children.insert(0, row)
+
+    def bind(self, **_handlers: object) -> None:
+        """Take the filter's handlers, as a dropdown does: `select` and `dismiss` call them."""
 
     def open_if_shown(self, _widget: object) -> bool:
         self.is_open = True
         return True
 
     def select(self, value: str) -> None:
-        self._screen._on_said_by_item_selected(cast("Any", self), value)
+        self._screen._said_by._on_item_selected(cast("Any", self), value)
         self.dismiss()
 
     def dismiss(self) -> None:
         self.is_open = False
-        self._screen._on_said_by_dismissed(cast("Any", self))
+        self._screen._said_by._on_dismissed(cast("Any", self))
 
     @property
     def parent(self) -> object | None:
@@ -206,21 +222,21 @@ def _offer_speakers(screen: SearchScreen, speaker: str = "") -> None:
 
     The chip shows only while a word search is listed: set its word or query first.
     """
-    screen._offered_speakers = ["Donald", "Scrooge"]
-    screen._speaker = speaker
-    screen._show_said_by_chip()
+    screen._said_by._offered = ["Donald", "Scrooge"]
+    screen._said_by.speaker = speaker
+    screen._said_by.show()
 
 
 def _said_by_chip(screen: SearchScreen) -> MagicMock:
-    [chip] = screen._speaker_row.chips
+    [chip] = screen._said_by.row.chips
     return cast("MagicMock", chip)
 
 
 def _pick_speaker(screen: SearchScreen, speaker: str) -> None:
     """Open the speaker list from its chip, as a click does, and click `speaker`'s row."""
-    with patch.object(screen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS):
+    with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
         _press(_said_by_chip(screen))
-    speaker_list = cast("_FakeSpeakerList", screen._said_by_dropdown)
+    speaker_list = cast("_FakeSpeakerList", screen._said_by.dropdown)
     [row] = [r for r in speaker_list.rows if r.value == speaker]
     row.dispatch("on_release")
 
@@ -546,7 +562,7 @@ class TestTypedQuery:
         with patch.object(screen, "_run_word_query") as run:
             _pick_speaker(screen, "Scrooge")
         run.assert_called_once_with("gold -mine", list_words=True, new_search=False)
-        assert screen._speaker == "Scrooge"
+        assert screen._said_by.speaker == "Scrooge"
 
     def test_the_bubbles_popup_highlights_the_query_terms(self, screen: SearchScreen) -> None:
         screen._word_query = "gold -mine"
@@ -1550,7 +1566,7 @@ class TestSpeakerFilter:
     def test_the_offered_speakers_are_the_roster_ones_the_index_has(
         self, screen: SearchScreen
     ) -> None:
-        screen._offered_speakers = None  # not read yet
+        screen._said_by._offered = None  # not read yet
         screen._search.get_speakers.return_value = {
             "none": 900,
             "Scrooge": 50,
@@ -1560,43 +1576,43 @@ class TestSpeakerFilter:
             "unknown": 3,
         }
         # Roster order, sentinels other than the narrator left out, `other:` not offered.
-        assert screen._get_offered_speakers() == ["Donald", "Scrooge", "narrator"]
-        assert screen._get_offered_speakers() == ["Donald", "Scrooge", "narrator"]
+        assert screen._said_by.offered() == ["Donald", "Scrooge", "narrator"]
+        assert screen._said_by.offered() == ["Donald", "Scrooge", "narrator"]
         screen._search.get_speakers.assert_called_once_with()  # read once
 
     def test_the_chip_is_a_said_by_chip(self) -> None:
         """Its class is in the focus line the app logs, which the GUI tests match."""
-        chip = search_screen._make_said_by_chip("said by", "Said by: anyone")
+        chip = search_widgets._make_said_by_chip("said by", "Said by: anyone")
         assert type(chip).__name__ == "_SaidByChipButton"
         assert (chip.value, chip.text) == ("said by", "Said by: anyone")
 
     def test_an_index_without_speakers_offers_no_chip(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
-        screen._offered_speakers = None
+        screen._said_by._offered = None
         screen._search.get_speakers.return_value = {}
         screen._selected_word = "money"
-        screen._show_said_by_chip()
-        assert screen._speaker_row.chips == []
+        screen._said_by.show()
+        assert screen._said_by.row.chips == []
         assert "speakers" not in dict(screen._panel_rows())
         assert "Word search: index has no speakers; no speaker filter." in loguru_sink
 
     def test_the_chip_shows_only_while_a_search_is_listed(self, screen: SearchScreen) -> None:
         _offer_speakers(screen)
-        assert screen._speaker_row.chips == []  # nothing searched
+        assert screen._said_by.row.chips == []  # nothing searched
 
         screen._selected_word = "money"
-        screen._show_said_by_chip()
+        screen._said_by.show()
         assert _said_by_chip(screen).text == "Said by: anyone"
-        assert screen._speaker_row.selected == ""  # not filled: no filter
+        assert screen._said_by.row.selected == ""  # not filled: no filter
 
-        screen._speaker = "narrator"
-        screen._show_said_by_chip()
+        screen._said_by.speaker = "narrator"
+        screen._said_by.show()
         assert _said_by_chip(screen).text == "Said by: Narrator"
-        assert screen._speaker_row.selected == search_screen._SAID_BY  # filled: a filter
+        assert screen._said_by.row.selected == search_widgets._SAID_BY  # filled: a filter
 
     def test_the_list_counts_each_speakers_stories_most_first(self, screen: SearchScreen) -> None:
-        screen._offered_speakers = ["Donald", "Scrooge", "Gyro", "narrator"]
+        screen._said_by._offered = ["Donald", "Scrooge", "Gyro", "narrator"]
         screen._selected_word = "money"
         screen._search.find_words.return_value = _said_in(
             {
@@ -1608,7 +1624,7 @@ class TestSpeakerFilter:
             }
         )
         # Gyro, who never says it, is left out; Donald before the narrator, as the roster has.
-        assert screen._speaker_story_counts() == [
+        assert screen._said_by.story_counts() == [
             ("", 5),
             ("Scrooge", 4),
             ("Donald", 2),
@@ -1617,60 +1633,60 @@ class TestSpeakerFilter:
 
     def test_a_picked_word_is_counted_from_its_one_search(self, screen: SearchScreen) -> None:
         """The list ran it once more for each speaker, on the UI thread, at every opening."""
-        screen._offered_speakers = ["Donald", "Scrooge", "Gyro", "narrator"]
+        screen._said_by._offered = ["Donald", "Scrooge", "Gyro", "narrator"]
         screen._selected_word = "money"
         screen._search.find_words.return_value = _said_in({"A Story": ["Scrooge"]})
-        screen._speaker_story_counts()
+        screen._said_by.story_counts()
         screen._search.find_words.assert_called_once_with("money", speaker=None)
 
     def test_reopening_the_list_on_the_same_search_does_not_search_again(
         self, screen: SearchScreen
     ) -> None:
-        screen._offered_speakers = ["Donald", "Scrooge"]
+        screen._said_by._offered = ["Donald", "Scrooge"]
         screen._word_query = "gold mine"
         screen._search.run_word_query.return_value = WordQueryResult(title_dict=_found("A Story"))
-        first = screen._speaker_story_counts()
-        screen._speaker = "Scrooge"  # picked from the list, which then opens again
-        again = screen._speaker_story_counts()
+        first = screen._said_by.story_counts()
+        screen._said_by.speaker = "Scrooge"  # picked from the list, which then opens again
+        again = screen._said_by.story_counts()
         assert screen._search.run_word_query.call_count == 3  # anyone, Donald, Scrooge  # noqa: PLR2004
         assert (first, again) == ([("", 1), ("Donald", 1), ("Scrooge", 1)],) * 2
 
     def test_a_new_search_or_era_is_counted_again(self, screen: SearchScreen) -> None:
-        screen._offered_speakers = ["Donald"]
+        screen._said_by._offered = ["Donald"]
         screen._selected_word = "gold"
         screen._search.find_words.return_value = _said_in(
             {ENUM_TO_STR_TITLE[PIRATE_GOLD]: ["Donald"], ENUM_TO_STR_TITLE[HELMET]: ["Donald"]}
         )
-        assert screen._speaker_story_counts() == [("", 2), ("Donald", 2)]
+        assert screen._said_by.story_counts() == [("", 2), ("Donald", 2)]
         screen._selected_word = "helmet"
-        screen._speaker_story_counts()
+        screen._said_by.story_counts()
         assert screen._search.find_words.call_count == 2  # noqa: PLR2004
         with (
             patch.object(screen, "_rerun_word_results"),
             patch.object(screen, "_rerun_tag_results"),
         ):
             screen._set_era("1951-1954")
-        assert screen._speaker_story_counts() == [("", 1), ("Donald", 1)]  # the Helmet, 1951
+        assert screen._said_by.story_counts() == [("", 1), ("Donald", 1)]  # the Helmet, 1951
         assert screen._search.find_words.call_count == 3  # noqa: PLR2004
 
     def test_the_picked_speaker_stays_listed_at_none(self, screen: SearchScreen) -> None:
-        screen._offered_speakers = ["Donald", "Gyro"]
-        screen._speaker = "Gyro"
+        screen._said_by._offered = ["Donald", "Gyro"]
+        screen._said_by.speaker = "Gyro"
         screen._selected_word = "money"
         screen._search.find_words.return_value = _said_in({"A Story": ["Donald"]})
-        assert screen._speaker_story_counts() == [("", 1), ("Donald", 1), ("Gyro", 0)]
+        assert screen._said_by.story_counts() == [("", 1), ("Donald", 1), ("Gyro", 0)]
 
     def test_a_typed_query_is_counted_by_running_it_under_each_speaker(
         self, screen: SearchScreen
     ) -> None:
         """Not from everyone's bubbles: under a speaker, every bubble found must be theirs."""
-        screen._offered_speakers = ["Donald", "Scrooge"]
+        screen._said_by._offered = ["Donald", "Scrooge"]
         screen._word_query = "gold mine"
         stories = {None: 3, "Donald": 0, "Scrooge": 1}
         screen._search.run_word_query.side_effect = lambda _q, speaker, **_kw: WordQueryResult(
             title_dict=_found(*(f"Story {i}" for i in range(stories[speaker])))
         )
-        assert screen._speaker_story_counts() == [("", 3), ("Scrooge", 1)]
+        assert screen._said_by.story_counts() == [("", 3), ("Scrooge", 1)]
         assert [c.kwargs["speaker"] for c in screen._search.run_word_query.call_args_list] == [
             None,
             "Donald",
@@ -1678,7 +1694,7 @@ class TestSpeakerFilter:
         ]
 
     def test_the_counts_are_in_the_era(self, screen: SearchScreen) -> None:
-        screen._offered_speakers = ["Donald"]
+        screen._said_by._offered = ["Donald"]
         screen._selected_word = "gold"
         screen._search.find_words.return_value = _said_in(
             {ENUM_TO_STR_TITLE[PIRATE_GOLD]: ["Donald"], ENUM_TO_STR_TITLE[HELMET]: ["Donald"]}
@@ -1688,31 +1704,31 @@ class TestSpeakerFilter:
             patch.object(screen, "_rerun_tag_results"),
         ):
             screen._set_era("1951-1954")
-        assert screen._speaker_story_counts() == [("", 1), ("Donald", 1)]  # the Helmet, 1951
+        assert screen._said_by.story_counts() == [("", 1), ("Donald", 1)]  # the Helmet, 1951
 
     def test_the_chip_opens_the_list_of_who_says_it(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         screen._selected_word = "money"
         _offer_speakers(screen, "Donald")
-        with patch.object(screen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS):
+        with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
             _press(_said_by_chip(screen))
 
-        speaker_list = cast("_FakeSpeakerList", screen._said_by_dropdown)
+        speaker_list = cast("_FakeSpeakerList", screen._said_by.dropdown)
         assert speaker_list.is_open
         assert [(r.text, r.count_text, r.selected) for r in speaker_list.rows] == [
             ("anyone", "3", False),
             ("Donald", "2", True),  # the one picked now
             ("Scrooge", "1", False),
         ]
-        assert screen._speaker_row.selected == search_screen._SAID_BY  # still filled
+        assert screen._said_by.row.selected == search_widgets._SAID_BY  # still filled
         assert log_markers.SPEAKER_LIST_OPENED.format(count=2) in loguru_sink
         assert screen._focus.area == "input"  # a click: the keyboard stays where it was
 
     def test_a_list_the_mouse_opened_is_open_without_the_keys(self, screen: SearchScreen) -> None:
         screen._selected_word = "money"
         _offer_speakers(screen, "Donald")
-        with patch.object(screen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS):
+        with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
             _press(_said_by_chip(screen))
         assert screen.has_list_open_without_the_keys() is True
         screen.close_open_list()
@@ -1723,16 +1739,16 @@ class TestSpeakerFilter:
     ) -> None:
         screen._selected_word = "money"
         _offer_speakers(screen, "Donald")
-        with patch.object(screen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS):
+        with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
             _press(_said_by_chip(screen))
         on_exit = MagicMock()
-        with patch.object(screen, "_update_dropdown_focus"):
+        with patch.object(screen._said_by, "_update_dropdown_focus"):
             screen.take_keys_onto_open_list(on_exit)
         assert screen._focus.active is True
         assert screen._nav_on_exit_request is on_exit
         assert screen._focus.area == "said_by_list"
-        assert screen._dropdown_nav_mode is True
-        assert screen._dropdown_focused_idx == 1  # Donald, the one picked now
+        assert screen._said_by._dropdown_nav_mode is True
+        assert screen._said_by._dropdown_focused_idx == 1  # Donald, the one picked now
         assert screen.has_list_open_without_the_keys() is False
 
     def test_picking_a_speaker_reruns_the_search_filtered(
@@ -1748,7 +1764,7 @@ class TestSpeakerFilter:
             _pick_speaker(screen, "Scrooge")
 
         screen._search.find_words.assert_called_once_with("money", speaker="Scrooge")
-        assert not cast("_FakeSpeakerList", screen._said_by_dropdown).is_open
+        assert not cast("_FakeSpeakerList", screen._said_by.dropdown).is_open
         assert _said_by_chip(screen).text == "Said by: Scrooge"
         assert 'Word search: speaker filter "Scrooge".' in loguru_sink  # the line is unchanged
 
@@ -1763,30 +1779,30 @@ class TestSpeakerFilter:
             _pick_speaker(screen, "")
 
         screen._search.find_words.assert_called_once_with("money", speaker=None)
-        assert screen._speaker == ""
+        assert screen._said_by.speaker == ""
         assert log_markers.SPEAKER_FILTER_SET.format(speaker="All") in loguru_sink
 
     def test_clear_resets_the_filter_and_hides_the_chip(self, screen: SearchScreen) -> None:
         screen._selected_word = "money"
         _offer_speakers(screen, "Scrooge")
         screen.on_word_clear()
-        assert (screen._speaker, screen._speaker_row.chips) == ("", [])
+        assert (screen._said_by.speaker, screen._said_by.row.chips) == ("", [])
 
     def test_editing_the_box_hides_the_chip_with_the_results(self, screen: SearchScreen) -> None:
         screen._selected_word = "money"
         _offer_speakers(screen, "Scrooge")
         screen._search.get_words_matching.return_value = TermMatches([], 0)
         screen.on_word_search_text("mon")
-        assert screen._speaker_row.chips == []
-        assert screen._speaker == "Scrooge"  # kept for the next word
+        assert screen._said_by.row.chips == []
+        assert screen._said_by.speaker == "Scrooge"  # kept for the next word
 
     def test_the_list_closes_with_the_screen(self, screen: SearchScreen) -> None:
         screen._selected_word = "money"
         _offer_speakers(screen)
-        with patch.object(screen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS):
+        with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
             _press(_said_by_chip(screen))
         screen.on_is_visible(screen, value=False)
-        assert not cast("_FakeSpeakerList", screen._said_by_dropdown).is_open
+        assert not cast("_FakeSpeakerList", screen._said_by.dropdown).is_open
 
     @staticmethod
     def _stories_by(says: dict[str | None, int]) -> object:
@@ -1810,11 +1826,11 @@ class TestSpeakerFilter:
         speaker_after: str,
         stories: int,
     ) -> None:
-        screen._speaker = "Gladstone"
+        screen._said_by.speaker = "Gladstone"
         screen._search.find_words.side_effect = self._stories_by(says)
         with patch.object(screen, "_list_word_stories") as listed:
             screen._on_word_chip_selected("bumps-a-daisy")
-        assert screen._speaker == speaker_after
+        assert screen._said_by.speaker == speaker_after
         assert len(listed.call_args.args[0]) == stories
         lifted = log_markers.SPEAKER_FILTER_LIFTED.format(speaker="Gladstone", text="bumps-a-daisy")
         assert (lifted in loguru_sink) == (speaker_after == "")
@@ -1823,24 +1839,24 @@ class TestSpeakerFilter:
         self, screen: SearchScreen
     ) -> None:
         """An era or scope the speaker says none of lists nothing, as asked."""
-        screen._speaker = "Gladstone"
+        screen._said_by.speaker = "Gladstone"
         screen._selected_word = "bumps-a-daisy"
         screen._search.find_words.side_effect = self._stories_by({"Gladstone": 0, None: 4})
         with patch.object(screen, "_list_word_stories") as listed:
             screen._rerun_word_results()
-        assert screen._speaker == "Gladstone"
+        assert screen._said_by.speaker == "Gladstone"
         assert listed.call_args.args[0] == {}
 
     def test_a_new_query_the_speaker_says_none_of_lifts_the_filter(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
-        screen._speaker = "Gladstone"
+        screen._said_by.speaker = "Gladstone"
         screen._search.run_word_query.side_effect = lambda _q, speaker, **_kw: WordQueryResult(
             title_dict=_found() if speaker else _found("Story A", "Story B")
         )
         with patch.object(screen, "_list_query_words"), patch.object(screen, "_list_word_stories"):
             screen._run_word_query("bumps-a-daisy AND hat")
-        assert screen._speaker == ""
+        assert screen._said_by.speaker == ""
         assert log_markers.WORD_QUERY_RUN.format(text="bumps-a-daisy AND hat", count=2) in (
             loguru_sink
         )
@@ -1849,16 +1865,16 @@ class TestSpeakerFilter:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         """Not the speaker's doing: lifting the filter would find nothing either."""
-        screen._speaker = "Gladstone"
+        screen._said_by.speaker = "Gladstone"
         screen._search.run_word_query.return_value = WordQueryResult(title_dict=_found())
         with patch.object(screen, "_list_query_words"), patch.object(screen, "_list_word_stories"):
             screen._run_word_query("bumps-a-daisy AND hat")
-        assert screen._speaker == "Gladstone"
+        assert screen._said_by.speaker == "Gladstone"
         assert screen._search.run_word_query.call_count == 2  # noqa: PLR2004
         assert not any(line.startswith("Speaker filter lifted") for line in loguru_sink)
 
     def test_bubbles_popup_is_told_the_filter(self, screen: SearchScreen) -> None:
-        screen._speaker = "Scrooge"
+        screen._said_by.speaker = "Scrooge"
         screen._selected_word = "money"
         screen._speech_bubble_popup = MagicMock()
         screen._font_manager = MagicMock()
@@ -1887,21 +1903,21 @@ class TestSpeakerChipKeys:
     def screen(self) -> Iterator[SearchScreen]:
         with _bare_screen(
             None,
-            patch.object(SearchScreen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS),
+            patch.object(SaidByFilter, "story_counts", return_value=_SPEAKER_COUNTS),
             patch.object(SearchScreen, "_rerun_word_results"),
             nav="speakers",
             _active_mode="Word",
             _selected_word="money",
         ) as bare:
             # A chip that Enter presses, as a Kivy button's trigger_action does.
-            bare._speaker_row = ChipRow(MagicMock(), _live_chip, bare._on_said_by_chip_pressed)
+            bare._said_by.row = ChipRow(MagicMock(), _live_chip, bare._said_by._on_chip_pressed)
             _offer_speakers(bare, "Donald")
-            bare._speaker_row.enter_focus()
+            bare._said_by.row.enter_focus()
             yield bare
 
     @staticmethod
     def _list(screen: SearchScreen) -> _FakeSpeakerList:
-        return cast("_FakeSpeakerList", screen._said_by_dropdown)
+        return cast("_FakeSpeakerList", screen._said_by.dropdown)
 
     def test_enter_opens_the_list_on_the_speaker_picked_now(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -1909,19 +1925,19 @@ class TestSpeakerChipKeys:
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert self._list(screen).is_open
         assert screen._focus.area == "said_by_list"
-        assert screen._dropdown_focused_idx == 1  # Donald
-        assert screen._speaker_row.focused is None
+        assert screen._said_by._dropdown_focused_idx == 1  # Donald
+        assert screen._said_by.row.focused is None
         assert loguru_sink[-1] == 'Nav focus on _SaidByItem "Donald".'
 
     def test_enter_with_a_speaker_no_longer_listed_opens_the_list_on_anyone(
         self, screen: SearchScreen
     ) -> None:
         """A new search can leave the picked speaker out of those offered."""
-        screen._speaker = "Gyro"  # picked before; not among Donald and Scrooge
+        screen._said_by.speaker = "Gyro"  # picked before; not among Donald and Scrooge
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert self._list(screen).is_open
         assert screen._focus.area == "said_by_list"
-        assert screen._dropdown_focused_idx == 0  # anyone
+        assert screen._said_by._dropdown_focused_idx == 0  # anyone
 
     def test_down_and_enter_pick_a_speaker_and_return_to_the_chip(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -1931,19 +1947,19 @@ class TestSpeakerChipKeys:
         assert loguru_sink[-1] == 'Nav focus on _SaidByItem "Scrooge".'
         assert screen.handle_key(search_screen.KEY_ENTER) is True
 
-        assert screen._speaker == "Scrooge"
+        assert screen._said_by.speaker == "Scrooge"
         assert log_markers.SPEAKER_FILTER_SET.format(speaker="Scrooge") in loguru_sink
         assert not self._list(screen).is_open
-        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._said_by.row.focused) == ("speakers", 0)
         assert _said_by_chip(screen).text == "Said by: Scrooge"
 
     def test_escape_closes_the_list_and_keeps_the_filter(self, screen: SearchScreen) -> None:
         screen.handle_key(search_screen.KEY_ENTER)
         screen.handle_key(search_screen.KEY_DOWN)
         assert screen.handle_key(KEY_ESCAPE) is True
-        assert screen._speaker == "Donald"
+        assert screen._said_by.speaker == "Donald"
         assert not self._list(screen).is_open
-        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._said_by.row.focused) == ("speakers", 0)
 
     def test_the_open_list_keeps_every_key(self, screen: SearchScreen) -> None:
         screen.handle_key(search_screen.KEY_ENTER)
@@ -1953,7 +1969,7 @@ class TestSpeakerChipKeys:
 
     def test_right_stays_on_the_chip(self, screen: SearchScreen) -> None:
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._said_by.row.focused) == ("speakers", 0)
 
     def test_left_returns_to_the_word_list(self, screen: SearchScreen) -> None:
         word_chips = [MagicMock(text="cash"), MagicMock(text="money")]
@@ -1965,13 +1981,13 @@ class TestSpeakerChipKeys:
 
         assert screen._focus.area == "tags"
         assert screen._focus.chip_index == 1  # back on the selected word
-        assert screen._speaker_row.focused is None
+        assert screen._said_by.row.focused is None
         draw.assert_called_once()
 
     def test_left_stays_without_a_word_list(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_get_word_chip_buttons", return_value=[]):
             assert screen.handle_key(search_screen.KEY_LEFT) is True
-        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._said_by.row.focused) == ("speakers", 0)
 
     def test_down_goes_to_the_stories_under_the_chip(self, screen: SearchScreen) -> None:
         with (
@@ -1980,14 +1996,14 @@ class TestSpeakerChipKeys:
         ):
             assert screen.handle_key(search_screen.KEY_DOWN) is True
         assert screen._focus.area == "results"
-        assert screen._speaker_row.focused is None
+        assert screen._said_by.row.focused is None
         draw.assert_called_once_with()
 
     def test_up_goes_to_the_era_row_over_the_chip(self, screen: SearchScreen) -> None:
         assert screen.handle_key(search_screen.KEY_UP) is True
         assert screen._focus.area == "era"
         assert screen._era_rows["Word"].focused == 0  # on All years, the one picked
-        assert screen._speaker_row.focused is None
+        assert screen._said_by.row.focused is None
 
     def test_escape_leaves_the_screen(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_nav_escape") as escape:
@@ -2001,9 +2017,9 @@ class TestSpeakerChipKeys:
     def test_right_from_the_word_list_lands_on_the_era_row_first(
         self, screen: SearchScreen, has_chip: bool
     ) -> None:
-        screen._speaker_row.clear_focus()
+        screen._said_by.row.clear_focus()
         if not has_chip:
-            screen._speaker_row.set_options([])
+            screen._said_by.row.set_options([])
         screen._focus.area = FocusArea.TAGS
         with (
             patch.object(screen, "_get_active_chip_buttons", return_value=[MagicMock()]),
@@ -2013,27 +2029,27 @@ class TestSpeakerChipKeys:
         assert (screen._focus.area, screen._era_rows["Word"].focused) == ("era", 0)
 
     def test_down_from_the_era_is_the_chip(self, screen: SearchScreen) -> None:
-        screen._speaker_row.clear_focus()
+        screen._said_by.row.clear_focus()
         screen._nav_enter_era()
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._said_by.row.focused) == ("speakers", 0)
 
     def test_up_from_the_first_result_climbs_to_the_chip_then_the_era(
         self, screen: SearchScreen
     ) -> None:
-        screen._speaker_row.clear_focus()
+        screen._said_by.row.clear_focus()
         screen._focus.area = FocusArea.RESULTS
         with (
             patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
             patch.object(screen, "_clear_result_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_UP) is True
-        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._said_by.row.focused) == ("speakers", 0)
         assert screen.handle_key(search_screen.KEY_UP) is True
         assert screen._focus.area == "era"
 
     def test_up_from_the_era_is_the_box(self, screen: SearchScreen) -> None:
-        screen._speaker_row.set_options([])
+        screen._said_by.row.set_options([])
         screen._nav_enter_era()
         with patch.object(screen, "_focus_active_input") as focus:
             assert screen.handle_key(search_screen.KEY_UP) is True
@@ -2385,7 +2401,7 @@ class TestTagScope:
         self, screen: SearchScreen
     ) -> None:
         screen._listed_tag = "Gyro Gearloose"
-        screen._speaker = "Gyro"
+        screen._said_by.speaker = "Gyro"
         screen._era.select("1951-1954")  # the Andes (1948) is out: the Helmet alone is left
         screen._refresh_tag_scope()
         assert screen._scope_row.chips == []  # all that is left is the tag's
@@ -2400,7 +2416,7 @@ class TestTagScope:
         screen._refresh_tag_scope()
         screen._show_scope_row()
         searches.append(screen._search.find_words.call_count)
-        screen._speaker = "Gyro"
+        screen._said_by.speaker = "Gyro"
         screen._show_scope_row()
         searches.append(screen._search.find_words.call_count)
         assert searches == [1, 2]
@@ -3178,33 +3194,33 @@ class TestSaidByChipEdges:
     def screen(self) -> Iterator[SearchScreen]:
         with _bare_screen(
             None,
-            patch.object(SearchScreen, "_speaker_story_counts", return_value=_SPEAKER_COUNTS),
+            patch.object(SaidByFilter, "story_counts", return_value=_SPEAKER_COUNTS),
             patch.object(SearchScreen, "_rerun_word_results"),
             nav="speakers",
             _active_mode="Word",
             _selected_word="money",
         ) as bare:
-            bare._speaker_row = ChipRow(MagicMock(), _live_chip, bare._on_said_by_chip_pressed)
+            bare._said_by.row = ChipRow(MagicMock(), _live_chip, bare._said_by._on_chip_pressed)
             _offer_speakers(bare, "Donald")
-            bare._speaker_row.enter_focus()
+            bare._said_by.row.enter_focus()
             yield bare
 
     def test_the_chip_keeps_the_keyboard_when_its_speaker_changes(
         self, screen: SearchScreen
     ) -> None:
-        screen._speaker = "Scrooge"
-        screen._show_said_by_chip()
+        screen._said_by.speaker = "Scrooge"
+        screen._said_by.show()
         assert _said_by_chip(screen).text == "Said by: Scrooge"
-        assert screen._speaker_row.focused == 0
+        assert screen._said_by.row.focused == 0
 
     def test_a_list_that_cannot_open_logs_nothing_and_keeps_the_chip(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
-        with patch.object(search_screen, "open_dropdown", return_value=False):
+        with patch.object(search_said_by, "open_dropdown", return_value=False):
             assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert not any(line.startswith("Word search: speaker list opened") for line in loguru_sink)
         assert screen._focus.area == "speakers"
-        assert screen._speaker_row.focused == 0
+        assert screen._said_by.row.focused == 0
 
 
 class TestNavEdges:

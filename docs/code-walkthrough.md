@@ -841,14 +841,17 @@ overshoot can't hit it).
   - *Picked words and tags* are `core/search_state`'s `WordBasket` (run as a query of
     quoted words) and `TagBasket` (a `tag_query.TagSelection`, resolved by
     `BarksTitleSearch.get_titles_for_selection`); typed tags parse with `parse_tag_query`.
-  - *Filters*: the speaker row (from the index's `speakers.json` sidecar; an index without
-    it shows no row), the era (`EraChoice` over `CHRONO_YEAR_RANGES`, shared by both
+  - *Filters*: the speaker row (`ui/search_said_by.SaidByFilter`: its chip and its list,
+    from the index's `speakers.json` sidecar; an index without it shows no row), the era (`EraChoice` over `CHRONO_YEAR_RANGES`, shared by both
     modes) and the tag scope ("Only in: …") join in one `SearchFilter` for the word search
     (`_word_search_filter`, `search_screen.py`).
   - Every chip row (speakers, era, scope, the picked rows) is a `core/search_chip_row.ChipRow`,
     which owns its chips, the pick and Left/Right/Enter, and hands every other key back as a
     `RowKey`; the results panel's rows are one ordered list (`_panel_rows`,
     `search_screen.py`) with one key handler.
+  - The screen's small widgets (result rows, chips, the syntax help) are
+    `ui/search_widgets.py`, and where the keyboard is on the screen is one
+    `core/search_focus.SearchFocus`, shared with the parts that have left the screen.
 - **Index screens** (`ui/index_screen.py` base) — A–Z alphabet menu + item grid +
   drill-down + heavy keyboard nav. `MainIndexScreen` builds its index purely from
   the in-memory bibliography (`Titles`/`Tags`/`TagGroups`); `SpeechIndexScreen`
