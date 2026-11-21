@@ -833,10 +833,14 @@ class SearchScreen(FloatLayout):
             row.plus_button.text = _plus_text(row.chip.text in self._tag_basket)
 
     def _run_tag_basket(self) -> None:
-        """List the stories the picked tags list together; none picked, the results empty."""
+        """List the stories the picked tags list together; none picked, their results empty.
+
+        Only theirs: a tag listed alone since keeps its stories.
+        """
         if not self._tag_basket:
-            self._tag_basket_results = False
-            self._clear_tag_title_results()
+            if self._tag_basket_results:
+                self._tag_basket_results = False
+                self._clear_tag_title_results()
             return
         self._tag_basket_results = True
         selection = self._tag_basket.selection()
@@ -1121,16 +1125,16 @@ class SearchScreen(FloatLayout):
         self._basket_row.set_selected(BASKET_MODE_VALUE)
 
     def _run_basket(self) -> None:
-        """Search for the picked words together; with none picked, the results empty."""
+        """Search for the picked words together; with none picked, their results empty.
+
+        Only theirs: a word searched alone since keeps its stories.
+        """
         if self._word_basket:
             self._run_word_query(self._word_basket.query_text(), list_words=False)
             return
-        self._basket_results = False
-        self._word_query = ""
-        self._word_query_result = None
-        self._word_search_results = []
-        self.ids.word_results_layout.clear_widgets()
-        self._update_background_from_results([])
+        if self._basket_results:
+            self._basket_results = False
+            self._clear_word_results()
         self._show_result_filters()
 
     def _active_basket_row(self) -> ChipRow:

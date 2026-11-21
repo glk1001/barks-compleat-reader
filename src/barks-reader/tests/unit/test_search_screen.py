@@ -752,6 +752,22 @@ class TestWordBasket:
         screen._toggle_basket_word("gold")
         assert screen._word_basket.words == []
 
+    def test_an_emptied_basket_leaves_a_word_searched_alone_since(
+        self, screen: SearchScreen
+    ) -> None:
+        """The stories listed are that word's, not the basket's: they stay, with its filters."""
+        screen._toggle_basket_word("gold")
+        screen._search.find_words.return_value = _found("Story B")
+        screen._on_word_chip_selected("golden")
+        screen.ids.word_results_layout.clear_widgets.reset_mock()
+
+        _press(self._basket_chips(screen)[1])  # gold: taken out, the basket empty
+
+        assert screen._word_basket.words == []
+        assert screen._selected_word == "golden"
+        assert [row.title_str for row in screen._word_search_results] == ["Story B"]
+        screen.ids.word_results_layout.clear_widgets.assert_not_called()
+
     def test_typing_keeps_the_baskets_results(self, screen: SearchScreen) -> None:
         screen._toggle_basket_word("gold")
         screen.ids.word_results_layout.clear_widgets.reset_mock()
@@ -1187,6 +1203,19 @@ class TestTagBasket:
             _press(self._basket_chips(screen)[3])  # Scrooge: left out
         screen._on_tag_result_goto_title("Story 1")
         screen.on_goto_title.assert_called_once_with("Story 1", [Tags.GYRO_GEARLOOSE, Tags.DAISY])
+
+    def test_an_emptied_basket_leaves_a_tag_listed_alone_since(self, screen: SearchScreen) -> None:
+        """The stories listed are that tag's, not the picked tags': they stay."""
+        with patch.object(screen, "_populate_title_results"):
+            screen._toggle_tag_basket("Scrooge")
+            screen._on_tag_result_selected("Gyro")
+            screen.ids.tag_title_results_layout.clear_widgets.reset_mock()
+
+            screen._toggle_tag_basket("Scrooge")  # put back: none picked now
+
+        assert len(screen._tag_basket) == 0
+        assert (screen._selected_tag, screen._listed_tag) == ("Gyro", "Gyro")
+        screen.ids.tag_title_results_layout.clear_widgets.assert_not_called()
 
     def test_a_picked_tags_chip_steps_it_to_left_out_then_back(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_populate_title_results"):
