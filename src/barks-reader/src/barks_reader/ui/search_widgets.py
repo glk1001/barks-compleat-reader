@@ -200,6 +200,25 @@ class _TagRow(BoxLayout):
         self.add_widget(plus_button)
 
 
+def _chip_stack(indent: float = 0) -> BoxLayout:
+    """Return an empty stack for the tag list's chips: as tall as the rows it is given.
+
+    Args:
+        indent: How far in from the left its rows start, past the stack's own
+            edge: a group's members sit in from the group.
+
+    """
+    edge = dp(2)
+    stack = BoxLayout(
+        orientation="vertical",
+        size_hint_y=None,
+        spacing=dp(4),
+        padding=[edge + indent, edge, edge, edge],
+    )
+    stack.bind(minimum_height=stack.setter("height"))
+    return stack
+
+
 def _plus_text(picked: bool) -> str:
     return "\u2013" if picked else "+"  # an en dash: a minus the width of the +
 

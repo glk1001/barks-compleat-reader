@@ -212,6 +212,17 @@ def _press_at(widget: Widget, x: float, y: float) -> bool:
     return bool(widget.on_touch_down(touch))
 
 
+def test_a_chip_stack_is_as_tall_as_its_rows_and_a_members_stack_sits_in() -> None:
+    stack = search_widgets._chip_stack()
+    assert stack.padding == [dp(2)] * 4
+    stack.add_widget(Button(size_hint_y=None, height=dp(30)))
+    stack.add_widget(Button(size_hint_y=None, height=dp(30)))
+    stack.do_layout()
+    assert stack.height == stack.minimum_height == dp(30) * 2 + dp(4) + dp(2) * 2
+
+    assert search_widgets._chip_stack(indent=dp(22)).padding == [dp(24), dp(2), dp(2), dp(2)]
+
+
 class TestAHiddenModeTakesNoPresses:
     """Hidden, a mode's era chips wrap into a column over the shown mode's stories."""
 
@@ -664,7 +675,7 @@ class TestTypedQuery:
             patch.object(screen, "_get_word_chip_buttons", return_value=rows),
             patch.object(screen, "_draw_chip_focus"),
         ):
-            screen._nav_back_to_word_chips()
+            screen._nav_back_to_chips()
         assert screen._focus.chip_index == 0
 
     def test_clear_forgets_the_query(self, screen: SearchScreen) -> None:
@@ -2853,7 +2864,7 @@ class TestResultsKeys:
     ) -> None:
         with (
             patch.object(screen, "_get_word_chip_buttons", return_value=[MagicMock()]),
-            patch.object(screen, "_nav_back_to_word_chips") as back,
+            patch.object(screen, "_nav_back_to_chips") as back,
         ):
             assert self._key(screen, search_screen.KEY_LEFT) is True
         back.assert_called_once_with()
@@ -2883,7 +2894,7 @@ class TestResultsKeys:
         assert pressed == ["Story X"]
         with (
             patch.object(screen, "_get_tag_chip_buttons", return_value=[MagicMock()]),
-            patch.object(screen, "_nav_back_to_tag_chips") as back,
+            patch.object(screen, "_nav_back_to_chips") as back,
         ):
             assert self._key(screen, search_screen.KEY_LEFT) is True
         back.assert_called_once_with()
