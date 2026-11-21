@@ -248,3 +248,9 @@ jobs:
         env:
           COMPARE: ${{ steps.compare.outputs.ref }}
         run: uv run diff-cover coverage.xml --compare-branch="$COMPARE" --fail-under=80
+
+      # The total hides a slide in a small package, and the changed-lines rule lets
+      # one at 100% drift down a few lines at a time (scripts/package_coverage.py).
+      - name: Hold each package to its coverage floor
+        if: ${{ !cancelled() }}
+        run: uv run python scripts/package_coverage.py

@@ -1,13 +1,14 @@
 #!/bin/bash
-# Enforce test coverage on CHANGED lines only, not the whole tree.
+# Enforce test coverage on the lines a branch changes, and on each package.
 #
-# The global coverage floor (fail_under in pyproject) is deliberately low because
-# the Kivy UI layer is hard to unit-test. diff-cover complements it: whatever code a
-# branch adds or modifies must itself be covered, so overall coverage ratchets up
-# instead of eroding — without demanding the whole app hit a high bar at once.
+# diff-cover: whatever code a branch adds or modifies must itself be 80% covered.
+# Only lines in the measured coverage source ([tool.coverage.run] source in
+# pyproject.toml) are counted; changes elsewhere pass for free.
 #
-# Only lines in the measured coverage source ([tool.coverage.run] source, currently
-# barks_reader + barks_fantagraphics) are counted; changes elsewhere pass for free.
+# package_coverage.py: each measured package must stay at or above its own floor, a
+# point below what it reached, so a package near 100% cannot drift down a few lines
+# at a time inside that 80%. The total's own floor in pyproject (fail_under) is far
+# below the real figure and guards nothing.
 #
 # Usage:
 #   bash scripts/diff-cover.sh                  # compare against origin/main
@@ -27,3 +28,5 @@ fi
 
 uv run pytest -q --cov --cov-report=xml
 uv run diff-cover coverage.xml --compare-branch="$base" --fail-under="$fail_under"
+# Each package against its own floor, from the same run (package_coverage.py says why).
+uv run python scripts/package_coverage.py

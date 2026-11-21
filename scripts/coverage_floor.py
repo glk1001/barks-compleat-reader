@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Hold the overnight run's combined coverage to a floor that follows the best it reached.
 
-``pyproject.toml``'s ``fail_under`` (40) is sized for CI, whose unit suite skips the
-tests that need the data pack, so it guards nothing near the real figure. The
+``pyproject.toml``'s ``fail_under`` (40) guards nothing near the real figure, and
+``package_coverage.py`` holds the unit suite alone, package by package. The
 overnight run's coverage stage combines the unit suite with the GUI tests (about
 87% on 2026-09-27) and passes the total here: it fails when the total is more than
 the tolerance below the best recorded in ``.benchmarks/coverage.json``

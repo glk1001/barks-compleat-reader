@@ -330,8 +330,10 @@ just reader
   (`src/barks-fantagraphics/tests/test_title_search.py`).
 - **Everything else** (lint, type checks, spelling, benchmarks): `bash scripts/full-lint.sh`,
   or with `--with-gui-test` to include the GUI suite. CI also runs a `diff-coverage` job:
-  the lines a push changes must be at least 80% covered (`diff-cover`; `scripts/diff-cover.sh`
-  runs the same check locally).
+  the lines a push changes must be at least 80% covered (`diff-cover`), and each package's
+  unit-suite coverage must stay at or above its own floor (`scripts/package_coverage.py`:
+  97.8% to 99%, a point below what each reached). `scripts/diff-cover.sh` runs both
+  checks locally.
 - **The whole-repo overnight run** runs everything worth a night that the gates
   (pre-commit, pre-push, CI) leave out, because it is slow or needs local data: the
   checks on the real data pack and the sibling repos, the full lint and test suite from a

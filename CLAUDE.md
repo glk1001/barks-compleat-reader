@@ -191,8 +191,9 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
   `src/barks-fantagraphics/tests/`, `src/barks-build-comic-images/tests/`, `src/okf-reader/tests/`,
   `src/comic-utils/tests/`) and the scripts' in `scripts/tests/`; see `testpaths` in `pyproject.toml`.
   Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
-  CI's `diff-coverage` job holds the lines a push changes to 80% coverage (`diff-cover`;
-  `scripts/diff-cover.sh` runs it locally).
+  CI's `diff-coverage` job holds the lines a push changes to 80% coverage (`diff-cover`) and
+  each package to its own floor (`scripts/package_coverage.py`, a point below what it
+  reached); `scripts/diff-cover.sh` runs both locally.
 - Corpus consistency (every title's panel files, prebuilt comic, layout, panel-segments
   JSONs, wiki joins, splash tags, the search index and the Statistics charts' sidecar) is `scripts/validate-barks-reader-files.py`, run against the real
   data pack, nightly rather than in a gate; its tests are in `scripts/tests/`. The GUI tests
