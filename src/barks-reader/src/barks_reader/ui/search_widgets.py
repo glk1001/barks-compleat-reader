@@ -95,7 +95,7 @@ class _QueryRowButton(_SearchResultButton):
 class _SuggestionButton(_SearchResultButton):
     """A close spelling for a word of the query that is in no story: pressing it swaps it in."""
 
-    def __init__(self, suggestion: Suggestion, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, suggestion: Suggestion, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self.suggestion = suggestion
 
@@ -139,7 +139,7 @@ class SearchSyntaxHelp(BoxLayout):
     examples: HelpExamples = ObjectProperty(())
     note = StringProperty()  # under the examples; none takes no room
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._show_examples()
 
@@ -238,7 +238,7 @@ class _TagChipButton(Button):
     is_group = BooleanProperty(defaultvalue=False)
     is_open = BooleanProperty(defaultvalue=False)
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         if "chip_bg_color" not in kwargs:
             self.chip_bg_color = chip_bg_normal()

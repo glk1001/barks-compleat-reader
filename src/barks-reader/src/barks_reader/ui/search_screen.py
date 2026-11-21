@@ -186,7 +186,7 @@ class SearchScreen(FloatLayout):
         self,
         reader_settings: ReaderSettings,
         font_manager: FontManager,
-        **kwargs,  # noqa: ANN003
+        **kwargs: object,
     ) -> None:
         # Where the keyboard is. Made first: building the kv layout reads it.
         self._focus = SearchFocus()
@@ -211,7 +211,7 @@ class SearchScreen(FloatLayout):
 
         self._active_mode: str = "Title"
 
-        self._nav_on_exit_request: Callable | None = None
+        self._nav_on_exit_request: Callable[[], None] | None = None
         # Set by MainScreenNavigation; lets Enter in a search input pull the app's
         # keyboard focus to this screen when nav isn't active (mouse-click flow).
         self.on_request_nav_focus: Callable[[], None] | None = None
@@ -1300,7 +1300,7 @@ class SearchScreen(FloatLayout):
         """Close the speaker list."""
         self._said_by.close_list()
 
-    def take_keys_onto_open_list(self, on_exit_request: Callable) -> None:
+    def take_keys_onto_open_list(self, on_exit_request: Callable[[], None]) -> None:
         """Take the keys onto the open speaker list, the ring on the speaker picked now.
 
         The ring the keys left elsewhere (a story, a chip) goes: the list has them now.
@@ -1714,7 +1714,7 @@ class SearchScreen(FloatLayout):
 
     # --- Keyboard Navigation ---
 
-    def enter_nav_focus(self, on_exit_request: Callable) -> None:
+    def enter_nav_focus(self, on_exit_request: Callable[[], None]) -> None:
         """Take the keyboard, starting in the active search's box.
 
         Args:
@@ -1727,7 +1727,7 @@ class SearchScreen(FloatLayout):
         self._focus_active_input()
         logger.debug(log_markers.SEARCH_ENTERED_NAV)
 
-    def enter_nav_focus_at_last_result(self, on_exit_request: Callable) -> None:
+    def enter_nav_focus_at_last_result(self, on_exit_request: Callable[[], None]) -> None:
         """Enter nav focus, restoring focus to the last activated result if available."""
         self._nav_on_exit_request = on_exit_request
         self._focus.active = True
@@ -1742,7 +1742,7 @@ class SearchScreen(FloatLayout):
             self._focus_active_input()
         logger.debug(log_markers.SEARCH_ENTERED_NAV_AT_LAST_RESULT)
 
-    def adopt_nav_focus(self, on_exit_request: Callable) -> None:
+    def adopt_nav_focus(self, on_exit_request: Callable[[], None]) -> None:
         """Activate nav without resetting the focus area or grabbing the input.
 
         Unlike `enter_nav_focus`, this preserves whatever focus state the screen has
