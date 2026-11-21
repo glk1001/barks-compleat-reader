@@ -21,7 +21,6 @@ from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
 from kivy.graphics import Color, Line, Rectangle
 from kivy.metrics import dp, sp
-from kivy.uix.actionbar import ActionButton
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -31,7 +30,6 @@ from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.textinput import TextInput
-from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.treeview import TreeView, TreeViewLabel
 from kivy.uix.widget import Widget
 
@@ -48,6 +46,7 @@ from okf_reader.core.theme import ViewerThemeSpec
 from okf_reader.core.top_bar import TopBarSpec
 from okf_reader.ui import trace
 
+from .bar import TopBar
 from .focus_ring import (
     SIDEBAR_RING_GROUP,
     clear_focus_ring,
@@ -62,11 +61,10 @@ from .keynav import (
     KEY_HOME,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
     KEY_RIGHT,
     KEY_TAB,
     KEY_UP,
+    NAV_NOOP_KEYS,
     FocusRegion,
     step_index,
 )
@@ -76,15 +74,12 @@ from .widgets import (
     TABLE_FONT_NAME,
     DirNode,
     FlatButton,
-    IconToggleButton,
     LazyTable,
     PageLabel,
     PageNode,
     add_text_backing,
-    bar_separator,
     result_markup,
     scroll_view,
-    tint_bar_icon,
 )
 
 if TYPE_CHECKING:
@@ -93,8 +88,9 @@ if TYPE_CHECKING:
 
     from kivy.input.motionevent import MotionEvent
     from kivy.uix.scrollview import ScrollView
+    from kivy.uix.togglebutton import ToggleButton
 
-    from okf_reader.core.actions import PageAction, PageActionProvider
+    from okf_reader.core.actions import PageActionProvider
     from okf_reader.core.backgrounds import ImageProvider
     from okf_reader.core.bundle import ConceptNode
     from okf_reader.core.search import SearchHit, SearchProvider
@@ -217,12 +213,6 @@ _TREE_REVEAL_MAX_FRAMES = 30
 # about one tree row's height, so anything less than a full hidden row snaps.
 TREE_TOP_SNAP = 28  # dp
 
-# Navigation keys consumed as no-ops where nothing can move (an open footnote
-# popup, an empty sidebar state): they must not leak to the hosting app.
-_NAV_NOOP_KEYS = frozenset(
-    {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_PAGE_UP, KEY_PAGE_DOWN, KEY_HOME, KEY_END}
-)
-
 
 @dataclass
 class _HistoryEntry:
@@ -282,7 +272,6 @@ class OKFViewer(RelativeLayout):
         # "leave the reader" action. None (the standalone case) leaves Back a no-op
         # at the root, since the reader is the whole app.
         self._on_exit = on_exit
-        self._page_action: PageAction | None = None
         self._band_colors: list[Color] = []  # the current page's section-band Colors
         self._init_keyboard_nav()
 
@@ -293,7 +282,15 @@ class OKFViewer(RelativeLayout):
         self.add_widget(self.bg_image)
         root = BoxLayout(orientation="vertical", size_hint=(1, 1))
         self.add_widget(root)
-        root.add_widget(self._build_top_bar(top_bar if top_bar is not None else TopBarSpec()))
+        self._bar = TopBar(
+            top_bar if top_bar is not None else TopBarSpec(),
+            self._theme.icon_tint,
+            on_home=lambda: self._show(self.bundle / "index.md", push=True),
+            on_back=self.go_back,
+            on_contrast_state=self._on_contrast_state,
+            on_leave=lambda: self._set_focus_region(self._bar_return_region),
+        )
+        root.add_widget(self._bar.widget)
         self._content = BoxLayout(
             orientation="horizontal", spacing=PANEL_GAP, padding=CONTENT_PADDING, size_hint=(1, 1)
         )
@@ -364,6 +361,26 @@ class OKFViewer(RelativeLayout):
         # (see `PageLinks.line_step`), so the ring never lands on an arbitrary
         # breadcrumb link.
         self._set_focus_region(FocusRegion.PAGE if start_page is not None else FocusRegion.SIDEBAR)
+
+    @property
+    def bar_drag_region(self) -> Label:
+        """The bar's heading: the window-drag region when the bar replaces the OS titlebar."""
+        return self._bar.drag_region
+
+    @property
+    def back_btn(self) -> Button:
+        """The bar's Back button."""
+        return self._bar.back_btn
+
+    @property
+    def contrast_btn(self) -> ToggleButton:
+        """The bar's Contrast toggle."""
+        return self._bar.contrast_btn
+
+    @property
+    def action_btn(self) -> Button | None:
+        """The bar's button for the page's action, when the page has one."""
+        return self._bar.action_btn
 
     def _show_start_page(self, start_page: Path | None) -> None:
         """Show the opening page: the caller's choice, else the session's, else home.
@@ -453,143 +470,6 @@ class OKFViewer(RelativeLayout):
         self._left_body.add_widget(self.tree_scroll)
         left.add_widget(self._left_body)
         return left
-
-    def _build_top_bar(self, spec: TopBarSpec) -> BoxLayout:
-        """Build the action-bar strip: app icon, markup heading, right-edge buttons.
-
-        A Python rendition of the Barks Reader's kv action-bar idiom. Creates
-        ``back_btn``, ``contrast_btn`` and the page-action slot as it goes,
-        recording each activatable button for the bar's keyboard focus
-        (see `_bar_nav_buttons`).
-        """
-        bar = BoxLayout(
-            orientation="horizontal",
-            size_hint_y=None,
-            height=round(dp(spec.height)),
-            padding=(dp(2), 0, dp(5), 0),
-            spacing=dp(5),
-        )
-        with bar.canvas.before:  # ty: ignore[missing-union-attribute]
-            Color(rgba=spec.bg_color)
-            bar_bg = Rectangle(pos=bar.pos, size=bar.size)
-        bar.bind(
-            pos=lambda _inst, pos: setattr(bar_bg, "pos", pos),
-            size=lambda _inst, size: setattr(bar_bg, "size", size),
-        )
-
-        self._bar_home_btn: Button | None = None  # the icon's hitbox, when there is an icon
-        if spec.icon_path is not None:
-            bar.add_widget(self._build_bar_icon(spec.icon_path, spec.icon_width))
-
-        # The heading takes all the stretch space, pinning the buttons right.
-        # Kept as an attribute: it doubles as the window-drag region when the
-        # app replaces the OS titlebar with this bar (see OKFApp.on_start) —
-        # the Barks Reader's draggable_title_bar arrangement, where only the
-        # title area drags and the icon/buttons stay clickable.
-        self.bar_drag_region = Label(
-            text=spec.title_markup,
-            color=spec.title_color,
-            markup=True,
-            halign="left",
-            valign="middle",
-        )
-        self.bar_drag_region.bind(size=lambda inst, size: inst.setter("text_size")(inst, size))
-        bar.add_widget(self.bar_drag_region)
-
-        bar.add_widget(bar_separator(spec.separator_color))
-
-        if spec.back_icon_path is not None:
-            # ActionButton is the Barks bars' BarButton base: standalone it
-            # renders as a dp(48) icon button on a flat action-item background.
-            self.back_btn = ActionButton(icon=str(spec.back_icon_path), mipmap=True, disabled=True)
-            tint_bar_icon(self.back_btn, self._theme.icon_tint)
-        else:
-            self.back_btn = Button(text="< Back", size_hint_x=None, width=dp(90), disabled=True)
-        self.back_btn.bind(on_release=lambda *_: self.go_back())
-        bar.add_widget(self.back_btn)
-
-        # Dials the section bands from their subtle default up to near-opaque
-        # (BLOCK_BG_CONTRAST_ALPHA) when the background image fights the text.
-        if spec.contrast_on_icon_path is None:
-            self.contrast_btn = ToggleButton(text="Contrast", size_hint_x=None, width=dp(90))
-        else:
-            assert spec.contrast_off_icon_path is not None
-            self.contrast_btn = IconToggleButton(
-                str(spec.contrast_on_icon_path), str(spec.contrast_off_icon_path)
-            )
-            tint_bar_icon(self.contrast_btn, self._theme.icon_tint)
-        self.contrast_btn.bind(state=self._on_contrast_state)
-        bar.add_widget(self.contrast_btn)
-
-        # The page's contextual action (see PageActionProvider): an empty
-        # fixed-width slot until a page offers one — _set_page_action fills it
-        # with a text or icon button (the two render too differently to
-        # restyle one persistent widget).
-        self.action_btn: Button | None = None
-        self._action_slot = AnchorLayout(size_hint_x=None, width=0)
-        bar.add_widget(self._action_slot)
-
-        # The exit control sits alone in the window corner (with the OS titlebar
-        # replaced by this bar, it is the window's only close control), fenced
-        # off by a separator so an overshoot on the working buttons can't kill
-        # the app.
-        bar.add_widget(bar_separator(spec.separator_color, spec.quit_fence_width))
-        if spec.close_icon_path is not None:
-            quit_btn = ActionButton(icon=str(spec.close_icon_path), mipmap=True)
-            tint_bar_icon(quit_btn, self._theme.icon_tint)
-        else:
-            quit_btn = Button(text="Quit", size_hint_x=None, width=dp(70))
-
-        # The embedding app's leave-this-screen action, else stop the app (the
-        # standalone case, where this bar carries the window's only close control).
-        on_close = spec.on_close or (lambda: App.get_running_app().stop())
-        quit_btn.bind(on_release=lambda *_: on_close())
-        bar.add_widget(quit_btn)
-        self._quit_btn = quit_btn
-        return bar
-
-    def _bar_nav_buttons(self) -> list[Widget]:
-        """Return the bar's activatable buttons in visual order, skipping absent/disabled ones.
-
-        Recomputed per key press: the page-action button comes and goes with the
-        page, and Back's disabled state follows the history.
-        """
-        candidates = [
-            self._bar_home_btn,
-            self.back_btn,
-            self.contrast_btn,
-            self.action_btn,
-            self._quit_btn,
-        ]
-        return [btn for btn in candidates if btn is not None and not btn.disabled]
-
-    def _build_bar_icon(self, icon_path: Path, icon_width: int) -> RelativeLayout:
-        """Build the bar's left-edge app icon: an image under a transparent hitbox.
-
-        The main-screen pattern — pressing dims the image, releasing shows the
-        bundle's home page.
-        """
-        icon_box = RelativeLayout(size_hint=(None, 1), width=dp(icon_width))
-        icon = Image(
-            source=str(icon_path),
-            size_hint=(None, None),
-            fit_mode="contain",
-            mipmap=True,
-            pos_hint={"center_x": 0.5, "center_y": 0.5},
-        )
-        # Slightly smaller than its container, for padding (the kv idiom).
-        icon_box.bind(
-            size=lambda _inst, size: setattr(icon, "size", (size[0] - dp(8), size[1] - dp(8)))
-        )
-        hitbox = Button(background_color=(0, 0, 0, 0), size_hint=(1, 1))
-        hitbox.bind(
-            state=lambda _inst, state: setattr(icon, "opacity", 0.5 if state == "down" else 1.0)
-        )
-        hitbox.bind(on_release=lambda *_: self._show(self.bundle / "index.md", push=True))
-        icon_box.add_widget(icon)
-        icon_box.add_widget(hitbox)
-        self._bar_home_btn = hitbox  # the bar's keyboard focus activates the home icon via this
-        return icon_box
 
     def _add_tree_nodes(
         self, nodes: Iterable[BundleDir | ConceptNode], parent: TreeViewLabel | None
@@ -972,33 +852,6 @@ class OKFViewer(RelativeLayout):
             return True
         return False
 
-    def _set_page_action(self, action: PageAction | None) -> None:
-        """Show the contextual bar button for ``action``, or hide it for None."""
-        if self.action_btn is not None and self._bar_focus_widget is self.action_btn:
-            self._clear_bar_focus()  # its ringed widget is being discarded with the slot
-        self._page_action = action
-        self._action_slot.clear_widgets()
-        if action is None:
-            self.action_btn = None
-            self._action_slot.width = 0
-            return
-        if action.icon_path is not None:
-            # The kv ActionButton style pins an icon button at dp(48) wide.
-            self.action_btn = ActionButton(icon=str(action.icon_path), mipmap=True)
-            tint_bar_icon(self.action_btn, self._theme.icon_tint)
-        else:
-            self.action_btn = Button(text=action.label, size_hint_x=None, width=dp(120))
-        self.action_btn.bind(on_release=lambda *_: self._run_page_action())
-        self._action_slot.add_widget(self.action_btn)
-        # Keep the slot tracking the button (the icon style computes its own width).
-        self.action_btn.bind(width=self._action_slot.setter("width"))
-        self._action_slot.width = self.action_btn.width
-
-    def _run_page_action(self) -> None:
-        if self._page_action is not None:
-            trace.page_action(self._page_action.label)
-            self._page_action.run()
-
     def go_back(self) -> None:
         """Navigate to the previous page, or leave the reader at the history's root.
 
@@ -1084,7 +937,6 @@ class OKFViewer(RelativeLayout):
         self._sidebar_index: int | None = None
         self._results_scroll: ScrollView | None = None
         self._footnote_popup: ModalView | None = None
-        self._bar_focus_widget: Widget | None = None  # the top-bar button wearing the gold ring
         self._bar_return_region = FocusRegion.SIDEBAR  # where leaving the bar drops the focus
 
     def handle_key(self, key: int, modifiers: Collection[str] = ()) -> bool:
@@ -1132,7 +984,7 @@ class OKFViewer(RelativeLayout):
             self._toggle_focus_region()
             return True
         region_handlers = {
-            FocusRegion.TOP_BAR: self._handle_bar_key,
+            FocusRegion.TOP_BAR: self._bar.handle_key,
             FocusRegion.SIDEBAR: self._handle_sidebar_key,
             FocusRegion.PAGE: self._handle_page_key,
         }
@@ -1173,56 +1025,11 @@ class OKFViewer(RelativeLayout):
         (Escape, Enter); when Back is disabled (the standalone reader at its
         history root) the focus starts on the bar's first button instead.
         """
-        buttons = self._bar_nav_buttons()
-        if not buttons:
+        if not self._bar.nav_buttons():
             return
         self._bar_return_region = self._focus_region
         self._set_focus_region(FocusRegion.TOP_BAR)
-        target = self.back_btn if self.back_btn in buttons else buttons[0]
-        self._set_bar_focus(target)
-
-    def _handle_bar_key(self, key: int) -> bool:
-        """Walk the top bar's buttons: Left/Right cycle, Enter activates, Down drops out.
-
-        Escape also drops out, handled centrally in `_handle_escape_key`.
-        Left/Right wrap, matching the comic reader's menu mode. Activation
-        returns the focus to the region it came from *before* triggering, so a
-        button that rebuilds the page (Back, the home icon) or closes the
-        embedding screen (Quit) never runs with the bar still focused.
-        """
-        buttons = self._bar_nav_buttons()
-        if not buttons:  # every button vanished (can't normally happen) — drop out
-            self._set_focus_region(self._bar_return_region)
-            return True
-        focused = self._bar_focus_widget
-        if key in (KEY_LEFT, KEY_RIGHT):
-            if focused in buttons:
-                idx = (buttons.index(focused) + (1 if key == KEY_RIGHT else -1)) % len(buttons)
-            else:  # the ringed button was removed/disabled under us — re-seed
-                idx = 0
-            self._set_bar_focus(buttons[idx])
-            return True
-        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            if focused in buttons:
-                self._set_focus_region(self._bar_return_region)
-                focused.trigger_action(duration=0)
-            return True
-        if key == KEY_DOWN:
-            self._set_focus_region(self._bar_return_region)
-            return True
-        return key in _NAV_NOOP_KEYS
-
-    def _set_bar_focus(self, btn: Widget) -> None:
-        """Move the gold ring to top-bar button ``btn``."""
-        if self._bar_focus_widget is not None:
-            clear_focus_ring(self._bar_focus_widget)
-        self._bar_focus_widget = btn
-        draw_focus_ring(btn)
-
-    def _clear_bar_focus(self) -> None:
-        if self._bar_focus_widget is not None:
-            clear_focus_ring(self._bar_focus_widget)
-            self._bar_focus_widget = None
+        self._bar.enter_focus()
 
     def _handle_popup_key(self, key: int) -> bool:
         """Escape/Enter dismiss the footnote popup; nav keys are inert under it."""
@@ -1231,7 +1038,7 @@ class OKFViewer(RelativeLayout):
             self._footnote_popup.dismiss()
             return True
         # Nothing may scroll or refocus under the modal.
-        return key in _NAV_NOOP_KEYS or key == KEY_TAB
+        return key in NAV_NOOP_KEYS or key == KEY_TAB
 
     def _handle_page_key(self, key: int) -> bool:
         """Walk the page with Up/Down (hybrid link/scroll) and follow links with Enter.
@@ -1263,13 +1070,13 @@ class OKFViewer(RelativeLayout):
         if key == KEY_RIGHT:
             self._set_focus_region(FocusRegion.PAGE)
             return True
-        return key in _NAV_NOOP_KEYS or key in (KEY_ENTER, KEY_NUMPAD_ENTER)
+        return key in NAV_NOOP_KEYS or key in (KEY_ENTER, KEY_NUMPAD_ENTER)
 
     def _handle_tree_key(self, key: int) -> bool:
         """Walk the contents tree: the selection band is the keyboard focus."""
         nodes = list(self.tree.iterate_open_nodes())
         if not nodes:
-            return key in _NAV_NOOP_KEYS
+            return key in NAV_NOOP_KEYS
         focused = self.tree.selected_node
         idx = nodes.index(focused) if focused in nodes else None
         node = focused if idx is not None else None
@@ -1423,14 +1230,14 @@ class OKFViewer(RelativeLayout):
 
         Entering the sidebar rings it in blue and seeds a focus (the active
         result row, or the tree's selected node scrolled into view). Entering
-        the top bar clears the pane indicators; `_set_bar_focus` then rings a
+        the top bar clears the pane indicators; `TopBar.enter_focus` then rings a
         button in gold. Returning to the page clears the rings and re-syncs the
         tree's selection band to the page on display, so a focus band wandered
         by Up/Down snaps back to reality.
         """
         self._focus_region = region
         trace.focus_region(region.name)
-        self._clear_bar_focus()  # a no-op unless the bar was the outgoing region
+        self._bar.clear_focus()  # a no-op unless the bar was the outgoing region
         if region is FocusRegion.TOP_BAR:
             self._links.clear_focus()
             clear_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP)
@@ -1623,7 +1430,7 @@ class OKFViewer(RelativeLayout):
             link_color=self._theme.link_hex,
         )
         self._update_background(page.frontmatter, path)
-        self._set_page_action(
+        self._bar.set_page_action(
             self._action_provider.action_for(page.frontmatter, path)
             if self._action_provider is not None
             else None

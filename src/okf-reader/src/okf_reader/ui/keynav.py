@@ -150,3 +150,10 @@ def highlight_ref_occurrence(
             span = match.group(0).replace(f"[color={link_color}]", f"[color={focus_color}]", 1)
             return markup[: match.start()] + span + markup[match.end() :]
     return markup
+
+
+# Navigation keys consumed as no-ops where nothing can move (an open footnote
+# popup, an empty sidebar state): they must not leak to the hosting app.
+NAV_NOOP_KEYS = frozenset(
+    {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_PAGE_UP, KEY_PAGE_DOWN, KEY_HOME, KEY_END}
+)
