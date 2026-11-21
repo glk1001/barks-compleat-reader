@@ -39,6 +39,7 @@ from barks_reader.ui.search_widgets import (
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from unit_helpers import run_at_once
 
@@ -2566,6 +2567,17 @@ def _word_result_row(title: str, pressed: list[str]) -> BoxLayout:
     return row
 
 
+def _notice_row(text: str) -> _SearchResultButton:
+    """Return a results list's notice as the app builds it: disabled, its detail label inside.
+
+    The kv rule gives every result button that label; the unit tests load no kv, so
+    it is added here.
+    """
+    row = _SearchResultButton(text=text, disabled=True)
+    row.add_widget(Label())
+    return row
+
+
 class TestResultsKeys:
     """The remote on the stories listed: walking them, a story's two parts, and the ways out.
 
@@ -3348,13 +3360,24 @@ class TestNavEdges:
     ) -> None:
         rows = screen.ids.word_results_layout
         rows.add_widget(_word_result_row("Story A", []))
-        rows.add_widget(_SearchResultButton(text="None in 1942-46"))
+        rows.add_widget(_notice_row("None in 1942-46"))
         screen._focus.area = FocusArea.RESULTS
         screen._focus.result_index = 1
 
         screen._draw_result_focus()
 
         assert loguru_sink[-1] == 'Nav focus on _SearchResultButton "None in 1942-46".'
+
+    def test_enter_on_a_notice_row_opens_nothing(self, screen: SearchScreen) -> None:
+        """The ring is on the row, not on its detail label, which no key can press."""
+        notice = _notice_row('No results for "gold"')
+        screen.ids.word_results_layout.add_widget(notice)
+        screen._focus.area = FocusArea.RESULTS
+        screen._last_activated_result = None
+
+        assert screen._get_focused_result_widget(screen._get_active_result_rows()) is notice
+        assert screen.handle_key(search_screen.KEY_ENTER) is True
+        assert screen._last_activated_result is None
 
 
 class TestTagListKeys:

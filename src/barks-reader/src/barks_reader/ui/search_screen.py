@@ -19,6 +19,7 @@ from kivy.properties import (  # ty: ignore[import-not-found]
     StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
@@ -113,7 +114,6 @@ if TYPE_CHECKING:
     from barks_fantagraphics.search_evaluate import Suggestion, WordQueryResult
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.input import MotionEvent
-    from kivy.uix.button import Button
     from kivy.uix.scrollview import ScrollView
     from kivy.uix.textinput import TextInput
     from kivy.uix.widget import Widget
@@ -1868,7 +1868,8 @@ class SearchScreen(FloatLayout):
                 self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             focused = self._get_focused_result_widget(rows)
-            if focused is not None:
+            # A notice row ("No results for ...") takes the ring, and nothing opens from it.
+            if focused is not None and not focused.disabled:
                 self._last_activated_result = focused
                 self._last_activated_word_sub_focus = self._focus.row_part
                 focused.trigger_action(duration=0)
@@ -2251,23 +2252,29 @@ class SearchScreen(FloatLayout):
     def _get_active_result_rows(self) -> list[Button]:
         return list(reversed(self._active_widget(3).children))
 
+    def _is_word_story_row(self, row: Widget) -> bool:
+        """Return whether `row` is a word search story's: a layout of its title and bubbles.
+
+        Told by its type, not by having children: a notice row is a button, and the kv
+        rule gives every result button a child, the label of its detail.
+        """
+        return self._active_mode == "Word" and not isinstance(row, Button)
+
     def _get_focused_result_widget(self, rows: list[Button]) -> Button | None:
         if not rows:
             return None
         idx = min(self._focus.result_index, len(rows) - 1)
         row = rows[idx]
-        if self._active_mode == "Word" and hasattr(row, "children") and row.children:
+        if self._is_word_story_row(row):
             children = list(reversed(row.children))
             sub_idx = 1 if self._focus.row_part == RowPart.SPEECH else 0
             return children[min(sub_idx, len(children) - 1)]
         return row
 
     def _get_all_focusable_widgets(self, rows: list[Button]) -> list[Button]:
-        if self._active_mode != "Word":
-            return rows
         widgets = []
         for row in rows:
-            if hasattr(row, "children") and row.children:
+            if self._is_word_story_row(row):
                 widgets.extend(reversed(row.children))
             else:
                 widgets.append(row)
