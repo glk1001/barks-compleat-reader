@@ -42,6 +42,14 @@ if TYPE_CHECKING:
 
 SEARCH_WIDGETS_KV_FILE = Path(__file__).with_suffix(".kv")
 
+# Written once here and read by the kv rules too (``search_widgets.kv`` and
+# ``search_screen.kv`` import this module), so Python and kv cannot drift apart.
+# A result row's height, in dp: a row the kv rule sizes, and a row built in Python.
+RESULT_ROW_HEIGHT_DP = 28
+# A clear button's fill while the keyboard is not on it: drawn by its kv rule, and put
+# back by the screen when the keyboard leaves it.
+CLEAR_BUTTON_COLOR: Color = (0.18, 0.18, 0.18, 0.9)
+
 
 class _SearchResultButton(Button):
     """A clickable result row in a search results list."""
@@ -165,7 +173,9 @@ class _WordRow(BoxLayout):
     """A word of the word list: its text, which searches it alone, and its + button."""
 
     def __init__(self, word_button: _SearchResultButton, plus_button: _PlusButton) -> None:
-        super().__init__(orientation="horizontal", size_hint_y=None, height=dp(28))
+        super().__init__(
+            orientation="horizontal", size_hint_y=None, height=dp(RESULT_ROW_HEIGHT_DP)
+        )
         self.word_button = word_button
         self.item: Button = word_button
         self.plus_button = plus_button
@@ -217,6 +227,7 @@ def _chip_bg_member() -> Color:
 
 
 def _row_stripe(row_index: int) -> Color:
+    """Return a list row's stripe by its place; the result rows' kv rule draws it too."""
     active_theme = theme()
     return active_theme.row_stripe_even if row_index % 2 == 0 else active_theme.row_stripe_odd
 

@@ -1599,6 +1599,14 @@ class TestNavFocusMarkers:
             screen._draw_clear_focus()
         assert 'Nav focus on MagicMock "x".' in loguru_sink
 
+    def test_the_clear_button_gets_its_own_fill_back(self, screen: SearchScreen) -> None:
+        clear_button = MagicMock()
+        with patch.object(screen, "_get_active_clear_button", return_value=clear_button):
+            screen._draw_clear_focus()
+            assert clear_button.background_color != search_widgets.CLEAR_BUTTON_COLOR
+            screen._clear_clear_focus()
+        assert clear_button.background_color == search_widgets.CLEAR_BUTTON_COLOR
+
     def test_a_focused_tag_chip_logs(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
         chips = [MagicMock(), MagicMock()]
         chips[1].text = "Scrooge"

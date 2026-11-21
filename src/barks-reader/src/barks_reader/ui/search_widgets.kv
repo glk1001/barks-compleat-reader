@@ -1,4 +1,5 @@
 #:import reader_palette barks_reader.core.reader_palette
+#:import search_widgets barks_reader.ui.search_widgets
 
 <_SearchResultButton>:
     background_normal: ''
@@ -7,14 +8,13 @@
     background_color:
         reader_palette.theme().accent_selection \
         if (self.selected or self.state != 'normal') \
-        else (reader_palette.theme().row_stripe_even if self.row_index % 2 == 0 \
-        else reader_palette.theme().row_stripe_odd)
+        else search_widgets._row_stripe(self.row_index)
     color:
         reader_palette.theme().text_secondary if self.is_cover \
         else reader_palette.theme().text_title
     italic: self.is_cover
     size_hint_y: None
-    height: dp(28)
+    height: dp(search_widgets.RESULT_ROW_HEIGHT_DP)
     halign: 'left'
     valign: 'middle'
     text_size: self.width, self.height
@@ -44,7 +44,7 @@
 <_NoticeLabel>:
     size_hint_y: None
     text_size: self.width, None
-    height: max(dp(28), self.texture_size[1] + dp(8))
+    height: max(dp(search_widgets.RESULT_ROW_HEIGHT_DP), self.texture_size[1] + dp(8))
     halign: 'left'
     valign: 'middle'
     padding: [dp(8), dp(4)]

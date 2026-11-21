@@ -83,7 +83,9 @@ from .reader_keyboard_nav import (
 )
 from .search_said_by import SaidByFilter
 from .search_widgets import (
+    CLEAR_BUTTON_COLOR,
     COVER_ROW_TEXT,
+    RESULT_ROW_HEIGHT_DP,
     _chip_bg_member,
     _chips_of,
     _listed_title,
@@ -1549,7 +1551,9 @@ class SearchScreen(FloatLayout):
             title_with_pages,
             title_speech_info,
         ) in enumerate(self._word_search_results):
-            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(28))
+            row = BoxLayout(
+                orientation="horizontal", size_hint_y=None, height=dp(RESULT_ROW_HEIGHT_DP)
+            )
 
             # One line, shortened in the middle when the panel is too narrow for it:
             # wrapped, a long page list spilled out of its row, and the middle keeps
@@ -2292,9 +2296,6 @@ class SearchScreen(FloatLayout):
         """Return the word list's rows and their + buttons: all a focus ring can be on."""
         return [*chips, *(row.plus_button for row in self._word_rows())]
 
-    # Must match the SearchClearButton background_color in search_screen.kv.
-    _CLEAR_BTN_NORMAL = (0.18, 0.18, 0.18, 0.9)
-
     def _active_widget(self, index: int) -> Widget:
         """Return the widget for the active mode at the given _MODE_WIDGETS index."""
         return self.ids[self._MODE_WIDGETS[self._active_mode][index]]
@@ -2312,7 +2313,7 @@ class SearchScreen(FloatLayout):
         log_nav_focus(clear_button)  # shown by fill colour, not a drawn ring
 
     def _clear_clear_focus(self) -> None:
-        self._get_active_clear_button().background_color = self._CLEAR_BTN_NORMAL
+        self._get_active_clear_button().background_color = CLEAR_BUTTON_COLOR
 
     def _focus_active_input(self) -> None:
         self._active_input().focus = True
