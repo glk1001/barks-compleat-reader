@@ -67,16 +67,10 @@ from .keynav import (
     KEY_RIGHT,
     KEY_TAB,
     KEY_UP,
-    LINK_FOCUS_COLOR,
-    PAGE_LINE_STEP,
-    PAGE_STEP_OVERLAP,
     FocusRegion,
-    enumerate_refs,
-    highlight_ref_occurrence,
-    hybrid_link_step,
-    scroll_step,
     step_index,
 )
+from .page_links import PageLinks
 from .widgets import (
     BLOCK_BG_COLOR,
     TABLE_FONT_NAME,
@@ -88,7 +82,6 @@ from .widgets import (
     PageNode,
     add_text_backing,
     bar_separator,
-    ref_under,
     result_markup,
     scroll_view,
     tint_bar_icon,
@@ -291,7 +284,6 @@ class OKFViewer(RelativeLayout):
         self._on_exit = on_exit
         self._page_action: PageAction | None = None
         self._band_colors: list[Color] = []  # the current page's section-band Colors
-        self._init_link_hover()
         self._init_keyboard_nav()
 
         # The whole window layers over a context background image (RelativeLayout
@@ -336,6 +328,7 @@ class OKFViewer(RelativeLayout):
             padding=BODY_PADDING,
         )
         self.body.bind(minimum_height=self.body.setter("height"))
+        self._links = PageLinks(self.body, self.body_scroll, self._theme.link_hex, self._on_ref)
         self._add_scrims()
         # The scroll child is a full-width anchor holding the body column against
         # the sidebar, its width capped at BODY_MAX_WIDTH so the measure stays
@@ -368,7 +361,7 @@ class OKFViewer(RelativeLayout):
         # pane instead, so Up/Down reads it straight away: the intent was the
         # page, not the navigator. No link is ringed on arrival; PAGE focus
         # leaves the hybrid Up/Down walk to acquire links as they scroll past
-        # (see _page_line_step), so the ring never lands on an arbitrary
+        # (see `PageLinks.line_step`), so the ring never lands on an arbitrary
         # breadcrumb link.
         self._set_focus_region(FocusRegion.PAGE if start_page is not None else FocusRegion.SIDEBAR)
 
@@ -1083,14 +1076,11 @@ class OKFViewer(RelativeLayout):
     def _init_keyboard_nav(self) -> None:
         """Initialize keyboard-navigation state (see `handle_key`).
 
-        Link focus indexes into ``_page_links``; sidebar focus is the tree's own
-        selection band in tree mode and ``_sidebar_index`` over the result rows
+        Link focus is the page links' own (`PageLinks`); sidebar focus is the tree's
+        own selection band in tree mode and ``_sidebar_index`` over the result rows
         in results mode.
         """
         self._focus_region = FocusRegion.PAGE
-        # (label, ref, occurrence-in-label)
-        self._page_links: list[tuple[PageLabel, str, int]] = []
-        self._focused_link: int | None = None
         self._sidebar_index: int | None = None
         self._results_scroll: ScrollView | None = None
         self._footnote_popup: ModalView | None = None
@@ -1253,130 +1243,13 @@ class OKFViewer(RelativeLayout):
         desktop extras. Escape never reaches here — `handle_key` routes it to
         the top-bar focus toggle (`_handle_escape_key`) for every region.
         """
-        if key in (KEY_UP, KEY_DOWN):
-            self._page_line_step(1 if key == KEY_DOWN else -1)
-            return True
-        if self._handle_page_scroll_key(key):
+        if self._links.handle_key(key):
             return True
         if key == KEY_LEFT:
             self._set_focus_region(FocusRegion.SIDEBAR)
             return True
-        if key == KEY_RIGHT:
-            return True  # nothing further right; consumed so it cannot leak
-        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            return self._follow_focused_link()
-        return False
-
-    def _handle_page_scroll_key(self, key: int) -> bool:
-        """Handle the desktop page-scrolling extras (PageUp/PageDown/Home/End)."""
-        if key in (KEY_PAGE_UP, KEY_PAGE_DOWN):
-            step = self.body_scroll.height - dp(PAGE_STEP_OVERLAP)
-            self._scroll_page_by(step if key == KEY_PAGE_DOWN else -step)
-        elif key == KEY_HOME:
-            self.body_scroll.scroll_y = 1.0
-        elif key == KEY_END:
-            fits = self.body.height <= self.body_scroll.height
-            self.body_scroll.scroll_y = 1.0 if fits else 0.0
-        else:
-            return False
-        self._prune_offscreen_link_focus()
-        return True
-
-    def _page_line_step(self, delta: int) -> None:
-        """One Up/Down press: focus the next/previous nearby link, else scroll a step."""
-        step_px = dp(PAGE_LINE_STEP)
-        action, idx = hybrid_link_step(
-            self._link_label_geometry(),
-            self._focused_link,
-            self.body_scroll.height,
-            step_px,
-            delta,
-        )
-        if action == "focus":
-            assert idx is not None
-            self._set_link_focus(idx)
-        else:
-            self._scroll_page_by(step_px * delta)
-            self._prune_offscreen_link_focus()
-
-    def _link_label_geometry(self) -> list[tuple[float, float]]:
-        """Each page link's label (top, bottom) in viewport-relative pixels.
-
-        Viewport-relative: y grows downward from the viewport's top edge, so a
-        label spanning the top of the view has top ~0 (see `hybrid_link_step`).
-        Occurrences within one label share its geometry.
-        """
-        viewport_top = self.body_scroll.to_window(self.body_scroll.x, self.body_scroll.top)[1]
-        geometry = []
-        for lbl, _ref, _occurrence in self._page_links:
-            label_top = viewport_top - lbl.to_window(lbl.x, lbl.top)[1]
-            geometry.append((label_top, label_top + lbl.height))
-        return geometry
-
-    def _prune_offscreen_link_focus(self) -> None:
-        """Drop link focus once its label has scrolled fully out of the viewport.
-
-        This is what lets Up/Down re-acquire the first *visible* link after any
-        scrolling — focus can never sit on (and Enter can never follow) a link
-        the reader cannot see.
-        """
-        if self._focused_link is None:
-            return
-        lbl, _ref, _occurrence = self._page_links[self._focused_link]
-        viewport_top = self.body_scroll.to_window(self.body_scroll.x, self.body_scroll.top)[1]
-        label_top = viewport_top - lbl.to_window(lbl.x, lbl.top)[1]
-        if label_top + lbl.height <= 0 or label_top >= self.body_scroll.height:
-            self._clear_link_focus()
-
-    def _scroll_page_by(self, delta_px: float) -> None:
-        self.body_scroll.scroll_y = scroll_step(
-            self.body_scroll.scroll_y, self.body_scroll.height, self.body.height, delta_px
-        )
-
-    def _build_page_links(self) -> list[tuple[PageLabel, str, int]]:
-        """Collect the page's links in document order: (label, ref, occurrence-in-label)."""
-        return [
-            (lbl, ref, i)
-            for lbl in self._link_labels
-            for i, ref in enumerate(enumerate_refs(lbl.text))
-        ]
-
-    def _set_link_focus(self, idx: int | None) -> None:
-        """Move the gold link highlight to ``idx``, scrolling its label into view."""
-        self._restore_focused_link_markup()
-        self._focused_link = idx
-        if idx is None:
-            return
-        lbl, ref, occurrence = self._page_links[idx]
-        lbl.orig_markup = lbl.text
-        # The colour the page's links were rendered in: a host may have themed it.
-        lbl.text = highlight_ref_occurrence(
-            lbl.text, occurrence, self._theme.link_hex, LINK_FOCUS_COLOR
-        )
-        if self.body.height > self.body_scroll.height:
-            self.body_scroll.scroll_to(lbl, padding=24)  # scroll_to applies dp() itself
-        trace.link_focus(ref)
-
-    def _restore_focused_link_markup(self) -> None:
-        """Put the focused link's label text back to its unhighlighted markup."""
-        if self._focused_link is None:
-            return
-        lbl, _ref, _occurrence = self._page_links[self._focused_link]
-        if lbl.orig_markup is not None:
-            lbl.text = lbl.orig_markup
-            lbl.orig_markup = None
-
-    def _clear_link_focus(self) -> None:
-        self._restore_focused_link_markup()
-        self._focused_link = None
-
-    def _follow_focused_link(self) -> bool:
-        """Activate the focused link exactly as a tap would; False with no focus."""
-        if self._focused_link is None:
-            return False
-        lbl, ref, _occurrence = self._page_links[self._focused_link]
-        self._on_ref(lbl, ref)
-        return True
+        # Nothing further right; consumed so it cannot leak.
+        return key == KEY_RIGHT
 
     def _handle_sidebar_key(self, key: int) -> bool:
         """Drive the contents tree, or the search-result rows while results show."""
@@ -1559,11 +1432,11 @@ class OKFViewer(RelativeLayout):
         trace.focus_region(region.name)
         self._clear_bar_focus()  # a no-op unless the bar was the outgoing region
         if region is FocusRegion.TOP_BAR:
-            self._clear_link_focus()
+            self._links.clear_focus()
             clear_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP)
             self._clear_result_focus()
         elif region is FocusRegion.SIDEBAR:
-            self._clear_link_focus()
+            self._links.clear_focus()
             draw_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP, color=self._theme.focus_ring)
             if self._result_rows:
                 self._set_result_focus(self._initial_result_index())
@@ -1757,8 +1630,7 @@ class OKFViewer(RelativeLayout):
         )
         self.body.clear_widgets()
         self._band_colors.clear()  # their sections were just discarded
-        self._link_labels.clear()  # ditto their link labels
-        self._focused_link = None  # its label was just discarded — nothing to restore
+        self._links.start_page()  # ditto their link labels, and the focus on one
         self._anchors = {}
         # Blocks group into banded sections: each heading starts a new section
         # box holding it and everything up to the next heading (see BLOCK_BG_COLOR).
@@ -1775,7 +1647,7 @@ class OKFViewer(RelativeLayout):
             if section is None or blk.heading:
                 section = self._new_section()
             section.add_widget(self._hanging_row(lbl, blk) if blk.indent else lbl)
-        self._page_links = self._build_page_links()
+        self._links.page_built()
         # Fresh pages open at the top; Back passes the offset the page was left at.
         self.body_scroll.scroll_y = scroll_y
         if scroll_y != 1:
@@ -1787,7 +1659,7 @@ class OKFViewer(RelativeLayout):
         self._highlight_active_result()
         # A click-navigation swaps the page under a stationary mouse; re-evaluate
         # the cursor once the new labels' textures have settled.
-        Clock.schedule_once(lambda _dt: self._refresh_cursor(), 0)
+        Clock.schedule_once(lambda _dt: self._links.refresh_cursor(), 0)
         trace.page_shown(self.bundle, path, len(self.history))
 
     def _new_section(self) -> BoxLayout:
@@ -1819,7 +1691,7 @@ class OKFViewer(RelativeLayout):
         lbl.bind(texture_size=lambda inst, ts: inst.setter("height")(inst, ts[1]))
         lbl.bind(on_ref_press=self._on_ref)
         if "[ref=" in blk.markup:
-            self._link_labels.append(lbl)
+            self._links.labels.append(lbl)
         return lbl
 
     @staticmethod
@@ -1977,7 +1849,7 @@ class OKFViewer(RelativeLayout):
             lbl.bind(texture_size=lbl.setter("size"))
             lbl.bind(on_ref_press=self._on_ref)
             if "[ref=" in row:
-                self._link_labels.append(lbl)
+                self._links.labels.append(lbl)
             stack.add_widget(lbl)
         return self._table_scroller(stack)
 
@@ -2012,55 +1884,6 @@ class OKFViewer(RelativeLayout):
         if target:
             self._show(target, push=True)
 
-    def _init_link_hover(self) -> None:
-        """Set up link hover: the hand cursor whenever the mouse is over a page link.
-
-        ``_link_labels`` holds the current page's link-bearing labels — the hit-test
-        candidates (see ``ref_under``); ``_show`` rebuilds it with the page.
-        """
-        self._link_labels: list[PageLabel] = []
-        self._popup_link_label: Label | None = None  # an open footnote popup's label
-        self._hand_cursor = False
-        from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
-
-        Window.bind(mouse_pos=self._on_mouse_pos)
-
-    def _on_mouse_pos(self, _window: Any, pos: tuple[float, float]) -> None:  # noqa: ANN401
-        self._set_hand_cursor(self._over_link(pos))
-
-    def _over_link(self, pos: tuple[float, float]) -> bool:
-        """Return whether the window point ``pos`` is over a page link."""
-        if self.get_root_window() is None:  # viewer not on screen (e.g. wiki closed)
-            return False
-        if self._popup_link_label is not None:  # a modal popup: only its label counts
-            return ref_under(self._popup_link_label, *pos) is not None
-        # Fast reject: outside the page pane's viewport nothing can be a link —
-        # this also blocks labels scrolled out of view, whose content-space boxes
-        # would otherwise still collide. collide_point wants parent-space coords;
-        # the scroll view's own to_widget would apply the scroll transform.
-        if not self.body_scroll.collide_point(*self.body_scroll.parent.to_widget(*pos)):
-            return False
-        return any(ref_under(lbl, *pos) is not None for lbl in self._link_labels)
-
-    def _set_hand_cursor(self, over: bool) -> None:
-        """Flip the system cursor between hand and arrow, only on a state change.
-
-        Change-only so this never fights other cursor owners (e.g. the Barks
-        Reader's busy cursor) while the mouse just moves about.
-        """
-        if over == self._hand_cursor:
-            return
-        self._hand_cursor = over
-        from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
-
-        Window.set_system_cursor("hand" if over else "arrow")
-
-    def _refresh_cursor(self) -> None:
-        """Re-evaluate the cursor against the current mouse position (no move needed)."""
-        from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
-
-        self._set_hand_cursor(self._over_link(Window.mouse_pos))
-
     def _show_footnote_popup(self, markup: str, page_path: Path) -> None:
         """Show a footnote definition in a tap-anywhere-to-dismiss popup bubble."""
         popup = ModalView(size_hint=(0.75, None), height=100, auto_dismiss=True)
@@ -2089,13 +1912,13 @@ class OKFViewer(RelativeLayout):
         # dismissal itself moves no mouse). It also owns the keyboard — tracked
         # so handle_key can dismiss it on Escape/Enter (the hosting app consumes
         # window key events, so the ModalView's own Escape handling never fires).
-        self._popup_link_label = lbl
+        self._links.popup_label = lbl
         self._footnote_popup = popup
 
         def _release_hover(_popup: ModalView) -> None:
-            self._popup_link_label = None
+            self._links.popup_label = None
             self._footnote_popup = None
-            self._refresh_cursor()
+            self._links.refresh_cursor()
             trace.footnote_closed()
 
         popup.bind(on_dismiss=_release_hover)

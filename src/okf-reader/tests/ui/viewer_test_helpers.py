@@ -72,7 +72,7 @@ def remove_popups_left_open() -> None:
 
 def open_footnote(viewer: OKFViewer) -> None:
     """Press the home page's footnote marker, as a tap or Enter on it does."""
-    note_label = next(lbl for lbl, ref, _ in viewer._page_links if ref == "fn:note")
+    note_label = next(lbl for lbl, ref, _ in viewer._links.links if ref == "fn:note")
     viewer._on_ref(note_label, "fn:note")
 
 
