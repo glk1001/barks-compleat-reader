@@ -2446,6 +2446,18 @@ class TestTagScope:
             screen._run_basket()
         assert screen._scope_row.chips == []
 
+    def test_clear_lifts_a_scope_in_force(self, screen: SearchScreen) -> None:
+        """The next word is searched everywhere: the row went, and its choice with it."""
+        screen._listed_tag = "Gyro Gearloose"
+        screen._refresh_tag_scope()
+        _press(self._scope_chips(screen)[1])
+        assert screen._word_search_filter() is not None
+
+        screen.on_word_clear()
+
+        assert screen._scope_row.selected == search_screen.EVERYWHERE
+        assert screen._word_search_filter() is None
+
     def test_nothing_searched_offers_no_scope(self, screen: SearchScreen) -> None:
         screen._listed_tag = "Gyro Gearloose"
         screen._selected_word = ""

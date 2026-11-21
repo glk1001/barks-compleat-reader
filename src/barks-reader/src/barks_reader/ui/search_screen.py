@@ -1613,6 +1613,7 @@ class SearchScreen(FloatLayout):
         self._show_basket()
         self._basket_results = False
         self._said_by.speaker = ALL_SPEAKERS
+        self._scope_row.set_selected(EVERYWHERE)
         self._show_result_filters()
         self._set_era(ALL_YEARS)
         self.ids.word_search_input.focus = True
