@@ -528,17 +528,33 @@ class TestTypedQuery:
     def test_a_picked_suggestion_replaces_its_word_and_runs_again(
         self, screen: SearchScreen
     ) -> None:
-        screen._word_query = "scroge -gold"
         with patch.object(screen, "_run_word_query") as run:
-            screen._on_suggestion_picked(Suggestion("scroge", "Scrooge"))
+            screen._on_suggestion_picked(Suggestion("scroge", "Scrooge"), "scroge -gold")
         assert screen.ids.word_search_input.text == "Scrooge -gold"
         run.assert_called_once_with("Scrooge -gold")
+
+    def test_a_suggestion_keeps_its_query_when_the_picked_words_are_run_beside_it(
+        self, screen: SearchScreen
+    ) -> None:
+        """The picked words' query replaces the one listed; the row still mends its own."""
+        rows = self._run(
+            screen,
+            "scroge mcduck",
+            WordQueryResult(suggestions=(Suggestion("scroge", "Scrooge"),)),
+        )
+        (suggestion_row,) = [r for r in rows if isinstance(r, _SuggestionButton)]
+        screen._run_word_query('"duck" | "money"', list_words=False)  # ALL/ANY pressed
+
+        with patch.object(screen, "_run_word_query") as run:
+            suggestion_row.dispatch("on_release")
+
+        assert screen.ids.word_search_input.text == "Scrooge mcduck"
+        run.assert_called_once_with("Scrooge mcduck")
 
     def test_a_picked_suggestion_does_not_pick_the_spelling_on_the_way(
         self, screen: SearchScreen
     ) -> None:
         """The box's text lists the spelling alone; the query, not the word, is searched."""
-        screen._word_query = "scroge"
         screen._search.get_words_matching.return_value = TermMatches(["scrooge"], 1)
 
         class _Box:
@@ -553,7 +569,7 @@ class TestTypedQuery:
             patch.object(screen, "_on_word_chip_selected") as picked,
             patch.object(screen, "_run_word_query") as run,
         ):
-            screen._on_suggestion_picked(Suggestion("scroge", "Scrooge"))
+            screen._on_suggestion_picked(Suggestion("scroge", "Scrooge"), "scroge")
         picked.assert_not_called()
         run.assert_called_once_with("Scrooge")
 

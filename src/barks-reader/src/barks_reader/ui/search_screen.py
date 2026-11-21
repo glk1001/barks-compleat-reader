@@ -1003,9 +1003,14 @@ class SearchScreen(FloatLayout):
         self._add_query_row(query, selected=True)
         for notice in notices:
             layout.add_widget(_NoticeLabel(text=notice, disabled=True))
-        self._add_suggestion_rows(suggestions)
+        self._add_suggestion_rows(query, suggestions)
 
-    def _add_suggestion_rows(self, suggestions: tuple[Suggestion, ...]) -> None:
+    def _add_suggestion_rows(self, query: str, suggestions: tuple[Suggestion, ...]) -> None:
+        """List close spellings for `query`'s words; each row keeps the query it is for.
+
+        Not the query listed when it is pressed: the picked words' query, run beside
+        these rows, has replaced that by then.
+        """
         layout = self.ids.word_chips_layout
         by_word: dict[str, list[Suggestion]] = {}
         for suggestion in suggestions:
@@ -1016,17 +1021,17 @@ class SearchScreen(FloatLayout):
             layout.add_widget(_NoticeLabel(text=f'Did you mean, for "{word}":', disabled=True))
             for i, suggestion in enumerate(offered):
                 row = _SuggestionButton(suggestion, text=f"   {suggestion.spelling}", row_index=i)
-                row.bind(on_release=lambda _b, sg=suggestion: self._on_suggestion_picked(sg))
+                row.bind(on_release=lambda _b, sg=suggestion: self._on_suggestion_picked(sg, query))
                 layout.add_widget(row)
 
-    def _on_suggestion_picked(self, suggestion: Suggestion) -> None:
-        """Put the spelling in place of the word it is for, in the box, and run the query.
+    def _on_suggestion_picked(self, suggestion: Suggestion, typed_query: str) -> None:
+        """Put the spelling in place of the word it is for, in `typed_query`, and run that.
 
         The box's new text relists its words, as typing does, but does not pick a lone
         match: that searched for the spelling and listed it, for the query to search
         and list again straight after.
         """
-        query = replace_word(self._word_query, suggestion.word, suggestion.spelling)
+        query = replace_word(typed_query, suggestion.word, suggestion.spelling)
         self._query_follows = True
         try:
             self.ids.word_search_input.text = query
