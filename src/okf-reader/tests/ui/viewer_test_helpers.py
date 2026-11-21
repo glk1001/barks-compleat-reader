@@ -24,6 +24,7 @@ from okf_reader.ui.widgets import TABLE_FONT_NAME
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from types import ModuleType
 
     from okf_reader.ui.viewer import OKFViewer
 
@@ -123,9 +124,9 @@ def hit(path: Path, title: str) -> SearchHit:
     return SearchHit(path=path, title=title, breadcrumb="", matched_on="title", score=1)
 
 
-def clock_patched() -> Any:  # noqa: ANN401 — a patcher, as patch.object returns it
-    """Hold what the viewer schedules for the next frame, for a test to run by hand."""
-    return patch.object(viewer_module, "Clock")
+def clock_patched(module: ModuleType = viewer_module) -> Any:  # noqa: ANN401 — a patcher
+    """Hold what `module` schedules for the next frame, for a test to run by hand."""
+    return patch.object(module, "Clock")
 
 
 def run_scheduled(clock: MagicMock) -> None:
