@@ -858,7 +858,9 @@ overshoot can't hit it).
   colour, from `SpeechInfo.speaker` via
   `barks_fantagraphics.speech_speakers.speaker_display_name`.
 - **Wiki** (`ui/wiki_reader.py` + `core/wiki_integration.py`) — hosts an
-  `okf_reader.ui.viewer.OKFViewer` built lazily on first open. Barks-specific behavior comes
+  `okf_reader.ui.viewer.OKFViewer` built lazily on first open (the viewer owns a `TopBar`,
+  a `Sidebar` round a `TreePanel`, and the page's `PageLinks`, each in its own module of
+  `okf_reader.ui`). Barks-specific behavior comes
   from Kivy-free providers in `core/wiki_integration.py`: `BarksPanelsImageProvider`
   backs pages with panel imagery (through the shared `ImageSelector`, handling the
   encrypted-zip decrypt), and `BarksTableRewriter` applies the parenthesized-title

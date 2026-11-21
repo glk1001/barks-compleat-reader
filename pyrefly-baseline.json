@@ -64,7 +64,7 @@
       "severity": "error"
     },
     {
-      "column": 14,
+      "column": 12,
       "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
       "name": "missing-attribute",
       "concise_description": "No attribute `WinDLL` in module `ctypes`",
@@ -79,13 +79,6 @@
     },
     {
       "column": 18,
-      "path": "src/barks-reader/src/barks_reader/core/win32_window.py",
-      "name": "missing-attribute",
-      "concise_description": "No attribute `WinDLL` in module `ctypes`",
-      "severity": "error"
-    },
-    {
-      "column": 18,
       "path": "src/barks-reader/src/barks_reader/first_run_installer_show_message.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `NoneType` has no attribute `before`",
@@ -96,20 +89,6 @@
       "path": "src/barks-reader/src/barks_reader/first_run_installer_show_message.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
-      "column": 18,
-      "path": "src/barks-reader/src/barks_reader/first_run_installer_show_message.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
-      "column": 9,
-      "path": "src/barks-reader/src/barks_reader/ui/adapters/kivy_scheduler.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `object` has no attribute `cancel`",
       "severity": "error"
     },
     {
@@ -134,13 +113,6 @@
       "severity": "error"
     },
     {
-      "column": 32,
-      "path": "src/barks-reader/src/barks_reader/ui/collapse_parent_overlay.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `object` has no attribute `pos`",
-      "severity": "error"
-    },
-    {
       "column": 21,
       "path": "src/barks-reader/src/barks_reader/ui/goto_title_overlay.py",
       "name": "missing-attribute",
@@ -155,31 +127,10 @@
       "severity": "error"
     },
     {
-      "column": 25,
-      "path": "src/barks-reader/src/barks_reader/ui/index_screen.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
-      "column": 13,
-      "path": "src/barks-reader/src/barks_reader/ui/index_screen.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
       "column": 9,
       "path": "src/barks-reader/src/barks_reader/ui/index_screen.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `NoneType` has no attribute `index_theme`",
-      "severity": "error"
-    },
-    {
-      "column": 18,
-      "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_error_popup.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `before`",
       "severity": "error"
     },
     {
@@ -211,34 +162,6 @@
       "severity": "error"
     },
     {
-      "column": 14,
-      "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_show_message.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
-      "column": 14,
-      "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_show_message.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
-      "column": 13,
-      "path": "src/barks-reader/src/barks_reader/ui/kivy_standalone_show_message.py",
-      "name": "unbound-name",
-      "concise_description": "`close_button` may be uninitialized",
-      "severity": "error"
-    },
-    {
-      "column": 53,
-      "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
-      "name": "bad-argument-type",
-      "concise_description": "Argument `TagGroups | Tags | Titles | str` is not assignable to parameter `item_id` with type `TagGroups | Tags | Titles` in function `MainIndexScreen._update_all_titles_and_hierarchies`",
-      "severity": "error"
-    },
-    {
       "column": 37,
       "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
       "name": "bad-assignment",
@@ -267,13 +190,6 @@
       "severity": "error"
     },
     {
-      "column": 19,
-      "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `close_app`",
-      "severity": "error"
-    },
-    {
       "column": 9,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "name": "missing-attribute",
@@ -288,17 +204,10 @@
       "severity": "error"
     },
     {
-      "column": 20,
-      "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
+      "column": 9,
+      "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `after`",
-      "severity": "error"
-    },
-    {
-      "column": 5,
-      "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `after`",
+      "concise_description": "Object of class `NoneType` has no attribute `close_app`",
       "severity": "error"
     },
     {
@@ -323,13 +232,6 @@
       "severity": "error"
     },
     {
-      "column": 13,
-      "path": "src/barks-reader/src/barks_reader/ui/reader_tree_builder.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `TreeViewNode` has no attribute `saved_state`",
-      "severity": "error"
-    },
-    {
       "column": 27,
       "path": "src/barks-reader/src/barks_reader/ui/speech_index_screen.py",
       "name": "bad-assignment",
@@ -348,20 +250,6 @@
       "path": "src/barks-reader/src/barks_reader/ui/statistics_screen.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `NoneType` has no attribute `dismiss`",
-      "severity": "error"
-    },
-    {
-      "column": 30,
-      "path": "src/barks-reader/src/barks_reader/ui/tree_view_manager.py",
-      "name": "bad-assignment",
-      "concise_description": "`Literal[True]` is not assignable to attribute `populated` with type `Never`",
-      "severity": "error"
-    },
-    {
-      "column": 30,
-      "path": "src/barks-reader/src/barks_reader/ui/tree_view_manager.py",
-      "name": "bad-assignment",
-      "concise_description": "`Literal[True]` is not assignable to attribute `populated` with type `Never`",
       "severity": "error"
     },
     {
@@ -414,73 +302,10 @@
       "severity": "error"
     },
     {
-      "column": 10,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "bad-context-manager",
-      "concise_description": "Cannot use `None` as a context manager",
-      "severity": "error"
-    },
-    {
-      "column": 10,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "bad-context-manager",
-      "concise_description": "Cannot use `None` as a context manager",
-      "severity": "error"
-    },
-    {
       "column": 14,
       "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
-      "column": 14,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
-      "column": 14,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `before`",
-      "severity": "error"
-    },
-    {
-      "column": 46,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `stop`",
-      "severity": "error"
-    },
-    {
-      "column": 17,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `TreeViewNode` has no attribute `bundle_path`",
-      "severity": "error"
-    },
-    {
-      "column": 17,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `TreeViewNode` has no attribute `loaded`",
-      "severity": "error"
-    },
-    {
-      "column": 17,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `TreeViewNode` has no attribute `bind`",
-      "severity": "error"
-    },
-    {
-      "column": 17,
-      "path": "src/okf-reader/src/okf_reader/ui/viewer.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `trigger_action`",
       "severity": "error"
     },
     {

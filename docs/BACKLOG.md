@@ -389,26 +389,13 @@ Left over from the read marks and *November in Barks*:
       exploration to find shallow modules to deepen and untested seams to
       surface across the codebase. A first survey (2026-10-21: file size, radon
       complexity, distinct `self` attributes per class, `noqa` and pyrefly-baseline
-      density, 12-month churn) produced the five items below and the `render.py`
-      round in Done. The generated data modules (`barks_bibliography.py`,
+      density, 12-month churn) produced the five items below (one of them, the `OKFViewer` split, since done) and the
+      `render.py` round in Done. The generated data modules (`barks_bibliography.py`,
       `barks_tags_data.py`, `whoosh_barks_terms.py`, the title tables) are big but
       are tables, not logic, and were left out. The `python-architecture` skill's
       proposal step (issues, then a strategy table, then confirmation) is the way
       to start each one; a golden dump of real output before and after, as the
       `render.py` round used, is the proof where the code is pure.
-- [ ] **`okf_reader/ui/viewer.py` — split `OKFViewer`** — one class of about 1,750
-      lines: 125 methods, 164 distinct `self` attributes, a 125-line constructor with
-      10 positional parameters, 44 `noqa` (24 of them ANN001) and 11 of the pyrefly
-      baseline's entries, the most of any file. It holds the tree panel, the search
-      panel, the top bar, the page rendering, four keyboard focus regions, history,
-      footnote popups, link hover and the background. Split along the focus regions,
-      which is how `handle_key` already dispatches (`_handle_tree_key`,
-      `_handle_results_key`, `_handle_bar_key`, `_handle_page_key`); the barks_reader
-      side shows the shape (`main_screen.py` with `main_screen_nav.py`,
-      `navigation_coordinator.py` and `tree_view_manager.py`). `test_viewer.py` and
-      the wiki GUI tests are the net. Pairs with the keyword-only item above
-      (`OKFViewer` is one of its 10-parameter constructors). The biggest payoff of
-      the five.
 - [ ] **`barks_reader/ui/search_screen.py` — a controller per search pane** — 2,529
       lines, 19 classes, 179 defs; `SearchScreen` alone has 204 distinct `self`
       attributes and the repo's most complex method (`_handle_tags_enter_by_key`,
@@ -450,7 +437,7 @@ Left over from the read marks and *November in Barks*:
       the pattern we chose. The right fix is a bare `*` in the signature, making
       them keyword-only at zero design cost. Do it incrementally, worst first:
       the 15 signatures with 8+ positional params, i.e. `NavigationCoordinator`
-      (10), `show_error_popup` (10), `OKFViewer` (10, okf-reader),
+      (10), `show_error_popup` (10), `OKFViewer` (10, okf-reader; done 2026-11-21),
       `MainScreen` (9), `MainScreenWindowHelper` (9),
       `scripts/make_one_pager_mosaic.py` (9). Then fix any positional call sites
       the `*` breaks. Most already pass by keyword (`NavigationCoordinator` is
@@ -715,6 +702,19 @@ Left over from the read marks and *November in Barks*:
       setters too; and the JSON store as a machine, pages per title, the selected
       node with its state (the History path migrating), the sizes warned about, a
       manager loaded from the file answering as the live one. Nothing is left here.
+- [x] **`okf_reader/ui/viewer.py` — `OKFViewer` split** (2026-11-21) — the one class
+      of 1,860 lines is now the viewer and four classes it owns, each in a module
+      beside it and each given what it may ask of the viewer as callbacks: `TopBar`
+      (`ui/bar.py`), `Sidebar` (`ui/sidebar.py`) round a `TreePanel`
+      (`ui/tree_panel.py`), and `PageLinks` (`ui/page_links.py`); fifteen widgets
+      and helpers that knew nothing of the viewer are `ui/widgets.py`. The viewer
+      keeps the layout, the page's rendering, the history and the focus regions
+      (`viewer.py` is 1,130 lines, from 2,500). Its 29 untyped handlers are typed
+      (a folder node, a page node and a page's label are classes), its constructor,
+      `OKFApp`'s and `run`'s are keyword-only after the bundle, and the pyrefly
+      baseline holds 2 entries for the viewer, from 11. The tests moved to
+      `src/okf-reader/tests/ui/`, a file per class, at 100% of lines and branches;
+      the wiki GUI tests ran after each step.
 - [x] **`okf_reader/core/render.py` deep refactor** (2026-10-21) — the page renderer
       as `_PageBuilder` (a handler per token type, dispatched from a dict), the table
       in six pure phases, `_inline`'s fixed tags as data, one MarkdownIt parser built

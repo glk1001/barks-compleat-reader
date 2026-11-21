@@ -114,10 +114,9 @@ A `TagGroups | Tags | Titles | str` (or similar) value flows into a narrower slo
 
 Found on 2026-10-13: baselined in July but never listed, or new and hidden by the column match.
 
-- [ ] `okf_reader/ui/viewer.py:1372` — `trigger_action` on a `Widget | None`
-      (`self._bar_focus_widget`), narrowed only by `in buttons`; `Widget` has no
-      `trigger_action` even without the `None`. New with `c5dd09d4`; hidden behind the
-      `bundle_path` entries at the same column until the 2026-10-13 regeneration.
+- [x] `okf_reader/ui/viewer.py` — `trigger_action` on a `Widget | None`, narrowed only
+      by `in buttons`. Done 2026-11-21: the bar is `TopBar` (`okf_reader/ui/bar.py`), and
+      its buttons and the one in focus are typed `Button`.
 - [ ] `core/config_info.py:118`-`:123` — six `Path` attributes set to `None`
       (`app_config_dir`, `app_config_path`, `app_data_dir`, `kivy_config_dir`,
       `app_log_path`, `error_background_path`), deferred-init and `# ty: ignore`-ed.

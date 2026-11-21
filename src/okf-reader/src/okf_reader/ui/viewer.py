@@ -6,6 +6,12 @@ Links resolve via the core's ``resolve_link``; tapping a footnote marker shows i
 definition (keyed by the page `Block`'s anchor) in a dismiss-on-tap popup.
 ``run(bundle)`` launches the standalone app; the CLI entry point is
 scripts/read_okf.py.
+
+`OKFViewer` lays the window out, renders the page, keeps the history and decides which
+region has the keys. The regions are classes of their own beside this module, each given
+what it may ask of the viewer as callbacks: `TopBar` (bar.py), `Sidebar` (sidebar.py)
+round a `TreePanel` (tree_panel.py), and `PageLinks` (page_links.py); the widgets they
+share are in widgets.py.
 """
 
 from __future__ import annotations
@@ -158,6 +164,7 @@ class OKFViewer(RelativeLayout):
     def __init__(
         self,
         bundle: Path,
+        *,
         image_provider: ImageProvider | None = None,
         table_rewriter: TableRewriter | None = None,
         start_page: Path | None = None,
@@ -992,6 +999,7 @@ class OKFApp(App):
     def __init__(
         self,
         bundle: Path,
+        *,
         image_provider: ImageProvider | None = None,
         table_rewriter: TableRewriter | None = None,
         start_page: Path | None = None,
@@ -1102,6 +1110,7 @@ class OKFApp(App):
 
 def run(
     bundle: Path,
+    *,
     image_provider: ImageProvider | None = None,
     table_rewriter: TableRewriter | None = None,
     start_page: Path | None = None,
