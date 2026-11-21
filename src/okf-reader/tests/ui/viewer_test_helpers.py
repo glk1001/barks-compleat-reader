@@ -107,7 +107,7 @@ def concept_node(viewer: OKFViewer) -> Any:  # noqa: ANN401
 
 
 def left_texts(viewer: OKFViewer) -> list[str]:
-    return [w.text for w in viewer._left_body.walk(restrict=True) if isinstance(w, Label)]
+    return [w.text for w in viewer._sidebar.body.walk(restrict=True) if isinstance(w, Label)]
 
 
 class Hits:

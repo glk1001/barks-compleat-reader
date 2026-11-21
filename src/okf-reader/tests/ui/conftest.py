@@ -14,7 +14,7 @@ _TESTS_DIR = str(Path(__file__).parent)
 if _TESTS_DIR not in sys.path:
     sys.path.insert(0, _TESTS_DIR)
 
-from okf_reader.ui import viewer as viewer_module  # noqa: E402
+from okf_reader.ui import sidebar  # noqa: E402
 from okf_reader.ui.viewer import OKFViewer  # noqa: E402
 from viewer_test_helpers import A_PAGE, HOME_PAGE, remove_popups_left_open  # noqa: E402
 
@@ -38,7 +38,7 @@ def index_worker() -> Iterator[MagicMock]:
 
     A real one outlives its test, and what it logs then lands in another's log.
     """
-    with patch.object(viewer_module.threading, "Thread") as thread:
+    with patch.object(sidebar.threading, "Thread") as thread:
         yield thread
 
 

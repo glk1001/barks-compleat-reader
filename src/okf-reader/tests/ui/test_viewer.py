@@ -22,24 +22,18 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.render import Block, TableBlock
-from okf_reader.core.search import SearchHit
 from okf_reader.core.session import load_session_state
-from okf_reader.ui import page_links
+from okf_reader.ui import page_links, sidebar
 from okf_reader.ui import viewer as viewer_module
 from okf_reader.ui.keynav import (
     KEY_DOWN,
-    KEY_END,
     KEY_ENTER,
     KEY_ESCAPE,
     KEY_F,
-    KEY_HOME,
     KEY_LEFT,
-    KEY_RIGHT,
-    KEY_UP,
 )
 from okf_reader.ui.viewer import (
     LAZY_TABLE_MIN_ROWS,
-    SEARCH_ERROR_TEXT,
     FocusRegion,
     OKFApp,
     OKFViewer,
@@ -49,10 +43,7 @@ from PIL import Image as PilImage
 from viewer_test_helpers import (
     LONG_TABLE_ROWS,
     NEEDS_A_WINDOW,
-    Hits,
     clock_patched,
-    hit,
-    left_texts,
     open_footnote,
     page_of,
     run_scheduled,
@@ -142,104 +133,6 @@ class TestMouse:
         assert [c.args[0] for c in window.set_system_cursor.call_args_list] == ["hand", "arrow"]
 
 
-class TestSearchFocus:
-    def test_any_focus_is_logged_a_tap_too(self, viewer: OKFViewer) -> None:
-        """A test waits on this line after tapping the box, before it types."""
-        with patch.object(viewer_module.trace, "search_focused") as focused:
-            viewer._on_search_focus(viewer.search_field, focused=True)  # as a tap focuses it
-            viewer._on_search_focus(viewer.search_field, focused=False)
-        focused.assert_called_once()
-
-    def test_focus_search_is_logged_once(self, viewer: OKFViewer) -> None:
-        with patch.object(viewer_module.trace, "search_focused") as focused:
-            viewer.focus_search()
-        focused.assert_called_once()
-
-
-class TestSearchIndexFailure:
-    def test_a_failed_build_shows_the_error_note(self, viewer: OKFViewer) -> None:
-        viewer.search_field.text = "grotto"
-        viewer._mark_search_ready(failed=True)
-        notes = [w.text for w in viewer._left_body.children if isinstance(w, Label)]
-        assert notes == [SEARCH_ERROR_TEXT]
-
-    def test_the_worker_reports_a_failure_on_the_ui_thread(self, viewer: OKFViewer) -> None:
-        def broken() -> None:
-            raise OSError
-
-        with patch.object(viewer_module, "Clock") as clock:
-            viewer._warm_search_index(broken)
-        with patch.object(viewer, "_mark_search_ready") as mark:
-            clock.schedule_once.call_args.args[0](0)
-        mark.assert_called_once_with(failed=True)
-
-    def test_the_worker_logs_a_failed_build_with_its_error(self, viewer: OKFViewer) -> None:
-        error = OSError("gone")
-
-        def broken() -> None:
-            raise error
-
-        with (
-            patch.object(viewer_module, "Clock"),
-            patch.object(viewer_module, "trace") as trace,
-        ):
-            viewer._warm_search_index(broken)
-        trace.search_index_building.assert_called_once_with()
-        trace.search_index_failed.assert_called_once()
-        assert trace.search_index_failed.call_args.args[1] is error
-        trace.search_index_built.assert_not_called()
-
-    def test_the_worker_logs_the_build_before_handing_it_to_the_ui(self, viewer: OKFViewer) -> None:
-        """A stall on "Searching…" then shows whether the build or the hand-over stopped."""
-        calls = MagicMock()
-        with (
-            patch.object(viewer_module, "Clock", calls.clock),
-            patch.object(viewer_module, "trace", calls.trace),
-        ):
-            viewer._warm_search_index(calls.warm)
-        assert [name for name, _args, _kwargs in calls.mock_calls] == [
-            "trace.search_index_building",
-            "warm",
-            "trace.search_index_built",
-            "clock.schedule_once",
-        ]
-        with patch.object(viewer, "_mark_search_ready") as mark:
-            calls.clock.schedule_once.call_args.args[0](0)
-        mark.assert_called_once_with(failed=False)
-
-    def test_taking_the_outcome_is_logged_with_the_query_typed_meanwhile(
-        self, viewer: OKFViewer
-    ) -> None:
-        viewer.search_field.text = "grotto"
-        with patch.object(viewer_module.trace, "search_ready") as ready:
-            viewer._mark_search_ready(failed=True)
-        ready.assert_called_once_with(failed=True, text="grotto")
-
-    def test_a_provider_that_needs_no_warming_is_ready_at_once(self, viewer: OKFViewer) -> None:
-        viewer._searcher = Hits([])  # no `warm` to call
-        viewer._on_search_focus(viewer.search_field, focused=True)
-        assert viewer._search_ready is True
-
-    def test_warm_search_starts_one_build_however_often_asked(self, viewer: OKFViewer) -> None:
-        """The host's call at open and the box's first focus share one build."""
-        with patch.object(viewer_module.threading, "Thread") as thread:
-            viewer.warm_search()
-            viewer._on_search_focus(viewer.search_field, focused=True)
-            viewer.warm_search()
-        thread.assert_called_once()
-        thread.return_value.start.assert_called_once_with()
-
-    def test_a_focus_before_any_warming_starts_the_build(self, viewer: OKFViewer) -> None:
-        with patch.object(viewer_module.threading, "Thread") as thread:
-            viewer._on_search_focus(viewer.search_field, focused=True)
-        assert thread.call_args.kwargs["target"] == viewer._warm_search_index
-
-    def test_losing_focus_starts_no_build(self, viewer: OKFViewer) -> None:
-        with patch.object(viewer_module.threading, "Thread") as thread:
-            viewer._on_search_focus(viewer.search_field, focused=False)
-        thread.assert_not_called()
-
-
 class TestStandaloneApp:
     """The standalone reader's own keys: Ctrl+F, Alt+Left, and Escape while typing."""
 
@@ -307,109 +200,6 @@ class TestTableWidget:
     def test_a_long_table_with_a_link_is_built_whole(self, viewer: OKFViewer) -> None:
         rows = [*LONG_TABLE_ROWS, "[ref=concept/a.md]A[/ref]"]
         assert not isinstance(self._table(viewer, rows), LazyTable)
-
-
-class TestSidebarWhileSearching:
-    def _type(self, viewer: OKFViewer, text: str) -> None:
-        viewer.search_field.text = text
-
-    def test_before_the_index_is_ready_it_says_it_is_searching(self, viewer: OKFViewer) -> None:
-        self._type(viewer, "grotto")
-        assert left_texts(viewer) == ["Searching…"]
-
-    def test_while_waiting_right_crosses_and_the_rest_are_held(self, viewer: OKFViewer) -> None:
-        self._type(viewer, "grotto")
-        assert viewer.handle_key(KEY_DOWN) is True
-        assert viewer.handle_key(KEY_F) is False
-        assert viewer.handle_key(KEY_RIGHT) is True
-        assert viewer._focus_region is FocusRegion.PAGE
-
-    def test_typing_after_a_failed_build_shows_the_error(self, viewer: OKFViewer) -> None:
-        viewer._mark_search_ready(failed=True)
-        self._type(viewer, "grotto")
-        assert left_texts(viewer) == [SEARCH_ERROR_TEXT]
-
-    def test_typing_once_ready_lists_the_hits(self, viewer: OKFViewer) -> None:
-        a_page = viewer.bundle / "concept" / "a.md"
-        viewer._searcher = Hits([hit(a_page, "A")])
-        viewer._mark_search_ready(failed=False)
-
-        self._type(viewer, "a")
-
-        assert [path for path, _btn in viewer._result_rows] == [a_page]
-
-    def test_a_text_hit_shows_its_snippet_with_the_match_bold(self, viewer: OKFViewer) -> None:
-        a_page = viewer.bundle / "concept" / "a.md"
-        text_hit = SearchHit(
-            path=a_page,
-            title="Carl Barks",
-            breadcrumb="Topics",
-            matched_on="text",
-            score=1,
-            snippet="…to the artist Glen Brown, Barks",
-            snippet_match=(15, 25),
-        )
-        viewer._searcher = Hits([text_hit, hit(a_page, "Glen [Brown]")])
-        viewer._mark_search_ready(failed=False)
-
-        self._type(viewer, "glen brown")
-
-        (_, text_row), (_, title_row) = viewer._result_rows
-        assert "…to the artist [b][color=" in text_row.text
-        assert "]Glen Brown[/color][/b], Barks" in text_row.text
-        assert "Topics" not in text_row.text  # the snippet takes the breadcrumb's line
-        assert text_row.height > title_row.height  # room for two lines of snippet
-        assert "Glen &bl;Brown&br;" in title_row.text  # markup in a title is escaped
-
-    def test_the_clear_button_puts_the_tree_back(self, viewer: OKFViewer) -> None:
-        self._type(viewer, "grotto")
-        viewer._clear_search()
-        assert viewer.search_field.text == ""
-        assert viewer.tree_scroll.parent is viewer._left_body
-
-    def test_clearing_twice_leaves_the_tree_alone(self, viewer: OKFViewer) -> None:
-        """An empty box asked again rebuilds nothing: the sidebar's ringed row is kept."""
-        self._type(viewer, "grotto")
-        viewer._clear_search()
-        viewer._sidebar_index = 0  # a row ringed since the tree came back
-
-        with patch.object(viewer._left_body, "clear_widgets") as cleared:
-            viewer._clear_search()
-            viewer._show_tree_panel()
-
-        cleared.assert_not_called()
-        assert viewer._sidebar_index == 0
-        assert viewer.tree_scroll.parent is viewer._left_body
-
-
-class TestResultKeys:
-    @pytest.fixture
-    def results(self, viewer: OKFViewer) -> OKFViewer:
-        hits = [hit(viewer.bundle / f"p{i}.md", f"Page {i}") for i in range(3)]
-        viewer._searcher = Hits(hits)
-        viewer._mark_search_ready(failed=False)
-        viewer.search_field.text = "page"
-        viewer._set_focus_region(FocusRegion.SIDEBAR)
-        return viewer
-
-    def test_end_and_home_go_to_the_last_and_first_row(self, results: OKFViewer) -> None:
-        results.handle_key(KEY_END)
-        assert results._sidebar_index == 2  # noqa: PLR2004
-        results.handle_key(KEY_HOME)
-        assert results._sidebar_index == 0
-
-    def test_left_is_held_and_others_are_left_to_the_host(self, results: OKFViewer) -> None:
-        assert results.handle_key(KEY_LEFT) is True
-        assert results.handle_key(KEY_F) is False
-
-    def test_a_row_out_of_view_is_scrolled_to(self, results: OKFViewer) -> None:
-        scroll = results._results_scroll
-        assert scroll is not None
-        scroll.height = 10
-        scroll.children[0].height = 1000
-        with patch.object(scroll, "scroll_to") as scroll_to:
-            results.handle_key(KEY_END)
-        scroll_to.assert_called_once()
 
 
 class TestHistory:
@@ -562,9 +352,9 @@ class TestContrast:
         assert viewer._pane_scrim_color.a == pytest.approx(viewer_module.READING_PANE_SCRIM[3])
 
     def test_the_sidebar_scrim_ignores_the_toggle(self, viewer: OKFViewer) -> None:
-        assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
+        assert viewer._sidebar.scrim_color.a == pytest.approx(sidebar.SIDEBAR_SCRIM[3])
         viewer.contrast_btn.state = "down"
-        assert viewer._sidebar_scrim_color.a == pytest.approx(viewer_module.SIDEBAR_SCRIM[3])
+        assert viewer._sidebar.scrim_color.a == pytest.approx(sidebar.SIDEBAR_SCRIM[3])
 
 
 class TestTheReadingColumnsCap:
@@ -592,48 +382,6 @@ class TestTheContentPadding:
         assert list(viewer._content.padding) == [viewer_module.CONTENT_PADDING] * 4
         viewer.set_content_padding(40, 0, 8, 2)
         assert list(viewer._content.padding) == [40, 0, 8, 2]
-
-
-class TestTheSearchFieldsBorder:
-    """A faint outline keeps to the search field's edges as it moves and resizes."""
-
-    def test_the_outline_follows_the_field(self, viewer: OKFViewer) -> None:
-        field = viewer.search_field
-        field.pos = (10, 20)
-        field.size = (200, 32)
-        lines = [i for i in field.canvas.after.children if isinstance(i, viewer_module.Line)]
-        assert len(lines) == 1
-        assert list(lines[0].points) == [10, 20, 210, 20, 210, 52, 10, 52]
-        assert lines[0].close
-        assert lines[0].width == viewer_module.SEARCH_FIELD_BORDER_WIDTH
-
-
-class TestTheClearButtonInsideTheField:
-    """The field spans the sidebar; the clear button sits over its right end."""
-
-    def test_the_field_fills_the_row(self, viewer: OKFViewer) -> None:
-        field = viewer.search_field
-        row = field.parent
-        row.pos, row.size = (8, 720), (300, 32)
-        row.do_layout()
-        assert (*field.pos, *field.size) == (*row.pos, *row.size)
-
-    def test_text_shows_the_button_at_the_fields_right_end(self, viewer: OKFViewer) -> None:
-        row = viewer.search_field.parent
-        row.pos, row.size = (8, 720), (300, 32)
-        viewer.search_field.text = "duck"
-        row.do_layout()
-        btn = viewer.search_clear_btn
-        assert btn.width == viewer_module.dp(viewer_module.SEARCH_CLEAR_BTN_WIDTH)
-        assert (btn.right, btn.y) == (row.right, row.y)
-        assert not btn.disabled
-
-    def test_hidden_the_button_takes_no_touches_from_the_field(self, viewer: OKFViewer) -> None:
-        viewer.search_field.text = "duck"
-        viewer.search_field.text = ""
-        btn = viewer.search_clear_btn
-        assert btn.width == 0
-        assert btn.disabled
 
 
 class TestTheCentredBlock:
@@ -737,68 +485,6 @@ class TestTheSideScrims:
         assert viewer_module.SIDE_SCRIM[3] < viewer_module.READING_PANE_SCRIM[3]
 
 
-class TestTheIndexReadyWithAQueryTyped:
-    def test_a_query_typed_during_the_build_gets_its_hits_when_it_ends(
-        self, viewer: OKFViewer
-    ) -> None:
-        """Or it stays on "Searching…" until something more is typed."""
-        a_page = viewer.bundle / "concept" / "a.md"
-        viewer._searcher = Hits([hit(a_page, "A")])
-        viewer.search_field.text = "a"
-        assert left_texts(viewer) == ["Searching…"]
-
-        viewer._mark_search_ready(failed=False)
-
-        assert [path for path, _btn in viewer._result_rows] == [a_page]
-
-    def test_with_nothing_typed_the_tree_stays(self, viewer: OKFViewer) -> None:
-        viewer._searcher = Hits([])
-
-        viewer._mark_search_ready(failed=False)
-
-        assert viewer.tree_scroll.parent is viewer._left_body
-
-    def test_a_query_nothing_matches_says_so(self, viewer: OKFViewer) -> None:
-        viewer._searcher = Hits([])
-        viewer._mark_search_ready(failed=False)
-
-        viewer.search_field.text = "zzzz"
-
-        assert left_texts(viewer) == ["No matches"]
-        assert viewer._result_rows == []
-
-    def test_a_title_hit_s_row_names_where_the_page_is(self, viewer: OKFViewer) -> None:
-        a_page = viewer.bundle / "concept" / "a.md"
-        hit = SearchHit(path=a_page, title="A", breadcrumb="Concept", matched_on="title", score=1)
-        viewer._searcher = Hits([hit])
-        viewer._mark_search_ready(failed=False)
-
-        viewer.search_field.text = "a"
-
-        ((_path, row),) = viewer._result_rows
-        assert "A" in row.text
-        assert "Concept" in row.text
-
-
-class TestEscapeSearch:
-    """What a host asks before its own Back: an active search takes the Escape."""
-
-    def test_a_query_is_cleared_and_the_escape_taken(self, viewer: OKFViewer) -> None:
-        viewer.search_field.text = "grotto"
-        with patch.object(viewer_module.trace, "search_cleared") as cleared:
-            assert viewer.escape_search() is True
-
-        assert viewer.search_field.text == ""
-        assert viewer.search_field.focus is False
-        cleared.assert_called_once_with()
-
-    def test_an_idle_search_leaves_the_escape_to_the_host(self, viewer: OKFViewer) -> None:
-        with patch.object(viewer_module.trace, "search_cleared") as cleared:
-            assert viewer.escape_search() is False
-
-        cleared.assert_not_called()
-
-
 class TestHistoryRoot:
     def test_back_at_the_root_leaves_the_reader(self, bundle: Path) -> None:
         on_exit = MagicMock()
@@ -858,97 +544,6 @@ def test_run_hands_every_option_to_the_app(bundle: Path) -> None:
 
 # What follows is the remote's paths again, at the size of a unit test: the GUI suite
 # walks them in the real app, and these say which line broke when it fails.
-
-
-class TestTheRemoteInTheSearchBox:
-    def test_down_leaves_the_box_for_the_sidebar(self, viewer: OKFViewer) -> None:
-        viewer.focus_search()
-
-        assert viewer.handle_key(KEY_DOWN) is True
-
-        assert not viewer.search_focused
-        assert viewer._focus_region is FocusRegion.SIDEBAR
-
-    def test_the_box_keeps_every_other_key(self, viewer: OKFViewer) -> None:
-        viewer.focus_search()
-        assert viewer.handle_key(KEY_LEFT) is False
-        assert viewer.search_focused
-
-    def test_enter_opens_the_top_hit_and_gives_the_keys_back(self, viewer: OKFViewer) -> None:
-        top, second = viewer.bundle / "concept" / "a.md", viewer.bundle / "index.md"
-        viewer._searcher = Hits([hit(top, "A"), hit(second, "Home")])
-        viewer._mark_search_ready(failed=False)
-        viewer.focus_search()
-        viewer.search_field.text = "a"
-
-        viewer.search_field.dispatch("on_text_validate")
-
-        assert page_of(viewer) == "concept/a.md"
-        assert not viewer.search_focused
-        assert len(viewer._result_rows) == 2  # noqa: PLR2004 — the list stays for the next
-
-    def test_enter_with_no_hits_opens_nothing(self, viewer: OKFViewer) -> None:
-        viewer._searcher = Hits([])
-        viewer._mark_search_ready(failed=False)
-        viewer.search_field.text = "nothing"
-        viewer.search_field.dispatch("on_text_validate")
-        assert page_of(viewer) == "index.md"
-
-    def test_enter_before_the_index_is_ready_opens_nothing(self, viewer: OKFViewer) -> None:
-        viewer._searcher = Hits([hit(viewer.bundle / "concept" / "a.md", "A")])
-        viewer.search_field.text = "a"
-        viewer.search_field.dispatch("on_text_validate")
-        assert page_of(viewer) == "index.md"
-
-
-class TestTheRemoteInTheResults:
-    @pytest.fixture
-    def results(self, viewer: OKFViewer) -> OKFViewer:
-        pages = [viewer.bundle / "index.md", viewer.bundle / "concept" / "a.md"]
-        viewer._searcher = Hits([hit(page, page.stem) for page in pages])
-        viewer._mark_search_ready(failed=False)
-        viewer.search_field.text = "page"
-        viewer._active_result_path = None
-        viewer._set_focus_region(FocusRegion.SIDEBAR)
-        viewer._clear_result_focus()
-        return viewer
-
-    def test_down_starts_on_the_top_hit_and_steps_from_there(self, results: OKFViewer) -> None:
-        results.handle_key(KEY_DOWN)
-        assert results._sidebar_index == 0
-        results.handle_key(KEY_DOWN)
-        assert results._sidebar_index == 1
-        results.handle_key(KEY_DOWN)
-        assert results._sidebar_index == 1  # the last row: no wrap
-        results.handle_key(KEY_UP)
-        assert results._sidebar_index == 0
-
-    def test_it_starts_on_the_row_of_the_page_showing(self, results: OKFViewer) -> None:
-        results._active_result_path = results.bundle / "concept" / "a.md"
-        results.handle_key(KEY_DOWN)
-        assert results._sidebar_index == 1
-
-    def test_up_from_the_top_hit_goes_back_to_the_box(self, results: OKFViewer) -> None:
-        results.handle_key(KEY_DOWN)
-        assert results.handle_key(KEY_UP) is True
-        assert results.search_focused
-        assert results._sidebar_index is None
-
-    def test_enter_opens_the_ringed_hit_and_keeps_the_list(self, results: OKFViewer) -> None:
-        results.handle_key(KEY_END)
-
-        assert results.handle_key(KEY_ENTER) is True
-
-        assert page_of(results) == "concept/a.md"
-        assert len(results._result_rows) == 2  # noqa: PLR2004
-
-    def test_enter_with_no_row_ringed_opens_nothing(self, results: OKFViewer) -> None:
-        assert results.handle_key(KEY_ENTER) is True
-        assert page_of(results) == "index.md"
-
-    def test_right_crosses_to_the_page(self, results: OKFViewer) -> None:
-        assert results.handle_key(KEY_RIGHT) is True
-        assert results._focus_region is FocusRegion.PAGE
 
 
 class TestEscape:

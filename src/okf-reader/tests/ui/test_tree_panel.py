@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from kivy.uix.treeview import TreeViewLabel
-from okf_reader.ui import tree_panel
+from okf_reader.ui import sidebar, tree_panel
 from okf_reader.ui.keynav import (
     KEY_DOWN,
     KEY_END,
@@ -327,16 +327,16 @@ class TestTheTreeScrolledToANode:
         viewer.show_page(viewer.bundle / "concept" / "a.md")
         selected = viewer.tree.selected_node
         assert selected is not None
-        viewer._searcher = Hits([hit(viewer.bundle / "index.md", "Home")])
-        viewer._mark_search_ready(failed=False)
+        viewer._sidebar.searcher = Hits([hit(viewer.bundle / "index.md", "Home")])
+        viewer._sidebar.mark_ready(failed=False)
         viewer.search_field.text = "home"
 
         with (
-            clock_patched() as clock,
+            clock_patched(sidebar) as clock,
             patch.object(viewer._tree_panel, "scroll_node_into_view") as scroll,
         ):
             viewer.search_field.text = ""
             run_scheduled(clock)
 
         scroll.assert_called_with(selected)
-        assert viewer.tree_scroll.parent is viewer._left_body
+        assert viewer.tree_scroll.parent is viewer._sidebar.body
