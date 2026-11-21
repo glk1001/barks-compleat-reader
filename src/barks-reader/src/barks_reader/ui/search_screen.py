@@ -198,6 +198,9 @@ class SearchScreen(FloatLayout):
         self._current_image_info: ImageInfo | None = None
         self.on_goto_background_title_func: Callable[[ImageInfo], object] | None = None
         self.on_search_results_title_changed: Callable[[Titles], None] | None = None
+        # The stories each mode lists now, and those the background rotates through: the
+        # ones of the mode on screen.
+        self._listed_titles: dict[str, list[Titles]] = {}
         self._search_result_titles: list[Titles] = []
         self._image_change_event = None
         self.show_current_title = self._reader_settings.show_fun_view_title_info
@@ -307,10 +310,16 @@ class SearchScreen(FloatLayout):
         self._scope_counts: dict[str, int] = {}
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
-        """Stop the background rotating and close the speaker list once hidden."""
+        """Stop the background rotating and close the speaker list once hidden.
+
+        Shown again, the background goes on through the stories still listed, from
+        the image it has.
+        """
         if not value:
             self._cancel_image_change_event()
             self._said_by.close_list()  # the speaker list does not outlive the screen
+        else:
+            self._rotate_background(show_one_now=False)
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
         """Take no press while hidden; else as a FloatLayout does."""
@@ -333,6 +342,7 @@ class SearchScreen(FloatLayout):
             self.ids[content_id].shown = mode == content_mode
 
         logger.debug(log_markers.SEARCH_MODE_SET.format(mode=mode))
+        self._rotate_background()  # through this mode's stories, not the last one's
         if mode == "Word":
             self._refresh_tag_scope()
 
@@ -440,12 +450,13 @@ class SearchScreen(FloatLayout):
         results_layout.clear_widgets()
 
         if len(text) <= 1:
-            self._update_background_from_results([])  # nothing listed: no story to rotate
+            # Nothing listed: no story to rotate.
+            self._update_background_from_results("Title", [])
             return
 
         title_enums, title_strings = self._get_titles_matching(text)
         self._populate_title_results(results_layout, title_strings, self._on_result_goto_title)
-        self._update_background_from_results(title_enums)
+        self._update_background_from_results("Title", title_enums)
         logger.debug(log_markers.SEARCH_TITLE_RESULTS.format(count=len(title_strings), text=text))
 
     def _get_titles_matching(self, value: str) -> tuple[list[Titles], list[str]]:
@@ -655,7 +666,7 @@ class SearchScreen(FloatLayout):
             pages_of=self._listed_tags_pages_of(),
         )
         self._add_none_in_era_row(title_results_layout, titles)
-        self._update_background_from_results(titles)
+        self._update_background_from_results("Tag", titles)
 
     def _add_none_in_era_row(self, layout: BoxLayout, titles: list[Titles]) -> None:
         """Say so when the era leaves nothing of a list, so an empty list is not a mystery."""
@@ -750,7 +761,7 @@ class SearchScreen(FloatLayout):
         self.ids.tag_title_results_layout.clear_widgets()
         self._tag_titles = []
         self._listed_tag = ""
-        self._update_background_from_results([])
+        self._update_background_from_results("Tag", [])
 
     def on_tag_clear(self) -> None:
         """Empty the tag box, its tags, the picked tags and their stories, and the era."""
@@ -865,7 +876,7 @@ class SearchScreen(FloatLayout):
             self._add_none_in_era_row(layout, titles)
         elif not titles:
             layout.add_widget(_SearchResultButton(text="No story has these tags", disabled=True))
-        self._update_background_from_results(titles)
+        self._update_background_from_results("Tag", titles)
 
     # --- Word Search ---
 
@@ -881,7 +892,7 @@ class SearchScreen(FloatLayout):
         self._word_search_results = []
         self._word_query = ""
         self._word_query_result = None
-        self._update_background_from_results([])
+        self._update_background_from_results("Word", [])
 
     def on_word_search_text(self, text: str) -> None:
         """List the words matching the box's `text`; the picked words' stories stay."""
@@ -1245,7 +1256,7 @@ class SearchScreen(FloatLayout):
         self._word_search_results = self._build_word_results(found, hit_counts)
         self._populate_word_results_layout(results_layout)
         self._update_background_from_results(
-            [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM]
+            "Word", [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM]
         )
 
         if not found:
@@ -1627,17 +1638,34 @@ class SearchScreen(FloatLayout):
 
     # --- Background Image Update from Results ---
 
-    def _update_background_from_results(self, titles: list[Titles]) -> None:
-        """Rotate the background through the stories listed now; none listed, stop rotating.
+    def _update_background_from_results(self, mode: str, titles: list[Titles]) -> None:
+        """Note the stories `mode` lists now, and rotate through them if it is on screen.
+
+        A hidden mode's list (both list again when the era changes) waits for its
+        mode to be shown.
+        """
+        self._listed_titles[mode] = titles
+        if mode == self._active_mode:
+            self._rotate_background()
+
+    def _rotate_background(self, *, show_one_now: bool = True) -> None:
+        """Rotate the background through the stories the mode on screen lists; none, stop.
 
         With none, the background keeps the image it has, but no longer changes to
         stories of a list that has gone.
+
+        Args:
+            show_one_now: Whether to show one of the stories at once, not only from
+                the next change on.
+
         """
         self._cancel_image_change_event()
+        titles = self._listed_titles.get(self._active_mode, [])
         self._search_result_titles = titles
         if not titles or not self.on_search_results_title_changed:
             return
-        self.on_search_results_title_changed(random.choice(titles))
+        if show_one_now:
+            self.on_search_results_title_changed(random.choice(titles))
         self._image_change_event = Clock.schedule_interval(
             lambda _dt: self._next_background_image(), SEARCH_IMAGE_CHANGE_SECONDS
         )

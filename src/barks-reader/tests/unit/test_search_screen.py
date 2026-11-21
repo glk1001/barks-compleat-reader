@@ -96,7 +96,10 @@ def _make_bare_screen() -> SearchScreen:
     # The tag list's groups, and its open subgroup: none.
     screen._tag_chip_groups = set()
     screen._open_subgroup = None
+    # The mode on screen, as a screen starts.
+    screen._active_mode = "Title"
     # The background's rotation: none running. No listener: it changes nothing.
+    screen._listed_titles = {}
     screen._search_result_titles = []
     screen._image_change_event = None
     screen.on_search_results_title_changed = None
@@ -3016,7 +3019,7 @@ class TestBackgroundAndGoto:
 
     def test_the_background_cycles_through_the_stories_listed(self, screen: SearchScreen) -> None:
         with patch.object(search_screen.Clock, "schedule_interval") as every:
-            screen._update_background_from_results([PIRATE_GOLD, HELMET])
+            screen._update_background_from_results("Title", [PIRATE_GOLD, HELMET])
         assert screen.on_search_results_title_changed.call_args.args[0] in (PIRATE_GOLD, HELMET)
         every.assert_called_once()
         screen._next_background_image()
@@ -3026,14 +3029,15 @@ class TestBackgroundAndGoto:
         assert screen._image_change_event is None
 
     def test_no_stories_or_no_listener_changes_no_background(self, screen: SearchScreen) -> None:
-        screen._update_background_from_results([])
+        screen._update_background_from_results("Title", [])
         screen._next_background_image()
         screen.on_search_results_title_changed.assert_not_called()
 
-    def _rotating(self, screen: SearchScreen) -> MagicMock:
-        """Start the background rotating through two stories; return its timer."""
+    def _rotating(self, screen: SearchScreen, mode: str = "Title") -> MagicMock:
+        """Start the background rotating through two stories `mode` lists; return its timer."""
+        screen._active_mode = mode
         with patch.object(search_screen.Clock, "schedule_interval") as every:
-            screen._update_background_from_results([PIRATE_GOLD, HELMET])
+            screen._update_background_from_results(mode, [PIRATE_GOLD, HELMET])
         screen.on_search_results_title_changed.reset_mock()
         return every.return_value
 
@@ -3045,7 +3049,7 @@ class TestBackgroundAndGoto:
 
     def test_a_search_that_finds_nothing_stops_the_rotation(self, screen: SearchScreen) -> None:
         timer = self._rotating(screen)
-        screen._update_background_from_results([])
+        screen._update_background_from_results("Title", [])
         self._assert_stopped(screen, timer)
 
     def test_a_title_box_cut_to_one_letter_stops_the_rotation(self, screen: SearchScreen) -> None:
@@ -3056,7 +3060,7 @@ class TestBackgroundAndGoto:
     def test_a_word_search_that_finds_nothing_stops_the_rotation(
         self, screen: SearchScreen
     ) -> None:
-        timer = self._rotating(screen)
+        timer = self._rotating(screen, "Word")
         with (
             patch.object(screen, "_show_result_filters"),
             patch.object(screen, "_build_word_results", return_value=[]),
@@ -3066,9 +3070,57 @@ class TestBackgroundAndGoto:
         self._assert_stopped(screen, timer)
 
     def test_a_tag_list_cleared_stops_the_rotation(self, screen: SearchScreen) -> None:
-        timer = self._rotating(screen)
+        timer = self._rotating(screen, "Tag")
         screen._clear_tag_title_results()
         self._assert_stopped(screen, timer)
+
+    def test_a_hidden_mode_s_list_leaves_the_rotation_alone(self, screen: SearchScreen) -> None:
+        """Both searches list again when the era changes; only the one on screen is shown."""
+        timer = self._rotating(screen, "Tag")
+        with patch.object(search_screen.Clock, "schedule_interval") as every:
+            screen._update_background_from_results("Word", [])
+            screen._update_background_from_results("Word", [Titles.LOST_IN_THE_ANDES])
+        timer.cancel.assert_not_called()
+        every.assert_not_called()
+        assert screen._search_result_titles == [PIRATE_GOLD, HELMET]
+
+    def test_a_mode_shown_rotates_through_its_own_stories(self, screen: SearchScreen) -> None:
+        timer = self._rotating(screen, "Tag")
+        screen._update_background_from_results("Word", [Titles.LOST_IN_THE_ANDES])
+        with (
+            patch.object(SearchScreen, "_refresh_tag_scope"),
+            patch.object(search_screen.Clock, "schedule_interval") as every,
+        ):
+            screen.set_mode("Word")
+        timer.cancel.assert_called_once_with()
+        every.assert_called_once()
+        screen.on_search_results_title_changed.assert_called_once_with(Titles.LOST_IN_THE_ANDES)
+        screen.on_search_results_title_changed.reset_mock()
+
+        screen.set_mode("Title")  # nothing listed there: the rotation stops
+        self._assert_stopped(screen, every.return_value)
+
+    def test_the_rotation_goes_on_when_the_screen_is_shown_again(
+        self, screen: SearchScreen
+    ) -> None:
+        """From the image it has: a story opened and left is not a new search."""
+        timer = self._rotating(screen)
+        screen.on_is_visible(screen, value=False)
+        timer.cancel.assert_called_once_with()
+
+        with patch.object(search_screen.Clock, "schedule_interval") as every:
+            screen.on_is_visible(screen, value=True)
+        every.assert_called_once()
+        screen.on_search_results_title_changed.assert_not_called()
+        screen._next_background_image()
+        assert screen.on_search_results_title_changed.call_args.args[0] in (PIRATE_GOLD, HELMET)
+
+    def test_a_screen_shown_with_nothing_listed_starts_no_rotation(
+        self, screen: SearchScreen
+    ) -> None:
+        with patch.object(search_screen.Clock, "schedule_interval") as every:
+            screen.on_is_visible(screen, value=True)
+        every.assert_not_called()
 
     def test_the_arrow_goes_to_the_story_the_background_shows(self, screen: SearchScreen) -> None:
         screen.on_goto_background_title()  # none shown yet
