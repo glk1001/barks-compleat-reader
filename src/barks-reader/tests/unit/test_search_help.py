@@ -27,7 +27,7 @@ from barks_reader.core.search_help import (
     TITLE_SERIES_NOTE,
     WORD_HELP,
 )
-from barks_reader.ui.search_screen import SearchSyntaxHelp, _SyntaxExample, _SyntaxMeaning
+from barks_reader.ui.search_widgets import SearchSyntaxHelp, _SyntaxExample, _SyntaxMeaning
 
 _NO_QUERY_ALONE = (Not, TagQualifier, VolumeQualifier, YearQualifier)
 _WORD_EXAMPLES = [example for example, _ in WORD_HELP]

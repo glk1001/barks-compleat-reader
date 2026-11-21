@@ -87,6 +87,7 @@ from .reader_screens import (
 from .reader_settings_buildable import BuildableReaderSettings
 from .screen_bundle import ScreenBundle
 from .search_screen import SEARCH_SCREEN_KV_FILE, SearchScreen
+from .search_widgets import SEARCH_WIDGETS_KV_FILE
 from .settings_fix import (
     PinnedTitleSettings,
     SettingAltEscapeKey,
@@ -288,6 +289,8 @@ class BarksReaderApp(App):
         Builder.load_file(str(INDEX_SCREEN_KV_FILE))
         Builder.load_file(str(STATISTICS_SCREEN_KV_FILE))
         Builder.load_file(str(HISTORY_SCREEN_KV_FILE))
+        # The widgets' rules first: the screen's rule builds them.
+        Builder.load_file(str(SEARCH_WIDGETS_KV_FILE))
         Builder.load_file(str(SEARCH_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
 

@@ -21,9 +21,9 @@ from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.search_chip_row import ChipRow
 from barks_reader.ui import search_screen
-from barks_reader.ui.search_screen import (
+from barks_reader.ui.search_screen import SearchScreen
+from barks_reader.ui.search_widgets import (
     SearchModeContent,
-    SearchScreen,
     _NoticeLabel,
     _PlusButton,
     _QueryRowButton,
