@@ -411,10 +411,14 @@ def test_tag_chips_match_inside_a_name_and_show_counts(boot: AppBoot) -> None:
     after_results = log[log.rindex(f"tags for '{INSIDE_TAG_QUERY}'") :]
     assert not re.search(pattern(markers.TAG_SELECTED_TAG), after_results), "none picked as typed"
 
+    # The box's Return picks the first chip, lists its stories and lands the focus on it:
+    # France, picked on the way, went when the text changed.
     first = matches[0]
-    d.key_then_wait(_chip_focused(first.label), "Return")  # the box's Return: the first chip
-    with d.expect(pattern(markers.TAG_TITLES_LISTED, tag=first.label, count=first.title_count)):
-        d.key_then_wait(pattern(markers.TAG_SELECTED_TAG, tag=first.label), "Return")
+    with (
+        d.expect(pattern(markers.TAG_SELECTED_TAG, tag=first.label)),
+        d.expect(pattern(markers.TAG_TITLES_LISTED, tag=first.label, count=first.title_count)),
+    ):
+        d.key_then_wait(_chip_focused(first.label), "Return")
 
 
 def test_a_tag_groups_members_are_walked_and_picked_by_keyboard(boot: AppBoot) -> None:

@@ -924,6 +924,16 @@ class TestTagChips:
         else:
             select.assert_called_once_with(picked)
 
+    def test_typing_a_new_search_drops_the_tag_picked_before(self, screen: SearchScreen) -> None:
+        """Its stories go as the box changes; left picked, Return picked no first tag."""
+        screen._selected_tag = "Africa"
+        screen._current_tag = TagGroups.AFRICA
+        screen._search.get_tags_matching.return_value = [_tag("Daisy Duck"), _tag("Duckburg")]
+
+        screen.on_tag_search_text("duck")
+
+        assert (screen._selected_tag, screen._current_tag) == ("", None)
+
     def test_each_chip_shows_its_count_and_keeps_its_name(self, screen: SearchScreen) -> None:
         screen._tag_chip_counts = {"Africa": 17}
         stack = screen._make_main_chip_stack(["Africa"], selected="")

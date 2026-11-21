@@ -464,12 +464,16 @@ class SearchScreen(FloatLayout):
     def _reset_tag_list(self) -> None:
         """Empty the tag list and what it holds; one reset for typing and for Clear.
 
-        Its chips, their counts and groups, the open member and subgroup, the typed tags.
+        Its chips, their counts and groups, the tag picked and its open group, the open
+        member and subgroup, the typed tags. The picked tag goes with its stories: left
+        picked, Return in the box did not pick the new list's first tag.
         """
         self.ids.tag_chips_layout.clear_widgets()
         self._tag_chip_strings = []
         self._tag_chip_counts = {}
         self._tag_chip_groups = set()
+        self._selected_tag = ""
+        self._current_tag = None
         self._selected_member = ""
         self._open_subgroup = None
         self._tag_box_query = ""
@@ -757,8 +761,6 @@ class SearchScreen(FloatLayout):
         self._tag_basket.clear()
         self._show_tag_basket()
         self._tag_basket_results = False
-        self._selected_tag = ""
-        self._current_tag = None
         self._clear_tag_title_results()
         self._set_era(ALL_YEARS)
         self.ids.tag_search_input.focus = True
