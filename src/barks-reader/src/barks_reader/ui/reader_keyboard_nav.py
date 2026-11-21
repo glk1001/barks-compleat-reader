@@ -362,15 +362,17 @@ class ActionBarNavMixin:
 class DropdownNavMixin:
     """Mixin for keyboard navigation within an open Kivy DropDown.
 
-    Requires ActionBarNavMixin to also be in the MRO.
-
-    Usage:
+    Usage, on a screen with the action bar (ActionBarNavMixin also in the MRO):
       1. Put DropdownNavMixin before ActionBarNavMixin in the class bases so that
          _handle_menu_key intercepts dropdown keys before the action-bar handler.
       2. Call _setup_dropdown_nav() in __init__ or an init helper.
       3. Override _get_dropdown_buttons() and _dismiss_dropdown().
       4. Optionally override _scroll_to_dropdown_button() for scrollable dropdowns.
       5. Set class-level _dropdown_wraps=False and/or _dropdown_page_step>0 as needed.
+
+    A class without the action bar (the search screen's speaker filter) does 2 to 5,
+    passes its keys to _handle_dropdown_key() itself, and overrides
+    _after_dropdown_nav_closed() to say where the keys go when the list closes.
     """
 
     _dropdown_wraps: bool = True  # wrap at ends; set False to clamp
@@ -419,8 +421,12 @@ class DropdownNavMixin:
         logger.debug(DROPDOWN_DISMISSED_LOG)
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
-            if self._menu_mode:  # ty: ignore[missing-attribute]
-                self._exit_menu_mode()  # ty: ignore[missing-attribute]
+            self._after_dropdown_nav_closed()
+
+    def _after_dropdown_nav_closed(self) -> None:
+        """Say where the keys go once the list they were on has closed: out of the menu."""
+        if self._menu_mode:  # ty: ignore[missing-attribute]
+            self._exit_menu_mode()  # ty: ignore[missing-attribute]
 
     # --- Key handling ---
 

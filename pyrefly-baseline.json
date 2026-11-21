@@ -211,14 +211,14 @@
       "severity": "error"
     },
     {
-      "column": 16,
+      "column": 12,
       "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `DropdownNavMixin` has no attribute `_menu_mode`",
       "severity": "error"
     },
     {
-      "column": 17,
+      "column": 13,
       "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `DropdownNavMixin` has no attribute `_exit_menu_mode`",

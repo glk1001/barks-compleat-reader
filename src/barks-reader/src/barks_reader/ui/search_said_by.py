@@ -92,7 +92,7 @@ class SaidByFilter(DropdownNavMixin):
         # (to change the speaker picked) does not search again. None until counted.
         self._counted: tuple[Searched, dict[str | None, int]] | None = None
         self.dropdown = ReaderDropDown(auto_width=False, width=SAID_BY_LIST_WIDTH)
-        self.dropdown.bind(on_select=self._on_item_selected, on_dismiss=self._on_dismissed)
+        self.dropdown.bind(on_select=self._on_item_selected, on_dismiss=self._on_dropdown_dismissed)
         self._setup_dropdown_nav()
 
     def offered(self) -> list[str]:
@@ -183,26 +183,19 @@ class SaidByFilter(DropdownNavMixin):
             return
         logger.info(log_markers.SPEAKER_LIST_OPENED.format(count=len(counts) - 1))
         if self._focus.area == FocusArea.SPEAKERS and self.row.focused is not None:
-            # By the remote: it walks the list, from the speaker picked now.
-            self._focus.area = FocusArea.SAID_BY_LIST
-            self.row.clear_focus()
-            # The picked speaker is listed only while offered: else land on anyone's row.
-            here = next((i for i, (speaker, _) in enumerate(counts) if speaker == self.speaker), 0)
-            self._enter_dropdown_nav(here)
+            self.take_keys_onto_list()  # by the remote: it walks the list
 
     def _on_item_selected(self, _dropdown: Widget, speaker: str) -> None:
         """Narrow the word results to the speaker picked from the list, or lift the filter."""
         self.speaker = speaker
         logger.info(log_markers.SPEAKER_FILTER_SET.format(speaker=speaker or "All"))
         self._on_picked()
+        # Named anew here too, though listing the stories again shows the chip: the
+        # filter's chip does not wait on what its screen does with a pick.
         self.show()
 
-    def _on_dismissed(self, _dropdown: Widget) -> None:
-        """Give the keyboard back to the chip when the list closes under it."""
-        logger.debug(log_markers.DROPDOWN_DISMISSED)  # as every dropdown logs its closing
-        if not self._dropdown_nav_mode:
-            return
-        self._exit_dropdown_nav()
+    def _after_dropdown_nav_closed(self) -> None:
+        """Give the keyboard back to the chip: the list has closed under it."""
         self._focus.area = FocusArea.SPEAKERS
         self.row.enter_focus(0)
 
@@ -220,7 +213,10 @@ class SaidByFilter(DropdownNavMixin):
         self.dropdown.dismiss()
 
     def take_keys_onto_list(self) -> None:
-        """Take the keys onto the open list, the ring on the speaker picked now."""
+        """Take the keys onto the open list, the ring on the speaker picked now.
+
+        The picked speaker is listed only while offered: else the ring is on anyone's row.
+        """
         self.row.clear_focus()
         self._focus.area = FocusArea.SAID_BY_LIST
         rows = self._get_dropdown_buttons()
