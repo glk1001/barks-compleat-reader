@@ -127,7 +127,7 @@
     # A tag longer than the chip wraps onto more lines rather than spilling
     # past the pill ("Uncle Scrooge not in US series" at the 35% panel width).
     # Only a chip that fills the row wraps to it; one sized to its text
-    # (size_hint_x None, like the speaker chips) must not, or width and text
+    # (size_hint_x None, like a chip row's chips) must not, or width and text
     # would chase each other down to one letter per line.
     text_size: (self.width - dp(24), None) if self.size_hint_x else (None, None)
     # With a count at the right, the name keeps clear of it: padding on that side only
@@ -155,7 +155,7 @@
         SmoothLine:
             rounded_rectangle: (self.x, self.y, self.width, self.height, dp(12))
             width: dp(1.5)
-    # The stories the tag lists, small at the right (empty on a speaker chip).
+    # The stories the tag lists, small at the right (empty where a chip has none).
     Label:
         text: root.count_text
         font_size: root.font_size * 0.8
@@ -178,9 +178,10 @@
                     self.x - dp(14), self.center_y - dp(5), \
                     self.x - dp(7), self.center_y]
 
-# A speaker-filter chip on the word search: sized to its name, not to a share
-# of the row, so a short row does not stretch "All" across the panel.
-<_SpeakerChipButton>:
+# A chip of a chip row (the era, the scope, the picked words, the speaker): sized to
+# its text, not to a share of the row, so a short row does not stretch "All" across
+# the panel.
+<_RowChipButton>:
     size_hint_x: None
     width: self.texture_size[0] + dp(24)
 

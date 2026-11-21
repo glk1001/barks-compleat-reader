@@ -1,15 +1,15 @@
 """A row of chips of which one is picked: a search filter a remote can walk. Kivy-free.
 
-The word search's speaker filter now, and the era and "only in tagged stories"
-filters to come (docs/plans/advanced-search.md). The row owns its chips, the one
+The search screen's era, tag scope, picked-words, picked-tags and speaker rows
+(docs/plans/advanced-search.md). The row owns its chips, the one
 picked, and the keyboard while it has it: Left and Right walk the chips and Enter
 picks the focused one, staying put so a filter can be tried out without losing
 one's place. Every other way out it hands back as a `RowKey` for the screen to
 route, since only the screen knows what lies above, below and beside the row.
 
 The chips are the screen's own widgets, made by the factory it passes: their class
-names are in the focus lines the app logs (``Nav focus on _SpeakerChipButton
-"Donald"``), which the GUI tests wait on.
+names are in the focus lines the app logs (``Nav focus on _EraChipButton
+"1942-46"``), which the GUI tests wait on.
 """
 
 from __future__ import annotations

@@ -31,7 +31,7 @@ from barks_reader.core.search_chip_row import CHIP_BORDER_NONE, chip_bg_normal
 from barks_reader.core.search_state import ALL_SPEAKERS
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from barks_fantagraphics.search_evaluate import Suggestion
     from kivy.input import MotionEvent
@@ -225,7 +225,7 @@ class _TagChipButton(Button):
     """A pill-shaped tag chip button for tag search results.
 
     ``count_text`` is the number of stories the tag lists, shown small at the
-    chip's right; empty for none (a speaker chip). ``text`` stays the tag's name
+    chip's right; empty for none (a chip of a chip row). ``text`` stays the tag's name
     alone: picking a chip looks the tag up by it, and the focus lines name it.
     ``is_group`` marks a tag group, with an arrow drawn beside the count (drawn:
     the font has no arrow glyph), pointing down while ``is_open`` (its members
@@ -244,22 +244,31 @@ class _TagChipButton(Button):
             self.chip_bg_color = chip_bg_normal()
 
 
-class _SpeakerChipButton(_TagChipButton):
-    """A word-search speaker filter chip.
+class _RowChipButton(_TagChipButton):
+    """A chip of a chip row (the era, the scope, the picked words or tags, the speaker).
 
-    ``value`` is the stored speaker the chip filters to (``"Scrooge"``,
-    ``"narrator"``), or empty for the *All* chip that lifts the filter.
+    Sized to its text, not to a share of the row. ``value`` is what picking it tells
+    its row: an era's years, a picked word, and so on; ``text`` is what it shows.
+    Never built itself: each row has its own class, by whose name its focus is logged.
     """
 
     value = StringProperty("")
 
 
-class _SaidByChipButton(_SpeakerChipButton):
+def _row_chip_maker[ChipT: _RowChipButton](chip_class: type[ChipT]) -> Callable[[str, str], ChipT]:
+    """Return a chip row's chip factory: a chip of `chip_class` from a value and its label."""
+
+    def make_chip(value: str, label: str) -> ChipT:
+        return chip_class(text=label, value=value)
+
+    return make_chip
+
+
+class _SaidByChipButton(_RowChipButton):
     """The word search's speaker filter: one chip, which opens the list of who says it."""
 
 
-def _make_said_by_chip(value: str, label: str) -> _SaidByChipButton:
-    return _SaidByChipButton(text=label, value=value)
+_make_said_by_chip = _row_chip_maker(_SaidByChipButton)
 
 
 class _SaidByItem(_SearchResultButton):
@@ -272,15 +281,14 @@ class _SaidByItem(_SearchResultButton):
     count_text = StringProperty("")
 
 
-class _EraChipButton(_SpeakerChipButton):
+class _EraChipButton(_RowChipButton):
     """A chip of the era row: a range of submitted years, or all of them."""
 
 
-def _make_era_chip(value: str, label: str) -> _EraChipButton:
-    return _EraChipButton(text=label, value=value)
+_make_era_chip = _row_chip_maker(_EraChipButton)
 
 
-class _ScopeChipButton(_SpeakerChipButton):
+class _ScopeChipButton(_RowChipButton):
     """A chip of the word search's tag scope row: everywhere, or only the tags' stories."""
 
 
@@ -288,12 +296,11 @@ class _TagQueryChip(_TagChipButton):
     """The tag list's first chip while the box holds typed tags: pressing it combines them."""
 
 
-class _BasketChipButton(_SpeakerChipButton):
+class _BasketChipButton(_RowChipButton):
     """A chip of the picked-words row: ALL/ANY, which flips, or a word, which comes out."""
 
 
-def _make_basket_chip(value: str, label: str) -> _BasketChipButton:
-    return _BasketChipButton(text=label, value=value)
+_make_basket_chip = _row_chip_maker(_BasketChipButton)
 
 
 # The speaker filter's one chip, by its value in its row: picked (filled) while a
