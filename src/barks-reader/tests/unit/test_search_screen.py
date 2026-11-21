@@ -20,6 +20,7 @@ from barks_reader.core import log_markers, reader_utils
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.search_chip_row import ChipRow
+from barks_reader.core.search_focus import FocusArea, RowPart, SearchFocus
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import SearchScreen
 from barks_reader.ui.search_widgets import (
@@ -56,6 +57,8 @@ def _make_bare_screen() -> SearchScreen:
     """
     with patch.object(SearchScreen, "__init__", lambda _self, *_a, **_kw: None):
         screen = SearchScreen.__new__(SearchScreen)
+    # The keyboard: not on the screen, as a screen starts.
+    screen._focus = SearchFocus()
     # The word search's typed-query state, which every word path reads: none yet.
     screen._word_query = ""
     screen._word_query_result = None
@@ -116,12 +119,8 @@ def _press(chip: MagicMock) -> None:
 # exit or focus request, every index at its first entry, the word results on their
 # title column, and no result button selected.
 _NAV_ADOPTED: dict[str, object] = {
-    "_nav_active": True,
     "on_request_nav_focus": None,
     "_nav_on_exit_request": None,
-    "_nav_focused_chip_idx": 0,
-    "_nav_focused_result_idx": 0,
-    "_nav_word_sub_focus": "title",
     "_selected_result_button": None,
 }
 
@@ -139,7 +138,8 @@ def _bare_screen(
     assigned on the instance; shadowing the descriptor on the class does, with `ids`
     or a MagicMock. Any further `patches` are entered too. With `nav`, the screen is
     as adopting the remote's focus leaves it (`_NAV_ADOPTED`), focused on that area.
-    `state` is set on the screen last, so it overrides.
+    `state` is set on the screen last, so it overrides; a name starting `focus_` is a
+    field of the screen's `SearchFocus` (`focus_chip_index=2`).
     """
     with ExitStack() as stack:
         stack.enter_context(patch.object(SearchScreen, "ids", MagicMock() if ids is None else ids))
@@ -147,9 +147,14 @@ def _bare_screen(
         for extra in patches:
             stack.enter_context(extra)
         bare = _make_bare_screen()
-        attrs = {**_NAV_ADOPTED, "_nav_focus_area": nav, **state} if nav is not None else state
+        if nav is not None:
+            bare._focus = SearchFocus(active=True, area=FocusArea(nav))
+        attrs = {**_NAV_ADOPTED, **state} if nav is not None else state
         for name, value in attrs.items():
-            setattr(bare, name, value)
+            if name.startswith("focus_"):
+                setattr(bare._focus, name.removeprefix("focus_"), value)
+            else:
+                setattr(bare, name, value)
         yield bare
 
 
@@ -572,7 +577,7 @@ class TestTypedQuery:
             patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once),
         ):
             screen._focus_after_query()
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
         draw.assert_called_once_with()
 
     def test_with_no_story_it_goes_to_the_first_suggestion(self, screen: SearchScreen) -> None:
@@ -585,7 +590,7 @@ class TestTypedQuery:
             patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once),
         ):
             screen._focus_after_query()
-        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 1)
+        assert (screen._focus.area, screen._focus.chip_index) == ("tags", 1)
         draw.assert_called_once_with()
 
     def test_with_neither_it_goes_back_to_the_box(self, screen: SearchScreen) -> None:
@@ -595,7 +600,7 @@ class TestTypedQuery:
             patch.object(screen, "_focus_active_input") as focus_box,
         ):
             screen._focus_after_query()
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         focus_box.assert_called_once_with()
 
     def test_in_the_tag_search_it_goes_where_a_tag_query_hands_it(
@@ -613,7 +618,7 @@ class TestTypedQuery:
         self, screen: SearchScreen
     ) -> None:
         row = MagicMock(spec=_QueryRowButton)
-        screen._nav_focused_chip_idx = 0
+        screen._focus.chip_index = 0
         with (
             patch.object(screen, "_clear_chip_focus"),
             patch.object(screen, "_focus_after_query") as focus,
@@ -630,7 +635,7 @@ class TestTypedQuery:
             patch.object(screen, "_draw_chip_focus"),
         ):
             screen._nav_back_to_word_chips()
-        assert screen._nav_focused_chip_idx == 0
+        assert screen._focus.chip_index == 0
 
     def test_clear_forgets_the_query(self, screen: SearchScreen) -> None:
         screen._word_query, screen._box_query = "gold -mine", "gold -mine"
@@ -762,48 +767,48 @@ class TestWordBasket:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_list_sub == "plus"
+        assert screen._focus.list_part == "plus"
         assert 'Nav focus on _PlusButton "+".' in loguru_sink
 
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert screen._word_basket.words == ["gold"]
-        assert screen._nav_list_sub == "plus"  # stays, to put it back or move on
+        assert screen._focus.list_part == "plus"  # stays, to put it back or move on
 
         assert screen.handle_key(search_screen.KEY_LEFT) is True
-        assert screen._nav_list_sub == "word"
+        assert screen._focus.list_part == "word"
 
     def test_down_keeps_to_the_plus_column(self, screen: SearchScreen) -> None:
         screen.handle_key(search_screen.KEY_RIGHT)
         screen.handle_key(search_screen.KEY_DOWN)
-        assert (screen._nav_focused_chip_idx, screen._nav_list_sub) == (1, "plus")
+        assert (screen._focus.chip_index, screen._focus.list_part) == (1, "plus")
         screen.handle_key(search_screen.KEY_ENTER)
         assert screen._word_basket.words == ["golden"]
 
     def test_right_from_the_plus_goes_on_to_the_era_row(self, screen: SearchScreen) -> None:
         screen.handle_key(search_screen.KEY_RIGHT)
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert (screen._nav_focus_area, screen._nav_list_sub) == ("era", "word")
+        assert (screen._focus.area, screen._focus.list_part) == ("era", "word")
 
     def test_up_from_the_first_word_is_the_basket_row_when_words_are_picked(
         self, screen: SearchScreen
     ) -> None:
         screen._toggle_basket_word("golden")
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert (screen._nav_focus_area, screen._basket_row.focused) == ("basket", 0)
+        assert (screen._focus.area, screen._basket_row.focused) == ("basket", 0)
 
     def test_up_from_the_first_word_is_the_box_with_none_picked(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_focus_active_input"):
             assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
 
     def test_down_from_the_box_is_the_basket_row_when_words_are_picked(
         self, screen: SearchScreen
     ) -> None:
         screen._toggle_basket_word("gold")
-        screen._nav_focus_area = "input"
+        screen._focus.area = FocusArea.INPUT
         with patch.object(screen, "_blur_all_inputs"):
             assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert (screen._nav_focus_area, screen._basket_row.focused) == ("basket", 0)
+        assert (screen._focus.area, screen._basket_row.focused) == ("basket", 0)
 
     def test_the_basket_rows_keys(self, screen: SearchScreen) -> None:
         screen._toggle_basket_word("gold")
@@ -811,22 +816,22 @@ class TestWordBasket:
         screen._nav_enter_basket()
 
         assert screen.handle_key(search_screen.KEY_ENTER) is True  # ALL -> ANY, and stays
-        assert (screen._nav_focus_area, screen._basket_row.focused) == ("basket", 0)
+        assert (screen._focus.area, screen._basket_row.focused) == ("basket", 0)
         assert screen._word_basket.combine.upper() == "ANY"
 
         screen.handle_key(search_screen.KEY_RIGHT)
         screen.handle_key(search_screen.KEY_RIGHT)
         assert screen.handle_key(search_screen.KEY_ENTER) is True  # golden comes out
         assert screen._word_basket.words == ["gold"]
-        assert (screen._nav_focus_area, screen._basket_row.focused) == ("basket", 1)
+        assert (screen._focus.area, screen._basket_row.focused) == ("basket", 1)
 
         assert screen.handle_key(search_screen.KEY_DOWN) is True  # to the word list
-        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 0)
+        assert (screen._focus.area, screen._focus.chip_index) == ("tags", 0)
 
         screen._nav_enter_basket()
         with patch.object(screen, "_focus_active_input"):
             assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
 
     def test_taking_the_last_word_out_moves_the_keyboard_to_the_word_list(
         self, screen: SearchScreen
@@ -836,7 +841,7 @@ class TestWordBasket:
         screen.handle_key(search_screen.KEY_RIGHT)
         screen.handle_key(search_screen.KEY_ENTER)
         assert screen._word_basket.words == []
-        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 0)
+        assert (screen._focus.area, screen._focus.chip_index) == ("tags", 0)
 
 
 def _tag(label: str, count: int = 3, *, exact: bool = False) -> TagMatch:
@@ -1270,25 +1275,25 @@ class TestTagBasket:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_list_sub == "plus"
+        assert screen._focus.list_part == "plus"
         assert 'Nav focus on _PlusButton "+".' in loguru_sink
         with patch.object(screen, "_populate_title_results"):
             assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert list(screen._tag_basket.tags) == ["Scrooge"]
         assert screen.handle_key(search_screen.KEY_LEFT) is True
-        assert screen._nav_list_sub == "word"
+        assert screen._focus.list_part == "word"
         assert 'Nav focus on _TagChipButton "Scrooge".' in loguru_sink
 
     def test_up_from_the_first_tag_is_the_picked_tags_row(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_populate_title_results"):
             screen._toggle_tag_basket("Gyro")
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert (screen._nav_focus_area, screen._tag_basket_row.focused) == ("basket", 0)
+        assert (screen._focus.area, screen._tag_basket_row.focused) == ("basket", 0)
         with patch.object(screen, "_populate_title_results"):
             assert screen.handle_key(search_screen.KEY_ENTER) is True  # ALL -> ANY, stays
-        assert (screen._nav_focus_area, screen._tag_basket_row.focused) == ("basket", 0)
+        assert (screen._focus.area, screen._tag_basket_row.focused) == ("basket", 0)
         assert screen.handle_key(search_screen.KEY_DOWN) is True  # back to the tag list
-        assert screen._nav_focus_area == "tags"
+        assert screen._focus.area == "tags"
 
 
 class TestSearchInputEnter:
@@ -1298,11 +1303,11 @@ class TestSearchInputEnter:
     def _enter_ready_screen(mode: str) -> SearchScreen:
         screen = _make_bare_screen()
         screen._active_mode = mode
-        screen._nav_active = True
+        screen._focus.active = True
         screen.on_request_nav_focus = None
-        screen._nav_focus_area = "input"
-        screen._nav_focused_result_idx = 3
-        screen._nav_word_sub_focus = "speech"
+        screen._focus.area = FocusArea.INPUT
+        screen._focus.result_index = 3
+        screen._focus.row_part = RowPart.SPEECH
         return screen
 
     def test_enter_with_rows_focuses_first_row(self) -> None:
@@ -1315,9 +1320,9 @@ class TestSearchInputEnter:
         ):
             screen.on_search_input_enter()
 
-        assert screen._nav_focus_area == "results"
-        assert screen._nav_focused_result_idx == 0
-        assert screen._nav_word_sub_focus == "title"
+        assert screen._focus.area == "results"
+        assert screen._focus.result_index == 0
+        assert screen._focus.row_part == "title"
         blur.assert_called_once()
         draw.assert_called_once()
 
@@ -1325,7 +1330,7 @@ class TestSearchInputEnter:
         screen = self._enter_ready_screen("Tag")
         screen._selected_tag = ""
         screen._selected_member = ""
-        screen._nav_focused_chip_idx = 5
+        screen._focus.chip_index = 5
         chip = MagicMock()
         chip.text = "Duckburg"
         chip.trigger_action.side_effect = (
@@ -1341,8 +1346,8 @@ class TestSearchInputEnter:
             screen.on_search_input_enter()
 
         chip.trigger_action.assert_called_once_with(duration=0)
-        assert screen._nav_focus_area == "tags"
-        assert screen._nav_focused_chip_idx == 0
+        assert screen._focus.area == "tags"
+        assert screen._focus.chip_index == 0
         blur.assert_called_once()
         draw.assert_called_once()
 
@@ -1363,8 +1368,8 @@ class TestSearchInputEnter:
 
         for chip in chips:
             chip.trigger_action.assert_not_called()
-        assert screen._nav_focus_area == "tags"
-        assert screen._nav_focused_chip_idx == 1
+        assert screen._focus.area == "tags"
+        assert screen._focus.chip_index == 1
         draw.assert_called_once()
 
     def test_enter_with_no_rows_and_no_chips_is_a_no_op(self) -> None:
@@ -1378,13 +1383,13 @@ class TestSearchInputEnter:
         ):
             screen.on_search_input_enter()
 
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         blur.assert_not_called()
         draw.assert_not_called()
 
     def test_enter_with_nav_inactive_requests_nav_focus(self) -> None:
         screen = self._enter_ready_screen("Title")
-        screen._nav_active = False
+        screen._focus.active = False
         exit_cb = MagicMock()
         screen.on_request_nav_focus = MagicMock(side_effect=lambda: screen.adopt_nav_focus(exit_cb))
 
@@ -1396,9 +1401,9 @@ class TestSearchInputEnter:
             screen.on_search_input_enter()
 
         screen.on_request_nav_focus.assert_called_once_with()
-        assert screen._nav_active is True
+        assert screen._focus.active is True
         assert screen._nav_on_exit_request is exit_cb
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
 
 
 class TestAdoptNavFocus:
@@ -1406,16 +1411,16 @@ class TestAdoptNavFocus:
 
     def test_sets_active_and_exit_request_only(self) -> None:
         screen = _make_bare_screen()
-        screen._nav_active = False
+        screen._focus.active = False
         screen._nav_on_exit_request = None
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         exit_cb = MagicMock()
 
         screen.adopt_nav_focus(exit_cb)
 
-        assert screen._nav_active is True
+        assert screen._focus.active is True
         assert screen._nav_on_exit_request is exit_cb
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
 
 
 class TestSearchMarkers:
@@ -1538,7 +1543,7 @@ class TestSpeakerFilter:
             _active_mode="Word",
             _search=MagicMock(),
             _selected_word="",
-            _nav_focus_area="input",
+            focus_area=FocusArea.INPUT,
         ) as bare:
             yield bare
 
@@ -1702,7 +1707,7 @@ class TestSpeakerFilter:
         ]
         assert screen._speaker_row.selected == search_screen._SAID_BY  # still filled
         assert log_markers.SPEAKER_LIST_OPENED.format(count=2) in loguru_sink
-        assert screen._nav_focus_area == "input"  # a click: the keyboard stays where it was
+        assert screen._focus.area == "input"  # a click: the keyboard stays where it was
 
     def test_a_list_the_mouse_opened_is_open_without_the_keys(self, screen: SearchScreen) -> None:
         screen._selected_word = "money"
@@ -1723,9 +1728,9 @@ class TestSpeakerFilter:
         on_exit = MagicMock()
         with patch.object(screen, "_update_dropdown_focus"):
             screen.take_keys_onto_open_list(on_exit)
-        assert screen._nav_active is True
+        assert screen._focus.active is True
         assert screen._nav_on_exit_request is on_exit
-        assert screen._nav_focus_area == "said_by_list"
+        assert screen._focus.area == "said_by_list"
         assert screen._dropdown_nav_mode is True
         assert screen._dropdown_focused_idx == 1  # Donald, the one picked now
         assert screen.has_list_open_without_the_keys() is False
@@ -1903,7 +1908,7 @@ class TestSpeakerChipKeys:
     ) -> None:
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert self._list(screen).is_open
-        assert screen._nav_focus_area == "said_by_list"
+        assert screen._focus.area == "said_by_list"
         assert screen._dropdown_focused_idx == 1  # Donald
         assert screen._speaker_row.focused is None
         assert loguru_sink[-1] == 'Nav focus on _SaidByItem "Donald".'
@@ -1915,7 +1920,7 @@ class TestSpeakerChipKeys:
         screen._speaker = "Gyro"  # picked before; not among Donald and Scrooge
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert self._list(screen).is_open
-        assert screen._nav_focus_area == "said_by_list"
+        assert screen._focus.area == "said_by_list"
         assert screen._dropdown_focused_idx == 0  # anyone
 
     def test_down_and_enter_pick_a_speaker_and_return_to_the_chip(
@@ -1929,7 +1934,7 @@ class TestSpeakerChipKeys:
         assert screen._speaker == "Scrooge"
         assert log_markers.SPEAKER_FILTER_SET.format(speaker="Scrooge") in loguru_sink
         assert not self._list(screen).is_open
-        assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
         assert _said_by_chip(screen).text == "Said by: Scrooge"
 
     def test_escape_closes_the_list_and_keeps_the_filter(self, screen: SearchScreen) -> None:
@@ -1938,17 +1943,17 @@ class TestSpeakerChipKeys:
         assert screen.handle_key(KEY_ESCAPE) is True
         assert screen._speaker == "Donald"
         assert not self._list(screen).is_open
-        assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
 
     def test_the_open_list_keeps_every_key(self, screen: SearchScreen) -> None:
         screen.handle_key(search_screen.KEY_ENTER)
         for key in (search_screen.KEY_LEFT, search_screen.KEY_RIGHT, ord("a")):
             assert screen.handle_key(key) is True
-        assert screen._nav_focus_area == "said_by_list"
+        assert screen._focus.area == "said_by_list"
 
     def test_right_stays_on_the_chip(self, screen: SearchScreen) -> None:
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
 
     def test_left_returns_to_the_word_list(self, screen: SearchScreen) -> None:
         word_chips = [MagicMock(text="cash"), MagicMock(text="money")]
@@ -1958,15 +1963,15 @@ class TestSpeakerChipKeys:
         ):
             assert screen.handle_key(search_screen.KEY_LEFT) is True
 
-        assert screen._nav_focus_area == "tags"
-        assert screen._nav_focused_chip_idx == 1  # back on the selected word
+        assert screen._focus.area == "tags"
+        assert screen._focus.chip_index == 1  # back on the selected word
         assert screen._speaker_row.focused is None
         draw.assert_called_once()
 
     def test_left_stays_without_a_word_list(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_get_word_chip_buttons", return_value=[]):
             assert screen.handle_key(search_screen.KEY_LEFT) is True
-        assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
 
     def test_down_goes_to_the_stories_under_the_chip(self, screen: SearchScreen) -> None:
         with (
@@ -1974,13 +1979,13 @@ class TestSpeakerChipKeys:
             patch.object(screen, "_draw_result_focus") as draw,
         ):
             assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
         assert screen._speaker_row.focused is None
         draw.assert_called_once_with()
 
     def test_up_goes_to_the_era_row_over_the_chip(self, screen: SearchScreen) -> None:
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "era"
+        assert screen._focus.area == "era"
         assert screen._era_rows["Word"].focused == 0  # on All years, the one picked
         assert screen._speaker_row.focused is None
 
@@ -1999,40 +2004,40 @@ class TestSpeakerChipKeys:
         screen._speaker_row.clear_focus()
         if not has_chip:
             screen._speaker_row.set_options([])
-        screen._nav_focus_area = "tags"
+        screen._focus.area = FocusArea.TAGS
         with (
             patch.object(screen, "_get_active_chip_buttons", return_value=[MagicMock()]),
             patch.object(screen, "_clear_chip_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert (screen._nav_focus_area, screen._era_rows["Word"].focused) == ("era", 0)
+        assert (screen._focus.area, screen._era_rows["Word"].focused) == ("era", 0)
 
     def test_down_from_the_era_is_the_chip(self, screen: SearchScreen) -> None:
         screen._speaker_row.clear_focus()
         screen._nav_enter_era()
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
 
     def test_up_from_the_first_result_climbs_to_the_chip_then_the_era(
         self, screen: SearchScreen
     ) -> None:
         screen._speaker_row.clear_focus()
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         with (
             patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
             patch.object(screen, "_clear_result_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_UP) is True
-        assert (screen._nav_focus_area, screen._speaker_row.focused) == ("speakers", 0)
+        assert (screen._focus.area, screen._speaker_row.focused) == ("speakers", 0)
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "era"
+        assert screen._focus.area == "era"
 
     def test_up_from_the_era_is_the_box(self, screen: SearchScreen) -> None:
         screen._speaker_row.set_options([])
         screen._nav_enter_era()
         with patch.object(screen, "_focus_active_input") as focus:
             assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         focus.assert_called_once_with()
 
 
@@ -2136,19 +2141,19 @@ class TestEra:
             patch.object(screen, "_clear_chip_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert (screen._nav_focus_area, screen._era_rows["Tag"].focused) == ("era", 0)
+        assert (screen._focus.area, screen._era_rows["Tag"].focused) == ("era", 0)
         with (
             patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
             patch.object(screen, "_draw_result_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
 
     def test_the_tag_era_rows_ways_out(self, screen: SearchScreen) -> None:
         screen._nav_enter_era()
         with patch.object(screen, "_focus_active_input"):
             assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
 
         screen._nav_enter_era()
         with (
@@ -2156,7 +2161,7 @@ class TestEra:
             patch.object(screen, "_draw_chip_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_LEFT) is True  # off All years
-        assert screen._nav_focus_area == "tags"
+        assert screen._focus.area == "tags"
 
     def test_enter_on_an_era_picks_it_and_stays(self, screen: SearchScreen) -> None:
         screen._nav_enter_era()
@@ -2166,7 +2171,7 @@ class TestEra:
             patch.object(screen, "_rerun_word_results"),
         ):
             assert screen.handle_key(search_screen.KEY_ENTER) is True
-        assert (screen._era.label, screen._nav_focus_area) == ("1942-46", "era")
+        assert (screen._era.label, screen._focus.area) == ("1942-46", "era")
 
 
 class TestTagScope:
@@ -2405,18 +2410,18 @@ class TestTagScope:
         screen._refresh_tag_scope()
         screen._nav_enter_era()
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert (screen._nav_focus_area, screen._scope_row.focused) == ("scope", 0)
+        assert (screen._focus.area, screen._scope_row.focused) == ("scope", 0)
         with (
             patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
             patch.object(screen, "_draw_result_focus"),
         ):
             assert screen.handle_key(search_screen.KEY_DOWN) is True
-            assert screen._nav_focus_area == "results"
+            assert screen._focus.area == "results"
             with patch.object(screen, "_clear_result_focus"):
                 assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "scope"
+        assert screen._focus.area == "scope"
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "era"
+        assert screen._focus.area == "era"
 
     @pytest.mark.parametrize(
         "key", [search_screen.KEY_DOWN, search_screen.KEY_RIGHT], ids=["down", "right"]
@@ -2429,23 +2434,23 @@ class TestTagScope:
         screen._refresh_tag_scope()
         screen._nav_enter_era()
         screen.handle_key(search_screen.KEY_DOWN)
-        assert screen._nav_focus_area == "scope"
+        assert screen._focus.area == "scope"
         screen._scope_row.set_options([])  # as _show_scope_row does when nothing is listed
 
         assert screen.handle_key(key) is True
 
-        assert screen._nav_focus_area == "era"
+        assert screen._focus.area == "era"
         assert screen._era_rows["Word"].focused is not None
         assert log_markers.SEARCH_PANEL_ROW_LOST.format(area="scope") in loguru_sink
 
     def test_with_no_panel_rows_left_the_key_goes_back_to_the_box(
         self, screen: SearchScreen
     ) -> None:
-        screen._nav_focus_area = "scope"
+        screen._focus.area = FocusArea.SCOPE
         screen._active_mode = "Title"  # a search with no panel rows
         with patch.object(screen, "_focus_active_input") as focus_box:
             assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         focus_box.assert_called_once_with()
 
 
@@ -2476,41 +2481,41 @@ class TestClearButtonKeys:
             patch.object(screen, "_draw_clear_focus") as draw,
         ):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focus_area == "clear"
+        assert screen._focus.area == "clear"
         draw.assert_called_once_with()
 
     def test_right_inside_the_text_moves_the_cursor(self, screen: SearchScreen) -> None:
         screen._active_mode = "Word"
         self._box(screen, "gold", 2)
         assert screen.handle_key(search_screen.KEY_RIGHT) is False  # the box's own key
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
 
     def test_right_from_the_clear_button_is_the_results(self, screen: SearchScreen) -> None:
         screen._active_mode = "Word"
-        screen._nav_focus_area = "clear"
+        screen._focus.area = FocusArea.CLEAR
         with (
             patch.object(screen, "_get_active_result_rows", return_value=[MagicMock()]),
             patch.object(screen, "_clear_clear_focus"),
             patch.object(screen, "_draw_result_focus") as draw,
         ):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
         draw.assert_called_once_with()
 
     def test_with_no_results_the_focus_stays_on_the_clear_button(
         self, screen: SearchScreen
     ) -> None:
         screen._active_mode = "Word"
-        screen._nav_focus_area = "clear"
+        screen._focus.area = FocusArea.CLEAR
         with patch.object(screen, "_get_active_result_rows", return_value=[]):
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focus_area == "clear"
+        assert screen._focus.area == "clear"
 
     def test_enter_on_the_clear_button_clears_and_returns_to_the_box(
         self, screen: SearchScreen
     ) -> None:
         screen._active_mode = "Word"
-        screen._nav_focus_area = "clear"
+        screen._focus.area = FocusArea.CLEAR
         clear_button = MagicMock()
         with (
             patch.object(screen, "_get_active_clear_button", return_value=clear_button),
@@ -2518,7 +2523,7 @@ class TestClearButtonKeys:
         ):
             assert screen.handle_key(search_screen.KEY_ENTER) is True
         clear_button.trigger_action.assert_called_once_with(duration=0)
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
 
 
 class _Ids(dict):
@@ -2583,7 +2588,7 @@ class TestResultsKeys:
             _active_mode="Word",
             _nav_on_exit_request=MagicMock(),
             _last_activated_result=None,
-            _last_activated_word_sub_focus="title",
+            _last_activated_word_sub_focus=RowPart.TITLE,
             _selected_word="",
             _selected_tag="",
             _selected_member="",
@@ -2600,7 +2605,7 @@ class TestResultsKeys:
     ) -> None:
         for expected_idx in (1, 2, 2):
             assert self._key(screen, search_screen.KEY_DOWN) is True
-            assert screen._nav_focused_result_idx == expected_idx
+            assert screen._focus.result_index == expected_idx
         assert loguru_sink[-1] == 'Nav focus on Button "Story C title".'
 
     def test_right_and_left_move_between_a_story_and_its_bubbles(
@@ -2610,7 +2615,7 @@ class TestResultsKeys:
         assert loguru_sink[-1] == 'Nav focus on Button "Story A speech".'
         assert self._key(screen, search_screen.KEY_RIGHT) is False  # nothing further right
         assert self._key(screen, search_screen.KEY_LEFT) is True
-        assert (screen._nav_word_sub_focus, loguru_sink[-1]) == (
+        assert (screen._focus.row_part, loguru_sink[-1]) == (
             "title",
             'Nav focus on Button "Story A title".',
         )
@@ -2629,9 +2634,9 @@ class TestResultsKeys:
     def test_up_walks_back_then_climbs_to_the_lowest_chip_row(self, screen: SearchScreen) -> None:
         self._key(screen, search_screen.KEY_DOWN)
         assert self._key(screen, search_screen.KEY_UP) is True
-        assert screen._nav_focused_result_idx == 0
+        assert screen._focus.result_index == 0
         assert self._key(screen, search_screen.KEY_UP) is True  # off the first story
-        assert (screen._nav_focus_area, screen._era_rows["Word"].focused) == ("era", 0)
+        assert (screen._focus.area, screen._era_rows["Word"].focused) == ("era", 0)
 
     def test_left_from_a_story_is_the_word_list_or_else_the_clear_button(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -2643,20 +2648,20 @@ class TestResultsKeys:
             assert self._key(screen, search_screen.KEY_LEFT) is True
         back.assert_called_once_with()
 
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         assert self._key(screen, search_screen.KEY_LEFT) is True  # no word list
-        assert screen._nav_focus_area == "clear"
+        assert screen._focus.area == "clear"
         assert loguru_sink[-1].startswith("Nav focus on MagicMock")  # the clear button's fill
 
     def test_tab_is_the_box_escape_leaves_and_other_keys_pass(self, screen: SearchScreen) -> None:
         assert self._key(screen, search_screen.KEY_TAB) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         assert screen.ids.word_search_input.focus is True
 
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         assert self._key(screen, ord("a")) is False
         assert self._key(screen, KEY_ESCAPE) is True
-        assert (screen._nav_focus_area, screen.ids.word_search_input.focus) == ("input", False)
+        assert (screen._focus.area, screen.ids.word_search_input.focus) == ("input", False)
         screen._nav_on_exit_request.assert_called_once_with()
 
     def test_a_tag_story_has_no_bubbles_and_left_is_the_tag_list(
@@ -2676,40 +2681,40 @@ class TestResultsKeys:
     def test_coming_back_lands_on_the_last_story_pressed_and_its_part(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
-        screen._nav_active = False
+        screen._focus.active = False
         story_c = screen._get_active_result_rows()[2]
         screen._last_activated_result = story_c.children[0]  # its speech button
-        screen._last_activated_word_sub_focus = "speech"
+        screen._last_activated_word_sub_focus = RowPart.SPEECH
         exit_request = MagicMock()
         screen.enter_nav_focus_at_last_result(exit_request)
-        assert (screen._nav_focus_area, screen._nav_focused_result_idx) == ("results", 2)
-        assert screen._nav_word_sub_focus == "speech"
+        assert (screen._focus.area, screen._focus.result_index) == ("results", 2)
+        assert screen._focus.row_part == "speech"
         assert screen._nav_on_exit_request is exit_request
         assert loguru_sink[-1] == "SearchScreen: entered nav focus at last result."
 
         screen._last_activated_result = None  # none pressed: the box
         screen.enter_nav_focus_at_last_result(exit_request)
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         assert screen.ids.word_search_input.focus is True
 
     def test_down_from_the_box_is_the_first_story(self, screen: SearchScreen) -> None:
-        screen._nav_focus_area = "input"
+        screen._focus.area = FocusArea.INPUT
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert (screen._nav_focus_area, screen._nav_focused_result_idx) == ("results", 0)
+        assert (screen._focus.area, screen._focus.result_index) == ("results", 0)
 
     def test_down_from_the_box_with_no_stories_is_the_era(self, screen: SearchScreen) -> None:
-        screen._nav_focus_area = "input"
+        screen._focus.area = FocusArea.INPUT
         screen.ids["word_results_layout"].clear_widgets()
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == "era"
+        assert screen._focus.area == "era"
         assert screen._era_rows["Word"].focused is not None
 
     def test_down_from_an_empty_title_box_stays_in_it(self, screen: SearchScreen) -> None:
         """Not onto the empty list, where no ring is drawn and only Left or Escape get out."""
         screen._active_mode = "Title"
-        screen._nav_focus_area = "input"
+        screen._focus.area = FocusArea.INPUT
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         assert screen.ids.title_search_input.focus is True
 
     @pytest.mark.parametrize("mode", ["Word", "Tag"], ids=["a_list_built_since", "another_mode"])
@@ -2717,24 +2722,24 @@ class TestResultsKeys:
         self, screen: SearchScreen, mode: str
     ) -> None:
         """An index into a new search's list, or another mode's, would land on another story."""
-        screen._nav_active = False
+        screen._focus.active = False
         screen._last_activated_result = Button(text="Story B, as listed before")  # not listed now
         if mode == "Tag":
             screen._last_activated_result = screen._get_active_result_rows()[1]  # a Word row
             screen._active_mode = "Tag"
         screen.enter_nav_focus_at_last_result(MagicMock())
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
 
     def test_entering_and_leaving_the_screen_by_remote(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
-        screen._nav_active = False
+        screen._focus.active = False
         screen.enter_nav_focus(MagicMock())
-        assert (screen._nav_active, screen._nav_focus_area) == (True, "input")
+        assert (screen._focus.active, screen._focus.area) == (True, "input")
         assert log_markers.SEARCH_ENTERED_NAV in loguru_sink
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         screen.exit_nav_focus()
-        assert (screen._nav_active, screen._nav_focus_area) == (False, "input")
+        assert (screen._focus.active, screen._focus.area) == (False, "input")
         assert loguru_sink[-1] == log_markers.SEARCH_EXITED_NAV
 
 
@@ -2770,18 +2775,18 @@ class TestOtherNavKeys:
     def test_the_clear_button_s_keys(self, screen: SearchScreen) -> None:
         clear_button = screen.ids.word_clear_button
         assert screen.handle_key(search_screen.KEY_RIGHT) is True  # on to the stories
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
 
-        screen._nav_focus_area = "clear"
+        screen._focus.area = FocusArea.CLEAR
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         clear_button.trigger_action.assert_called_once_with(duration=0)
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
 
-        screen._nav_focus_area = "clear"
+        screen._focus.area = FocusArea.CLEAR
         assert screen.handle_key(search_screen.KEY_LEFT) is True
-        assert (screen._nav_focus_area, screen.ids.word_search_input.focus) == ("input", True)
+        assert (screen._focus.area, screen.ids.word_search_input.focus) == ("input", True)
 
-        screen._nav_focus_area = "clear"
+        screen._focus.area = FocusArea.CLEAR
         assert screen.handle_key(ord("a")) is False
         with patch.object(screen, "_nav_escape") as escape:
             assert screen.handle_key(KEY_ESCAPE) is True
@@ -2790,21 +2795,21 @@ class TestOtherNavKeys:
     def test_right_from_the_clear_button_stays_with_no_stories(self, screen: SearchScreen) -> None:
         screen.ids.word_results_layout.clear_widgets()
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focus_area == "clear"
+        assert screen._focus.area == "clear"
 
     def test_tab_from_the_list_is_the_stories_and_right_the_top_chip_row(
         self, screen: SearchScreen
     ) -> None:
-        screen._nav_focus_area = "tags"
+        screen._focus.area = FocusArea.TAGS
         with (
             patch.object(screen, "_get_active_chip_buttons", return_value=[]),
             patch.object(screen, "_handle_list_row_key", return_value=False),
         ):
             assert screen.handle_key(search_screen.KEY_TAB) is True
-            assert screen._nav_focus_area == "results"
-            screen._nav_focus_area = "tags"
+            assert screen._focus.area == "results"
+            screen._focus.area = FocusArea.TAGS
             assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert (screen._nav_focus_area, screen._era_rows["Word"].focused) == ("era", 0)
+        assert (screen._focus.area, screen._era_rows["Word"].focused) == ("era", 0)
 
     def test_right_in_the_box_is_the_clear_button_only_at_the_text_s_end(
         self, screen: SearchScreen
@@ -2812,14 +2817,14 @@ class TestOtherNavKeys:
         box = screen.ids.word_search_input
         box.text = "gold"
         box.cursor_index.return_value = 2
-        screen._nav_focus_area = "input"
+        screen._focus.area = FocusArea.INPUT
         assert screen.handle_key(search_screen.KEY_RIGHT) is False  # the box moves its cursor
         box.cursor_index.return_value = 4
         assert screen.handle_key(search_screen.KEY_RIGHT) is True
-        assert screen._nav_focus_area == "clear"
+        assert screen._focus.area == "clear"
 
     def test_escape_in_the_box_leaves_the_screen(self, screen: SearchScreen) -> None:
-        screen._nav_focus_area = "input"
+        screen._focus.area = FocusArea.INPUT
         assert screen.handle_key(KEY_ESCAPE) is True
         screen._nav_on_exit_request.assert_called_once_with()
 
@@ -2850,7 +2855,7 @@ class TestOtherNavKeys:
             screen._show_tag_basket()
         with patch.object(screen, "_draw_chip_focus"):
             screen._focus_after_tag_query()
-        assert screen._nav_focus_area == area
+        assert screen._focus.area == area
 
     @pytest.mark.parametrize(
         ("chips", "area"), [(True, "tags"), (False, "results")], ids=["list", "no-list"]
@@ -2868,7 +2873,7 @@ class TestOtherNavKeys:
             screen._toggle_basket_word("gold")
             screen._nav_enter_basket()
             assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == area
+        assert screen._focus.area == area
         assert screen._basket_row.focused is None
 
     def test_up_from_the_picked_words_is_the_box_and_escape_leaves(
@@ -2878,7 +2883,7 @@ class TestOtherNavKeys:
             screen._toggle_basket_word("gold")
         screen._nav_enter_basket()
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         screen._nav_enter_basket()
         with patch.object(screen, "_nav_escape") as escape:
             assert screen.handle_key(KEY_ESCAPE) is True
@@ -3154,7 +3159,7 @@ class TestEmptiedBasketWithNoList:
         screen.handle_key(search_screen.KEY_ENTER)  # takes it out
 
         assert screen._word_basket.words == []
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         assert screen.ids.word_search_input.focus is True
 
     def test_a_key_the_picked_row_does_not_take_is_left_to_the_host(
@@ -3163,7 +3168,7 @@ class TestEmptiedBasketWithNoList:
         screen._toggle_basket_word("gold")
         screen._nav_enter_basket()
         assert screen.handle_key(ord("a")) is False
-        assert screen._nav_focus_area == "basket"
+        assert screen._focus.area == "basket"
 
 
 class TestSaidByChipEdges:
@@ -3198,7 +3203,7 @@ class TestSaidByChipEdges:
         with patch.object(search_screen, "open_dropdown", return_value=False):
             assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert not any(line.startswith("Word search: speaker list opened") for line in loguru_sink)
-        assert screen._nav_focus_area == "speakers"
+        assert screen._focus.area == "speakers"
         assert screen._speaker_row.focused == 0
 
 
@@ -3235,7 +3240,7 @@ class TestNavEdges:
         self, screen: SearchScreen, stray: Button | None
     ) -> None:
         screen.ids.word_results_layout.add_widget(_word_result_row("Story A", []))
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         with (
             patch.object(screen, "_get_focused_result_widget", return_value=stray),
             patch.object(search_screen, "update_focus_in_list") as draw,
@@ -3252,32 +3257,32 @@ class TestNavEdges:
         blur.assert_called_once_with()
 
     def test_enter_on_an_empty_results_list_picks_nothing(self, screen: SearchScreen) -> None:
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert getattr(screen, "_last_activated_result", None) is None
 
     def test_up_from_the_first_title_result_is_the_box(self, screen: SearchScreen) -> None:
         """With no chip rows above its stories, Up there did nothing: only Left or Escape left."""
         screen._active_mode = "Title"
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         with patch.object(screen, "_focus_active_input") as focus_box:
             assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         focus_box.assert_called_once_with()
 
     def test_up_from_a_lower_title_result_is_the_one_above(self, screen: SearchScreen) -> None:
         screen._active_mode = "Title"
-        screen._nav_focus_area = "results"
-        screen._nav_focused_result_idx = 1
+        screen._focus.area = FocusArea.RESULTS
+        screen._focus.result_index = 1
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert (screen._nav_focus_area, screen._nav_focused_result_idx) == ("results", 0)
+        assert (screen._focus.area, screen._focus.result_index) == ("results", 0)
 
     def test_leaving_and_escape_clear_the_same_rings(self, screen: SearchScreen) -> None:
         """Two lists of rings to clear could drift: a row in one left a stale ring."""
         screen._nav_on_exit_request = None
         with patch.object(screen, "_clear_all_nav_focus") as clear:
             screen.exit_nav_focus()
-            screen._nav_active = True
+            screen._focus.active = True
             screen._nav_escape()
         assert clear.call_count == 2  # noqa: PLR2004
 
@@ -3285,12 +3290,12 @@ class TestNavEdges:
         self, screen: SearchScreen
     ) -> None:
         screen._nav_on_exit_request = None
-        screen._nav_focus_area = "results"
+        screen._focus.area = FocusArea.RESULTS
         assert screen.handle_key(KEY_ESCAPE) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
 
     def test_no_key_is_taken_while_the_screen_is_not_navigating(self, screen: SearchScreen) -> None:
-        screen._nav_active = False
+        screen._focus.active = False
         assert screen.handle_key(search_screen.KEY_DOWN) is False
 
     def test_enter_in_the_box_runs_the_search(self, screen: SearchScreen) -> None:
@@ -3304,22 +3309,22 @@ class TestNavEdges:
     def test_on_an_empty_list_escape_leaves_and_other_keys_are_not_taken(
         self, screen: SearchScreen
     ) -> None:
-        screen._nav_focus_area = "tags"
+        screen._focus.area = FocusArea.TAGS
         assert screen.handle_key(ord("a")) is False
         assert screen.handle_key(search_screen.KEY_ENTER) is True  # nothing to pick
-        assert screen._nav_focus_area == "tags"
+        assert screen._focus.area == "tags"
         assert screen.handle_key(KEY_ESCAPE) is True
-        assert screen._nav_focus_area == "input"
+        assert screen._focus.area == "input"
         cast("MagicMock", screen._nav_on_exit_request).assert_called_once_with()
 
     def test_with_nothing_listed_nothing_takes_the_focus(self, screen: SearchScreen) -> None:
-        screen._nav_focus_area = "tags"
-        screen._nav_focused_chip_idx = 3
+        screen._focus.area = FocusArea.TAGS
+        screen._focus.chip_index = 3
         screen._focus_selected_or_first_chip()
         screen._draw_chip_focus()
         screen._focus_first_result_row()
         screen._draw_result_focus()
-        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 3)
+        assert (screen._focus.area, screen._focus.chip_index) == ("tags", 3)
         assert screen._get_focused_result_widget([]) is None
 
     def test_a_notice_row_among_word_results_takes_the_focus_whole(
@@ -3328,8 +3333,8 @@ class TestNavEdges:
         rows = screen.ids.word_results_layout
         rows.add_widget(_word_result_row("Story A", []))
         rows.add_widget(_SearchResultButton(text="None in 1942-46"))
-        screen._nav_focus_area = "results"
-        screen._nav_focused_result_idx = 1
+        screen._focus.area = FocusArea.RESULTS
+        screen._focus.result_index = 1
 
         screen._draw_result_focus()
 
@@ -3397,18 +3402,18 @@ class TestTagListKeys:
         self, screen: SearchScreen
     ) -> None:
         """Left where it was, the ring sat on a stale chip and the next key went on from it."""
-        screen._nav_active = True
-        screen._nav_focus_area = "tags"
-        screen._nav_focused_chip_idx = 0
+        screen._focus.active = True
+        screen._focus.area = FocusArea.TAGS
+        screen._focus.chip_index = 0
         with patch.object(search_screen.Clock, "schedule_once", side_effect=run_at_once):
             screen._on_tag_chip_pressed("Duckburg")
         chips = screen._get_tag_chip_buttons()
-        assert chips[screen._nav_focused_chip_idx].text == "Duckburg"
+        assert chips[screen._focus.chip_index].text == "Duckburg"
 
     def test_a_chip_pressed_by_the_keys_places_its_own_focus(self, screen: SearchScreen) -> None:
         """The follow is for the mouse: flagged as the keys' own, a press is not followed."""
-        screen._nav_active = True
-        screen._nav_focus_area = "tags"
+        screen._focus.active = True
+        screen._focus.area = FocusArea.TAGS
         flagged: list[bool] = []
         with patch.object(
             screen,
@@ -3426,7 +3431,7 @@ class TestTagListKeys:
     def test_the_focused_chip_is_scrolled_into_view(self, screen: SearchScreen) -> None:
         """The list outruns its window: the focus followed the keys off its edge."""
         chips = screen._get_tag_chip_buttons()
-        screen._nav_focused_chip_idx = 1
+        screen._focus.chip_index = 1
         screen._draw_chip_focus()
         screen.ids.tag_chips_scroll.scroll_into_view.assert_called_once_with(chips[1])
 
@@ -3456,17 +3461,17 @@ class TestTagListKeys:
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert screen._current_tag is TagGroups.CHEMISTRY
         assert screen._selected_member == "duckmite"
-        assert screen._nav_focused_chip_idx == 1  # on the first member, once drawn
+        assert screen._focus.chip_index == 1  # on the first member, once drawn
         assert log_markers.TAG_SELECTED_MEMBER.format(member="duckmite") in loguru_sink
 
     def test_enter_on_the_open_group_closes_it_and_stays_on_it(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         screen._on_tag_result_selected("chemistry")
-        screen._nav_focused_chip_idx = 0
+        screen._focus.chip_index = 0
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert self._texts(screen._get_tag_chip_buttons()) == ["chemistry", "Duckburg"]
-        assert screen._nav_focused_chip_idx == 0
+        assert screen._focus.chip_index == 0
         assert loguru_sink[-1] == 'Nav focus on _TagChipButton "chemistry".'
         assert log_markers.TAG_GROUP_CLOSED.format(group="chemistry") in loguru_sink
 
@@ -3476,7 +3481,7 @@ class TestTagListKeys:
         """As the mouse does: Enter put the group's stories back, not the picked tags'."""
         screen._on_tag_result_selected("chemistry")
         screen._tag_basket_results = True  # a + since: the picked tags' stories listed
-        screen._nav_focused_chip_idx = 0
+        screen._focus.chip_index = 0
         with patch.object(SearchScreen, "_show_tag_titles") as listed:
             assert screen.handle_key(search_screen.KEY_ENTER) is True
         listed.assert_called_once_with("chemistry")
@@ -3487,20 +3492,20 @@ class TestTagListKeys:
             "chemical names",
             "weemite",
         ]
-        assert screen._nav_focused_chip_idx == 0
+        assert screen._focus.chip_index == 0
         assert loguru_sink[-1] == 'Nav focus on _TagChipButton "chemistry".'
         assert log_markers.TAG_GROUP_CLOSED.format(group="chemistry") not in loguru_sink
 
         assert screen.handle_key(search_screen.KEY_ENTER) is True  # the next one closes it
         assert self._texts(screen._get_tag_chip_buttons()) == ["chemistry", "Duckburg"]
-        assert screen._nav_focused_chip_idx == 0
+        assert screen._focus.chip_index == 0
         assert log_markers.TAG_GROUP_CLOSED.format(group="chemistry") in loguru_sink
 
     def test_enter_on_a_subgroup_opens_it_in_place_and_stays_on_it(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         screen._on_tag_result_selected("chemistry")
-        screen._nav_focused_chip_idx = 2  # chemical names
+        screen._focus.chip_index = 2  # chemical names
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert self._texts(screen._get_tag_chip_buttons()) == [
             "chemistry",
@@ -3511,32 +3516,32 @@ class TestTagListKeys:
             "weemite",
             "Duckburg",
         ]
-        assert screen._nav_focused_chip_idx == 2  # noqa: PLR2004
+        assert screen._focus.chip_index == 2  # noqa: PLR2004
         assert loguru_sink[-1] == 'Nav focus on _TagChipButton "chemical names".'
 
         assert screen.handle_key(search_screen.KEY_ENTER) is True  # and again: closed
         assert "Gyro Gearloose" not in self._texts(screen._get_tag_chip_buttons())
-        assert screen._nav_focused_chip_idx == 2  # noqa: PLR2004
+        assert screen._focus.chip_index == 2  # noqa: PLR2004
 
     def test_enter_on_a_plain_member_lists_it_and_goes_to_its_stories(
         self, screen: SearchScreen
     ) -> None:
         screen._on_tag_result_selected("chemistry")
-        screen._nav_focused_chip_idx = 3  # weemite
+        screen._focus.chip_index = 3  # weemite
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert screen._selected_member == "weemite"
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
 
     def test_enter_on_a_plain_tag_goes_to_its_stories(self, screen: SearchScreen) -> None:
-        screen._nav_focused_chip_idx = 1  # Duckburg
+        screen._focus.chip_index = 1  # Duckburg
         assert screen.handle_key(search_screen.KEY_ENTER) is True
         assert (screen._selected_tag, screen._current_tag) == ("Duckburg", Tags.DUCKBURG)
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
 
     def test_enter_past_the_last_chip_does_nothing(self, screen: SearchScreen) -> None:
-        screen._nav_focused_chip_idx = 9
+        screen._focus.chip_index = 9
         screen._handle_tags_enter(cast("list[Button]", screen._get_tag_chip_buttons()))
-        assert (screen._selected_tag, screen._nav_focus_area) == ("", "tags")
+        assert (screen._selected_tag, screen._focus.area) == ("", "tags")
 
     def test_down_walks_the_list_and_stops_at_its_end(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -3544,14 +3549,14 @@ class TestTagListKeys:
         assert screen.handle_key(search_screen.KEY_DOWN) is True
         assert loguru_sink[-1] == 'Nav focus on _TagChipButton "Duckburg".'
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focused_chip_idx == 1
+        assert screen._focus.chip_index == 1
 
     def test_up_walks_back_and_off_the_top_is_the_box(self, screen: SearchScreen) -> None:
-        screen._nav_focused_chip_idx = 1
+        screen._focus.chip_index = 1
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert screen._nav_focused_chip_idx == 0
+        assert screen._focus.chip_index == 0
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert (screen._nav_focus_area, screen.ids.tag_search_input.focus) == ("input", True)
+        assert (screen._focus.area, screen.ids.tag_search_input.focus) == ("input", True)
 
     def test_up_off_the_top_is_the_picked_tags_when_there_are_some(
         self, screen: SearchScreen
@@ -3559,25 +3564,25 @@ class TestTagListKeys:
         with patch.object(screen, "_run_tag_basket"):
             screen._toggle_tag_basket("Duckburg")
         assert screen.handle_key(search_screen.KEY_UP) is True
-        assert (screen._nav_focus_area, screen._tag_basket_row.focused) == ("basket", 0)
+        assert (screen._focus.area, screen._tag_basket_row.focused) == ("basket", 0)
 
     def test_tab_is_the_stories_and_right_the_era(self, screen: SearchScreen) -> None:
         assert screen.handle_key(search_screen.KEY_TAB) is True
-        assert screen._nav_focus_area == "results"
-        screen._nav_focus_area = "tags"
+        assert screen._focus.area == "results"
+        screen._focus.area = FocusArea.TAGS
         assert screen.handle_key(search_screen.KEY_RIGHT) is True  # onto the +
         assert screen.handle_key(search_screen.KEY_RIGHT) is True  # then the era row
-        assert (screen._nav_focus_area, screen._era_rows["Tag"].focused) == ("era", 0)
+        assert (screen._focus.area, screen._era_rows["Tag"].focused) == ("era", 0)
 
     def test_down_from_the_box_is_the_list_or_else_the_stories(self, screen: SearchScreen) -> None:
-        screen._nav_focus_area = "input"
+        screen._focus.area = FocusArea.INPUT
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert (screen._nav_focus_area, screen._nav_focused_chip_idx) == ("tags", 0)
+        assert (screen._focus.area, screen._focus.chip_index) == ("tags", 0)
 
         screen.ids.tag_chips_layout.clear_widgets()
-        screen._nav_focus_area = "input"
+        screen._focus.area = FocusArea.INPUT
         assert screen.handle_key(search_screen.KEY_DOWN) is True
-        assert screen._nav_focus_area == "results"
+        assert screen._focus.area == "results"
 
 
 def test_a_story_row_shows_its_issue_and_the_year_it_came_out() -> None:

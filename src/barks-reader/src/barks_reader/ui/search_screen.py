@@ -50,6 +50,7 @@ from barks_reader.core.search_chip_row import (
     chip_bg_normal,
     chip_border_focused,
 )
+from barks_reader.core.search_focus import FocusArea, ListPart, RowPart, SearchFocus
 from barks_reader.core.search_state import (
     ALL_SPEAKERS,
     ALL_YEARS,
@@ -144,8 +145,6 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # the focus follows the press once the list has been rebuilt. A class default: a
     # screen built bare, without __init__, presses chips too.
     _pressing_chip_by_key: bool = False
-    # The keyboard focus state a bare screen starts from (see above).
-    _nav_active: bool = False
     # The Said by list's counts, with the search they were counted for: reopening the
     # list (to change the speaker picked) does not search again. None until counted.
     _said_by_counted: tuple[tuple[str, str, SearchFilter | None], dict[str | None, int]] | None = (
@@ -159,7 +158,6 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     # True while a picked suggestion puts its query in the box: the query runs next,
     # so the box's text does not pick its lone match on the way (`_on_suggestion_picked`).
     _query_follows: bool = False
-    _nav_focus_area: str = "input"
 
     is_visible = BooleanProperty(defaultvalue=False)
     image_texture = ObjectProperty(allownone=True)
@@ -204,6 +202,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         font_manager: FontManager,
         **kwargs,  # noqa: ANN003
     ) -> None:
+        # Where the keyboard is. Made first: building the kv layout reads it.
+        self._focus = SearchFocus()
         super().__init__(**kwargs)
         self._reader_settings = reader_settings
         self._font_manager = font_manager
@@ -222,16 +222,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
         self._active_mode: str = "Title"
 
-        self._nav_active: bool = False
         self._nav_on_exit_request: Callable | None = None
         # Set by MainScreenNavigation; lets Enter in a search input pull the app's
         # keyboard focus to this screen when nav isn't active (mouse-click flow).
         self.on_request_nav_focus: Callable[[], None] | None = None
-        # "input", "clear", "tags", "speakers" (Word mode only), "results"
-        self._nav_focus_area: str = "input"
-        self._nav_focused_result_idx: int = 0
-        self._nav_focused_chip_idx: int = 0
-        self._nav_word_sub_focus: str = "title"  # "title" or "speech"
 
         # Tag search state
         self._current_tag = None
@@ -277,7 +271,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         # focus after Go Back. Its widget, not its index: a list built since, or another
         # mode's list, holds new rows, so an index would land on some other story.
         self._last_activated_result: Widget | None = None
-        self._last_activated_word_sub_focus: str = "title"
+        self._last_activated_word_sub_focus = RowPart.TITLE
 
         # Persistent highlight of the last-opened result row (mouse or keyboard).
         self._selected_result_button: _SearchResultButton | None = None
@@ -301,8 +295,6 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         )
         # Whether the results are the basket's, which typing in the box leaves in place.
         self._basket_results: bool = False
-        # On a word or tag row, which part the keyboard is on: "word" (the item) or its "plus".
-        self._nav_list_sub: str = "word"
         # The tags picked with their + (or typed), and the row showing them, under the box.
         self._tag_basket = TagBasket()
         self._tag_basket_row = ChipRow(
@@ -378,7 +370,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         # Also drive the keyboard restore target, so a later keyboard Go Back lands its
         # focus ring on the same row the mouse opened.
         self._last_activated_result = button
-        self._last_activated_word_sub_focus = "title"
+        self._last_activated_word_sub_focus = RowPart.TITLE
 
     def _populate_title_results(
         self,
@@ -728,7 +720,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         Left where it was, the ring sat on a stale chip and the next key went on from it.
         A press by the keys places the focus itself.
         """
-        if self._pressing_chip_by_key or not self._nav_active or self._nav_focus_area != "tags":
+        if (
+            self._pressing_chip_by_key
+            or not self._focus.active
+            or self._focus.area != FocusArea.TAGS
+        ):
             return
         self._once_the_list_settles(self._focus_selected_or_first_chip)
 
@@ -830,7 +826,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         else:
             self._tag_basket.cycle(value)
             self._on_tag_basket_changed()
-        if self._nav_focus_area == "basket":
+        if self._focus.area == FocusArea.BASKET:
             self._refocus_basket(focused)
 
     def _on_tag_basket_changed(self) -> None:
@@ -1074,12 +1070,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         rows = self._get_word_chip_buttons()
         first = next((i for i, r in enumerate(rows) if isinstance(r, _SuggestionButton)), None)
         if first is None:
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
             return
-        self._nav_focus_area = "tags"
-        self._nav_focused_chip_idx = first
-        self._nav_list_sub = "word"
+        self._focus.area = FocusArea.TAGS
+        self._focus.chip_index = first
+        self._focus.list_part = ListPart.ITEM
         self._once_the_list_settles(self._draw_chip_focus)
 
     def _on_word_chip_selected(self, word: str) -> None:
@@ -1117,7 +1113,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         else:
             self._word_basket.remove(value)
             self._on_basket_changed()
-        if self._nav_focus_area == "basket":
+        if self._focus.area == FocusArea.BASKET:
             self._refocus_basket(focused)
 
     def _on_basket_changed(self) -> None:
@@ -1167,16 +1163,16 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _nav_to_word_list_or_input(self) -> None:
         """Focus the list's first row (the word or tag list), or the box if it is empty."""
         if self._get_active_chip_buttons():
-            self._nav_focus_area = "tags"
-            self._nav_focused_chip_idx = 0
-            self._nav_list_sub = "word"
+            self._focus.area = FocusArea.TAGS
+            self._focus.chip_index = 0
+            self._focus.list_part = ListPart.ITEM
             self._draw_chip_focus()
         else:
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
 
     def _nav_enter_basket(self) -> None:
-        self._nav_focus_area = "basket"
+        self._focus.area = FocusArea.BASKET
         self._active_basket_row().enter_focus(0)
 
     def _handle_basket_key(self, key: int) -> bool:
@@ -1200,7 +1196,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                     self._draw_result_focus()
             case RowKey.EXIT_UP:
                 row.clear_focus()
-                self._nav_focus_area = "input"
+                self._focus.area = FocusArea.INPUT
                 self._focus_active_input()
             case RowKey.EXIT_ESCAPE:
                 self._nav_escape()
@@ -1323,9 +1319,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if not open_dropdown(dropdown, chip):
             return
         logger.info(log_markers.SPEAKER_LIST_OPENED.format(count=len(counts) - 1))
-        if self._nav_focus_area == "speakers" and self._speaker_row.focused is not None:
+        if self._focus.area == FocusArea.SPEAKERS and self._speaker_row.focused is not None:
             # By the remote: it walks the list, from the speaker picked now.
-            self._nav_focus_area = "said_by_list"
+            self._focus.area = FocusArea.SAID_BY_LIST
             self._speaker_row.clear_focus()
             # The picked speaker is listed only while offered: else land on anyone's row.
             here = next((i for i, (speaker, _) in enumerate(counts) if speaker == self._speaker), 0)
@@ -1376,7 +1372,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if not self._dropdown_nav_mode:
             return
         self._exit_dropdown_nav()
-        self._nav_focus_area = "speakers"
+        self._focus.area = FocusArea.SPEAKERS
         self._speaker_row.enter_focus(0)
 
     def _handle_said_by_list_key(self, key: int) -> bool:
@@ -1400,10 +1396,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
         """
         self._nav_on_exit_request = on_exit_request
-        self._nav_active = True
+        self._focus.active = True
         self._blur_all_inputs()
         self._speaker_row.clear_focus()
-        self._nav_focus_area = "said_by_list"
+        self._focus.area = FocusArea.SAID_BY_LIST
         rows = self._get_dropdown_buttons()
         here = next((i for i, row in enumerate(rows) if row.value == self._speaker), 0)
         self._enter_dropdown_nav(here)
@@ -1447,7 +1443,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         elif self._listed_tag:
             self._show_tag_titles(self._listed_tag)
 
-    def _panel_rows(self) -> list[tuple[str, ChipRow]]:
+    def _panel_rows(self) -> list[tuple[FocusArea, ChipRow]]:
         """Return the active results panel's chip rows, top to bottom, by nav area.
 
         Word search: the era, the speaker chip (while a search is listed and the
@@ -1455,22 +1451,22 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         search: the era.
         """
         if self._active_mode == "Tag":
-            return [("era", self._era_rows["Tag"])]
+            return [(FocusArea.ERA, self._era_rows["Tag"])]
         if self._active_mode != "Word":
             return []
-        rows = [("era", self._era_rows["Word"])]
+        rows = [(FocusArea.ERA, self._era_rows["Word"])]
         if self._speaker_row.chips:
-            rows.append(("speakers", self._speaker_row))
+            rows.append((FocusArea.SPEAKERS, self._speaker_row))
         if self._scope_row.chips:
-            rows.append(("scope", self._scope_row))
+            rows.append((FocusArea.SCOPE, self._scope_row))
         return rows
 
-    def _nav_enter_panel_row(self, area: str) -> None:
-        self._nav_focus_area = area
+    def _nav_enter_panel_row(self, area: FocusArea) -> None:
+        self._focus.area = area
         dict(self._panel_rows())[area].enter_focus()
 
     def _nav_enter_era(self) -> None:
-        self._nav_enter_panel_row("era")
+        self._nav_enter_panel_row(FocusArea.ERA)
 
     def _handle_panel_row_key(self, key: int) -> bool:
         """Keys on a chip row of the results panel: the speakers, the era, the tag scope.
@@ -1482,12 +1478,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """
         rows = self._panel_rows()
         areas = [area for area, _ in rows]
-        if self._nav_focus_area not in areas:
+        if self._focus.area not in areas:
             # The row went from under the keyboard: a tap emptied the scope or the
             # speakers. The key lands on the era, there in both Word and Tag search.
             self._nav_land_after_a_lost_panel_row(areas)
             return True
-        here = areas.index(self._nav_focus_area)
+        here = areas.index(self._focus.area)
         row = rows[here][1]
         match row.handle_key(key):
             case RowKey.UNHANDLED:
@@ -1510,7 +1506,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 self._nav_enter_panel_row(areas[here - 1])
             case RowKey.EXIT_UP:
                 row.clear_focus()
-                self._nav_focus_area = "input"
+                self._focus.area = FocusArea.INPUT
                 self._focus_active_input()
             case RowKey.EXIT_ESCAPE:
                 self._nav_escape()
@@ -1518,12 +1514,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 pass
         return True
 
-    def _nav_land_after_a_lost_panel_row(self, areas: list[str]) -> None:
-        logger.debug(log_markers.SEARCH_PANEL_ROW_LOST.format(area=self._nav_focus_area))
-        if "era" in areas:
+    def _nav_land_after_a_lost_panel_row(self, areas: list[FocusArea]) -> None:
+        logger.debug(log_markers.SEARCH_PANEL_ROW_LOST.format(area=self._focus.area))
+        if FocusArea.ERA in areas:
             self._nav_enter_era()
         else:  # no panel rows at all now (not Word or Tag search): back to the box
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
 
     def _rerun_word_results(self) -> None:
@@ -1812,23 +1808,23 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
         """
         self._nav_on_exit_request = on_exit_request
-        self._nav_active = True
-        self._nav_focus_area = "input"
+        self._focus.active = True
+        self._focus.area = FocusArea.INPUT
         self._focus_active_input()
         logger.debug(log_markers.SEARCH_ENTERED_NAV)
 
     def enter_nav_focus_at_last_result(self, on_exit_request: Callable) -> None:
         """Enter nav focus, restoring focus to the last activated result if available."""
         self._nav_on_exit_request = on_exit_request
-        self._nav_active = True
+        self._focus.active = True
         here = _row_holding(self._last_activated_result, self._get_active_result_rows())
         if here is not None:
-            self._nav_focus_area = "results"
-            self._nav_focused_result_idx = here
-            self._nav_word_sub_focus = self._last_activated_word_sub_focus
+            self._focus.area = FocusArea.RESULTS
+            self._focus.result_index = here
+            self._focus.row_part = self._last_activated_word_sub_focus
             self._once_the_list_settles(self._draw_result_focus)
         else:
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
         logger.debug("SearchScreen: entered nav focus at last result.")
 
@@ -1839,11 +1835,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         already set up — used when the screen itself claims focus (Enter in an input).
         """
         self._nav_on_exit_request = on_exit_request
-        self._nav_active = True
+        self._focus.active = True
         logger.debug("SearchScreen: adopted nav focus.")
 
     def _ensure_nav_active(self) -> None:
-        if not self._nav_active and self.on_request_nav_focus:
+        if not self._focus.active and self.on_request_nav_focus:
             self.on_request_nav_focus()
 
     def on_search_input_focus(self, _text_input: Widget, focused: bool) -> None:
@@ -1879,13 +1875,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _enter_chips_from_input(self) -> None:
         chips = self._get_active_chip_buttons()
-        self._nav_list_sub = "word"
+        self._focus.list_part = ListPart.ITEM
         if not self._get_selected_chip_text():
             # Auto-pick the first chip so its titles show without another keypress.
             chips[0].trigger_action(duration=0)
         self._ensure_nav_active()
         self._blur_all_inputs()
-        self._nav_focus_area = "tags"
+        self._focus.area = FocusArea.TAGS
         # Chips may have been rebuilt by the pick (e.g. a tag group inserting its
         # members) — resolve the focused index once the new widgets have settled.
         self._once_the_list_settles(self._focus_selected_or_first_chip)
@@ -1898,11 +1894,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         elif self._tag_basket:
             self._nav_enter_basket()
         elif self._tag_box_query:  # it could not be combined: the notice is under its chip
-            self._nav_focus_area = "tags"
-            self._nav_focused_chip_idx = 0
+            self._focus.area = FocusArea.TAGS
+            self._focus.chip_index = 0
             self._draw_chip_focus()
         else:
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
 
     def _get_selected_chip_text(self) -> str:
@@ -1915,7 +1911,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if not chips:
             return
         target = self._get_selected_chip_text()
-        self._nav_focused_chip_idx = next((i for i, c in enumerate(chips) if c.text == target), 0)
+        self._focus.chip_index = next((i for i, c in enumerate(chips) if c.text == target), 0)
         self._draw_chip_focus()
 
     def _focus_first_result_row(self) -> None:
@@ -1930,8 +1926,8 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """Give up the keyboard: every focus ring cleared, every box blurred."""
         self._blur_all_inputs()
         self._clear_all_nav_focus()
-        self._nav_active = False
-        self._nav_focus_area = "input"
+        self._focus.active = False
+        self._focus.area = FocusArea.INPUT
         logger.debug(log_markers.SEARCH_EXITED_NAV)
 
     def handle_key(self, key: int) -> bool:
@@ -1947,21 +1943,21 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         # While the speech-bubble popup is open it owns the keyboard directly via
         # its own Window binding (see PopupKeyboardNav), so this handler is not
         # reached — the modal-popup guard in main_screen yields first.
-        if not self._nav_active:
+        if not self._focus.active:
             return False
 
         handlers = {
-            "input": self._handle_input_key,
-            "clear": self._handle_clear_key,
-            "tags": self._handle_tags_key,
-            "speakers": self._handle_panel_row_key,
-            "said_by_list": self._handle_said_by_list_key,
-            "scope": self._handle_panel_row_key,
-            "basket": self._handle_basket_key,
-            "era": self._handle_panel_row_key,
-            "results": self._handle_results_key,
+            FocusArea.INPUT: self._handle_input_key,
+            FocusArea.CLEAR: self._handle_clear_key,
+            FocusArea.TAGS: self._handle_tags_key,
+            FocusArea.SPEAKERS: self._handle_panel_row_key,
+            FocusArea.SAID_BY_LIST: self._handle_said_by_list_key,
+            FocusArea.SCOPE: self._handle_panel_row_key,
+            FocusArea.BASKET: self._handle_basket_key,
+            FocusArea.ERA: self._handle_panel_row_key,
+            FocusArea.RESULTS: self._handle_results_key,
         }
-        handler = handlers.get(self._nav_focus_area)
+        handler = handlers.get(self._focus.area)
         # noinspection PyArgumentList
         return handler(key) if handler else False
 
@@ -1981,7 +1977,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
                 # At the text's end: the x beside the box, which clears the search (its
                 # picked words or tags, and the era, too); Right again is the results.
                 self._blur_all_inputs()
-                self._nav_focus_area = "clear"
+                self._focus.area = FocusArea.CLEAR
                 self._draw_clear_focus()
             else:
                 return False
@@ -1994,10 +1990,10 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if self._active_basket_has_items():
             self._nav_enter_basket()
             return
-        self._nav_list_sub = "word"
+        self._focus.list_part = ListPart.ITEM
         if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
-            self._nav_focus_area = "tags"
-            self._nav_focused_chip_idx = 0
+            self._focus.area = FocusArea.TAGS
+            self._focus.chip_index = 0
             self._draw_chip_focus()
         elif self._get_active_result_rows():
             self._nav_enter_results()
@@ -2008,7 +2004,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         else:
             # Nothing below the box (a title search with nothing listed): stay in it,
             # rather than on an empty list with no ring drawn.
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
 
     def _handle_results_key(self, key: int) -> bool:
@@ -2016,21 +2012,21 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if key == KEY_UP:
             self._handle_results_up()
         elif key == KEY_DOWN:
-            if rows and self._nav_focused_result_idx < len(rows) - 1:
-                self._nav_focused_result_idx += 1
-                self._nav_word_sub_focus = "title"
+            if rows and self._focus.result_index < len(rows) - 1:
+                self._focus.result_index += 1
+                self._focus.row_part = RowPart.TITLE
                 self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             focused = self._get_focused_result_widget(rows)
             if focused is not None:
                 self._last_activated_result = focused
-                self._last_activated_word_sub_focus = self._nav_word_sub_focus
+                self._last_activated_word_sub_focus = self._focus.row_part
                 focused.trigger_action(duration=0)
         elif key in (KEY_LEFT, KEY_RIGHT):
             return self._handle_results_left_right(key)
         elif key == KEY_TAB:
             self._clear_result_focus()
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
         elif is_escape_key(key):
             self._nav_escape()
@@ -2039,9 +2035,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         return True
 
     def _handle_results_up(self) -> None:
-        if self._nav_focused_result_idx > 0:
-            self._nav_focused_result_idx -= 1
-            self._nav_word_sub_focus = "title"
+        if self._focus.result_index > 0:
+            self._focus.result_index -= 1
+            self._focus.row_part = RowPart.TITLE
             self._draw_result_focus()
         elif self._panel_rows():
             # The panel's lowest chip row sits directly above the results.
@@ -2051,19 +2047,19 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             # Nothing above the list (the title search has no chip rows): the box, as
             # Up from the top of the other searches' rows goes back to theirs.
             self._clear_result_focus()
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
 
     def _handle_results_left_right(self, key: int) -> bool:
         if key == KEY_RIGHT:
-            if self._active_mode == "Word" and self._nav_word_sub_focus == "title":
-                self._nav_word_sub_focus = "speech"
+            if self._active_mode == "Word" and self._focus.row_part == RowPart.TITLE:
+                self._focus.row_part = RowPart.SPEECH
                 self._draw_result_focus()
                 return True
             return False
         # KEY_LEFT
-        if self._active_mode == "Word" and self._nav_word_sub_focus == "speech":
-            self._nav_word_sub_focus = "title"
+        if self._active_mode == "Word" and self._focus.row_part == RowPart.SPEECH:
+            self._focus.row_part = RowPart.TITLE
             self._draw_result_focus()
         elif self._active_mode == "Word" and self._get_word_chip_buttons():
             self._clear_result_focus()
@@ -2073,36 +2069,34 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._nav_back_to_tag_chips()
         else:
             self._clear_result_focus()
-            self._nav_focus_area = "clear"
+            self._focus.area = FocusArea.CLEAR
             self._draw_clear_focus()
         return True
 
     def _nav_back_to_tag_chips(self) -> None:
         """Focus the tag list: the selected member chip if one is active, else the tag's."""
-        self._nav_focus_area = "tags"
-        self._nav_list_sub = "word"
+        self._focus.area = FocusArea.TAGS
+        self._focus.list_part = ListPart.ITEM
         tag_chips = self._get_tag_chip_buttons()
         target = self._selected_member or self._selected_tag
-        self._nav_focused_chip_idx = next(
-            (i for i, c in enumerate(tag_chips) if c.text == target), 0
-        )
+        self._focus.chip_index = next((i for i, c in enumerate(tag_chips) if c.text == target), 0)
         self._draw_chip_focus()
 
     def _nav_back_to_word_chips(self) -> None:
         """Focus the word chip list, on the selected word."""
-        self._nav_focus_area = "tags"
-        self._nav_list_sub = "word"
+        self._focus.area = FocusArea.TAGS
+        self._focus.list_part = ListPart.ITEM
         word_buttons = self._get_word_chip_buttons()
         selected = self._get_selected_chip_text()
-        self._nav_focused_chip_idx = next(
+        self._focus.chip_index = next(
             (i for i, b in enumerate(word_buttons) if b.text == selected), 0
         )
         self._draw_chip_focus()
 
     def _nav_enter_results(self) -> None:
-        self._nav_focus_area = "results"
-        self._nav_focused_result_idx = 0
-        self._nav_word_sub_focus = "title"
+        self._focus.area = FocusArea.RESULTS
+        self._focus.result_index = 0
+        self._focus.row_part = RowPart.TITLE
 
     def _clear_all_nav_focus(self) -> None:
         """Clear every focus ring the keys can leave: one list, for leaving and for Escape.
@@ -2122,7 +2116,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _nav_escape(self) -> None:
         self._clear_all_nav_focus()
-        self._nav_focus_area = "input"
+        self._focus.area = FocusArea.INPUT
         self._blur_all_inputs()
         if self._nav_on_exit_request:
             self._nav_on_exit_request()
@@ -2130,7 +2124,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _handle_clear_key(self, key: int) -> bool:
         if key == KEY_LEFT:
             self._clear_clear_focus()
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
         elif key == KEY_RIGHT:
             if self._get_active_result_rows():  # with none, the focus stays on the x
@@ -2140,7 +2134,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._get_active_clear_button().trigger_action(duration=0)
             self._clear_clear_focus()
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
         elif is_escape_key(key):
             self._nav_escape()
         else:
@@ -2152,12 +2146,12 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         if self._active_mode in ("Tag", "Word") and self._handle_list_row_key(key, chips):
             return True
         if key == KEY_DOWN:
-            if chips and self._nav_focused_chip_idx < len(chips) - 1:
-                self._nav_focused_chip_idx += 1
+            if chips and self._focus.chip_index < len(chips) - 1:
+                self._focus.chip_index += 1
                 self._draw_chip_focus()
         elif key == KEY_RIGHT:
             self._clear_chip_focus()
-            self._nav_list_sub = "word"
+            self._focus.list_part = ListPart.ITEM
             # The panel's top chip row is the first thing to the right of the list.
             self._nav_enter_panel_row(self._panel_rows()[0][0])
         elif key in (KEY_LEFT, KEY_UP):
@@ -2176,15 +2170,15 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _handle_tags_up(self) -> None:
         """Up (or Left) on a list: the chip before; off the first, what sits above."""
-        if self._nav_focused_chip_idx > 0:
-            self._nav_focused_chip_idx -= 1
+        if self._focus.chip_index > 0:
+            self._focus.chip_index -= 1
             self._draw_chip_focus()
             return
         self._clear_chip_focus()
         if self._active_basket_has_items():
             self._nav_enter_basket()  # the picked words or tags sit above the list
         else:
-            self._nav_focus_area = "input"
+            self._focus.area = FocusArea.INPUT
             self._focus_active_input()
 
     def _handle_list_row_key(self, key: int, chips: list[Button]) -> bool:
@@ -2195,13 +2189,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         """
         if not chips:
             return False
-        chip = chips[min(self._nav_focused_chip_idx, len(chips) - 1)]
+        chip = chips[min(self._focus.chip_index, len(chips) - 1)]
         row = chip.parent if isinstance(chip.parent, (_WordRow, _TagRow)) else None
-        on_plus = row is not None and self._nav_list_sub == "plus"
+        on_plus = row is not None and self._focus.list_part == ListPart.PLUS
         if key == KEY_RIGHT and row is not None and not on_plus:
-            self._nav_list_sub = "plus"
+            self._focus.list_part = ListPart.PLUS
         elif key == KEY_LEFT and on_plus:
-            self._nav_list_sub = "word"
+            self._focus.list_part = ListPart.ITEM
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER) and row is not None and on_plus:
             if isinstance(row, _TagRow):
                 self._toggle_tag_basket(row.chip.text)
@@ -2220,9 +2214,9 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             self._pressing_chip_by_key = False
 
     def _handle_tags_enter_by_key(self, chips: list[Button]) -> None:
-        if not chips or self._nav_focused_chip_idx >= len(chips):
+        if not chips or self._focus.chip_index >= len(chips):
             return
-        focused_chip = chips[self._nav_focused_chip_idx]
+        focused_chip = chips[self._focus.chip_index]
         if isinstance(focused_chip, (_QueryRowButton, _SuggestionButton, _TagQueryChip)):
             focused_chip.trigger_action(duration=0)
             self._clear_chip_focus()
@@ -2242,7 +2236,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             label = focused_chip.text
             focused_chip.trigger_action(duration=0)
             new_chips = self._get_tag_chip_buttons()
-            self._nav_focused_chip_idx = next(
+            self._focus.chip_index = next(
                 (i for i, c in enumerate(new_chips) if c.text == label), 0
             )
             self._draw_chip_focus()
@@ -2256,7 +2250,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             selected_idx = next(
                 (i for i, c in enumerate(all_chips) if c.text == self._selected_tag), -1
             )
-            self._nav_focused_chip_idx = selected_idx + 1
+            self._focus.chip_index = selected_idx + 1
             member_chips[0].trigger_action(duration=0)
             self._once_the_list_settles(self._draw_chip_focus)
         else:
@@ -2328,13 +2322,13 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         chips = self._get_active_chip_buttons()
         if not chips:
             return
-        self._nav_focused_chip_idx = min(self._nav_focused_chip_idx, len(chips) - 1)
+        self._focus.chip_index = min(self._focus.chip_index, len(chips) - 1)
         if self._active_mode == "Word":
-            target = chips[self._nav_focused_chip_idx]
-            if self._nav_list_sub == "plus" and isinstance(target.parent, _WordRow):
+            target = chips[self._focus.chip_index]
+            if self._focus.list_part == ListPart.PLUS and isinstance(target.parent, _WordRow):
                 target = target.parent.plus_button
             else:
-                self._nav_list_sub = "word"
+                self._focus.list_part = ListPart.ITEM
             widgets = self._word_list_focus_widgets(chips)
             update_focus_in_list(widgets, widgets.index(target), _SEARCH_NAV_FOCUS_GROUP)
             self.ids.word_chips_scroll.scroll_into_view(target)
@@ -2343,18 +2337,18 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
 
     def _draw_tag_chip_focus(self, chips: list[_TagChipButton]) -> None:
         """Border the focused tag chip; or, on its +, ring the + and border no chip."""
-        chip = chips[self._nav_focused_chip_idx]
+        chip = chips[self._focus.chip_index]
         pluses = [row.plus_button for row in self._tag_rows()]
-        if self._nav_list_sub == "plus" and isinstance(chip.parent, _TagRow):
+        if self._focus.list_part == ListPart.PLUS and isinstance(chip.parent, _TagRow):
             self._update_tag_chip_colors(chips)
             update_focus_in_list(
                 pluses, pluses.index(chip.parent.plus_button), _SEARCH_NAV_FOCUS_GROUP
             )
             self.ids.tag_chips_scroll.scroll_into_view(chip.parent.plus_button)
             return
-        self._nav_list_sub = "word"
+        self._focus.list_part = ListPart.ITEM
         clear_focus_in_list(pluses, _SEARCH_NAV_FOCUS_GROUP)
-        self._update_tag_chip_colors(chips, self._nav_focused_chip_idx)
+        self._update_tag_chip_colors(chips, self._focus.chip_index)
         # The list outruns its window: the focus follows the keys off its edge otherwise.
         self.ids.tag_chips_scroll.scroll_into_view(chip)
 
@@ -2410,11 +2404,11 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
     def _get_focused_result_widget(self, rows: list[Button]) -> Button | None:
         if not rows:
             return None
-        idx = min(self._nav_focused_result_idx, len(rows) - 1)
+        idx = min(self._focus.result_index, len(rows) - 1)
         row = rows[idx]
         if self._active_mode == "Word" and hasattr(row, "children") and row.children:
             children = list(reversed(row.children))
-            sub_idx = 1 if self._nav_word_sub_focus == "speech" else 0
+            sub_idx = 1 if self._focus.row_part == RowPart.SPEECH else 0
             return children[min(sub_idx, len(children) - 1)]
         return row
 
@@ -2433,7 +2427,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
         rows = self._get_active_result_rows()
         if not rows:
             return
-        self._nav_focused_result_idx = min(self._nav_focused_result_idx, len(rows) - 1)
+        self._focus.result_index = min(self._focus.result_index, len(rows) - 1)
         all_widgets = self._get_all_focusable_widgets(rows)
         focused = self._get_focused_result_widget(rows)
         if focused is None:
@@ -2444,7 +2438,7 @@ class SearchScreen(DropdownNavMixin, FloatLayout):
             return
         update_focus_in_list(all_widgets, focus_idx, _SEARCH_NAV_FOCUS_GROUP)
         scroll_view = self._get_active_results_scroll_view()
-        scroll_target = rows[self._nav_focused_result_idx]
+        scroll_target = rows[self._focus.result_index]
         scroll_view.scroll_into_view(scroll_target)
 
     def _clear_result_focus(self) -> None:
