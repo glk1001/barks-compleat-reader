@@ -257,8 +257,9 @@ class SearchScreen(FloatLayout):
         self._last_activated_result: Widget | None = None
         self._last_activated_word_sub_focus = RowPart.TITLE
 
-        # Persistent highlight of the last-opened result row (mouse or keyboard).
-        self._selected_result_button: _SearchResultButton | None = None
+        # Persistent highlight of each mode's last-opened result row (mouse or keyboard):
+        # one a mode, as each mode keeps its list while another is on screen.
+        self._selected_result_buttons: dict[str, _SearchResultButton] = {}
 
         self._speech_bubble_popup, self._popup_nav = create_speech_bubble_popup(
             self._font_manager.speech_bubble_popup_title_font_name,
@@ -354,10 +355,11 @@ class SearchScreen(FloatLayout):
         Bound into the row's on_release, so it fires for both mouse clicks and keyboard
         activation and the highlight survives navigating away and back.
         """
-        if self._selected_result_button is not None and self._selected_result_button is not button:
-            self._selected_result_button.selected = False
+        last = self._selected_result_buttons.get(self._active_mode)
+        if last is not None and last is not button:
+            last.selected = False
         button.selected = True
-        self._selected_result_button = button
+        self._selected_result_buttons[self._active_mode] = button
         # Also drive the keyboard restore target, so a later keyboard Go Back lands its
         # focus ring on the same row the mouse opened.
         self._last_activated_result = button
@@ -369,6 +371,8 @@ class SearchScreen(FloatLayout):
         title_strings: list[str],
         on_select: Callable[[str], None],
         pages_of: Callable[[str], str] | None = None,
+        *,
+        mode: str,
     ) -> None:
         """Fill `layout` with a row per listed story.
 
@@ -378,10 +382,12 @@ class SearchScreen(FloatLayout):
             on_select: Called with a row's title when the row is pressed.
             pages_of: Returns the pages a row's story lists ("3-4,7"), or "" for none:
                 a tag's pages in it, shown after the story's issue and year.
+            mode: The search mode the list is of; its last-opened row goes with the
+                old rows, and no other mode's does.
 
         """
         layout.clear_widgets()
-        self._selected_result_button = None
+        self._selected_result_buttons.pop(mode, None)
         for i, title_str in enumerate(title_strings):
             is_cover = _listed_title(title_str) in COVERS_SET
             detail = _title_detail(title_str)
@@ -455,7 +461,9 @@ class SearchScreen(FloatLayout):
             return
 
         title_enums, title_strings = self._get_titles_matching(text)
-        self._populate_title_results(results_layout, title_strings, self._on_result_goto_title)
+        self._populate_title_results(
+            results_layout, title_strings, self._on_result_goto_title, mode="Title"
+        )
         self._update_background_from_results("Title", title_enums)
         logger.debug(log_markers.SEARCH_TITLE_RESULTS.format(count=len(title_strings), text=text))
 
@@ -664,6 +672,7 @@ class SearchScreen(FloatLayout):
             self._tag_titles,
             self._on_tag_result_goto_title,
             pages_of=self._listed_tags_pages_of(),
+            mode="Tag",
         )
         self._add_none_in_era_row(title_results_layout, titles)
         self._update_background_from_results("Tag", titles)
@@ -867,6 +876,7 @@ class SearchScreen(FloatLayout):
             self._tag_titles,
             self._on_tag_result_goto_title,
             pages_of=self._listed_tags_pages_of(),
+            mode="Tag",
         )
         if not selection.included:
             layout.add_widget(
@@ -1525,7 +1535,7 @@ class SearchScreen(FloatLayout):
 
     def _populate_word_results_layout(self, results_layout: BoxLayout) -> None:
         logger.debug(log_markers.SEARCH_WORD_RESULTS.format(count=len(self._word_search_results)))
-        self._selected_result_button = None
+        self._selected_result_buttons.pop("Word", None)
         for i, (
             comic_title,
             first_page_num,

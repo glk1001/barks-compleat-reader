@@ -98,6 +98,8 @@ def _make_bare_screen() -> SearchScreen:
     screen._open_subgroup = None
     # The mode on screen, as a screen starts.
     screen._active_mode = "Title"
+    # Each mode's last-opened result row: none yet.
+    screen._selected_result_buttons = {}
     # The background's rotation: none running. No listener: it changes nothing.
     screen._listed_titles = {}
     screen._search_result_titles = []
@@ -136,7 +138,7 @@ def _press(chip: MagicMock) -> None:
 _NAV_ADOPTED: dict[str, object] = {
     "on_request_nav_focus": None,
     "_nav_on_exit_request": None,
-    "_selected_result_button": None,
+    "_selected_result_buttons": {},
 }
 
 
@@ -312,19 +314,17 @@ class TestMarkResultSelected:
 
     def test_marks_button_and_records_index(self) -> None:
         screen = _make_bare_screen()
-        screen._selected_result_button = None
         row = _fake_row(2)
 
         screen._mark_result_selected(row)
 
         assert row.selected is True
-        assert screen._selected_result_button is row
+        assert screen._selected_result_buttons == {"Title": row}
         assert screen._last_activated_result is row
         assert screen._last_activated_word_sub_focus == "title"
 
     def test_selecting_another_row_clears_the_previous(self) -> None:
         screen = _make_bare_screen()
-        screen._selected_result_button = None
         first, second = _fake_row(0), _fake_row(1)
 
         screen._mark_result_selected(first)
@@ -332,8 +332,33 @@ class TestMarkResultSelected:
 
         assert first.selected is False
         assert second.selected is True
-        assert screen._selected_result_button is second
+        assert screen._selected_result_buttons == {"Title": second}
         assert screen._last_activated_result is second
+
+    def test_each_mode_keeps_its_own_last_opened_row(self) -> None:
+        """A list built in one mode clears no mark of another, and leaves none marked twice."""
+        screen = _make_bare_screen()
+        title_row, tag_row, next_title_row = _fake_row(0), _fake_row(1), _fake_row(2)
+
+        screen._mark_result_selected(title_row)
+        screen._active_mode = "Tag"
+        screen._populate_title_results(BoxLayout(), [], MagicMock(), mode="Tag")
+        screen._mark_result_selected(tag_row)
+        assert (title_row.selected, tag_row.selected) == (True, True)
+
+        screen._active_mode = "Title"
+        screen._mark_result_selected(next_title_row)
+        assert (title_row.selected, tag_row.selected, next_title_row.selected) == (
+            False,
+            True,
+            True,
+        )
+
+    def test_a_list_built_again_forgets_its_own_last_opened_row(self) -> None:
+        screen = _make_bare_screen()
+        screen._selected_result_buttons = {"Title": _fake_row(0), "Tag": _fake_row(1)}
+        screen._populate_title_results(BoxLayout(), [], MagicMock(), mode="Title")
+        assert list(screen._selected_result_buttons) == ["Tag"]
 
 
 class TestWordList:
@@ -3014,7 +3039,7 @@ class TestBackgroundAndGoto:
             bare.on_search_results_title_changed = MagicMock()
             bare.on_goto_background_title_func = MagicMock()
             bare.on_goto_title_with_page = MagicMock()
-            bare._selected_result_button = None
+            bare._selected_result_buttons = {}
             yield bare
 
     def test_the_background_cycles_through_the_stories_listed(self, screen: SearchScreen) -> None:
@@ -3768,7 +3793,7 @@ def test_a_row_that_is_no_story_shows_no_detail() -> None:
 def test_listed_stories_carry_their_detail_and_keep_their_title() -> None:
     screen = _make_bare_screen()
     layout = BoxLayout()
-    screen._populate_title_results(layout, ["The Golden Helmet"], MagicMock())
+    screen._populate_title_results(layout, ["The Golden Helmet"], MagicMock(), mode="Title")
     [row] = layout.children
     assert row.text == "The Golden Helmet"
     assert row.detail == "FC 408, 1952"
@@ -3779,7 +3804,7 @@ def test_a_cover_row_says_cover_and_opens_the_cover() -> None:
     screen._mark_result_selected = MagicMock()
     layout = BoxLayout()
     on_select = MagicMock()
-    screen._populate_title_results(layout, ["(Four Color #223 Cover)"], on_select)
+    screen._populate_title_results(layout, ["(Four Color #223 Cover)"], on_select, mode="Title")
     [row] = layout.children
     assert row.text == "[Cover]"
     assert row.is_cover
@@ -3791,7 +3816,7 @@ def test_a_cover_row_says_cover_and_opens_the_cover() -> None:
 def test_a_story_row_is_no_cover() -> None:
     screen = _make_bare_screen()
     layout = BoxLayout()
-    screen._populate_title_results(layout, ["Lost in the Andes!"], MagicMock())
+    screen._populate_title_results(layout, ["Lost in the Andes!"], MagicMock(), mode="Title")
     [row] = layout.children
     assert row.text == "Lost in the Andes!"
     assert not row.is_cover
@@ -3819,7 +3844,7 @@ def test_a_new_title_list_starts_at_its_first_row() -> None:
     """Pick "US" after scrolling down "CS": the US list starts at its top."""
     screen = _make_bare_screen()
     scroll, rows = _scrolled_down_list()
-    screen._populate_title_results(rows, ["Lost in the Andes!"], MagicMock())
+    screen._populate_title_results(rows, ["Lost in the Andes!"], MagicMock(), mode="Title")
     assert scroll.scroll_y == 1
 
 
@@ -3871,12 +3896,16 @@ class TestTagRowPages:
     def test_a_row_shows_the_pages_after_its_issue(self) -> None:
         rows = BoxLayout(orientation="vertical")
         screen = SearchScreen.__new__(SearchScreen)
-        screen._selected_result_button = None
+        screen._selected_result_buttons = {}
         andes = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
-        screen._populate_title_results(rows, [andes], lambda _t: None, pages_of=lambda _t: "19-20")
+        screen._populate_title_results(
+            rows, [andes], lambda _t: None, pages_of=lambda _t: "19-20", mode="Title"
+        )
         (row,) = rows.children
         assert row.detail.endswith(", p 19-20")
-        screen._populate_title_results(rows, [andes], lambda _t: None, pages_of=lambda _t: "")
+        screen._populate_title_results(
+            rows, [andes], lambda _t: None, pages_of=lambda _t: "", mode="Title"
+        )
         (row,) = rows.children
         assert not row.detail.endswith("p ")
 
