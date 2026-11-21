@@ -1,4 +1,4 @@
-"""Where the keyboard is on the search screen.
+"""Where the keyboard is on the search screen, and which of its searches it shows.
 
 Kivy-free. The screen's key handlers, and the classes that take over a part of the
 screen (the speaker filter, in time a pane each for the tags and the words), read and
@@ -12,6 +12,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum, auto
+
+
+class SearchScreenMode(StrEnum):
+    """Which of its three searches the search screen shows: one box and its lists.
+
+    Its values are the words the tree's search nodes, the snapshot and the log lines
+    have always used. Not `comic_search.SearchMode`, the index's domain a query is run
+    against.
+    """
+
+    TITLE = "Title"
+    TAG = "Tag"
+    WORD = "Word"
 
 
 class FocusArea(StrEnum):

@@ -20,7 +20,7 @@ from barks_reader.core import log_markers, reader_utils
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.search_chip_row import ChipRow
-from barks_reader.core.search_focus import FocusArea, RowPart, SearchFocus
+from barks_reader.core.search_focus import FocusArea, RowPart, SearchFocus, SearchScreenMode
 from barks_reader.ui import reader_keyboard_nav, search_said_by, search_screen, search_widgets
 from barks_reader.ui.search_said_by import SaidByFilter
 from barks_reader.ui.search_screen import SearchScreen
@@ -257,6 +257,20 @@ class TestAHiddenModeTakesNoPresses:
             screen.set_mode(mode)
         assert [content.shown for content in contents] == shown
 
+    def test_a_mode_that_is_none_of_the_three_is_refused(self, loguru_sink: list[str]) -> None:
+        """Not taken silently: it hid all three, and the next key raised far from the cause."""
+        with _bare_screen() as screen, pytest.raises(ValueError, match="Words"):
+            screen.set_mode("Words")
+        assert screen._active_mode == "Title"
+        assert log_markers.SEARCH_MODE_SET.format(mode="Words") not in loguru_sink
+
+    def test_the_modes_are_the_words_the_tree_and_the_log_use(self, loguru_sink: list[str]) -> None:
+        assert [str(mode) for mode in SearchScreenMode] == ["Title", "Tag", "Word"]
+        with _bare_screen(None, patch.object(SearchScreen, "_refresh_tag_scope")) as screen:
+            screen.set_mode("Word")
+        assert screen._active_mode is SearchScreenMode.WORD
+        assert log_markers.SEARCH_MODE_SET.format(mode=SearchScreenMode.WORD) in loguru_sink
+
 
 def test_the_screen_s_docstring_is_its_own() -> None:
     """Written after its class attributes, it was a stray string and __doc__ was None."""
@@ -297,7 +311,7 @@ class TestMarkResultSelected:
 
         screen._mark_result_selected(title_row)
         screen._active_mode = "Tag"
-        screen._populate_title_results(BoxLayout(), [], MagicMock(), mode="Tag")
+        screen._populate_title_results(BoxLayout(), [], MagicMock(), mode=SearchScreenMode.TAG)
         screen._mark_result_selected(tag_row)
         assert (title_row.selected, tag_row.selected) == (True, True)
 
@@ -312,7 +326,7 @@ class TestMarkResultSelected:
     def test_a_list_built_again_forgets_its_own_last_opened_row(self) -> None:
         screen = _make_bare_screen()
         screen._selected_result_buttons = {"Title": _fake_row(0), "Tag": _fake_row(1)}
-        screen._populate_title_results(BoxLayout(), [], MagicMock(), mode="Title")
+        screen._populate_title_results(BoxLayout(), [], MagicMock(), mode=SearchScreenMode.TITLE)
         assert list(screen._selected_result_buttons) == ["Tag"]
 
 
@@ -1586,7 +1600,7 @@ class TestNavFocusMarkers:
             {"title_search_input": MagicMock(), "tag_search_input": tag_box}
             | {"word_search_input": MagicMock()}
         )
-        with _bare_screen(ids, _active_mode="Word") as screen:
+        with _bare_screen(ids, _active_mode=SearchScreenMode.WORD) as screen:
             screen.on_search_input_focus(tag_box, focused=False)
         assert loguru_sink[-1] == log_markers.SEARCH_BOX_FOCUS.format(mode="Tag", state="unfocused")
 
@@ -3104,7 +3118,7 @@ class TestBackgroundAndGoto:
 
     def test_the_background_cycles_through_the_stories_listed(self, screen: SearchScreen) -> None:
         with patch.object(search_screen.Clock, "schedule_interval") as every:
-            screen._update_background_from_results("Title", [PIRATE_GOLD, HELMET])
+            screen._update_background_from_results(SearchScreenMode.TITLE, [PIRATE_GOLD, HELMET])
         assert screen.on_search_results_title_changed.call_args.args[0] in (PIRATE_GOLD, HELMET)
         every.assert_called_once()
         screen._next_background_image()
@@ -3114,11 +3128,13 @@ class TestBackgroundAndGoto:
         assert screen._image_change_event is None
 
     def test_no_stories_or_no_listener_changes_no_background(self, screen: SearchScreen) -> None:
-        screen._update_background_from_results("Title", [])
+        screen._update_background_from_results(SearchScreenMode.TITLE, [])
         screen._next_background_image()
         screen.on_search_results_title_changed.assert_not_called()
 
-    def _rotating(self, screen: SearchScreen, mode: str = "Title") -> MagicMock:
+    def _rotating(
+        self, screen: SearchScreen, mode: SearchScreenMode = SearchScreenMode.TITLE
+    ) -> MagicMock:
         """Start the background rotating through two stories `mode` lists; return its timer."""
         screen._active_mode = mode
         with patch.object(search_screen.Clock, "schedule_interval") as every:
@@ -3134,7 +3150,7 @@ class TestBackgroundAndGoto:
 
     def test_a_search_that_finds_nothing_stops_the_rotation(self, screen: SearchScreen) -> None:
         timer = self._rotating(screen)
-        screen._update_background_from_results("Title", [])
+        screen._update_background_from_results(SearchScreenMode.TITLE, [])
         self._assert_stopped(screen, timer)
 
     def test_a_title_box_cut_to_one_letter_stops_the_rotation(self, screen: SearchScreen) -> None:
@@ -3145,7 +3161,7 @@ class TestBackgroundAndGoto:
     def test_a_word_search_that_finds_nothing_stops_the_rotation(
         self, screen: SearchScreen
     ) -> None:
-        timer = self._rotating(screen, "Word")
+        timer = self._rotating(screen, SearchScreenMode.WORD)
         with (
             patch.object(screen, "_show_result_filters"),
             patch.object(screen, "_build_word_results", return_value=[]),
@@ -3155,23 +3171,25 @@ class TestBackgroundAndGoto:
         self._assert_stopped(screen, timer)
 
     def test_a_tag_list_cleared_stops_the_rotation(self, screen: SearchScreen) -> None:
-        timer = self._rotating(screen, "Tag")
+        timer = self._rotating(screen, SearchScreenMode.TAG)
         screen._clear_tag_title_results()
         self._assert_stopped(screen, timer)
 
     def test_a_hidden_mode_s_list_leaves_the_rotation_alone(self, screen: SearchScreen) -> None:
         """Both searches list again when the era changes; only the one on screen is shown."""
-        timer = self._rotating(screen, "Tag")
+        timer = self._rotating(screen, SearchScreenMode.TAG)
         with patch.object(search_screen.Clock, "schedule_interval") as every:
-            screen._update_background_from_results("Word", [])
-            screen._update_background_from_results("Word", [Titles.LOST_IN_THE_ANDES])
+            screen._update_background_from_results(SearchScreenMode.WORD, [])
+            screen._update_background_from_results(
+                SearchScreenMode.WORD, [Titles.LOST_IN_THE_ANDES]
+            )
         timer.cancel.assert_not_called()
         every.assert_not_called()
         assert screen._search_result_titles == [PIRATE_GOLD, HELMET]
 
     def test_a_mode_shown_rotates_through_its_own_stories(self, screen: SearchScreen) -> None:
-        timer = self._rotating(screen, "Tag")
-        screen._update_background_from_results("Word", [Titles.LOST_IN_THE_ANDES])
+        timer = self._rotating(screen, SearchScreenMode.TAG)
+        screen._update_background_from_results(SearchScreenMode.WORD, [Titles.LOST_IN_THE_ANDES])
         with (
             patch.object(SearchScreen, "_refresh_tag_scope"),
             patch.object(search_screen.Clock, "schedule_interval") as every,
@@ -3858,7 +3876,9 @@ def test_a_row_that_is_no_story_shows_no_detail() -> None:
 def test_listed_stories_carry_their_detail_and_keep_their_title() -> None:
     screen = _make_bare_screen()
     layout = BoxLayout()
-    screen._populate_title_results(layout, ["The Golden Helmet"], MagicMock(), mode="Title")
+    screen._populate_title_results(
+        layout, ["The Golden Helmet"], MagicMock(), mode=SearchScreenMode.TITLE
+    )
     [row] = layout.children
     assert row.text == "The Golden Helmet"
     assert row.detail == "FC 408, 1952"
@@ -3869,7 +3889,9 @@ def test_a_cover_row_says_cover_and_opens_the_cover() -> None:
     screen._mark_result_selected = MagicMock()
     layout = BoxLayout()
     on_select = MagicMock()
-    screen._populate_title_results(layout, ["(Four Color #223 Cover)"], on_select, mode="Title")
+    screen._populate_title_results(
+        layout, ["(Four Color #223 Cover)"], on_select, mode=SearchScreenMode.TITLE
+    )
     [row] = layout.children
     assert row.text == "[Cover]"
     assert row.is_cover
@@ -3881,7 +3903,9 @@ def test_a_cover_row_says_cover_and_opens_the_cover() -> None:
 def test_a_story_row_is_no_cover() -> None:
     screen = _make_bare_screen()
     layout = BoxLayout()
-    screen._populate_title_results(layout, ["Lost in the Andes!"], MagicMock(), mode="Title")
+    screen._populate_title_results(
+        layout, ["Lost in the Andes!"], MagicMock(), mode=SearchScreenMode.TITLE
+    )
     [row] = layout.children
     assert row.text == "Lost in the Andes!"
     assert not row.is_cover
@@ -3909,7 +3933,9 @@ def test_a_new_title_list_starts_at_its_first_row() -> None:
     """Pick "US" after scrolling down "CS": the US list starts at its top."""
     screen = _make_bare_screen()
     scroll, rows = _scrolled_down_list()
-    screen._populate_title_results(rows, ["Lost in the Andes!"], MagicMock(), mode="Title")
+    screen._populate_title_results(
+        rows, ["Lost in the Andes!"], MagicMock(), mode=SearchScreenMode.TITLE
+    )
     assert scroll.scroll_y == 1
 
 

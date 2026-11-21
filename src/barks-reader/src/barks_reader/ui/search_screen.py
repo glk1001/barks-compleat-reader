@@ -50,7 +50,13 @@ from barks_reader.core.search_chip_row import (
     chip_bg_normal,
     chip_border_focused,
 )
-from barks_reader.core.search_focus import FocusArea, ListPart, RowPart, SearchFocus
+from barks_reader.core.search_focus import (
+    FocusArea,
+    ListPart,
+    RowPart,
+    SearchFocus,
+    SearchScreenMode,
+)
 from barks_reader.core.search_state import (
     ALL_SPEAKERS,
     ALL_YEARS,
@@ -163,25 +169,32 @@ class SearchScreen(FloatLayout):
     )
 
     # Per-mode widget ID mapping: mode -> (input, clear_button, scroll_view, results_layout)
-    _MODE_WIDGETS: ClassVar[dict[str, tuple[str, str, str, str]]] = {
-        "Title": (
+    _MODE_WIDGETS: ClassVar[dict[SearchScreenMode, tuple[str, str, str, str]]] = {
+        SearchScreenMode.TITLE: (
             "title_search_input",
             "title_clear_button",
             "title_results_scroll",
             "title_results_layout",
         ),
-        "Tag": (
+        SearchScreenMode.TAG: (
             "tag_search_input",
             "tag_clear_button",
             "tag_results_scroll",
             "tag_title_results_layout",
         ),
-        "Word": (
+        SearchScreenMode.WORD: (
             "word_search_input",
             "word_clear_button",
             "word_results_scroll",
             "word_results_layout",
         ),
+    }
+
+    # Each mode's content: its box and its lists, of which one mode's is shown.
+    _MODE_CONTENT: ClassVar[dict[SearchScreenMode, str]] = {
+        SearchScreenMode.TITLE: "title_search_content",
+        SearchScreenMode.TAG: "tag_search_content",
+        SearchScreenMode.WORD: "word_search_content",
     }
 
     def __init__(
@@ -202,7 +215,7 @@ class SearchScreen(FloatLayout):
         self.on_search_results_title_changed: Callable[[Titles], None] | None = None
         # The stories each mode lists now, and those the background rotates through: the
         # ones of the mode on screen.
-        self._listed_titles: dict[str, list[Titles]] = {}
+        self._listed_titles: dict[SearchScreenMode, list[Titles]] = {}
         self._search_result_titles: list[Titles] = []
         self._image_change_event = None
         self.show_current_title = self._reader_settings.show_fun_view_title_info
@@ -211,7 +224,7 @@ class SearchScreen(FloatLayout):
             BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO, self._on_change_show_current_title
         )
 
-        self._active_mode: str = "Title"
+        self._active_mode = SearchScreenMode.TITLE
 
         self._nav_on_exit_request: Callable[[], None] | None = None
         # Set by MainScreenNavigation; lets Enter in a search input pull the app's
@@ -254,7 +267,7 @@ class SearchScreen(FloatLayout):
 
         # Persistent highlight of each mode's last-opened result row (mouse or keyboard):
         # one a mode, as each mode keeps its list while another is on screen.
-        self._selected_result_buttons: dict[str, _SearchResultButton] = {}
+        self._selected_result_buttons: dict[SearchScreenMode, _SearchResultButton] = {}
 
         self._speech_bubble_popup, self._popup_nav = create_speech_bubble_popup(
             self._font_manager.speech_bubble_popup_title_font_name,
@@ -292,7 +305,10 @@ class SearchScreen(FloatLayout):
         self._era = EraChoice(tuple(CHRONO_YEAR_RANGES))
         self._era_rows = {
             mode: ChipRow(self.ids[layout_id], _make_era_chip, self._on_era_selected)
-            for mode, layout_id in (("Tag", "tag_era_layout"), ("Word", "word_era_layout"))
+            for mode, layout_id in (
+                (SearchScreenMode.TAG, "tag_era_layout"),
+                (SearchScreenMode.WORD, "word_era_layout"),
+            )
         }
         for row in self._era_rows.values():
             row.set_options(self._era.options())
@@ -338,19 +354,20 @@ class SearchScreen(FloatLayout):
         return bool(super().on_touch_down(touch))
 
     def set_mode(self, mode: str) -> None:
-        """Switch to the given search mode: 'Title', 'Tag', or 'Word'."""
-        self._active_mode = mode
+        """Switch to the given search mode: 'Title', 'Tag', or 'Word'.
 
-        for content_mode, content_id in [
-            ("Title", "title_search_content"),
-            ("Tag", "tag_search_content"),
-            ("Word", "word_search_content"),
-        ]:
-            self.ids[content_id].shown = mode == content_mode
+        Raises:
+            ValueError: `mode` is none of the three.
 
-        logger.debug(log_markers.SEARCH_MODE_SET.format(mode=mode))
+        """
+        self._active_mode = SearchScreenMode(mode)
+
+        for content_mode, content_id in self._MODE_CONTENT.items():
+            self.ids[content_id].shown = self._active_mode == content_mode
+
+        logger.debug(log_markers.SEARCH_MODE_SET.format(mode=self._active_mode))
         self._rotate_background()  # through this mode's stories, not the last one's
-        if mode == "Word":
+        if self._active_mode == SearchScreenMode.WORD:
             self._refresh_tag_scope()
 
     # --- Shared Helpers ---
@@ -378,7 +395,7 @@ class SearchScreen(FloatLayout):
         on_select: Callable[[str], None],
         pages_of: Callable[[str], str] | None = None,
         *,
-        mode: str,
+        mode: SearchScreenMode,
     ) -> None:
         """Fill `layout` with a row per listed story.
 
@@ -463,14 +480,14 @@ class SearchScreen(FloatLayout):
 
         if len(text) <= 1:
             # Nothing listed: no story to rotate.
-            self._update_background_from_results("Title", [])
+            self._update_background_from_results(SearchScreenMode.TITLE, [])
             return
 
         title_enums, title_strings = self._get_titles_matching(text)
         self._populate_title_results(
-            results_layout, title_strings, self._on_result_goto_title, mode="Title"
+            results_layout, title_strings, self._on_result_goto_title, mode=SearchScreenMode.TITLE
         )
-        self._update_background_from_results("Title", title_enums)
+        self._update_background_from_results(SearchScreenMode.TITLE, title_enums)
         logger.debug(log_markers.SEARCH_TITLE_RESULTS.format(count=len(title_strings), text=text))
 
     def _get_titles_matching(self, value: str) -> tuple[list[Titles], list[str]]:
@@ -678,10 +695,10 @@ class SearchScreen(FloatLayout):
             self._tag_titles,
             self._on_tag_result_goto_title,
             pages_of=self._listed_tags_pages_of(),
-            mode="Tag",
+            mode=SearchScreenMode.TAG,
         )
         self._add_none_in_era_row(title_results_layout, titles)
-        self._update_background_from_results("Tag", titles)
+        self._update_background_from_results(SearchScreenMode.TAG, titles)
 
     def _add_none_in_era_row(self, layout: BoxLayout, titles: list[Titles]) -> None:
         """Say so when the era leaves nothing of a list, so an empty list is not a mystery."""
@@ -776,7 +793,7 @@ class SearchScreen(FloatLayout):
         self.ids.tag_title_results_layout.clear_widgets()
         self._tag_titles = []
         self._listed_tag = ""
-        self._update_background_from_results("Tag", [])
+        self._update_background_from_results(SearchScreenMode.TAG, [])
 
     def on_tag_clear(self) -> None:
         """Empty the tag box, its tags, the picked tags and their stories, and the era."""
@@ -882,7 +899,7 @@ class SearchScreen(FloatLayout):
             self._tag_titles,
             self._on_tag_result_goto_title,
             pages_of=self._listed_tags_pages_of(),
-            mode="Tag",
+            mode=SearchScreenMode.TAG,
         )
         if not selection.included:
             layout.add_widget(
@@ -892,7 +909,7 @@ class SearchScreen(FloatLayout):
             self._add_none_in_era_row(layout, titles)
         elif not titles:
             layout.add_widget(_SearchResultButton(text="No story has these tags", disabled=True))
-        self._update_background_from_results("Tag", titles)
+        self._update_background_from_results(SearchScreenMode.TAG, titles)
 
     # --- Word Search ---
 
@@ -908,7 +925,7 @@ class SearchScreen(FloatLayout):
         self._word_search_results = []
         self._word_query = ""
         self._word_query_result = None
-        self._update_background_from_results("Word", [])
+        self._update_background_from_results(SearchScreenMode.WORD, [])
 
     def on_word_search_text(self, text: str) -> None:
         """List the words matching the box's `text`; the picked words' stories stay."""
@@ -1086,7 +1103,7 @@ class SearchScreen(FloatLayout):
         """
         self._ensure_nav_active()
         self._blur_all_inputs()
-        if self._active_mode == "Tag":
+        if self._active_mode == SearchScreenMode.TAG:
             self._focus_after_tag_query()
             return
         if self._word_search_results:
@@ -1172,12 +1189,14 @@ class SearchScreen(FloatLayout):
         self._show_result_filters()
 
     def _active_basket_row(self) -> ChipRow:
-        return self._tag_basket_row if self._active_mode == "Tag" else self._basket_row
+        return (
+            self._tag_basket_row if self._active_mode == SearchScreenMode.TAG else self._basket_row
+        )
 
     def _active_basket_has_items(self) -> bool:
-        if self._active_mode == "Tag":
+        if self._active_mode == SearchScreenMode.TAG:
             return bool(self._tag_basket)
-        return self._active_mode == "Word" and bool(self._word_basket)
+        return self._active_mode == SearchScreenMode.WORD and bool(self._word_basket)
 
     def _refocus_basket(self, focused: int | None) -> None:
         """Keep the keyboard on the row, where it was; off an emptied row, to the list."""
@@ -1272,7 +1291,8 @@ class SearchScreen(FloatLayout):
         self._word_search_results = self._build_word_results(found, hit_counts)
         self._populate_word_results_layout(results_layout)
         self._update_background_from_results(
-            "Word", [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM]
+            SearchScreenMode.WORD,
+            [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM],
         )
 
         if not found:
@@ -1348,11 +1368,11 @@ class SearchScreen(FloatLayout):
         index has speakers), and the tag scope (while tags are selected). Tag
         search: the era.
         """
-        if self._active_mode == "Tag":
-            return [(FocusArea.ERA, self._era_rows["Tag"])]
-        if self._active_mode != "Word":
+        if self._active_mode == SearchScreenMode.TAG:
+            return [(FocusArea.ERA, self._era_rows[SearchScreenMode.TAG])]
+        if self._active_mode != SearchScreenMode.WORD:
             return []
-        rows = [(FocusArea.ERA, self._era_rows["Word"])]
+        rows = [(FocusArea.ERA, self._era_rows[SearchScreenMode.WORD])]
         if self._said_by.row.chips:
             rows.append((FocusArea.SPEAKERS, self._said_by.row))
         if self._scope_row.chips:
@@ -1388,7 +1408,7 @@ class SearchScreen(FloatLayout):
                 return False
             case RowKey.EXIT_LEFT if self._get_active_chip_buttons():
                 row.clear_focus()
-                if self._active_mode == "Word":
+                if self._active_mode == SearchScreenMode.WORD:
                     self._nav_back_to_word_chips()
                 else:
                     self._nav_back_to_tag_chips()
@@ -1544,7 +1564,7 @@ class SearchScreen(FloatLayout):
 
     def _populate_word_results_layout(self, results_layout: BoxLayout) -> None:
         logger.debug(log_markers.SEARCH_WORD_RESULTS.format(count=len(self._word_search_results)))
-        self._selected_result_buttons.pop("Word", None)
+        self._selected_result_buttons.pop(SearchScreenMode.WORD, None)
         for i, (
             comic_title,
             first_page_num,
@@ -1659,7 +1679,7 @@ class SearchScreen(FloatLayout):
 
     # --- Background Image Update from Results ---
 
-    def _update_background_from_results(self, mode: str, titles: list[Titles]) -> None:
+    def _update_background_from_results(self, mode: SearchScreenMode, titles: list[Titles]) -> None:
         """Note the stories `mode` lists now, and rotate through them if it is on screen.
 
         A hidden mode's list (both list again when the era changes) waits for its
@@ -1781,15 +1801,18 @@ class SearchScreen(FloatLayout):
         chip if none is selected yet and land focus on the chips, so Up/Down move
         through them; Enter on a chip then moves focus right to its title list.
         """
-        if self._active_mode == "Tag" and self._tag_box_query:
+        if self._active_mode == SearchScreenMode.TAG and self._tag_box_query:
             self._run_tag_query(self._tag_box_query)
             self._focus_after_query()
             return
-        if self._active_mode == "Word" and self._box_query:
+        if self._active_mode == SearchScreenMode.WORD and self._box_query:
             self._run_word_query(self._box_query)
             self._focus_after_query()
             return
-        if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
+        if (
+            self._active_mode in (SearchScreenMode.TAG, SearchScreenMode.WORD)
+            and self._get_active_chip_buttons()
+        ):
             self._enter_chips_from_input()
             return
         if self._get_active_result_rows():
@@ -1825,7 +1848,7 @@ class SearchScreen(FloatLayout):
             self._focus_active_input()
 
     def _get_selected_chip_text(self) -> str:
-        if self._active_mode == "Word":
+        if self._active_mode == SearchScreenMode.WORD:
             return _query_row_text(self._word_query) if self._word_query else self._selected_word
         return self._selected_member or self._selected_tag
 
@@ -1920,7 +1943,10 @@ class SearchScreen(FloatLayout):
             self._nav_enter_basket()
             return
         self._focus.list_part = ListPart.ITEM
-        if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
+        if (
+            self._active_mode in (SearchScreenMode.TAG, SearchScreenMode.WORD)
+            and self._get_active_chip_buttons()
+        ):
             self._focus.area = FocusArea.TAGS
             self._focus.chip_index = 0
             self._draw_chip_focus()
@@ -1982,19 +2008,19 @@ class SearchScreen(FloatLayout):
 
     def _handle_results_left_right(self, key: int) -> bool:
         if key == KEY_RIGHT:
-            if self._active_mode == "Word" and self._focus.row_part == RowPart.TITLE:
+            if self._active_mode == SearchScreenMode.WORD and self._focus.row_part == RowPart.TITLE:
                 self._focus.row_part = RowPart.SPEECH
                 self._draw_result_focus()
                 return True
             return False
         # KEY_LEFT
-        if self._active_mode == "Word" and self._focus.row_part == RowPart.SPEECH:
+        if self._active_mode == SearchScreenMode.WORD and self._focus.row_part == RowPart.SPEECH:
             self._focus.row_part = RowPart.TITLE
             self._draw_result_focus()
-        elif self._active_mode == "Word" and self._get_word_chip_buttons():
+        elif self._active_mode == SearchScreenMode.WORD and self._get_word_chip_buttons():
             self._clear_result_focus()
             self._nav_back_to_word_chips()
-        elif self._active_mode == "Tag" and self._get_tag_chip_buttons():
+        elif self._active_mode == SearchScreenMode.TAG and self._get_tag_chip_buttons():
             self._clear_result_focus()
             self._nav_back_to_tag_chips()
         else:
@@ -2073,7 +2099,10 @@ class SearchScreen(FloatLayout):
 
     def _handle_tags_key(self, key: int) -> bool:
         chips = self._get_active_chip_buttons()
-        if self._active_mode in ("Tag", "Word") and self._handle_list_row_key(key, chips):
+        if self._active_mode in (
+            SearchScreenMode.TAG,
+            SearchScreenMode.WORD,
+        ) and self._handle_list_row_key(key, chips):
             return True
         if key == KEY_DOWN:
             if chips and self._focus.chip_index < len(chips) - 1:
@@ -2175,7 +2204,7 @@ class SearchScreen(FloatLayout):
         self._clear_chip_focus()
         # If a main group chip was selected, focus and select the first member chip
         member_chips = self._get_member_chip_buttons()
-        if was_main and self._active_mode == "Tag" and member_chips:
+        if was_main and self._active_mode == SearchScreenMode.TAG and member_chips:
             all_chips = self._get_tag_chip_buttons()
             selected_idx = next(
                 (i for i, c in enumerate(all_chips) if c.text == self._selected_tag), -1
@@ -2226,7 +2255,7 @@ class SearchScreen(FloatLayout):
         ]
 
     def _get_active_chip_buttons(self) -> list[Button]:
-        if self._active_mode == "Word":
+        if self._active_mode == SearchScreenMode.WORD:
             return self._get_word_chip_buttons()
         return self._get_tag_chip_buttons()
 
@@ -2253,7 +2282,7 @@ class SearchScreen(FloatLayout):
         if not chips:
             return
         self._focus.chip_index = min(self._focus.chip_index, len(chips) - 1)
-        if self._active_mode == "Word":
+        if self._active_mode == SearchScreenMode.WORD:
             target = chips[self._focus.chip_index]
             if self._focus.list_part == ListPart.PLUS and isinstance(target.parent, _WordRow):
                 target = target.parent.plus_button
@@ -2284,7 +2313,7 @@ class SearchScreen(FloatLayout):
 
     def _clear_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
-        if self._active_mode == "Word":
+        if self._active_mode == SearchScreenMode.WORD:
             clear_focus_in_list(self._word_list_focus_widgets(chips), _SEARCH_NAV_FOCUS_GROUP)
         else:
             clear_focus_in_list(
@@ -2334,7 +2363,7 @@ class SearchScreen(FloatLayout):
         Told by its type, not by having children: a notice row is a button, and the kv
         rule gives every result button a child, the label of its detail.
         """
-        return self._active_mode == "Word" and not isinstance(row, Button)
+        return self._active_mode == SearchScreenMode.WORD and not isinstance(row, Button)
 
     def _get_focused_result_widget(self, rows: list[Button]) -> Button | None:
         if not rows:

@@ -55,6 +55,7 @@ from .playlists import PLAYLISTS_BY_ID
 from .ports import CancelHandle, ColorSource, PaletteId, Scheduler
 from .reader_file_paths import ALL_TYPES, FileTypes
 from .reader_formatter import get_formatted_color
+from .search_focus import SearchScreenMode
 from .this_month import get_titles_in_month
 from .view_request import ImageThemes, ViewRequest
 from .view_snapshot import (
@@ -119,10 +120,10 @@ _BOTTOM_VIEW_HISTORY_OPACITY_1_STATES = {
     ViewStates.ON_HISTORY_NODE,
 }
 # Each search screen's state and the mode it opens the screen in.
-_SEARCH_MODE_MAP: dict[ViewStates, str] = {
-    ViewStates.ON_TITLE_SEARCH_NODE: "Title",
-    ViewStates.ON_TAG_SEARCH_NODE: "Tag",
-    ViewStates.ON_WORD_SEARCH_NODE: "Word",
+_SEARCH_MODE_MAP: dict[ViewStates, SearchScreenMode] = {
+    ViewStates.ON_TITLE_SEARCH_NODE: SearchScreenMode.TITLE,
+    ViewStates.ON_TAG_SEARCH_NODE: SearchScreenMode.TAG,
+    ViewStates.ON_WORD_SEARCH_NODE: SearchScreenMode.WORD,
 }
 _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES = set(_SEARCH_MODE_MAP)
 _BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
