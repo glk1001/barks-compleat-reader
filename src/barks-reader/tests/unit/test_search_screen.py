@@ -2037,7 +2037,10 @@ class TestSpeakerFilter:
             screen._run_word_query("bumps-a-daisy AND hat")
         assert screen._said_by.speaker == "Gladstone"
         assert screen._search.run_word_query.call_count == 2  # noqa: PLR2004
-        assert not any(line.startswith("Speaker filter lifted") for line in loguru_sink)
+        lifted = log_markers.SPEAKER_FILTER_LIFTED.format(
+            speaker="Gladstone", text="bumps-a-daisy AND hat"
+        )
+        assert lifted not in loguru_sink
 
     def test_bubbles_popup_is_told_the_filter(self, screen: SearchScreen) -> None:
         screen._said_by.speaker = "Scrooge"
