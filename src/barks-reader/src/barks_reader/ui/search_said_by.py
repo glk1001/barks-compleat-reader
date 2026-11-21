@@ -106,7 +106,7 @@ class SaidByFilter(DropdownNavMixin):
         if self._offered is None:
             self._offered = offered_speakers(self._indexed_speakers())
             if not self._offered:
-                logger.debug("Word search: index has no speakers; no speaker filter.")
+                logger.debug(log_markers.SPEAKER_FILTER_NO_SPEAKERS)
         return self._offered
 
     def show(self) -> None:

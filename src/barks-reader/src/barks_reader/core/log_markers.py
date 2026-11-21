@@ -398,6 +398,10 @@ BUBBLES_POPUP_DISMISSED: Final = "Speech bubbles popup dismissed."
 SEARCH_MODE_SET: Final = "SearchScreen mode set to '{mode}'."
 SEARCH_ENTERED_NAV: Final = "SearchScreen: entered nav focus."
 SEARCH_EXITED_NAV: Final = "SearchScreen: exited nav focus."
+# Back from a story: the keyboard is on the result it was opened from, if still listed.
+SEARCH_ENTERED_NAV_AT_LAST_RESULT: Final = "SearchScreen: entered nav focus at last result."
+# The screen claimed the keyboard itself (Enter in a box): its focus is left as it is.
+SEARCH_ADOPTED_NAV: Final = "SearchScreen: adopted nav focus."
 # A tap emptied the chip row the keyboard was on (the scope, the speakers); the key moves on.
 SEARCH_PANEL_ROW_LOST: Final = "SearchScreen: the '{area}' row the keyboard was on is gone."
 SEARCH_BOX_FOCUS: Final = "SearchScreen: {mode} search box {state}."
@@ -452,6 +456,9 @@ SPEAKER_LIST_OPENED: Final = "Word search: speaker list opened with {count} spea
 SPEAKER_FILTER_LIFTED: Final = (
     'Word search: "{speaker}" never says "{text}"; speaker filter lifted.'
 )
+# An index built before speakers were stored: the speaker filter shows no chip.
+SPEAKER_FILTER_NO_SPEAKERS: Final = "Word search: index has no speakers; no speaker filter."
+WORD_RESULT_OPENED: Final = 'Word search: navigating to "{title}", page {page}.'
 SHOW_BUBBLES_FOR_SEARCH: Final = 'Show speech bubbles for: "{title}" and search "{text}".'
 WORD_BUBBLE_PRESS: Final = 'Word search bubble press: "{title}" page {page}.'
 

@@ -1596,7 +1596,7 @@ class SearchScreen(FloatLayout):
     def _on_word_title_selected(
         self, title_str: str, page_to_goto: str, pages: Sequence[str] = ()
     ) -> None:
-        logger.info(f'Word search: navigating to "{title_str}", page {page_to_goto}.')
+        logger.info(log_markers.WORD_RESULT_OPENED.format(title=title_str, page=page_to_goto))
         self._goto_title_with_page(title_str, page_to_goto, pages)
 
     def _show_word_speech_bubbles(self, title_str: str, title_speech_info: TitleInfo) -> None:
@@ -1740,7 +1740,7 @@ class SearchScreen(FloatLayout):
         else:
             self._focus.area = FocusArea.INPUT
             self._focus_active_input()
-        logger.debug("SearchScreen: entered nav focus at last result.")
+        logger.debug(log_markers.SEARCH_ENTERED_NAV_AT_LAST_RESULT)
 
     def adopt_nav_focus(self, on_exit_request: Callable) -> None:
         """Activate nav without resetting the focus area or grabbing the input.
@@ -1750,7 +1750,7 @@ class SearchScreen(FloatLayout):
         """
         self._nav_on_exit_request = on_exit_request
         self._focus.active = True
-        logger.debug("SearchScreen: adopted nav focus.")
+        logger.debug(log_markers.SEARCH_ADOPTED_NAV)
 
     def _ensure_nav_active(self) -> None:
         if not self._focus.active and self.on_request_nav_focus:

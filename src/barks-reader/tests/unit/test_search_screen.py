@@ -1477,7 +1477,7 @@ class TestSearchInputEnter:
 class TestAdoptNavFocus:
     """adopt_nav_focus activates nav without stomping the screen's focus state."""
 
-    def test_sets_active_and_exit_request_only(self) -> None:
+    def test_sets_active_and_exit_request_only(self, loguru_sink: list[str]) -> None:
         screen = _make_bare_screen()
         screen._focus.active = False
         screen._nav_on_exit_request = None
@@ -1489,6 +1489,7 @@ class TestAdoptNavFocus:
         assert screen._focus.active is True
         assert screen._nav_on_exit_request is exit_cb
         assert screen._focus.area == "results"
+        assert loguru_sink[-1] == log_markers.SEARCH_ADOPTED_NAV
 
 
 class TestSearchMarkers:
@@ -1659,7 +1660,7 @@ class TestSpeakerFilter:
         screen._said_by.show()
         assert screen._said_by.row.chips == []
         assert "speakers" not in dict(screen._panel_rows())
-        assert "Word search: index has no speakers; no speaker filter." in loguru_sink
+        assert log_markers.SPEAKER_FILTER_NO_SPEAKERS in loguru_sink
 
     def test_the_chip_shows_only_while_a_search_is_listed(self, screen: SearchScreen) -> None:
         _offer_speakers(screen)
@@ -2877,7 +2878,7 @@ class TestResultsKeys:
         assert (screen._focus.area, screen._focus.result_index) == ("results", 2)
         assert screen._focus.row_part == "speech"
         assert screen._nav_on_exit_request is exit_request
-        assert loguru_sink[-1] == "SearchScreen: entered nav focus at last result."
+        assert loguru_sink[-1] == log_markers.SEARCH_ENTERED_NAV_AT_LAST_RESULT
 
         screen._last_activated_result = None  # none pressed: the box
         screen.enter_nav_focus_at_last_result(exit_request)
@@ -3213,7 +3214,9 @@ class TestBackgroundAndGoto:
         screen.set_background_image(ImageInfo(from_title=None, filename=None))
         assert screen.current_title_str == ""
 
-    def test_a_word_result_goes_to_its_story_at_its_page(self, screen: SearchScreen) -> None:
+    def test_a_word_result_goes_to_its_story_at_its_page(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
         goto = cast("MagicMock", screen.on_goto_title_with_page)
         row = _SearchResultButton(text="The Golden Helmet, 3-5,12")
         screen._on_word_result_row_released(
@@ -3223,6 +3226,9 @@ class TestBackgroundAndGoto:
         # Every page the row lists goes too, for the title view to step through.
         goto.assert_called_once_with(
             ImageInfo(from_title=HELMET, filename=None), "3", ("3", "4", "5", "12")
+        )
+        assert loguru_sink[-1] == log_markers.WORD_RESULT_OPENED.format(
+            title=ENUM_TO_STR_TITLE[HELMET], page="3"
         )
 
     def test_a_word_results_rows_hand_on_every_page_they_list(self, screen: SearchScreen) -> None:

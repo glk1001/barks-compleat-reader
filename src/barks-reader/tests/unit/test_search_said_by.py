@@ -124,7 +124,7 @@ class TestTheChip:
         said_by.show()
         said_by.show()
         assert said_by.row.chips == []
-        assert loguru_sink.count("Word search: index has no speakers; no speaker filter.") == 1
+        assert loguru_sink.count(log_markers.SPEAKER_FILTER_NO_SPEAKERS) == 1
 
     def test_the_keyboard_stays_on_it_as_its_text_changes(self, said_by: SaidByFilter) -> None:
         said_by.show()
