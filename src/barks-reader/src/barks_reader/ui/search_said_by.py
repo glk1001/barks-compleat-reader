@@ -236,6 +236,11 @@ class SaidByFilter(DropdownNavMixin):
     def _dismiss_dropdown(self) -> None:
         self.dropdown.dismiss()
 
+    def _scroll_to_dropdown_button(self, btn: object) -> None:
+        # A window too short for the whole list cuts it short, and it scrolls: the
+        # ring must not walk out of sight.
+        self.dropdown.scroll_into_view(cast("Widget", btn))
+
     def _activate_dropdown_item(self) -> None:
         # At once, as Enter presses everything on this screen: the list closes on it.
         self._dropdown_buttons_cache[self._dropdown_focused_idx].trigger_action(duration=0)

@@ -21,7 +21,7 @@ from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.keys import KEY_ESCAPE
 from barks_reader.core.search_chip_row import ChipRow
 from barks_reader.core.search_focus import FocusArea, RowPart, SearchFocus
-from barks_reader.ui import search_said_by, search_screen, search_widgets
+from barks_reader.ui import reader_keyboard_nav, search_said_by, search_screen, search_widgets
 from barks_reader.ui.search_said_by import SaidByFilter
 from barks_reader.ui.search_screen import SearchScreen
 from barks_reader.ui.search_widgets import (
@@ -204,6 +204,9 @@ class _FakeSpeakerList:
     def open_if_shown(self, _widget: object) -> bool:
         self.is_open = True
         return True
+
+    def scroll_into_view(self, row: object) -> None:
+        self.scrolled_to = row
 
     def select(self, value: str) -> None:
         self._screen._said_by._on_item_selected(cast("Any", self), value)
@@ -1847,6 +1850,22 @@ class TestSpeakerFilter:
         assert screen._said_by._dropdown_nav_mode is True
         assert screen._said_by._dropdown_focused_idx == 1  # Donald, the one picked now
         assert screen.has_list_open_without_the_keys() is False
+
+    def test_the_ring_on_the_list_is_scrolled_into_view(self, screen: SearchScreen) -> None:
+        """A short window cuts the list short: Down past its last visible row scrolls it."""
+        screen._selected_word = "money"
+        _offer_speakers(screen, "Donald")
+        with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
+            _press(_said_by_chip(screen))
+        speaker_list = cast("_FakeSpeakerList", screen._said_by.dropdown)
+        with (
+            patch.object(reader_keyboard_nav, "draw_focus_highlight"),
+            patch.object(reader_keyboard_nav, "clear_focus_highlight"),
+        ):
+            screen._said_by.take_keys_onto_list()
+            assert speaker_list.scrolled_to is speaker_list.rows[1]  # Donald, picked now
+            screen._said_by.handle_list_key(search_screen.KEY_DOWN)
+        assert speaker_list.scrolled_to is speaker_list.rows[2]
 
     def test_the_keys_taken_onto_the_list_leave_no_ring_behind(self, screen: SearchScreen) -> None:
         """The ring was on the era row when the mouse opened the list: one focus mark, not two."""
