@@ -1752,14 +1752,19 @@ class SearchScreen(FloatLayout):
         if not self._focus.active and self.on_request_nav_focus:
             self.on_request_nav_focus()
 
-    def on_search_input_focus(self, _text_input: Widget, focused: bool) -> None:
+    def on_search_input_focus(self, text_input: Widget, focused: bool) -> None:
         """Log a search box taking or losing the keyboard (kv callback).
 
         A box takes the keyboard a moment after focus is asked for, and the GUI
-        path tests type into it only once this line says it has.
+        path tests type into it only once this line says it has. The line names the
+        box's own mode: a box may lose the keyboard after the mode has changed.
         """
         state = "focused" if focused else "unfocused"
-        logger.debug(log_markers.SEARCH_BOX_FOCUS.format(mode=self._active_mode, state=state))
+        mode = next(
+            (m for m, ids in self._MODE_WIDGETS.items() if self.ids[ids[0]] is text_input),
+            self._active_mode,
+        )
+        logger.debug(log_markers.SEARCH_BOX_FOCUS.format(mode=mode, state=state))
 
     def on_search_input_enter(self) -> None:
         """Handle Enter in a search input (kv callback).

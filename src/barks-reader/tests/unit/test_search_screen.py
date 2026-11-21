@@ -1625,6 +1625,18 @@ class TestNavFocusMarkers:
         assert "SearchScreen: Title search box focused." in loguru_sink
         assert "SearchScreen: Title search box unfocused." in loguru_sink
 
+    def test_a_box_losing_focus_after_its_mode_has_gone_is_logged_as_itself(
+        self, loguru_sink: list[str]
+    ) -> None:
+        tag_box = MagicMock()
+        ids = _Ids(
+            {"title_search_input": MagicMock(), "tag_search_input": tag_box}
+            | {"word_search_input": MagicMock()}
+        )
+        with _bare_screen(ids, _active_mode="Word") as screen:
+            screen.on_search_input_focus(tag_box, focused=False)
+        assert loguru_sink[-1] == log_markers.SEARCH_BOX_FOCUS.format(mode="Tag", state="unfocused")
+
     def test_the_clear_button_logs_its_focus(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
