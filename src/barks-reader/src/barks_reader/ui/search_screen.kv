@@ -37,6 +37,38 @@
             size: self.size
             radius: [dp(10)]
 
+# What a panel holds, kept clear of its rounded edge.
+<SearchPanelBody@BoxLayout>:
+    size_hint: 1, 1
+    pos_hint: {'x': 0, 'y': 0}
+    padding: dp(8)
+
+# A search box beside its x.
+<SearchBoxRow@BoxLayout>:
+    orientation: 'horizontal'
+    size_hint_y: None
+    height: dp(48)
+    spacing: dp(2)
+
+# A row of chips that wraps (the era, the picked words or tags, the speaker, the
+# scope): no height while it holds none.
+<SearchChipRow@StackLayout>:
+    orientation: 'lr-tb'
+    size_hint_y: None
+    height: self.minimum_height if self.children else 0
+    spacing: dp(6), dp(4)
+
+# A list in a scroll view: as tall as its rows, and clear of the scroll bar on the
+# right, whose width its user hands it. The bar can be dragged, so a tap on a row's
+# end beneath it scrolled the list instead (a tag's +, a story's bubbles button).
+<SearchList@BoxLayout>:
+    scroll_bar_width: 0
+    orientation: 'vertical'
+    size_hint_y: None
+    height: self.minimum_height
+    spacing: dp(1)
+    padding: [0, 0, self.scroll_bar_width + dp(4), 0]
+
 <SearchEmptyPrompt@Label>:
     italic: True
     font_size: fm.search_label_font_size
@@ -86,11 +118,7 @@
                 height: dp(48)
                 spacing: dp(8)
 
-                BoxLayout:
-                    orientation: 'horizontal'
-                    size_hint_y: None
-                    height: dp(48)
-                    spacing: dp(2)
+                SearchBoxRow:
 
                     SearchInput:
                         id: title_search_input
@@ -108,21 +136,14 @@
             SearchPanel:
                 size_hint: (1, 1) if root.layout_mode == 'spread' else (0.65, 1)
 
-                BoxLayout:
-                    size_hint: 1, 1
-                    pos_hint: {'x': 0, 'y': 0}
-                    padding: dp(8)
+                SearchPanelBody:
 
                     ReaderScrollView:
                         id: title_results_scroll
 
-                        BoxLayout:
+                        SearchList:
                             id: title_results_layout
-                            orientation: 'vertical'
-                            size_hint_y: None
-                            height: self.minimum_height
-                            spacing: dp(1)
-                            padding: [0, 0, title_results_scroll.bar_width + dp(4), 0]
+                            scroll_bar_width: title_results_scroll.bar_width
 
                 SearchEmptyPrompt:
                     text: "Matching story titles will appear here"
@@ -165,11 +186,7 @@
                 size_hint_x: 0.4
                 spacing: dp(8)
 
-                BoxLayout:
-                    orientation: 'horizontal'
-                    size_hint_y: None
-                    height: dp(48)
-                    spacing: dp(2)
+                SearchBoxRow:
 
                     SearchInput:
                         id: tag_search_input
@@ -188,32 +205,20 @@
                     orientation: 'vertical'
                     spacing: dp(8) if tag_basket_layout.children else 0
 
-                    StackLayout:
+                    SearchChipRow:
                         id: tag_basket_layout
-                        orientation: 'lr-tb'
-                        size_hint_y: None
-                        height: self.minimum_height if self.children else 0
-                        spacing: dp(6), dp(4)
 
                     SearchPanel:
 
-                        BoxLayout:
-                            size_hint: 1, 1
-                            pos_hint: {'x': 0, 'y': 0}
-                            padding: dp(8)
+                        SearchPanelBody:
 
                             ReaderScrollView:
                                 id: tag_chips_scroll
 
-                                # Clear of the scroll bar on the right: the bar can be
-                                # dragged, so a tap on a + beneath it scrolled the list.
-                                BoxLayout:
+                                SearchList:
                                     id: tag_chips_layout
-                                    orientation: 'vertical'
-                                    size_hint_y: None
-                                    height: self.minimum_height
+                                    scroll_bar_width: tag_chips_scroll.bar_width
                                     spacing: dp(4)
-                                    padding: [0, 0, tag_chips_scroll.bar_width + dp(4), 0]
 
                         SearchEmptyPrompt:
                             text: "Matching tags will appear here"
@@ -222,20 +227,13 @@
             SearchPanel:
                 size_hint_x: 0.6
 
-                BoxLayout:
+                SearchPanelBody:
                     orientation: 'vertical'
-                    size_hint: 1, 1
-                    pos_hint: {'x': 0, 'y': 0}
-                    padding: dp(8)
                     spacing: dp(6)
 
                     # The era the stories are listed from: shared with the word search.
-                    StackLayout:
+                    SearchChipRow:
                         id: tag_era_layout
-                        orientation: 'lr-tb'
-                        size_hint_y: None
-                        height: self.minimum_height if self.children else 0
-                        spacing: dp(6), dp(4)
 
                     # The prompt centres in the list's own space, below the era chips:
                     # over the whole panel it fell on the chips when they filled its top.
@@ -246,13 +244,9 @@
                             size_hint: 1, 1
                             pos_hint: {'x': 0, 'y': 0}
 
-                            BoxLayout:
+                            SearchList:
                                 id: tag_title_results_layout
-                                orientation: 'vertical'
-                                size_hint_y: None
-                                height: self.minimum_height
-                                spacing: dp(1)
-                                padding: [0, 0, tag_results_scroll.bar_width + dp(4), 0]
+                                scroll_bar_width: tag_results_scroll.bar_width
 
                         SearchEmptyPrompt:
                             text: "Pick a tag to list its stories"
@@ -278,11 +272,7 @@
                 size_hint_x: 0.35
                 spacing: dp(8)
 
-                BoxLayout:
-                    orientation: 'horizontal'
-                    size_hint_y: None
-                    height: dp(48)
-                    spacing: dp(2)
+                SearchBoxRow:
 
                     SearchInput:
                         id: word_search_input
@@ -301,32 +291,19 @@
                     orientation: 'vertical'
                     spacing: dp(8) if word_basket_layout.children else 0
 
-                    StackLayout:
+                    SearchChipRow:
                         id: word_basket_layout
-                        orientation: 'lr-tb'
-                        size_hint_y: None
-                        height: self.minimum_height if self.children else 0
-                        spacing: dp(6), dp(4)
 
                     SearchPanel:
 
-                        BoxLayout:
-                            size_hint: 1, 1
-                            pos_hint: {'x': 0, 'y': 0}
-                            padding: dp(8)
+                        SearchPanelBody:
 
                             ReaderScrollView:
                                 id: word_chips_scroll
 
-                                # Clear of the scroll bar on the right: the bar can be
-                                # dragged, so a tap on a + beneath it scrolled the list.
-                                BoxLayout:
+                                SearchList:
                                     id: word_chips_layout
-                                    orientation: 'vertical'
-                                    size_hint_y: None
-                                    height: self.minimum_height
-                                    spacing: dp(1)
-                                    padding: [0, 0, word_chips_scroll.bar_width + dp(4), 0]
+                                    scroll_bar_width: word_chips_scroll.bar_width
 
                         SearchEmptyPrompt:
                             text: "Matching words will appear here"
@@ -335,39 +312,24 @@
             SearchPanel:
                 size_hint_x: 0.65
 
-                BoxLayout:
+                SearchPanelBody:
                     orientation: 'vertical'
-                    size_hint: 1, 1
-                    pos_hint: {'x': 0, 'y': 0}
-                    padding: dp(8)
                     spacing: dp(6)
 
                     # The era the stories are listed from: shared with the tag search.
-                    StackLayout:
+                    SearchChipRow:
                         id: word_era_layout
-                        orientation: 'lr-tb'
-                        size_hint_y: None
-                        height: self.minimum_height if self.children else 0
-                        spacing: dp(6), dp(4)
 
                     # Who-said-it filter, under the era: one chip, which opens the list of the
                     # speakers who say what was searched. Empty (and zero height)
                     # while nothing is searched, or on an index with no speakers.
-                    StackLayout:
+                    SearchChipRow:
                         id: speaker_chips_layout
-                        orientation: 'lr-tb'
-                        size_hint_y: None
-                        height: self.minimum_height if self.children else 0
-                        spacing: dp(6), dp(4)
 
                     # Everywhere, or only in the stories of the tags the tag search has
                     # selected: no height while it has none.
-                    StackLayout:
+                    SearchChipRow:
                         id: word_scope_layout
-                        orientation: 'lr-tb'
-                        size_hint_y: None
-                        height: self.minimum_height if self.children else 0
-                        spacing: dp(6), dp(4)
 
                     # The prompt centres in the list's own space, below the chips: over
                     # the whole panel it fell on the era chips when they filled its top.
@@ -378,16 +340,9 @@
                             size_hint: 1, 1
                             pos_hint: {'x': 0, 'y': 0}
 
-                            # Clear of the scroll bar on the right, as the word list is:
-                            # each row ends in its speech-bubble button, which the bar
-                            # half covered, and a click there grabbed the bar instead.
-                            BoxLayout:
+                            SearchList:
                                 id: word_results_layout
-                                orientation: 'vertical'
-                                size_hint_y: None
-                                height: self.minimum_height
-                                spacing: dp(1)
-                                padding: [0, 0, word_results_scroll.bar_width + dp(4), 0]
+                                scroll_bar_width: word_results_scroll.bar_width
 
                         SearchEmptyPrompt:
                             text: "Pick a word to see where it is spoken"
