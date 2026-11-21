@@ -39,6 +39,8 @@ RED = (200, 30, 30)
 WINDOW = (2560, 1440)
 WINDOW_PAGE = (954, 1440)
 WINDOW_SCALE = WINDOW_PAGE[1] / DEST_TARGET_HEIGHT  # 0.45
+PAGE_WIDTH, PAGE_HEIGHT = WINDOW_PAGE
+MID_X, MID_Y = PAGE_WIDTH // 2, PAGE_HEIGHT // 2
 # Where the tests' pages have their number: this far up from the page's foot.
 PAGE_NUM_Y_BOTTOM = 120
 
@@ -126,9 +128,9 @@ class TestAPanelsPageAtWindowScale:
         assert shrunk.size == at_scale.size
         assert _mean_difference(shrunk, at_scale) < 1.0
         # The black strip, a known row of the panels, is where the shrunk page has it.
-        assert at_scale.getpixel((477, 700)) == BLACK
-        assert shrunk.getpixel((477, 700)) == BLACK
-        assert at_scale.getpixel((477, 100)) == RED
+        assert at_scale.getpixel((MID_X, 700)) == BLACK
+        assert shrunk.getpixel((MID_X, 700)) == BLACK
+        assert at_scale.getpixel((MID_X, 100)) == RED
 
     def test_the_page_number_is_lettered_at_the_small_size(self, tmp_path: Path) -> None:
         """The number is drawn, within its scaled box at the page's foot, and is dark."""
@@ -139,7 +141,7 @@ class TestAPanelsPageAtWindowScale:
             fit_within=WINDOW,
         )
 
-        width, height = WINDOW_PAGE
+        width, height = PAGE_WIDTH, PAGE_HEIGHT
         number_top = (
             height - round(PAGE_NUM_Y_BOTTOM * WINDOW_SCALE) - round(PAGE_NUM_HEIGHT * WINDOW_SCALE)
         )
@@ -174,10 +176,10 @@ class TestASingleImagePageAtWindowScale:
         )
 
         assert page.size == WINDOW_PAGE
-        bar = (1440 - 954) // 2
-        assert page.getpixel((477, bar // 2)) == BLACK
-        assert page.getpixel((477, 720)) == RED
-        assert page.getpixel((477, 1440 - bar // 2)) == BLACK
+        bar = (PAGE_HEIGHT - PAGE_WIDTH) // 2  # the square cover is as tall as the page is wide
+        assert page.getpixel((MID_X, bar // 2)) == BLACK
+        assert page.getpixel((MID_X, MID_Y)) == RED
+        assert page.getpixel((MID_X, PAGE_HEIGHT - bar // 2)) == BLACK
 
     def test_a_page_that_fills_the_book_page_fills_the_window_page(self, tmp_path: Path) -> None:
         """Rounding at the reduced scale must not leave a one-pixel bar."""
@@ -234,12 +236,16 @@ class TestTheSourceSizeNeeded:
         assert needed == (1045, 1441)
 
     def test_a_single_image_page_needs_itself_at_the_page_size(self) -> None:
+        scan_width, scan_height = 2120, 3000
         needed = ComicBookImageBuilder.get_source_size_needed(
-            make_page(PageType.COVER), make_page(PageType.COVER), (2120, 3000), WINDOW
+            make_page(PageType.COVER),
+            make_page(PageType.COVER),
+            (scan_width, scan_height),
+            WINDOW,
         )
 
-        # 954 wide is 0.45 of the scan; 1440 tall is 0.48: the tighter wins.
-        assert needed == (1018, 1440)
+        # The page's width is 0.45 of the scan's and its height 0.48: the larger, 1018 wide.
+        assert needed == (round(scan_width * PAGE_HEIGHT / scan_height), PAGE_HEIGHT)
 
     @pytest.mark.parametrize(
         "page_type", [PageType.TITLE, PageType.SPLASH, PageType.PAINTING, PageType.BACK_PAINTING]
@@ -290,8 +296,8 @@ class TestAPageFromAReducedScan:
 
         assert from_reduced.size == from_whole.size == WINDOW_PAGE
         assert _mean_difference(from_whole, from_reduced) < 1.0
-        assert from_reduced.getpixel((477, 700)) == BLACK
-        assert from_reduced.getpixel((477, 100)) == RED
+        assert from_reduced.getpixel((MID_X, 700)) == BLACK
+        assert from_reduced.getpixel((MID_X, 100)) == RED
 
     def test_a_half_scan_with_odd_box_edges_lands_where_the_whole_scan_does(
         self, tmp_path: Path
