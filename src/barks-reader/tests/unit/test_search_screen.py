@@ -41,7 +41,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
-from unit_helpers import run_at_once
+from unit_helpers import FakeSpeakerList, press, run_at_once, stand_in_chip
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Iterator
@@ -65,23 +65,32 @@ def _make_bare_screen() -> SearchScreen:
     screen._word_query = ""
     screen._word_query_result = None
     screen._box_query = ""
-    # The speaker filter: anyone; its chip's row over a stand-in layout, its chip a
-    # stand-in too (`_speaker_chip`); an index with no speakers, so no chip shows
-    # (`_offer_speakers` gives it some); and its list, a stand-in.
-    # It reads the screen through calls made when it asks (hence the lambdas), so a
-    # test may stub the screen's search, or a method it calls, after the screen is made.
+
+    # The speaker filter, as the screen's own start makes it (`_make_said_by`): anyone;
+    # its chip's row over a stand-in layout, its chip a stand-in too; an index with
+    # no speakers, so no chip shows (`_offer_speakers` gives it some); and its list, a
+    # stand-in. It is handed the screen's search and methods by way of `late`, which
+    # looks each up when the filter calls it: a test may stub the screen's search, or
+    # a method the filter reads, after the screen is made.
+    def late(name: str) -> Callable[..., Any]:
+        def call(*args: object) -> object:
+            return getattr(screen, name)(*args)
+
+        return call
+
+    def late_speakers() -> object:
+        return screen._search.get_speakers()
+
+    late_search = SimpleNamespace(get_speakers=late_speakers)
     with (
-        patch.object(search_said_by, "_make_said_by_chip", _speaker_chip),
-        patch.object(search_said_by, "ReaderDropDown", lambda **_kw: _FakeSpeakerList(screen)),
+        patch.object(search_said_by, "_make_said_by_chip", stand_in_chip),
+        patch.object(search_said_by, "ReaderDropDown", FakeSpeakerList),
+        patch.object(screen, "_search", late_search, create=True),
+        patch.object(screen, "_searched_for_said_by", late("_searched_for_said_by")),
+        patch.object(screen, "_find_word_stories", late("_find_word_stories")),
+        patch.object(screen, "_rerun_word_results", late("_rerun_word_results")),
     ):
-        screen._said_by = SaidByFilter(
-            MagicMock(),
-            screen._focus,
-            indexed_speakers=lambda: screen._search.get_speakers(),  # noqa: PLW0108
-            searched=lambda: screen._searched_for_said_by(),  # noqa: PLW0108
-            find_stories=lambda speaker: screen._find_word_stories(speaker),  # noqa: PLW0108
-            on_picked=lambda: screen._rerun_word_results(),  # noqa: PLW0108
-        )
+        screen._said_by = screen._make_said_by(MagicMock())
     screen._said_by._offered = []
     # The picks and filters, and their chip rows, as the screen's own start sets them:
     # over stand-in layouts and chips, with the test's eras.
@@ -113,23 +122,11 @@ PIRATE_GOLD = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD  # submitted 1942
 HELMET = Titles.GOLDEN_HELMET_THE  # submitted 1951
 
 
-def _speaker_chip(value: str, label: str) -> MagicMock:
-    chip = MagicMock()
-    chip.value = value
-    chip.text = label
-    return chip
-
-
 def _live_chip(value: str, label: str) -> MagicMock:
     """Return a stand-in chip whose trigger_action releases it, as a Kivy button's does."""
-    chip = _speaker_chip(value, label)
-    chip.trigger_action.side_effect = lambda duration=0: _press(chip)  # noqa: ARG005
+    chip = stand_in_chip(value, label)
+    chip.trigger_action.side_effect = lambda duration=0: press(chip)  # noqa: ARG005
     return chip
-
-
-def _press(chip: MagicMock) -> None:
-    """Release a stand-in chip as a click does: run the handler the row bound to it."""
-    chip.bind.call_args.kwargs["on_release"](chip)
 
 
 # What adopting the remote's focus leaves on a screen before any key: the nav on, no
@@ -177,51 +174,6 @@ def _bare_screen(
         yield bare
 
 
-class _FakeSpeakerList:
-    """Stands in for the speaker filter's dropdown: holds its rows, selects and closes as Kivy's.
-
-    A pick tells the screen, then closes the list, which tells the screen too.
-    """
-
-    def __init__(self, screen: SearchScreen) -> None:
-        self._screen = screen
-        self.container = SimpleNamespace(children=[])
-        self.is_open = False
-
-    @property
-    def rows(self) -> list[search_widgets._SaidByItem]:
-        return list(reversed(self.container.children))  # Kivy: last first
-
-    def clear_widgets(self) -> None:
-        self.container.children = []
-
-    def add_widget(self, row: search_widgets._SaidByItem) -> None:
-        self.container.children.insert(0, row)
-
-    def bind(self, **_handlers: object) -> None:
-        """Take the filter's handlers, as a dropdown does: `select` and `dismiss` call them."""
-
-    def open_if_shown(self, _widget: object) -> bool:
-        self.is_open = True
-        return True
-
-    def scroll_into_view(self, row: object) -> None:
-        self.scrolled_to = row
-
-    def select(self, value: str) -> None:
-        self._screen._said_by._on_item_selected(cast("Any", self), value)
-        self.dismiss()
-
-    def dismiss(self) -> None:
-        self.is_open = False
-        self._screen._said_by._on_dismissed(cast("Any", self))
-
-    @property
-    def parent(self) -> object | None:
-        """The window while open, as Kivy's dropdown has; None closed."""
-        return self if self.is_open else None
-
-
 # What the speaker list counts in `_pick_speaker`: anyone, then Donald and Scrooge.
 _SPEAKER_COUNTS = [("", 3), ("Donald", 2), ("Scrooge", 1)]
 
@@ -244,8 +196,8 @@ def _said_by_chip(screen: SearchScreen) -> MagicMock:
 def _pick_speaker(screen: SearchScreen, speaker: str) -> None:
     """Open the speaker list from its chip, as a click does, and click `speaker`'s row."""
     with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
-        _press(_said_by_chip(screen))
-    speaker_list = cast("_FakeSpeakerList", screen._said_by.dropdown)
+        press(_said_by_chip(screen))
+    speaker_list = cast("FakeSpeakerList", screen._said_by.dropdown)
     [row] = [r for r in speaker_list.rows if r.value == speaker]
     row.dispatch("on_release")
 
@@ -761,7 +713,7 @@ class TestWordBasket:
     ) -> None:
         screen._toggle_basket_word("gold")
         screen._toggle_basket_word("golden")
-        _press(self._basket_chips(screen)[0])
+        press(self._basket_chips(screen)[0])
 
         assert self._basket_chips(screen)[0].text == "ANY"
         assert log_markers.WORD_BASKET_MODE.format(mode="ANY") in loguru_sink
@@ -771,7 +723,7 @@ class TestWordBasket:
         self, screen: SearchScreen
     ) -> None:
         screen._toggle_basket_word("gold")
-        _press(self._basket_chips(screen)[1])
+        press(self._basket_chips(screen)[1])
 
         assert screen._word_basket.words == []
         assert screen._basket_row.chips == []
@@ -792,7 +744,7 @@ class TestWordBasket:
         screen._on_word_chip_selected("golden")
         screen.ids.word_results_layout.clear_widgets.reset_mock()
 
-        _press(self._basket_chips(screen)[1])  # gold: taken out, the basket empty
+        press(self._basket_chips(screen)[1])  # gold: taken out, the basket empty
 
         assert screen._word_basket.words == []
         assert screen._selected_word == "golden"
@@ -1244,7 +1196,7 @@ class TestTagBasket:
         with patch.object(screen, "_populate_title_results"):
             for name in ("Gyro", "Daisy", "Scrooge"):
                 screen._toggle_tag_basket(name)
-            _press(self._basket_chips(screen)[3])  # Scrooge: left out
+            press(self._basket_chips(screen)[3])  # Scrooge: left out
         screen._on_tag_result_goto_title("Story 1")
         screen.on_goto_title.assert_called_once_with("Story 1", [Tags.GYRO_GEARLOOSE, Tags.DAISY])
 
@@ -1265,11 +1217,11 @@ class TestTagBasket:
         with patch.object(screen, "_populate_title_results"):
             screen._toggle_tag_basket("Scrooge")
             screen._toggle_tag_basket("Gyro")
-            _press(self._basket_chips(screen)[2])  # Gyro: left out
+            press(self._basket_chips(screen)[2])  # Gyro: left out
             assert self._basket_chips(screen)[2].text == "not Gyro"
             selection = screen._search.titles_for_tag_selection.call_args.args[0]
             assert selection == TagSelection(("Scrooge",), ("Gyro",))
-            _press(self._basket_chips(screen)[2])  # and put back
+            press(self._basket_chips(screen)[2])  # and put back
         assert [c.value for c in self._basket_chips(screen)] == ["", "Scrooge"]
 
     def test_the_mode_chip_flips_all_and_any(
@@ -1278,7 +1230,7 @@ class TestTagBasket:
         with patch.object(screen, "_populate_title_results"):
             screen._toggle_tag_basket("Scrooge")
             screen._toggle_tag_basket("Gyro")
-            _press(self._basket_chips(screen)[0])
+            press(self._basket_chips(screen)[0])
         assert self._basket_chips(screen)[0].text == "ANY"
         assert log_markers.TAG_BASKET_MODE.format(mode="ANY") in loguru_sink
         assert screen._search.titles_for_tag_selection.call_args.args[0].combine.upper() == "ANY"
@@ -1286,7 +1238,7 @@ class TestTagBasket:
     def test_only_left_out_tags_list_nothing_and_say_why(self, screen: SearchScreen) -> None:
         with patch.object(screen, "_populate_title_results"):
             screen._toggle_tag_basket("Gyro")
-            _press(self._basket_chips(screen)[1])
+            press(self._basket_chips(screen)[1])
         added = [c.args[0] for c in screen.ids.tag_title_results_layout.add_widget.call_args_list]
         assert added[-1].text == "Include a tag to list stories"
 
@@ -1380,7 +1332,7 @@ class TestTagBasket:
             ]
             selection = screen._search.titles_for_tag_selection.call_args.args[0]
             assert (selection.years, selection.volumes) == ((1950, 1955), (5, 8))
-            _press(self._basket_chips(screen)[2])  # the years: out, not stepped on
+            press(self._basket_chips(screen)[2])  # the years: out, not stepped on
         assert [c.value for c in self._basket_chips(screen)] == ["", "Gyro", "vol:"]
         selection = screen._search.titles_for_tag_selection.call_args.args[0]
         assert (selection.years, selection.volumes) == (None, (5, 8))
@@ -1824,9 +1776,9 @@ class TestSpeakerFilter:
         screen._selected_word = "money"
         _offer_speakers(screen, "Donald")
         with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
-            _press(_said_by_chip(screen))
+            press(_said_by_chip(screen))
 
-        speaker_list = cast("_FakeSpeakerList", screen._said_by.dropdown)
+        speaker_list = cast("FakeSpeakerList", screen._said_by.dropdown)
         assert speaker_list.is_open
         assert [(r.text, r.count_text, r.selected) for r in speaker_list.rows] == [
             ("anyone", "3", False),
@@ -1841,7 +1793,7 @@ class TestSpeakerFilter:
         screen._selected_word = "money"
         _offer_speakers(screen, "Donald")
         with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
-            _press(_said_by_chip(screen))
+            press(_said_by_chip(screen))
         assert screen.has_list_open_without_the_keys() is True
         screen.close_open_list()
         assert screen.has_list_open_without_the_keys() is False
@@ -1852,7 +1804,7 @@ class TestSpeakerFilter:
         screen._selected_word = "money"
         _offer_speakers(screen, "Donald")
         with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
-            _press(_said_by_chip(screen))
+            press(_said_by_chip(screen))
         on_exit = MagicMock()
         with patch.object(screen._said_by, "_update_dropdown_focus"):
             screen.take_keys_onto_open_list(on_exit)
@@ -1868,8 +1820,8 @@ class TestSpeakerFilter:
         screen._selected_word = "money"
         _offer_speakers(screen, "Donald")
         with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
-            _press(_said_by_chip(screen))
-        speaker_list = cast("_FakeSpeakerList", screen._said_by.dropdown)
+            press(_said_by_chip(screen))
+        speaker_list = cast("FakeSpeakerList", screen._said_by.dropdown)
         with (
             patch.object(reader_keyboard_nav, "draw_focus_highlight"),
             patch.object(reader_keyboard_nav, "clear_focus_highlight"),
@@ -1886,7 +1838,7 @@ class TestSpeakerFilter:
         screen._focus.area = FocusArea.ERA
         screen._era_rows["Word"].enter_focus(0)
         with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
-            _press(_said_by_chip(screen))
+            press(_said_by_chip(screen))
         with (
             patch.object(screen._said_by, "_update_dropdown_focus"),
             patch.object(screen, "_clear_result_focus"),
@@ -1902,7 +1854,7 @@ class TestSpeakerFilter:
         screen._selected_word = "money"
         _offer_speakers(screen, "Donald")
         with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
-            _press(_said_by_chip(screen))
+            press(_said_by_chip(screen))
         with (
             patch.object(screen._said_by, "_update_dropdown_focus"),
             patch.object(screen, "_clear_result_focus"),
@@ -1912,7 +1864,7 @@ class TestSpeakerFilter:
         ):
             screen.take_keys_onto_open_list(MagicMock())
             screen.exit_nav_focus()
-        assert not cast("_FakeSpeakerList", screen._said_by.dropdown).is_open
+        assert not cast("FakeSpeakerList", screen._said_by.dropdown).is_open
         assert screen._said_by._dropdown_nav_mode is False
         assert screen._said_by.row.focused is None
         assert (screen._focus.active, screen._focus.area) == (False, "input")
@@ -1930,7 +1882,7 @@ class TestSpeakerFilter:
             _pick_speaker(screen, "Scrooge")
 
         screen._search.find_words.assert_called_once_with("money", speaker="Scrooge")
-        assert not cast("_FakeSpeakerList", screen._said_by.dropdown).is_open
+        assert not cast("FakeSpeakerList", screen._said_by.dropdown).is_open
         assert _said_by_chip(screen).text == "Said by: Scrooge"
         assert 'Word search: speaker filter "Scrooge".' in loguru_sink  # the line is unchanged
 
@@ -1966,9 +1918,9 @@ class TestSpeakerFilter:
         screen._selected_word = "money"
         _offer_speakers(screen)
         with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
-            _press(_said_by_chip(screen))
+            press(_said_by_chip(screen))
         screen.on_is_visible(screen, value=False)
-        assert not cast("_FakeSpeakerList", screen._said_by.dropdown).is_open
+        assert not cast("FakeSpeakerList", screen._said_by.dropdown).is_open
 
     @staticmethod
     def _stories_by(says: dict[str | None, int]) -> object:
@@ -2061,6 +2013,33 @@ class TestSpeakerFilter:
         assert show.call_args.kwargs["speaker"] is None
 
 
+class TestTheScreensSpeakerFilter:
+    """The screen hands its filter its own search: each thing the filter asks reaches it."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with _bare_screen(_active_mode="Word", _search=MagicMock(), _selected_word="money") as bare:
+            yield bare
+
+    def test_the_filter_reads_the_screen_and_tells_it_of_a_pick(self, screen: SearchScreen) -> None:
+        screen._search.get_speakers.return_value = {"Donald", "Scrooge"}
+        with (
+            patch.object(search_said_by, "_make_said_by_chip", stand_in_chip),
+            patch.object(search_said_by, "ReaderDropDown", FakeSpeakerList),
+            patch.object(SearchScreen, "_find_word_stories", return_value=_found("A")) as find,
+            patch.object(SearchScreen, "_rerun_word_results") as rerun,
+        ):
+            said_by = screen._make_said_by(MagicMock())
+            assert said_by.offered() == ["Donald", "Scrooge"]  # the index's, in roster order
+            said_by.show()
+            press(cast("MagicMock", said_by.row.chips[0]))  # counts the search's stories
+            assert find.call_args_list[0].args == (None,)
+            cast("FakeSpeakerList", said_by.dropdown).select("Donald")
+            rerun.assert_called_once_with()
+        assert said_by._searched() == ("", "money", None)
+        assert said_by._focus is screen._focus
+
+
 class TestSpeakerChipKeys:
     """The speaker chip is a nav stop between the word list and the results; Enter opens its list.
 
@@ -2085,8 +2064,8 @@ class TestSpeakerChipKeys:
             yield bare
 
     @staticmethod
-    def _list(screen: SearchScreen) -> _FakeSpeakerList:
-        return cast("_FakeSpeakerList", screen._said_by.dropdown)
+    def _list(screen: SearchScreen) -> FakeSpeakerList:
+        return cast("FakeSpeakerList", screen._said_by.dropdown)
 
     def test_enter_opens_the_list_on_the_speaker_picked_now(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -2248,7 +2227,7 @@ class TestEra:
 
     @staticmethod
     def _pick_era(screen: SearchScreen, index: int) -> None:
-        _press(cast("MagicMock", screen._era_rows["Tag"].chips[index]))
+        press(cast("MagicMock", screen._era_rows["Tag"].chips[index]))
 
     def test_a_tag_lists_only_its_stories_in_the_era(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -2427,7 +2406,7 @@ class TestTagScope:
         screen._listed_tag = "Gyro Gearloose"
         screen._refresh_tag_scope()
         screen._word_query = "gold -mine"
-        _press(self._scope_chips(screen)[1])
+        press(self._scope_chips(screen)[1])
 
         titles = frozenset(ENUM_TO_STR_TITLE[t] for t in (PIRATE_GOLD, HELMET))
         listing = screen._search.run_word_query.call_args_list[0]  # then the row's count
@@ -2446,7 +2425,7 @@ class TestTagScope:
     def test_the_scope_and_the_era_filter_together(self, screen: SearchScreen) -> None:
         screen._listed_tag = "Gyro Gearloose"
         screen._refresh_tag_scope()
-        _press(self._scope_chips(screen)[1])
+        press(self._scope_chips(screen)[1])
         screen._era.select("1951-1954")
         assert screen._word_search_filter() == SearchFilter(
             years=(1951, 1954), tag_titles=screen._scope.titles
@@ -2455,8 +2434,8 @@ class TestTagScope:
     def test_everywhere_lifts_the_limit(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
         screen._listed_tag = "Gyro Gearloose"
         screen._refresh_tag_scope()
-        _press(self._scope_chips(screen)[1])
-        _press(self._scope_chips(screen)[0])
+        press(self._scope_chips(screen)[1])
+        press(self._scope_chips(screen)[0])
         assert screen._word_search_filter() is None
         assert log_markers.WORD_TAG_FILTER_SET.format(tags="Everywhere") in loguru_sink
 
@@ -2465,7 +2444,7 @@ class TestTagScope:
     ) -> None:
         screen._listed_tag = "Gyro Gearloose"
         screen._refresh_tag_scope()
-        _press(self._scope_chips(screen)[1])
+        press(self._scope_chips(screen)[1])
         screen._tag_basket.toggle("Scrooge")  # picked since: the scope follows
         with patch.object(screen, "_rerun_word_results") as again:
             screen._refresh_tag_scope()
@@ -2525,7 +2504,7 @@ class TestTagScope:
         """So it can be lifted: a new word all of whose stories are the tag's."""
         screen._listed_tag = "Gyro Gearloose"
         screen._refresh_tag_scope()
-        _press(self._scope_chips(screen)[1])
+        press(self._scope_chips(screen)[1])
         screen._search.find_words.return_value = self._found_in(HELMET, PIRATE_GOLD)
         screen._show_scope_row()
         assert [c.value for c in self._scope_chips(screen)] == ["", "tags"]
@@ -2563,7 +2542,7 @@ class TestTagScope:
         """The next word is searched everywhere: the row went, and its choice with it."""
         screen._listed_tag = "Gyro Gearloose"
         screen._refresh_tag_scope()
-        _press(self._scope_chips(screen)[1])
+        press(self._scope_chips(screen)[1])
         assert screen._word_search_filter() is not None
 
         screen.on_word_clear()
@@ -3337,7 +3316,7 @@ class TestCombinedTagsListingNothing:
         assert self._last_row_text(screen) == "No story has these tags"
 
     def test_none_in_the_era_says_which_era(self, screen: SearchScreen) -> None:
-        _press(cast("MagicMock", screen._era_rows["Tag"].chips[1]))  # 1942-46
+        press(cast("MagicMock", screen._era_rows["Tag"].chips[1]))  # 1942-46
         screen._toggle_tag_basket("Scrooge")
         assert self._last_row_text(screen) == "None in 1942-46"
 
@@ -3348,7 +3327,7 @@ class TestCombinedTagsListingNothing:
         screen._toggle_tag_basket("Scrooge")
         assert screen._tag_titles == [PIRATE_GOLD.name, HELMET.name]
 
-        _press(cast("MagicMock", screen._era_rows["Tag"].chips[2]))  # 1951-54
+        press(cast("MagicMock", screen._era_rows["Tag"].chips[2]))  # 1951-54
 
         assert screen._tag_titles == [HELMET.name]
         assert loguru_sink[-1] == log_markers.TAG_COMBINED_RESULTS.format(tags="Scrooge", count=1)

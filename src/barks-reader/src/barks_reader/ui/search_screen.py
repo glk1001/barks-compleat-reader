@@ -241,14 +241,7 @@ class SearchScreen(FloatLayout):
         # The box's text while it is a query to run (Return runs it), else "".
         self._box_query: str = ""
         # The speaker the word results are narrowed to, its chip and its list.
-        self._said_by = SaidByFilter(
-            self.ids.speaker_chips_layout,
-            self._focus,
-            indexed_speakers=self._search.get_speakers,
-            searched=self._searched_for_said_by,
-            find_stories=self._find_word_stories,
-            on_picked=self._rerun_word_results,
-        )
+        self._said_by = self._make_said_by(self.ids.speaker_chips_layout)
         self._init_picks_and_filters()
 
         # The last result pressed (a row, or a part of a word row), for restoring the
@@ -309,6 +302,17 @@ class SearchScreen(FloatLayout):
         )
         self._scope = TagScope()
         self._scope_counts: dict[str, int] = {}
+
+    def _make_said_by(self, layout: Widget) -> SaidByFilter:
+        """Return the speaker filter over `layout`, reading this screen's word search."""
+        return SaidByFilter(
+            layout,
+            self._focus,
+            indexed_speakers=self._search.get_speakers,
+            searched=self._searched_for_said_by,
+            find_stories=self._find_word_stories,
+            on_picked=self._rerun_word_results,
+        )
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
         """Stop the background rotating and close the speaker list once hidden.

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
@@ -103,6 +104,67 @@ def progress_with_a_window_logging_a_failed_follow_on() -> Callable[..., tuple[A
         return result, True
 
     return run
+
+
+def stand_in_chip(value: str, label: str) -> MagicMock:
+    """Return a stand-in for a chip of a chip row, as the row's chip factory makes one."""
+    chip = MagicMock()
+    chip.value = value
+    chip.text = label
+    return chip
+
+
+def press(chip: MagicMock) -> None:
+    """Release a stand-in chip as a click does: run the handler its row bound to it."""
+    chip.bind.call_args.kwargs["on_release"](chip)
+
+
+class FakeSpeakerList:
+    """Stands in for the speaker filter's dropdown: holds its rows, selects and closes as Kivy's.
+
+    It keeps the handlers it is bound with and calls those: a pick tells `on_select`,
+    then closes the list, which tells `on_dismiss`, open or not.
+    """
+
+    def __init__(self, **_kwargs: object) -> None:
+        self.container = SimpleNamespace(children=[])
+        self.is_open = False
+        self.scrolled_to: object | None = None
+        self._handlers: dict[str, Callable[..., object]] = {}
+
+    @property
+    def rows(self) -> list[Any]:
+        """The rows, top to bottom."""
+        return list(reversed(self.container.children))  # Kivy: last first
+
+    def clear_widgets(self) -> None:
+        self.container.children = []
+
+    def add_widget(self, row: object) -> None:
+        self.container.children.insert(0, row)
+
+    def bind(self, **handlers: Callable[..., object]) -> None:
+        self._handlers.update(handlers)
+
+    def open_if_shown(self, _widget: object) -> bool:
+        self.is_open = True
+        return True
+
+    def scroll_into_view(self, row: object) -> None:
+        self.scrolled_to = row
+
+    def select(self, value: str) -> None:
+        self._handlers["on_select"](self, value)
+        self.dismiss()
+
+    def dismiss(self) -> None:
+        self.is_open = False
+        self._handlers["on_dismiss"](self)
+
+    @property
+    def parent(self) -> object | None:
+        """The window while open, as Kivy's dropdown has; None closed."""
+        return self if self.is_open else None
 
 
 def run_at_once(callback: Callable[[float], Any], *_args: object) -> None:
