@@ -12,6 +12,31 @@ from __future__ import annotations
 # The space, in dp, left under opened items scrolled into view.
 REVEAL_PADDING = 10
 
+# How far Up or Down moves a popup's scrolling text, as a share of what shows of it.
+KEY_SCROLL_SHARE = 0.25
+
+
+def scroll_y_after_key(
+    *, scroll_y: float, view_height: float, content_height: float, up: bool
+) -> float:
+    """Return the ``scroll_y`` after Up or Down moves scrolling text a share of what shows.
+
+    Args:
+        scroll_y: Where the text is now: 1 at its top, 0 at its foot.
+        view_height: The height that shows of the text.
+        content_height: The text's whole height.
+        up: Whether the key was Up, towards the text's top.
+
+    Returns:
+        The ``scroll_y``, 0 to 1; the one given when the text all shows.
+
+    """
+    hidden = content_height - view_height
+    if hidden <= 0:
+        return scroll_y
+    step = KEY_SCROLL_SHARE * view_height / hidden
+    return min(1.0, max(0.0, scroll_y + (step if up else -step)))
+
 
 def reveal_distance(
     *, view_bottom: float, view_top: float, items_bottom: float, owner_top: float, padding: float

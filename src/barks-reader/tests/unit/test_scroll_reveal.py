@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import pytest
-from barks_reader.core.scroll_reveal import reveal_distance, scroll_y_keeping_row
+from barks_reader.core.scroll_reveal import (
+    reveal_distance,
+    scroll_y_after_key,
+    scroll_y_keeping_row,
+)
 
 
 def _keeping(row_from_content_top: float, content_height: float) -> float | None:
@@ -54,3 +58,28 @@ def test_a_reveal_brings_the_padding_under_the_items_into_view() -> None:
         view_bottom=0.0, view_top=500.0, items_bottom=-50.0, owner_top=100.0, padding=10.0
     )
     assert distance == pytest.approx(60.0)
+
+
+class TestScrollYAfterKey:
+    """Up and Down move a popup's text a quarter of what shows of it."""
+
+    def test_down_moves_towards_the_foot_and_up_back(self) -> None:
+        # 400 of 800 show, so 400 are hidden: a press moves 100 of them.
+        down = scroll_y_after_key(scroll_y=1.0, view_height=400, content_height=800, up=False)
+        assert down == pytest.approx(0.75)
+        up = scroll_y_after_key(scroll_y=down, view_height=400, content_height=800, up=True)
+        assert up == pytest.approx(1.0)
+
+    def test_it_stops_at_the_top_and_at_the_foot(self) -> None:
+        # 100 hidden, and a press is 100: the whole of it.
+        assert scroll_y_after_key(scroll_y=1.0, view_height=400, content_height=500, up=True) == 1.0
+        assert (
+            scroll_y_after_key(scroll_y=0.5, view_height=400, content_height=500, up=False) == 0.0
+        )
+
+    @pytest.mark.parametrize("content_height", [300, 400])
+    def test_text_that_all_shows_stays_where_it_is(self, content_height: int) -> None:
+        moved = scroll_y_after_key(
+            scroll_y=1.0, view_height=400, content_height=content_height, up=False
+        )
+        assert moved == 1.0

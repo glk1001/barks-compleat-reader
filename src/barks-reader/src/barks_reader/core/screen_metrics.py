@@ -226,6 +226,25 @@ class ScreenMetrics:
         return old_dims != new_dims
 
 
+def fit_window_to_screen(size: tuple[int, int]) -> tuple[int, int]:
+    """Return `size`, made no larger than the primary screen has room for.
+
+    The window is centred, and where the desktop keeps its taskbar or panel is not
+    known, so the height leaves that allowance both above and below. A window taller
+    than that had its title bar above the screen's top and its button below the bottom.
+
+    Args:
+        size: The width and height wanted.
+
+    Returns:
+        The width and height to open the window at.
+
+    """
+    screen = SCREEN_METRICS.get_primary_screen_info()
+    room_high = screen.height_pixels - 2 * get_approximate_taskbar_height()
+    return min(size[0], screen.width_pixels), min(size[1], room_high)
+
+
 def calculate_fitted_window_height(
     screen_width: int,
     screen_height: int,

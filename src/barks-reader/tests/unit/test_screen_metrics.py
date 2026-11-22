@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,12 +11,16 @@ from barks_reader.core.screen_metrics import (
     ScreenInfo,
     ScreenMetrics,
     calculate_fitted_window_height,
+    fit_window_to_screen,
     get_approximate_taskbar_height,
     get_best_window_height_fit,
 )
 from barks_reader.core.window_minimum import SUPPORTED_SCREEN_HEIGHT, SUPPORTED_SCREEN_WIDTH
 from loguru import logger
 from screeninfo import ScreenInfoError, get_monitors
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _mock_monitor(
@@ -609,3 +614,46 @@ class TestRefreshUpdatesCounts:
         assert changed is True
         assert metrics.NUM_MONITORS == 2  # noqa: PLR2004
         assert len(metrics.SCREEN_INFO) == 2  # noqa: PLR2004
+
+
+_SIZE = (800, 950)
+
+
+@pytest.fixture
+def screen(monkeypatch: pytest.MonkeyPatch) -> Callable[[int, int], None]:
+    """Make the primary screen a given size, with a 55-pixel taskbar allowance."""
+
+    def set_size(width: int, height: int) -> None:
+        info = MagicMock(width_pixels=width, height_pixels=height)
+        monkeypatch.setattr(
+            screen_metrics_module.SCREEN_METRICS, "get_primary_screen_info", lambda: info
+        )
+        monkeypatch.setattr(screen_metrics_module, "get_approximate_taskbar_height", lambda: 55)
+
+    return set_size
+
+
+class TestFitWindowToScreen:
+    def test_a_window_the_screen_has_room_for_keeps_its_size(
+        self, screen: Callable[[int, int], None]
+    ) -> None:
+        screen(1920, 1080)
+        assert fit_window_to_screen(_SIZE) == _SIZE
+
+    def test_a_window_taller_than_a_laptop_screen_is_cut_to_clear_a_bar_at_either_edge(
+        self, screen: Callable[[int, int], None]
+    ) -> None:
+        screen(1366, 768)
+        assert fit_window_to_screen(_SIZE) == (800, 768 - 2 * 55)
+
+    def test_a_window_wider_than_the_screen_is_cut_to_its_width(
+        self, screen: Callable[[int, int], None]
+    ) -> None:
+        screen(640, 1080)
+        assert fit_window_to_screen(_SIZE) == (640, 950)
+
+    def test_a_window_exactly_the_room_there_is_keeps_its_size(
+        self, screen: Callable[[int, int], None]
+    ) -> None:
+        screen(800, 950 + 2 * 55)
+        assert fit_window_to_screen(_SIZE) == _SIZE

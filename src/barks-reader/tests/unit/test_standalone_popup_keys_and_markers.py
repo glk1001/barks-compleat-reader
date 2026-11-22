@@ -10,11 +10,8 @@ from __future__ import annotations
 import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ENTER, KEY_ESCAPE, KEY_NUMPAD_ENTER
-from barks_reader.ui.kivy_standalone_show_message import (
-    closes_popup,
-    log_popup_closed,
-    log_popup_opened,
-)
+from barks_reader.core.popup_frame import closes_popup
+from barks_reader.ui.kivy_standalone_show_message import log_popup_closed, log_popup_opened
 
 KEY_DOWN = 274
 

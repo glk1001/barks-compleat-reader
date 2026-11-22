@@ -49,10 +49,9 @@ from barks_reader.core.keys import (
     is_escape_key,
     is_escape_key_for_text_input,
 )
-from barks_reader.core.popup_frame import FrameButton, PopupSize, popup_size
+from barks_reader.core.popup_frame import FrameButton, PopupSize, closes_popup, popup_size
 from barks_reader.core.reader_palette import theme
 
-from .kivy_standalone_show_message import closes_popup
 from .reader_keyboard_nav import (
     MENU_FOCUS_HIGHLIGHT_GROUP,
     clear_focus_highlight,

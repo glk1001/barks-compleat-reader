@@ -10,45 +10,12 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.boot_splash import close_boot_splash
-from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_NUMPAD_ENTER, KEY_UP, is_escape_key
+from barks_reader.core.keys import KEY_DOWN, KEY_UP
 from barks_reader.core.popup_frame import FrameButton, PopupSize
+from barks_reader.core.scroll_reveal import scroll_y_after_key
 
 if TYPE_CHECKING:
     from kivy.uix.widget import Widget
-
-# How far Up or Down moves a popup's scrolling text, as a share of what shows of it.
-_KEY_SCROLL_SHARE = 0.25
-
-
-def closes_popup(key: int) -> bool:
-    """Return whether a key closes a standalone popup: Escape, or Return as "OK".
-
-    A standalone popup is a message with only a close button, and that button
-    takes no keyboard focus, so with the remote's keys Return would otherwise do
-    nothing.
-    """
-    return is_escape_key(key) or key in (KEY_ENTER, KEY_NUMPAD_ENTER)
-
-
-def fit_window_to_screen(size: tuple[int, int]) -> tuple[int, int]:
-    """Return `size`, made no larger than the primary screen has room for.
-
-    The window is centred, and where the desktop keeps its taskbar or panel is not
-    known, so the height leaves that allowance both above and below. A window taller
-    than that had its title bar above the screen's top and its button below the bottom.
-
-    Args:
-        size: The width and height wanted.
-
-    Returns:
-        The width and height to open the window at.
-
-    """
-    from barks_reader.core.screen_metrics import SCREEN_METRICS, get_approximate_taskbar_height
-
-    screen = SCREEN_METRICS.get_primary_screen_info()
-    room_high = screen.height_pixels - 2 * get_approximate_taskbar_height()
-    return min(size[0], screen.width_pixels), min(size[1], room_high)
 
 
 def place_window(size: tuple[int, int], *, borderless: bool = False) -> tuple[int, int]:
@@ -63,12 +30,13 @@ def place_window(size: tuple[int, int], *, borderless: bool = False) -> tuple[in
             whose popup's own title bar is its top.
 
     Returns:
-        The width and height the window was given (`fit_window_to_screen`).
+        The width and height the window was given (``fit_window_to_screen``).
 
     """
     from kivy import Config
 
     from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
+    from barks_reader.core.screen_metrics import fit_window_to_screen
 
     width, height = fit_window_to_screen(size)
     x, y = get_centred_position_on_primary_monitor(width, height)
@@ -84,7 +52,7 @@ def place_window(size: tuple[int, int], *, borderless: bool = False) -> tuple[in
 def scroll_keys(scroll_view: Any) -> Callable[[int], bool]:  # noqa: ANN401
     """Return a popup's key handler that scrolls `scroll_view` with Up and Down.
 
-    A standalone popup's text is cut short on a small screen (`fit_window_to_screen`),
+    A standalone popup's text is cut short on a small screen (``fit_window_to_screen``),
     and the remote has no wheel: without this, what is below the window's foot could
     not be read with it.
 
@@ -99,13 +67,13 @@ def scroll_keys(scroll_view: Any) -> Callable[[int], bool]:  # noqa: ANN401
     def on_key(key: int) -> bool:
         if key not in (KEY_UP, KEY_DOWN):
             return False
-        text = scroll_view.children[0] if scroll_view.children else None
-        hidden = text.height - scroll_view.height if text is not None else 0
-        if hidden > 0:
-            step = _KEY_SCROLL_SHARE * scroll_view.height / hidden
-            # scroll_y is 1 at the top of the text and 0 at its foot.
-            moved_to = scroll_view.scroll_y + (step if key == KEY_UP else -step)
-            scroll_view.scroll_y = min(1.0, max(0.0, moved_to))
+        if scroll_view.children:
+            scroll_view.scroll_y = scroll_y_after_key(
+                scroll_y=scroll_view.scroll_y,
+                view_height=scroll_view.height,
+                content_height=scroll_view.children[0].height,
+                up=key == KEY_UP,
+            )
         return True
 
     return on_key

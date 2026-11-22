@@ -14,11 +14,22 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from .keys import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
 from .main_layout import page_width_at
 from .reader_utils import COMIC_PAGE_ASPECT_RATIO
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
+def closes_popup(key: int) -> bool:
+    """Return whether a key closes a standalone popup: Escape, or Return as "OK".
+
+    A standalone popup is a message with only a close button, and that button
+    takes no keyboard focus, so with the remote's keys Return would otherwise do
+    nothing.
+    """
+    return is_escape_key(key) or key in (KEY_ENTER, KEY_NUMPAD_ENTER)
 
 
 class PopupSize(StrEnum):

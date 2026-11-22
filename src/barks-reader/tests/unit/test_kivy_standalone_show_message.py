@@ -325,32 +325,6 @@ def screen(monkeypatch: pytest.MonkeyPatch) -> Callable[[int, int], None]:
     return set_size
 
 
-class TestFitWindowToScreen:
-    def test_a_window_the_screen_has_room_for_keeps_its_size(
-        self, screen: Callable[[int, int], None]
-    ) -> None:
-        screen(1920, 1080)
-        assert kivy_standalone_show_message.fit_window_to_screen(_SIZE) == _SIZE
-
-    def test_a_window_taller_than_a_laptop_screen_is_cut_to_clear_a_bar_at_either_edge(
-        self, screen: Callable[[int, int], None]
-    ) -> None:
-        screen(1366, 768)
-        assert kivy_standalone_show_message.fit_window_to_screen(_SIZE) == (800, 768 - 2 * 55)
-
-    def test_a_window_wider_than_the_screen_is_cut_to_its_width(
-        self, screen: Callable[[int, int], None]
-    ) -> None:
-        screen(640, 1080)
-        assert kivy_standalone_show_message.fit_window_to_screen(_SIZE) == (640, 950)
-
-    def test_a_window_exactly_the_room_there_is_keeps_its_size(
-        self, screen: Callable[[int, int], None]
-    ) -> None:
-        screen(800, 950 + 2 * 55)
-        assert kivy_standalone_show_message.fit_window_to_screen(_SIZE) == _SIZE
-
-
 class TestPlaceWindow:
     @pytest.fixture
     def config_set(self) -> Iterator[MagicMock]:
