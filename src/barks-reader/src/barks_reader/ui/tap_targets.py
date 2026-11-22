@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -33,9 +32,13 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.tap_targets import (
     TAP_TARGETS_FILE_ENV_VAR,
+    FoundTarget,
+    Rect,
     TapTarget,
     TapTargetRequests,
     encode_targets,
+    intersect,
+    mark_covered,
 )
 
 if TYPE_CHECKING:
@@ -46,8 +49,6 @@ if TYPE_CHECKING:
 # Ten polls a second: an answer comes within two of the layout coming to rest.
 POLL_SECS = 0.1
 
-Rect = tuple[float, float, float, float]  # x, y, w, h in window pixels, origin bottom-left
-
 # The installed poll, held here because Kivy's clock only holds it weakly.
 _SERVICE: list[Callable[[float], None]] = []
 
@@ -56,16 +57,6 @@ _TAPPABLE = (ButtonBehavior, TreeViewNode, TextInput, VKeyboard, ModalView)
 _MARKUP_TAG_RE = re.compile(r"\[/?[a-z_]+(?:=[^\]]*)?\]")
 # Kivy markup's escapes for its own brackets, and the ampersand last.
 _MARKUP_ESCAPES = (("&bl;", "["), ("&br;", "]"), ("&amp;", "&"))
-
-
-@dataclass(frozen=True, slots=True)
-class _Found:
-    """A target as the walk found it, with what tells whether another lies over it."""
-
-    target: TapTarget
-    # Where in the walk's list the targets holding this one are: a widget is no
-    # cover for what it holds, though it is listed first.
-    holders: tuple[int, ...]
 
 
 def window_rect(widget: Widget, x: float, y: float, width: float, height: float) -> Rect:
@@ -84,14 +75,6 @@ def window_rect(widget: Widget, x: float, y: float, width: float, height: float)
     """
     wx, wy = widget.to_window(x, y)
     return wx, wy, width, height
-
-
-def _intersect(a: Rect, b: Rect) -> Rect:
-    left = max(a[0], b[0])
-    bottom = max(a[1], b[1])
-    right = min(a[0] + a[2], b[0] + b[2])
-    top = min(a[1] + a[3], b[1] + b[3])
-    return left, bottom, max(0.0, right - left), max(0.0, top - bottom)
 
 
 def _deref(value: Any) -> Any:  # noqa: ANN401
@@ -164,14 +147,14 @@ def _collect(
     widget: Widget,
     clip: Rect,
     window_height: float,
-    out: list[_Found],
+    out: list[FoundTarget],
     holders: tuple[int, ...] = (),
 ) -> None:
     if widget.opacity == 0 or widget.disabled:
         return  # hidden, or taking no presses (a hidden action bar is both)
     kind = type(widget).__name__
     full = window_rect(widget, widget.x, widget.y, widget.width, widget.height)
-    own = _intersect(full, clip)
+    own = intersect(full, clip)
     if isinstance(widget, _TAPPABLE) and own[2] >= 1 and own[3] >= 1:
         target = _target(
             kind,
@@ -183,49 +166,23 @@ def _collect(
             # A list row marked picked; a flag, not just any `selected` attribute.
             selected=getattr(widget, "selected", False) is True,
         )
-        out.append(_Found(target, holders))
+        out.append(FoundTarget(target, holders))
         holders = (*holders, len(out) - 1)
     get_regions = getattr(widget, "tap_target_regions", None)
     if callable(get_regions):
         kv_id = _kv_id(widget)
         regions = cast("Callable[[], dict[str, Rect]]", get_regions)()
         for name, region in regions.items():
-            rect = _intersect(region, clip)
+            rect = intersect(region, clip)
             if rect[2] >= 1 and rect[3] >= 1:
                 target = _target(
                     kind, name, kv_id, rect, window_height, whole=_is_whole(rect, region)
                 )
-                out.append(_Found(target, holders))
+                out.append(FoundTarget(target, holders))
     # A scroll view (every StencilView) shows its children only inside itself.
     inner = own if isinstance(widget, StencilView) else clip
     for child in widget.children:  # children[0] is on top: the order a press tries them
         _collect(child, inner, window_height, out, holders)
-
-
-def _holds_point(target: TapTarget, x: int, y: int) -> bool:
-    return (
-        target.left <= x < target.left + target.width
-        and target.top <= y < target.top + target.height
-    )
-
-
-def _covered_marked(found: list[_Found]) -> list[TapTarget]:
-    """Return the targets, each whose centre an earlier target lies over marked not whole.
-
-    The walk lists targets in the order a press tries them, so an earlier one that
-    lies over a later one's centre takes a tap aimed at it. Only the centre counts:
-    rows that share an edge's few pixels (a row's speech button is taller than
-    its row) are each still tapped where a test taps them. The targets a widget sits
-    inside are listed before it too, but its presses reach it first.
-    """
-    targets: list[TapTarget] = []
-    for at, this in enumerate(found):
-        covered = this.target.whole and any(
-            before not in this.holders and _holds_point(found[before].target, *this.target.center)
-            for before in range(at)
-        )
-        targets.append(replace(this.target, whole=False) if covered else this.target)
-    return targets
 
 
 def _screen_changing(widget: Any) -> bool:  # noqa: ANN401
@@ -262,10 +219,10 @@ def snapshot(window: Any) -> list[TapTarget]:  # noqa: ANN401
     if popup_at is not None:
         children = children[: popup_at + 1]
     window_clip: Rect = (0.0, 0.0, float(window.width), float(window.height))
-    found: list[_Found] = []
+    found: list[FoundTarget] = []
     for child in children:
         _collect(child, window_clip, float(window.height), found)
-    return _covered_marked(found)
+    return mark_covered(found)
 
 
 def install_tap_targets_service(window: Any) -> bool:  # noqa: ANN401

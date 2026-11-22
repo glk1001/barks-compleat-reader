@@ -9,14 +9,15 @@ mid-transition would send the tap to where a widget was). The GUI probe sets the
 variable; with it unset, which is every normal run, the app never looks.
 
 This module is the part without Kivy: the record, its encoding into the log
-line and back, and the request/answer state. ``barks_reader.ui.tap_targets``
-walks the widgets and drives it from a clock.
+line and back, the request/answer state, and the geometry that says which
+target a tap reaches. ``barks_reader.ui.tap_targets`` walks the widgets and
+drives it from a clock.
 """
 
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 TAP_TARGETS_FILE_ENV_VAR = "BARKS_READER_TAP_TARGETS_FILE"
+
+Rect = tuple[float, float, float, float]  # x, y, w, h in window pixels, origin bottom-left
 
 # Work that is moving the layout on purpose and will move it again: the tree's
 # scroll pinner, between a row expanding and its scroll correction a few frames
@@ -93,6 +96,72 @@ class TapTarget:
         if self.id:
             name += f" #{self.id}"
         return name
+
+
+@dataclass(frozen=True, slots=True)
+class FoundTarget:
+    """A target as the widget walk found it, with what tells whether another lies over it.
+
+    Attributes:
+        target: The target.
+        holders: Where in the walk's list the targets holding this one are: a widget
+            is no cover for what it holds, though it is listed first.
+
+    """
+
+    target: TapTarget
+    holders: tuple[int, ...] = ()
+
+
+def intersect(a: Rect, b: Rect) -> Rect:
+    """Return the part of `a` inside `b`: a rectangle of no width or height when none is.
+
+    Args:
+        a: A rectangle, ``(x, y, w, h)``.
+        b: The rectangle clipping it.
+
+    Returns:
+        Their overlap, its width and height never negative.
+
+    """
+    left = max(a[0], b[0])
+    bottom = max(a[1], b[1])
+    right = min(a[0] + a[2], b[0] + b[2])
+    top = min(a[1] + a[3], b[1] + b[3])
+    return left, bottom, max(0.0, right - left), max(0.0, top - bottom)
+
+
+def _holds_point(target: TapTarget, x: int, y: int) -> bool:
+    return (
+        target.left <= x < target.left + target.width
+        and target.top <= y < target.top + target.height
+    )
+
+
+def mark_covered(found: Sequence[FoundTarget]) -> list[TapTarget]:
+    """Return the targets, each whose centre an earlier target lies over marked not whole.
+
+    The walk lists targets in the order a press tries them, so an earlier one that
+    lies over a later one's centre takes a tap aimed at it. Only the centre counts:
+    rows that share an edge's few pixels (a row's speech button is taller than
+    its row) are each still tapped where a test taps them. The targets a widget sits
+    inside are listed before it too, but its presses reach it first.
+
+    Args:
+        found: The targets, in the order a press tries them.
+
+    Returns:
+        The targets in the same order, the covered ones no longer whole.
+
+    """
+    targets: list[TapTarget] = []
+    for at, this in enumerate(found):
+        covered = this.target.whole and any(
+            before not in this.holders and _holds_point(found[before].target, *this.target.center)
+            for before in range(at)
+        )
+        targets.append(replace(this.target, whole=False) if covered else this.target)
+    return targets
 
 
 def encode_targets(targets: Sequence[TapTarget]) -> str:

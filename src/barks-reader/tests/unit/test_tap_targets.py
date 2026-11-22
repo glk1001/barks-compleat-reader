@@ -12,10 +12,13 @@ from barks_reader.core import log_markers
 from barks_reader.core.log_markers import capture
 from barks_reader.core.tap_targets import (
     TAP_TARGETS_FILE_ENV_VAR,
+    FoundTarget,
     TapTarget,
     TapTargetRequests,
     decode_targets,
     encode_targets,
+    intersect,
+    mark_covered,
     settling_began,
     settling_ended,
 )
@@ -72,6 +75,68 @@ def test_the_marker_carries_the_json_intact() -> None:
     found = re.search(regex, line)
     assert found is not None
     assert decode_targets(found["targets"]) == [_target("{braces} and [brackets]")]
+
+
+def _square(text: str, left: int, top: int, size: int = 100, *, whole: bool = True) -> TapTarget:
+    return TapTarget("Button", text, "", left, top, size, size, whole=whole)
+
+
+class TestIntersect:
+    def test_the_overlap_of_two_rectangles(self) -> None:
+        assert intersect((0, 0, 100, 100), (50, 20, 100, 30)) == (50, 20, 50, 30)
+
+    def test_a_rectangle_inside_the_other_is_left_as_it_is(self) -> None:
+        assert intersect((10, 10, 20, 20), (0, 0, 100, 100)) == (10, 10, 20, 20)
+
+    def test_rectangles_apart_overlap_in_nothing(self) -> None:
+        _, _, width, height = intersect((0, 0, 10, 10), (50, 50, 10, 10))
+        assert (width, height) == (0, 0)
+
+
+class TestMarkCovered:
+    """An earlier target over a later one's centre takes a tap aimed at it."""
+
+    def test_a_target_whose_centre_an_earlier_one_lies_over_is_not_whole(self) -> None:
+        on_top = _square("on top", 40, 40, 40)
+        under = _square("under", 0, 0)
+
+        marked = mark_covered([FoundTarget(on_top), FoundTarget(under)])
+
+        assert [t.whole for t in marked] == [True, False]
+        assert [t.text for t in marked] == ["on top", "under"]
+
+    def test_a_later_target_covers_nothing(self) -> None:
+        first = _square("first", 0, 0)
+        behind = _square("behind", 0, 0, 300)  # over the first's centre, but tried after it
+
+        assert mark_covered([FoundTarget(first), FoundTarget(behind)]) == [first, behind]
+
+    def test_an_overlap_short_of_the_centre_leaves_a_target_whole(self) -> None:
+        corner = _square("corner", 0, 0, 40)
+        under = _square("under", 0, 0)
+
+        assert mark_covered([FoundTarget(corner), FoundTarget(under)]) == [corner, under]
+
+    def test_what_holds_a_target_is_no_cover_for_it(self) -> None:
+        popup = _square("popup", 0, 0, 200)
+        button = _square("button", 50, 50)
+
+        assert mark_covered([FoundTarget(popup), FoundTarget(button, holders=(0,))]) == [
+            popup,
+            button,
+        ]
+
+    def test_a_target_s_far_edges_are_not_part_of_it(self) -> None:
+        """Its right and bottom edges are the next target's first pixels."""
+        beside = _square("beside", 0, 0, 50)
+        under = _square("under", 0, 0)  # centre (50, 50): just off the first's corner
+
+        assert mark_covered([FoundTarget(beside), FoundTarget(under)]) == [beside, under]
+
+    def test_a_target_already_clipped_stays_not_whole(self) -> None:
+        clipped = _square("clipped", 0, 0, whole=False)
+
+        assert mark_covered([FoundTarget(clipped)]) == [clipped]
 
 
 class TestTapTargetRequests:
