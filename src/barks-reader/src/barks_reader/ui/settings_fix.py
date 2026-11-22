@@ -687,8 +687,12 @@ def open_folder_chooser_popup(title: str, value: str, setting_widget: object) ->
 
     """
     selected_dir = Path(value)
+    # A full path only: the parent of an unset setting's marker, or of any other
+    # relative value, is ".", and the list opened on the folder the app started in.
     setting_parent_dir = (
-        selected_dir.parent if value and selected_dir.parent.is_dir() else Path("~").expanduser()
+        selected_dir.parent
+        if selected_dir.is_absolute() and selected_dir.parent.is_dir()
+        else Path("~").expanduser()
     )
     setting_dir = str(selected_dir)
 

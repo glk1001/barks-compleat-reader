@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.core.popup_frame import PopupSize
+from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.ui import popup_frame, settings_fix
 from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.settings_fix import (
@@ -887,6 +888,39 @@ class TestLongPathPopupStart:
         listed_in = str(tmp_path / "books" / "library")
         assert settings_fix._listed_entry(["../", "x"], listed_in, wanted) == "../"
         assert settings_fix._listed_entry(["library"], str(tmp_path), wanted) is None
+
+
+class TestTheFolderTheChooserOpensOn:
+    """The parent of the setting's folder, or home when the setting names no real place."""
+
+    @pytest.fixture(autouse=True)
+    def _clock_runs_at_once(self) -> Iterator[None]:
+        with patch.object(settings_fix.Clock, "schedule_once", side_effect=run_at_once):
+            yield
+
+    @staticmethod
+    def _opened_on(value: str) -> str:
+        chooser = _Listing(Path("/nowhere"))
+        with patch.object(settings_fix, "SettingLongPathPopup") as popup_class:
+            popup_class.return_value.ids.file_chooser = chooser
+            settings_fix.open_folder_chooser_popup("Fantagraphics", value, MagicMock())
+        return chooser.path
+
+    def test_a_folder_that_exists_opens_on_its_parent(self, tmp_path: Path) -> None:
+        (tmp_path / "library").mkdir()
+        assert self._opened_on(str(tmp_path / "library")) == str(tmp_path)
+
+    @pytest.mark.parametrize("value", [UNSET_FANTA_DIR_MARKER, "", "library", "comics/library"])
+    def test_a_value_that_is_no_full_path_opens_on_home(
+        self, value: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Not on the folder the app was started from: the parent of such a value is "."."""
+        (tmp_path / "comics").mkdir()
+        monkeypatch.chdir(tmp_path)
+        assert self._opened_on(value) == str(Path("~").expanduser())
+
+    def test_a_full_path_whose_parent_is_gone_opens_on_home(self, tmp_path: Path) -> None:
+        assert self._opened_on(str(tmp_path / "gone" / "library")) == str(Path("~").expanduser())
 
 
 class TestOptionValueDisplay:
