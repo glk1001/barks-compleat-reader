@@ -1408,11 +1408,7 @@ reason = "The loader takes the baseline (start_memory_watch) before it reads any
 [[equivalent]]
 module = "barks_reader.core.image_selector"
 function = "ImageSelector._get_fallback_image_info"
-change = """
-- FIT_MODE_COVER,
-- )
-+ )
-"""
+change = "- FIT_MODE_COVER,"
 reason = "FIT_MODE_COVER is ImageInfo's default fit mode."
 
 [[equivalent]]
@@ -1898,15 +1894,6 @@ reason = "Before update_regions the fullscreen band is empty either way, and tap
 
 [[equivalent]]
 module = "barks_reader.core.main_index"
-function = "index_letter"
-change = """
-- return "0" if "0" <= first_letter <= "9" else first_letter
-+ return "0" if "0" < first_letter <= "9" else first_letter
-"""
-reason = "The one letter the mutant moves to the else branch is \"0\", which that branch returns as it is: \"0\"."
-
-[[equivalent]]
-module = "barks_reader.core.main_index"
 function = "_collect_titles"
 change = """
 - if type(tag) is TagGroups:
@@ -2114,19 +2101,19 @@ reason = "textwrap.shorten returns a text that fits its width as it is, but for 
 
 [[equivalent]]
 module = "barks_reader.core.index_text"
-function = "_shortened"
+function = "shortened_at_a_word"
 change = """
-- return " ".join(text.split())[: width - len(_ELLIPSIS)].rstrip() + _ELLIPSIS
-+ return " ".join(text.split())[: width - len(_ELLIPSIS)].lstrip() + _ELLIPSIS
+- return " ".join(text.split())[: width - len(ellipsis)].rstrip() + ellipsis
++ return " ".join(text.split())[: width - len(ellipsis)].lstrip() + ellipsis
 """
 reason = "The cut is taken only when textwrap leaves just the ellipsis, i.e. the first word alone overflows, so the slice ends inside that word: no space is reached to join or strip (checked over 41,770 random cut cases)."
 
 [[equivalent]]
 module = "barks_reader.core.index_text"
-function = "_shortened"
+function = "shortened_at_a_word"
 change = """
-- return " ".join(text.split())[: width - len(_ELLIPSIS)].rstrip() + _ELLIPSIS
-+ return "XX XX".join(text.split())[: width - len(_ELLIPSIS)].rstrip() + _ELLIPSIS
+- return " ".join(text.split())[: width - len(ellipsis)].rstrip() + ellipsis
++ return "XX XX".join(text.split())[: width - len(ellipsis)].rstrip() + ellipsis
 """
 reason = "The cut is taken only when textwrap leaves just the ellipsis, i.e. the first word alone overflows, so the slice ends inside that word: no space is reached to join or strip (checked over 41,770 random cut cases)."
 
@@ -2733,3 +2720,165 @@ change = """
 + top_n, term_generator, key=lambda term_count: (term_count[1], term_count[1])
 """
 reason = "heapq.nsmallest is stable and the index reader yields a field's terms in order, so words of one frequency come out alphabetically with or without the text in the key."
+
+[[equivalent]]
+module = "barks_reader.core.touchscreen_devices"
+function = "find_touchscreen_devices"
+change = """
+- name = (entry / "device" / "name").read_text(encoding="utf-8").strip()
++ name = (entry / "device" / "name").read_text(encoding=None).strip()
+"""
+reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
+
+[[equivalent]]
+module = "barks_reader.core.touchscreen_devices"
+function = "find_touchscreen_devices"
+change = """
+- name = (entry / "device" / "name").read_text(encoding="utf-8").strip()
++ name = (entry / "device" / "name").read_text(encoding="UTF-8").strip()
+"""
+reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.touchscreen_devices"
+function = "find_touchscreen_devices"
+change = """
+- words = caps_path.read_text(encoding="utf-8").strip().split()
++ words = caps_path.read_text(encoding=None).strip().split()
+"""
+reason = "Linux's default text encoding is UTF-8, and mutation runs only on Linux. Not harmless on Windows, where the explicit encoding is what reads and writes UTF-8: keep it."
+
+[[equivalent]]
+module = "barks_reader.core.touchscreen_devices"
+function = "find_touchscreen_devices"
+change = """
+- words = caps_path.read_text(encoding="utf-8").strip().split()
++ words = caps_path.read_text(encoding="UTF-8").strip().split()
+"""
+reason = "Codec names are case-insensitive: \"UTF-8\" is \"utf-8\"."
+
+[[equivalent]]
+module = "barks_reader.core.view_request"
+function = "FunImageThemeChoice.__init__"
+change = """
+- self._use_custom = False
++ self._use_custom = None
+"""
+reason = "Only ever tested for truth (the custom themes or None), where None and False are alike."
+
+[[equivalent]]
+module = "barks_reader.core.index_text"
+function = "shortened_keeping_pages"
+change = """
+- keep = (low + high + 1) // 2
++ keep = (low + high + 2) // 2
+"""
+reason = "Another midpoint for the same halving: it stays above low and never passes high, so the search ends on the same longest start that fits (0 of 120,000 random rows differed)."
+
+[[equivalent]]
+module = "barks_reader.core.index_text"
+function = "shortened_keeping_pages"
+change = """
+- if fits(f"{title[:keep].rstrip()}{_ROW_ELLIPSIS}{pages}"):
++ if fits(f"{title[:keep].lstrip()}{_ROW_ELLIPSIS}{pages}"):
+"""
+reason = "A start of the title has no space before it; left with a space after it, it is as long as the next start, so it fits when that does, and the text returned is stripped either way (0 of 120,000 random rows differed)."
+
+[[equivalent]]
+module = "barks_reader.core.index_items"
+function = "context_entities"
+change = """
+- entries.sort(key=lambda entry: entry[1].lower())
++ entries.sort(key=lambda entry: entry[1].upper())
+"""
+reason = "Lower and upper case order alike but for the six characters between Z and a, which no canonical name in the table has; the names sort the same by either."
+
+[[equivalent]]
+module = "barks_reader.core.document_pager"
+function = "DocumentPager.__init__"
+change = """
+- self._doc_dir: Path | None = None
++ self._doc_dir: Path | None = ""
+"""
+reason = "Set by open before any read: view reads it only with pages, and only open gives pages."
+
+[[equivalent]]
+module = "barks_reader.core.document_pager"
+function = "DocumentPager.__init__"
+change = """
+- self._units: list[DisplayUnit] = []
++ self._units: list[DisplayUnit] = None
+"""
+reason = "Set by open before any read: the units are read only with pages, and only open gives pages."
+
+[[equivalent]]
+module = "barks_reader.core.document_pager"
+function = "DocumentPager.__init__"
+change = """
+- self._unit_idx_for_index: dict[int, int] = {}
++ self._unit_idx_for_index: dict[int, int] = None
+"""
+reason = "Set by open before any read: the units are read only with pages, and only open gives pages."
+
+[[equivalent]]
+module = "barks_reader.core.main_index"
+function = "index_letter"
+change = """
+- first_letter = without_accents(heading[:1]).upper()[:1]
++ first_letter = without_accents(heading[:2]).upper()[:1]
+"""
+reason = "The first letter of a heading's first two characters is the first letter of its first, for any heading that starts with a letter or a digit; one that starts with a lone accent mark is no heading the index has."
+
+[[equivalent]]
+module = "barks_reader.core.window_geometry"
+function = "held_to_minimum"
+change = """
+- if size[0] >= minimum[0] and size[1] >= minimum[1]:
++ if size[0] > minimum[0] and size[1] >= minimum[1]:
+"""
+reason = "A side equal to the minimum's gives the minimum's own value by either branch."
+
+[[equivalent]]
+module = "barks_reader.core.window_geometry"
+function = "held_to_minimum"
+change = """
+- if size[0] >= minimum[0] and size[1] >= minimum[1]:
++ if size[0] >= minimum[0] and size[1] > minimum[1]:
+"""
+reason = "A side equal to the minimum's gives the minimum's own value by either branch."
+
+[[equivalent]]
+module = "barks_reader.core.navigation.navigation_coordinator"
+function = "NavigationCoordinator.__init__"
+change = """
+- self._tree: TreePort | None = None
++ self._tree: TreePort | None = ""
+"""
+reason = "Set by set_tree_view_manager when the app is built, before any use; until then it is only asserted not None, and a coordinator used that early fails either way."
+
+[[equivalent]]
+module = "barks_reader.core.navigation.navigation_coordinator"
+function = "NavigationCoordinator.navigate_to_search_result"
+change = """
+- image_info = ImageInfo(from_title=title, filename=None)
++ image_info = ImageInfo(from_title=title, )
+"""
+reason = "None is ImageInfo's default filename."
+
+[[equivalent]]
+module = "barks_reader.core.navigation.navigation_coordinator"
+function = "NavigationCoordinator._report_title_not_found"
+change = """
+- error_info = ErrorInfo(file_volume=-1, title=title)
++ error_info = ErrorInfo(title=title)
+"""
+reason = "-1 is ErrorInfo's default file_volume."
+
+[[equivalent]]
+module = "barks_reader.core.navigation.navigation_coordinator"
+function = "NavigationCoordinator._title_row_selected"
+change = """
+- offer_page: bool = True,
++ offer_page: bool = False,
+"""
+reason = "The default is never used: its one caller, navigate_to_chrono_title, always passes offer_page."

@@ -52,7 +52,9 @@ shifts as soon as code moves, so don't try to keep it current. Going forward:
   the value is: catching a decorative test while you still remember the function.
 - **The whole of `core/` is swept every night** (the overnight mutation stage, since
   2026-10-07). It warns only on a new survivor; read that one, and the untriaged backlog
-  when there is time, and ignore the rest.
+  when there is time, and ignore the rest. Two things in `core/` are left out of it:
+  `core/testing/`, and `core/popup_gallery_samples.py`, the popup gallery's sample
+  content, where no test can care which words a sample has.
 - **Leave settled modules alone.** `user_error_messages` is at 0; it needs nothing
   until someone touches it.
 - **Stop around ~90%+ on a pure-logic module.** Equivalent mutants make 100%

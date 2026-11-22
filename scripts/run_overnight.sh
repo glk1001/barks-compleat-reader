@@ -362,8 +362,11 @@ mutation_core() {
     local globs=() path
     while read -r path; do
         globs+=("*/core/${path#"${core}/"}")
+    # Not popup_gallery_samples.py: the popup gallery's sample text, dates and page
+    # numbers, where no test can care which words a sample has (61 survivors the night
+    # it joined core/, 2026-11-23).
     done < <(find "$core" -name '*.py' ! -name '__init__.py' ! -path '*/testing/*' \
-        ! -path '*/__pycache__/*' | sort)
+        ! -name 'popup_gallery_samples.py' ! -path '*/__pycache__/*' | sort)
     echo "mutation: core/, ${#globs[@]} module(s)"
     # mutmut.sh writes its argument as setup.cfg's only_mutate, where configparser
     # reads further lines of a value only when they are indented. Its tests import
