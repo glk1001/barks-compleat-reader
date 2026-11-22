@@ -412,6 +412,45 @@ class TestAClearedViewStaysCleared:
         assert screen_mocks["fun_image_view"].image_texture is None
 
 
+class TestTheSearchCaptionGoesWithItsPicture:
+    """Set as the load starts, the caption named the new story over the old one's image."""
+
+    @pytest.fixture
+    def held_applicator(self, screens: ScreenBundle) -> Generator[SnapshotApplicator]:
+        with patch.object(
+            barks_reader.ui.snapshot_applicator, "PanelTextureLoader", side_effect=_HeldLoader
+        ):
+            yield SnapshotApplicator(screens=screens)
+
+    def test_the_caption_waits_for_the_texture(
+        self, held_applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        search = screen_mocks["search"]
+
+        held_applicator.apply(_make_snapshot(search_visible=True))
+
+        search.set_background_image.assert_not_called()
+
+        held_applicator._search_texture_loader.finish()  # noqa: SLF001  # ty:ignore[missing-attribute]
+
+        search.set_background_image.assert_called_once_with(ImageInfo(filename=Path("search.png")))
+
+    def test_a_picture_that_failed_to_load_leaves_the_caption_it_had(
+        self, screens: ScreenBundle, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        with patch.object(
+            barks_reader.ui.snapshot_applicator, "PanelTextureLoader"
+        ) as mock_loader_cls:
+            mock_loader_cls.return_value.load_texture.side_effect = lambda _filename, callback: (
+                callback(None, OSError("bad png"))
+            )
+            applicator = SnapshotApplicator(screens=screens)
+
+        applicator.apply(_make_snapshot(search_visible=True))
+
+        screen_mocks["search"].set_background_image.assert_not_called()
+
+
 def test_a_texture_that_failed_to_load_is_logged_as_an_error_and_nothing_is_applied() -> None:
     """Raised on the Kivy clock, one bad panel file would end the app."""
     loader = MagicMock()

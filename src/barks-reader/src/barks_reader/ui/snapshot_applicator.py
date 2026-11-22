@@ -209,13 +209,17 @@ class SnapshotApplicator:
         if search.mode:
             self._screens.search.set_mode(search.mode)
 
-        if search.image_info and search.image_info.filename:
-            self._screens.search.set_background_image(search.image_info)
+        search_info = search.image_info
+        if search_info and search_info.filename:
 
             def apply_tex(tex: Texture) -> None:
+                # The caption and the goto target go with the picture: set before it
+                # loaded, they named the new story over the old one's image, and for
+                # good when the load failed.
+                self._screens.search.set_background_image(search_info)
                 self._screens.search.image_texture = tex
 
-            self._load_texture(self._search_texture_loader, search.image_info, apply_tex)
+            self._load_texture(self._search_texture_loader, search_info, apply_tex)
 
     # ------------------------------------------------------------------
     # Texture loading helper
