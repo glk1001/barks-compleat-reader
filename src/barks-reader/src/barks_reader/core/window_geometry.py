@@ -15,6 +15,7 @@ the geometry is worked out in ``system_size`` units; elsewhere the factor is 1.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from .main_layout import size_under_bar
@@ -166,3 +167,72 @@ def layout_fit_at(
     )
     left = monitor.monitor_x + (monitor.width_pixels - width) // 2
     return width, fitted_height, left
+
+
+def is_degenerate_size(size: tuple[int, int], chrome: int) -> bool:
+    """Whether a window size has no content: no width, or no height over the chrome.
+
+    Sizes like ``(0, 45)`` come in events during the Windows fullscreen-exit resize
+    storm. A correction worked out from one, and set, is clamped by Win32 to its
+    hit-test minimum, and the window stays tiny.
+    """
+    return size[0] <= 0 or size[1] <= chrome
+
+
+class AspectCorrectionKind(Enum):
+    """What a resize event's size calls for."""
+
+    IN_PROPORTION = auto()
+    """The window has the layout's shape: nothing to set."""
+
+    NO_TARGET = auto()
+    """There is no size to correct to: the window is on no monitor, so no width is allowed."""
+
+    RESIZE = auto()
+    """The window is to be set to the correction's size."""
+
+
+@dataclass(frozen=True, slots=True)
+class AspectCorrection:
+    """The answer to a resize event: what to do, and the size it is about."""
+
+    kind: AspectCorrectionKind
+
+    size: tuple[int, int]
+    """The size the window should have; for `NO_TARGET`, the degenerate one worked out."""
+
+    held_at_minimum: bool = False
+    """Whether the size is the minimum, the layout's size at this height being below it."""
+
+
+def aspect_correction(
+    size: tuple[int, int],
+    monitor_width: int,
+    chrome: int,
+    aspect_ratio: float,
+    minimum: tuple[int, int],
+) -> AspectCorrection:
+    """Return what a window of `size` needs to have the layout's shape: its height drives.
+
+    Every length is in ``Window.system_size`` units. Worked out in pixels and set in
+    those units, the correction doubled a Retina window (2026-10-14).
+
+    Args:
+        size: The window's size, not degenerate (`is_degenerate_size`).
+        monitor_width: The width of the monitor the window is on: the widest it may
+            be. 0 when it is on none.
+        chrome: The height of the chrome under the content.
+        aspect_ratio: The content's height over its width, for the layout.
+        minimum: The smallest window allowed.
+
+    Returns:
+        The correction: none wanted, none possible, or the size to set.
+
+    """
+    target = size_under_bar(size[1], monitor_width, chrome, aspect_ratio)
+    if is_degenerate_size(target, chrome):
+        return AspectCorrection(AspectCorrectionKind.NO_TARGET, target)
+
+    held = held_to_minimum(target, minimum)
+    kind = AspectCorrectionKind.IN_PROPORTION if held == size else AspectCorrectionKind.RESIZE
+    return AspectCorrection(kind, held, held_at_minimum=held != target)
