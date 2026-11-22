@@ -54,6 +54,7 @@ def main_index_screen(
             screen.index_theme = MagicMock()
             screen._alphabet_buttons = {}
             screen._open_tag_widgets = []
+            screen._nav_filled_item_btn = None
             screen.treeview_index_node = MagicMock()
             screen.treeview_index_node.saved_state = {}
 

@@ -454,7 +454,10 @@ class IndexScreen(NavExitMixin, FloatLayout):
             self._goto_title_or_notice(image_info, item.page_to_goto, item.tagged_pages)
 
         def reset_background_color() -> None:
-            button.background_color = self.index_theme.ITEM_BG
+            # A row the keys are still on (the title did not open) keeps its focus fill.
+            is_focused = button is self._nav_filled_item_btn
+            theme = self.index_theme
+            button.background_color = theme.ITEM_BG_FOCUS if is_focused else theme.ITEM_BG
 
         Clock.schedule_once(lambda _dt: set_background_color_to_selected(), 0)
         Clock.schedule_once(lambda _dt: goto_title(), 0.01)

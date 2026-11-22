@@ -1171,6 +1171,23 @@ def test_a_title_whose_volume_is_missing_is_reported(index_screen: ConcreteIndex
     assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
 
 
+@pytest.mark.parametrize("focused", [True, False])
+def test_a_pressed_title_row_goes_back_to_the_fill_it_had(
+    index_screen: ConcreteIndexScreen, *, focused: bool
+) -> None:
+    """The keys still on it (its title did not open), the row keeps its focus fill."""
+    item = IndexItem(id=Titles.LOST_IN_THE_ANDES, display_text="Lost in the Andes!")
+    button = MagicMock()
+    index_screen._nav_filled_item_btn = button if focused else MagicMock()
+    theme = index_screen.index_theme
+    with (
+        patch.object(_module.Clock, "schedule_once", side_effect=run_at_once),
+        patch.object(index_screen, "_goto_title_or_notice"),
+    ):
+        index_screen._handle_title(button, item)
+    assert button.background_color == (theme.ITEM_BG_FOCUS if focused else theme.ITEM_BG)
+
+
 class TestPopupKeyboardNavDeadEnds:
     def test_enter_with_no_bubbles_opens_nothing(self) -> None:
         nav, drawn, _ = _popup_nav([])
