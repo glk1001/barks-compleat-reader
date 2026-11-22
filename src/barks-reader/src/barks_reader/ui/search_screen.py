@@ -70,6 +70,7 @@ from barks_reader.core.search_state import (
     TagScope,
     WordBasket,
     listed_title,
+    search_lifting_speaker,
     title_row_detail,
 )
 from barks_reader.core.settings_notifier import settings_notifier
@@ -1013,18 +1014,16 @@ class SearchScreen(FloatLayout):
                 another filter: then a speaker who says none of it is lifted.
 
         """
-        result = self._search.run_word_query(
-            query,
-            speaker=self._said_by.speaker or None,
-            search_filter=self._word_search_filter(),
+        result, lifted = search_lifting_speaker(
+            lambda speaker: self._search.run_word_query(
+                query, speaker=speaker, search_filter=self._word_search_filter()
+            ),
+            self._said_by.speaker,
+            new_search=new_search,
+            found=lambda r: r.title_dict,
         )
-        if new_search and self._said_by.speaker and not result.title_dict:
-            everyone = self._search.run_word_query(
-                query, speaker=None, search_filter=self._word_search_filter()
-            )
-            if everyone.title_dict:
-                self._said_by.lift(query)
-                result = everyone
+        if lifted:
+            self._said_by.lift(query)
         self._word_query = query
         self._word_query_result = result
         self._selected_word = ""
@@ -1241,12 +1240,11 @@ class SearchScreen(FloatLayout):
         A new word (not the last one again under another filter) that the speaker
         never says, but others do, lifts the filter rather than list nothing.
         """
-        found = self._find_word_stories(self._said_by.speaker or None)
-        if new_search and self._said_by.speaker and not found:
-            everyone = self._find_word_stories(None)
-            if everyone:
-                self._said_by.lift(word)
-                found = everyone
+        found, lifted = search_lifting_speaker(
+            self._find_word_stories, self._said_by.speaker, new_search=new_search, found=bool
+        )
+        if lifted:
+            self._said_by.lift(word)
         self._list_word_stories(found, word)
 
     def _find_word_stories(

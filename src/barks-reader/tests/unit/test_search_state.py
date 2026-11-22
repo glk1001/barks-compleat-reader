@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.search_filters import SearchFilter
@@ -31,10 +33,14 @@ from barks_reader.core.search_state import (
     WordBasket,
     listed_title,
     offered_speakers,
+    search_lifting_speaker,
     speaker_story_counts,
     stories_said_by,
     title_row_detail,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def test_a_word_is_picked_then_put_back_by_the_same_toggle() -> None:
@@ -343,3 +349,72 @@ class TestTitleRowDetail:
 
     def test_a_row_that_is_no_story_shows_only_the_pages_it_is_given(self) -> None:
         assert title_row_detail("None in 1950-55", "3") == "p 3"
+
+
+class TestSearchLiftingSpeaker:
+    """A new search the picked speaker says none of is run for anyone, not listed empty."""
+
+    @staticmethod
+    def _said(
+        stories: dict[str | None, list[str]], asked: list[str | None]
+    ) -> Callable[[str | None], list[str]]:
+        def run(speaker: str | None) -> list[str]:
+            asked.append(speaker)
+            return stories.get(speaker, [])
+
+        return run
+
+    def test_what_the_speaker_says_is_listed_and_the_speaker_kept(self) -> None:
+        asked: list[str | None] = []
+        run = self._said({"donald": ["Andes"], None: ["Andes", "Helmet"]}, asked)
+
+        assert search_lifting_speaker(run, "donald", new_search=True, found=bool) == (
+            ["Andes"],
+            False,
+        )
+        assert asked == ["donald"]  # anyone's is not searched for nothing
+
+    def test_a_new_search_the_speaker_never_says_is_anyone_s_with_the_speaker_lifted(
+        self,
+    ) -> None:
+        asked: list[str | None] = []
+        run = self._said({None: ["Helmet"]}, asked)
+
+        assert search_lifting_speaker(run, "donald", new_search=True, found=bool) == (
+            ["Helmet"],
+            True,
+        )
+        assert asked == ["donald", None]
+
+    def test_what_nobody_says_lists_nothing_and_keeps_the_speaker(self) -> None:
+        run = self._said({}, [])
+
+        assert search_lifting_speaker(run, "donald", new_search=True, found=bool) == ([], False)
+
+    def test_the_last_search_again_keeps_its_speaker_though_they_say_none_of_it(self) -> None:
+        """Another filter picked, not another search: the speaker is the user's choice still."""
+        asked: list[str | None] = []
+        run = self._said({None: ["Helmet"]}, asked)
+
+        assert search_lifting_speaker(run, "donald", new_search=False, found=bool) == ([], False)
+        assert asked == ["donald"]
+
+    def test_with_no_speaker_picked_anyone_s_is_searched_once(self) -> None:
+        asked: list[str | None] = []
+        run = self._said({}, asked)
+
+        assert search_lifting_speaker(run, ALL_SPEAKERS, new_search=True, found=bool) == (
+            [],
+            False,
+        )
+        assert asked == [None]
+
+    def test_what_counts_as_found_is_the_caller_s_to_say(self) -> None:
+        """A typed query's result is found by its stories, not by being a result."""
+        results = {"donald": {"stories": []}, None: {"stories": ["Helmet"]}}
+
+        result, lifted = search_lifting_speaker(
+            results.__getitem__, "donald", new_search=True, found=lambda r: r["stories"]
+        )
+
+        assert (result, lifted) == ({"stories": ["Helmet"]}, True)

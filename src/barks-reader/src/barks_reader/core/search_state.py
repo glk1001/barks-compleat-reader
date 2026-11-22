@@ -323,6 +323,37 @@ def title_row_detail(title_str: str, pages: str = "") -> str:
     return ", ".join(parts)
 
 
+def search_lifting_speaker[R](
+    run: Callable[[str | None], R],
+    speaker: str,
+    *,
+    new_search: bool,
+    found: Callable[[R], object],
+) -> tuple[R, bool]:
+    """Run a word search under the picked speaker, lifting the speaker rather than list nothing.
+
+    A new search that the picked speaker says none of, but others do, is run for
+    anyone instead. The last search again under another filter (not `new_search`)
+    keeps its speaker, and lists nothing if that is what they say of it.
+
+    Args:
+        run: Runs the search said by a speaker, or by anyone for None.
+        speaker: The speaker picked; "" for anyone.
+        new_search: Whether the search is new, not the last one under another filter.
+        found: Whether a result found any story.
+
+    Returns:
+        The result to list, and whether the speaker was lifted to get it.
+
+    """
+    result = run(speaker or None)
+    if new_search and speaker and not found(result):
+        everyone = run(None)
+        if found(everyone):
+            return everyone, True
+    return result, False
+
+
 def offered_speakers(indexed: Collection[str]) -> list[str]:
     """Return the speakers the filter offers: the roster's that the index has, in roster order.
 
