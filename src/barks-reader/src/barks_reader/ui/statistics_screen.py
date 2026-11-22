@@ -184,7 +184,9 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         clear_focus_in_list(self._stat_buttons, MENU_FOCUS_HIGHLIGHT_GROUP)
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
-        if self._word_stat_dropdown:
+        # Only a list on screen: Kivy's dismiss dispatches on_dismiss for one that is
+        # not, and "Dropdown dismissed." was logged for a list never opened.
+        if self._word_stat_dropdown and self._word_stat_dropdown.parent is not None:
             self._word_stat_dropdown.dismiss()
         self._nav_active = False
         logger.debug(log_markers.STATISTICS_EXITED_NAV)

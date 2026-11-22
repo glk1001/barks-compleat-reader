@@ -447,6 +447,18 @@ class TestStatisticsScreenEdges:
         exit_dropdown_nav.assert_called_once_with()
         screen._word_stat_dropdown.dismiss.assert_called_once_with()
 
+    def test_leaving_with_the_list_shut_dismisses_nothing(self, screen: StatisticsScreen) -> None:
+        """Kivy's dismiss tells of a dismissal even of a list not open.
+
+        Each leaving of the tabs then logged "Dropdown dismissed." for a list never
+        opened: a line the GUI tests wait on.
+        """
+        screen._word_stat_dropdown.parent = None  # not on screen
+        with patch.object(statistics_screen_module, "clear_focus_in_list"):
+            screen.exit_nav_focus()
+        screen._word_stat_dropdown.dismiss.assert_not_called()
+        assert screen._nav_active is False
+
     def test_leaving_with_no_dropdown_built_still_leaves(self, screen: StatisticsScreen) -> None:
         screen._nav_active = True
         screen._word_stat_dropdown = None
