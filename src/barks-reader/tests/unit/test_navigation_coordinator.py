@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 import barks_reader.core.reader_utils
-import barks_reader.ui.navigation_coordinator
 import pytest
 from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
@@ -16,12 +15,16 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
 from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.image_selector import ImageInfo
-from barks_reader.core.navigation import YearRangeKind
+from barks_reader.core.navigation import (
+    NavigationCoordinator,
+    TitleTarget,
+    YearRangeKind,
+)
+from barks_reader.core.navigation import navigation_coordinator as coordinator_module
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.ports import TitleViewChoices
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
-from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
 
 
 def _choices(
@@ -70,12 +73,12 @@ class TestNavigationCoordinator:
 
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_fanta_info",
                 return_value=mock_fanta_info,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "find_tree_view_title_node",
                 return_value=MagicMock(),
             ),
@@ -113,12 +116,12 @@ class TestNavigationCoordinator:
 
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_fanta_info",
                 return_value=mock_fanta_info,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "find_tree_view_title_node",
                 return_value=None,
             ),
@@ -150,12 +153,12 @@ class TestNavigationCoordinator:
         mock_title_node = MagicMock()
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_fanta_info",
                 return_value=mock_fanta_info,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "find_tree_view_title_node",
                 return_value=mock_title_node,
             ),
@@ -189,12 +192,12 @@ class TestNavigationCoordinator:
         mock_title_node = MagicMock()
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_fanta_info",
                 return_value=mock_fanta_info,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "find_tree_view_title_node",
                 return_value=mock_title_node,
             ),
@@ -221,12 +224,12 @@ class TestNavigationCoordinator:
 
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_fanta_info",
                 return_value=mock_fanta_info,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "find_tree_view_title_node",
                 return_value=MagicMock(),
             ),
@@ -255,12 +258,12 @@ class TestNavigationCoordinator:
 
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_fanta_info",
                 return_value=mock_fanta_info,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "find_tree_view_title_node",
                 return_value=MagicMock(),
             ),
@@ -314,12 +317,12 @@ class TestNavigationCoordinator:
 
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_one_pager_collection_page_num",
                 return_value=7,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_fanta_info",
                 return_value=mock_collection_info,
             ),
@@ -356,12 +359,12 @@ class TestNavigationCoordinator:
 
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_cover_collection_page_num",
                 return_value=3,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_fanta_info",
                 return_value=mock_collection_info,
             ),
@@ -391,7 +394,7 @@ class TestNavigationCoordinator:
         nav_coord._current_fanta_info = mock_fanta_info
 
         with patch.object(
-            barks_reader.ui.navigation_coordinator,
+            coordinator_module,
             "get_one_pager_collection_page_num",
             return_value=None,
         ):
@@ -531,7 +534,9 @@ class TestNavigationCoordinator:
         nav_coord_deps["reader_settings"].wiki_bundle_dir = Path("/bundle")
 
         with patch.object(
-            barks_reader.ui.navigation_coordinator, "wiki_page_for_title", return_value=None
+            coordinator_module,
+            "wiki_page_for_title",
+            return_value=None,
         ):
             assert nav_coord.open_wiki_page_for_title(Titles.LOST_IN_THE_ANDES) is False
 
@@ -546,7 +551,9 @@ class TestNavigationCoordinator:
         nav_coord_deps["reader_settings"].wiki_bundle_dir = bundle
 
         with patch.object(
-            barks_reader.ui.navigation_coordinator, "wiki_page_for_title", return_value=page
+            coordinator_module,
+            "wiki_page_for_title",
+            return_value=page,
         ) as wiki_page_mock:
             assert nav_coord.open_wiki_page_for_title(Titles.LOST_IN_THE_ANDES) is True
 
@@ -678,12 +685,14 @@ class TestAVolumeNotAvailable:
         self._not_found(nav_coord_deps)
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "get_one_pager_collection_page_num",
                 return_value=7,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator, "get_fanta_info", return_value=MagicMock()
+                coordinator_module,
+                "get_fanta_info",
+                return_value=MagicMock(),
             ),
         ):
             assert nav_coord.read_comic() is False
@@ -876,7 +885,7 @@ def test_a_tag_on_no_page_of_a_title_leaves_goto_page_alone(
 
 def test_a_title_with_no_fanta_info_is_refused() -> None:
     with (
-        patch.object(barks_reader.ui.navigation_coordinator, "get_fanta_info", return_value=None),
+        patch.object(coordinator_module, "get_fanta_info", return_value=None),
         pytest.raises(TitleNotInFantaInfoError),
     ):
         NavigationCoordinator._get_fanta_info(Titles.BACK_TO_THE_KLONDIKE)
@@ -925,7 +934,9 @@ class TestNoPageOfferedForATitleNotGoneTo:
         with (
             patch.object(nav_coord, "navigate_to_chrono_title", return_value=False),
             patch.object(
-                barks_reader.ui.navigation_coordinator, "get_tagged_pages", return_value=["7"]
+                coordinator_module,
+                "get_tagged_pages",
+                return_value=["7"],
             ),
         ):
             found = nav_coord.navigate_to_search_result("Lost in the Andes!", (Tags.ALASKA,))
@@ -943,10 +954,12 @@ class TestNoPageOfferedForATitleNotGoneTo:
 
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator, "get_fanta_info", return_value=fanta_info
+                coordinator_module,
+                "get_fanta_info",
+                return_value=fanta_info,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "find_tree_view_title_node",
                 return_value=MagicMock(),
             ),

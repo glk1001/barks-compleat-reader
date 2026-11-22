@@ -33,7 +33,6 @@ from barks_reader.core.collection_page_groups import (
 from barks_reader.core.document_chapters import list_document_pages
 from barks_reader.core.goto_page import GotoPageOffer, goto_page_after_reading
 from barks_reader.core.image_selector import ImageInfo
-from barks_reader.core.navigation import title_year_range
 from barks_reader.core.reader_consts_and_types import (
     COMIC_BEGIN_PAGE,
 )
@@ -47,6 +46,8 @@ from barks_reader.core.user_error_types import (
 )
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
+from .title_position import title_year_range
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from pathlib import Path
@@ -56,8 +57,6 @@ if TYPE_CHECKING:
     from comic_utils.comic_consts import PanelPath
 
     from barks_reader.core.comic_reader_manager import ComicReaderManager
-    from barks_reader.core.navigation import YearRangeKey
-    from barks_reader.core.navigation.view_states import ViewStates
     from barks_reader.core.ports import (
         GroupNodePort,
         ScreenSwitcherPort,
@@ -69,6 +68,9 @@ if TYPE_CHECKING:
     from barks_reader.core.saved_page_info import SavedPageInfo
     from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
     from barks_reader.core.user_error_types import UserErrorHandlerPort
+
+    from .title_position import YearRangeKey
+    from .view_states import ViewStates
 
 
 @dataclass(frozen=True, slots=True)

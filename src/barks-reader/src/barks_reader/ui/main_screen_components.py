@@ -24,7 +24,7 @@ from barks_reader.core.comic_reader_manager import ComicReaderManager
 from barks_reader.core.image_selector import ImageSelector
 from barks_reader.core.json_settings_manager import SettingsManager
 from barks_reader.core.last_read_page_tracker import LastReadPageTracker
-from barks_reader.core.navigation import NavigationModel
+from barks_reader.core.navigation import NavigationCoordinator, NavigationModel
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.read_state import ReadStateSource
 from barks_reader.core.reader_colors import FixedColorSource
@@ -38,7 +38,6 @@ from .adapters import KivyClockScheduler
 from .app_initializer import AppInitializer
 from .main_screen_nav import MainScreenNavigation
 from .main_screen_window import MainScreenWindowHelper
-from .navigation_coordinator import NavigationCoordinator
 from .snapshot_applicator import SnapshotApplicator
 from .tree_view_manager import TreeViewManager
 from .view_renderer import ViewRenderer

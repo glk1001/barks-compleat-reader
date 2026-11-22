@@ -49,6 +49,7 @@ from .destinations import (
     YearRangeDestination,
     YearRangeKind,
 )
+from .navigation_coordinator import NavigationCoordinator, TitleTarget
 from .navigation_model import BottomScreen, NavigationModel, ReopenKind
 from .title_position import YearRangeKey, title_year_range
 from .tree_spec import (
@@ -82,6 +83,7 @@ __all__ = [
     "LocationsIndexDestination",
     "MainIndexDestination",
     "NamesIndexDestination",
+    "NavigationCoordinator",
     "NavigationModel",
     "NodeKind",
     "NodeRegistration",
@@ -105,6 +107,7 @@ __all__ = [
     "ThisMonthDestination",
     "TitleDestination",
     "TitleSearchDestination",
+    "TitleTarget",
     "WikiIndexDestination",
     "WordSearchDestination",
     "YearRangeDestination",

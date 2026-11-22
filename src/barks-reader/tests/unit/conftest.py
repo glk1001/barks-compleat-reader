@@ -25,7 +25,7 @@ from loguru import logger
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from barks_reader.ui.navigation_coordinator import NavigationCoordinator
+    from barks_reader.core.navigation.navigation_coordinator import NavigationCoordinator
     from barks_reader.ui.screen_bundle import ScreenBundle
     from barks_reader.ui.tree_view_manager import TreeViewManager
 
@@ -189,7 +189,7 @@ def nav_coord_deps() -> dict[str, MagicMock]:
 @pytest.fixture
 def nav_coord(nav_coord_deps: dict[str, MagicMock]) -> NavigationCoordinator:
     """Make a NavigationCoordinator over `nav_coord_deps`, with a stand-in tree manager."""
-    from barks_reader.ui.navigation_coordinator import NavigationCoordinator  # noqa: PLC0415
+    from barks_reader.core.navigation.navigation_coordinator import NavigationCoordinator  # noqa: PLC0415
 
     coord = NavigationCoordinator(**nav_coord_deps)
     coord.set_tree_view_manager(MagicMock())

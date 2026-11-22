@@ -17,21 +17,22 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
-import barks_reader.ui.navigation_coordinator
 import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation import (
     Destination,
+    NavigationCoordinator,
     TagDestination,
     TagGroupDestination,
     TitleDestination,
+    TitleTarget,
     YearRangeKind,
 )
+from barks_reader.core.navigation import navigation_coordinator as coordinator_module
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.testing import fake_fanta_info
-from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
 from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
     TitleTreeViewNode,
@@ -223,10 +224,12 @@ def test_chrono_year_range_boundaries_resolve_to_correct_node(
 
         with (
             patch.object(
-                barks_reader.ui.navigation_coordinator, "get_fanta_info", return_value=fanta
+                coordinator_module,
+                "get_fanta_info",
+                return_value=fanta,
             ),
             patch.object(
-                barks_reader.ui.navigation_coordinator,
+                coordinator_module,
                 "find_tree_view_title_node",
                 return_value=MagicMock(),
             ),
@@ -248,7 +251,11 @@ def test_chrono_year_range_missing_raises(
     image_info = ImageInfo(filename=Path("x.png"), from_title=Titles.ADVENTURE_DOWN_UNDER)
 
     with (
-        patch.object(barks_reader.ui.navigation_coordinator, "get_fanta_info", return_value=fanta),
+        patch.object(
+            coordinator_module,
+            "get_fanta_info",
+            return_value=fanta,
+        ),
         pytest.raises(RuntimeError, match="No year range found"),
     ):
         nav_coord.navigate_to_chrono_title(image_info)

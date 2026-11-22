@@ -415,7 +415,7 @@ the view pipeline:
    It reads the row's `TitleDestination.fanta_info`, computes the tag from the
    *parent* node via `nav_model.tag_context`, and calls
    `nav.select_title(TitleTarget(fanta_info, tag))`.
-2. `NavigationCoordinator.select_title` (`ui/navigation_coordinator.py`) calls
+2. `NavigationCoordinator.select_title` (`core/navigation/navigation_coordinator.py`) calls
    `renderer.render_title(...)`, which builds a `ViewRequest(view_state=ON_TITLE_NODE, …)`
    and (if a tag is present) sets the tag-specific goto page from
    `BARKS_TAGGED_PAGES`.
@@ -581,7 +581,7 @@ they talk through `core/ports/comic_reader.py`.
 ### 6.1 End-to-end trace
 
 1. **Trigger** — pressing the title portal image calls
-   `NavigationCoordinator.read_comic(...)` (`ui/navigation_coordinator.py`),
+   `NavigationCoordinator.read_comic(...)` (`core/navigation/navigation_coordinator.py`),
    which deactivates the current screen and calls
    `comic_reader_manager.read_barks_comic_book(...)`.
 2. **Manager** — `ComicReaderManager.read_barks_comic_book` (`core/comic_reader_manager.py`)
@@ -905,7 +905,7 @@ and *Playlists*). The feature splits cleanly along the core/ui line.
   (`core/comic_reader_manager.py`), called by the reader once the comic's first
   page has drawn (§6.1), and only when `save_last_page` is true, so
   **articles are never recorded** — nor is a comic that failed to open. A one-pager read via the "All One-Pagers"
-  collection passes `history_title_str` (`ui/navigation_coordinator.py`)
+  collection passes `history_title_str` (`core/navigation/navigation_coordinator.py`)
   so the history records the *individual one-pager*, not the collection.
   `end` fires from `comic_closed` with the same `SavedPageInfo` the
   resume tracker just persisted (§6.4).

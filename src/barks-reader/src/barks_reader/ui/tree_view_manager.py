@@ -14,6 +14,7 @@ from barks_reader.core.navigation import (
     NavigationModel,
     ReopenKind,
     TitleDestination,
+    TitleTarget,
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import (
@@ -36,11 +37,10 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from kivy.uix.button import Button
 
-    from barks_reader.core.navigation import Destination
+    from barks_reader.core.navigation import Destination, NavigationCoordinator
     from barks_reader.core.system_file_paths import SystemFilePaths
 
     from .collapse_parent_overlay import CollapseParentOverlay
-    from .navigation_coordinator import NavigationCoordinator
     from .screen_bundle import ScreenBundle
     from .tree_view_nodes import ReaderTreeView, TitleTreeViewLabel, TreeViewButton
     from .view_renderer import ViewRenderer
@@ -469,7 +469,6 @@ class TreeViewManager:
         *,
         preserve_top_view: bool,
     ) -> None:
-        from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
         assert isinstance(title_node.destination, TitleDestination)
         self._nav.select_title(

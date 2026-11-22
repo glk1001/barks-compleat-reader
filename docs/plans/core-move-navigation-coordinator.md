@@ -1,6 +1,12 @@
 # Plan: the navigation coordinator into `core`
 
-> Status: **proposed 2026-11-22**, nothing started. One of four plans from the
+> Status: **done 2026-11-22** (three commits). The coordinator is
+> `core/navigation/navigation_coordinator.py` (the file kept its name) and the ports
+> are `core/ports/navigation.py`. `TreePort` is `TreeViewManager` itself, with
+> `get_selected_node` and `set_back_node` added; a tree node is `Any` in the ports,
+> since the coordinator only hands nodes on. The year-range lookup is a `Mapping`
+> keyed by `YearRangeKey` (`core/navigation/title_position.py`). The `groma`
+> component file still names the old path: the maintainer's to change. One of four plans from the
 > `ui` review of that date (the others: `core-move-tree-navigation-policy.md`,
 > `core-move-window-geometry.md`, `core-move-document-pager.md`). Each stands alone.
 

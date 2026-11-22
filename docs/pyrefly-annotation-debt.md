@@ -49,7 +49,7 @@ type or `assert x is not None`.
 - [x] `ui/barks_reader_app.py` — `Unknown | None` passed as `parser` (ConfigParser) to
       `bootstrap_reader_environment` (`self.config`). Not reachable: Kivy's `load_config()`
       sets it before `build()`; asserted (2026-10-13).
-- [x] `ui/navigation_coordinator.py` — `Titles | None` passed as `article_title` to
+- [x] `core/navigation/navigation_coordinator.py` — `Titles | None` passed as `article_title` to
       `read_article`. Not reachable: `None` is never `in NON_COMIC_TITLES`, but pyrefly does
       not narrow on `in`; an explicit `is not None` now does (2026-10-13).
 - [x] `ui/search_screen.py` — `Unknown | None` passed as `tag_group` to
