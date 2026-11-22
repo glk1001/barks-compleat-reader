@@ -37,7 +37,7 @@ from barks_reader.core.keys import (
 )
 from barks_reader.core.main_layout import MainLayoutMode, content_aspect_ratio, page_width
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.read_cue import READ_CUE_OPENS, is_read_cue_shown
+from barks_reader.core.read_cue import count_comic_opened, is_read_cue_shown
 from barks_reader.core.reader_consts_and_types import (
     APP_TITLE,
     COMIC_BEGIN_PAGE,
@@ -1267,16 +1267,13 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def _count_comic_opened_from_portal(self) -> None:
         """End the first use at the first comic; count down the picture's caption after."""
-        if self.is_first_use_of_reader:
+        first_use = bool(self.is_first_use_of_reader)
+        if first_use:
             assert self._reader_settings.is_first_use_of_reader
             self._reader_settings.is_first_use_of_reader = False
             self.is_first_use_of_reader = False
             self._bottom_title_view_screen.is_first_use_of_reader = False
-            self._json_settings_manager.save_read_cue_opens_left(READ_CUE_OPENS)
-        else:
-            opens_left = self._json_settings_manager.get_read_cue_opens_left()
-            if opens_left > 0:
-                self._json_settings_manager.save_read_cue_opens_left(opens_left - 1)
+        count_comic_opened(self._json_settings_manager, first_use=first_use)
         self._update_read_cue()
 
     def _update_read_cue(self) -> None:
