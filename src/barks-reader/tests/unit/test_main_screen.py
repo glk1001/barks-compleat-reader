@@ -27,6 +27,7 @@ from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.read_cue import READ_CUE_ALWAYS, READ_CUE_FIRST_FEW, READ_CUE_OPENS
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, READ_CUE
 from barks_reader.core.settings_notifier import settings_notifier
+from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
@@ -726,19 +727,49 @@ class TestMainScreenEdges:
         main_screen.force_fullscreen()
         main_screen._window_helper.force_fullscreen.assert_called_once_with()
 
-    def test_an_app_icon_naming_no_title_is_refused(self, main_screen: MainScreen) -> None:
+    def test_an_app_icon_naming_no_title_goes_nowhere_and_is_logged(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        """Raised from the icon's press, a file left over from a renamed title ended the app."""
         main_screen.app_icon_filepath = "/icons/Not A Barks Title.png"
-        with (
-            patch.object(
-                barks_reader.ui.main_screen,
-                "get_title_str_from_reader_icon_file",
-                return_value="Not A Barks Title",
-            ),
-            pytest.raises(ValueError, match=r'Invalid title string: "Not A Barks Title"'),
+        with patch.object(
+            barks_reader.ui.main_screen,
+            "get_title_str_from_reader_icon_file",
+            return_value="Not A Barks Title",
         ):
             main_screen.goto_reader_icon_title()
 
         main_screen._nav_coord.navigate_to_chrono_title.assert_not_called()
+        main_screen._nav.focus_title_portal_after_goto.assert_not_called()
+        assert (
+            'App reader icon "/icons/Not A Barks Title.png" names no title: "Not A Barks Title".'
+            in loguru_sink
+        )
+
+    def test_an_app_icon_of_a_title_in_no_volume_gets_the_volume_notice(
+        self, main_screen: MainScreen
+    ) -> None:
+        main_screen.app_icon_filepath = "/icons/gift-lion.png"
+        title_str = next(
+            name
+            for name, title in barks_reader.ui.main_screen.STR_TITLE_TO_ENUM.items()
+            if title is Titles.GIFT_LION
+        )
+        main_screen._nav_coord.navigate_to_chrono_title.side_effect = TitleNotInFantaInfoError(
+            title_str
+        )
+
+        with patch.object(
+            barks_reader.ui.main_screen,
+            "get_title_str_from_reader_icon_file",
+            return_value=title_str,
+        ):
+            main_screen.goto_reader_icon_title()
+
+        error_type, error_info = main_screen._user_error_handler.handle_error.call_args.args
+        assert error_type is ErrorTypes.ArchiveVolumeNotAvailable
+        assert error_info.title is Titles.GIFT_LION
+        main_screen._nav.focus_title_portal_after_goto.assert_not_called()
 
     def test_the_portal_opens_nothing_while_the_volumes_are_not_ready(
         self, main_screen: MainScreen, loguru_sink: list[str]

@@ -49,6 +49,11 @@ from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
 )
 from barks_reader.core.settings_notifier import settings_notifier
+from barks_reader.core.user_error_types import (
+    ErrorTypes,
+    TitleNotInFantaInfoError,
+    get_volume_not_available_error_info,
+)
 from barks_reader.core.window_minimum import (
     is_screen_too_small,
     is_screen_warning_suppressed,
@@ -1102,9 +1107,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def goto_reader_icon_title(self) -> None:
         """Go to the title the app icon's image is from.
 
-        Raises:
-            ValueError: If the icon's file names no title.
-
+        An icon whose file names no title goes nowhere, and one of a title in no
+        Fantagraphics volume gets the volume notice: raised from the icon's press,
+        either ended the app.
         """
         logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')
 
@@ -1117,12 +1122,22 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         icon_path = Path(self.app_icon_filepath)
         title_str = get_title_str_from_reader_icon_file(icon_path)
         if title_str not in STR_TITLE_TO_ENUM:
-            msg = f'Invalid title string: "{title_str}"'
-            raise ValueError(msg)
+            logger.error(
+                f'App reader icon "{self.app_icon_filepath}" names no title: "{title_str}".'
+            )
+            return
 
         title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(icon_path, title)
-        self._nav_coord.navigate_to_chrono_title(image_info)
+        try:
+            self._nav_coord.navigate_to_chrono_title(image_info)
+        except TitleNotInFantaInfoError as e:
+            logger.error(e)
+            self._user_error_handler.handle_error(
+                ErrorTypes.ArchiveVolumeNotAvailable,
+                get_volume_not_available_error_info(image_info),
+            )
+            return
         self._nav.focus_title_portal_after_goto(keyboard_initiated=keyboard_initiated)
 
     @override
