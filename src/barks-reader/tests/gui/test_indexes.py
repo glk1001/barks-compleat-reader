@@ -280,6 +280,42 @@ def test_a_cross_reference_shows_its_targets_page_and_opens_it(boot: AppBoot) ->
     assert int(last_field(d, markers.INDEX_SUB_ITEMS_ADDED, "count")) >= 1
 
 
+@pytest.mark.parametrize(
+    ("letter", "see_row", "heading"),
+    [
+        ("P", "Pete. [i]See[/i] Black Pete", "Black Pete"),
+        ("H", "Helper. [i]See[/i] Little Helper", "Little Helper"),
+        ("Z", "Zombie. [i]See[/i] Bombie the Zombie", "Bombie the Zombie"),
+    ],
+)
+def test_a_cross_reference_to_another_page_opens_its_target_in_view(
+    boot: AppBoot, letter: str, see_row: str, heading: str
+) -> None:
+    """The target's heading and the first title under it, where the focus lands, both show.
+
+    The target's page is taller than the view, and the target well down it: opened in
+    the frame the page was built, its heading and first titles ended above the view
+    (on a 1920x1080 screen, `--screen 1920x1080`; the default screen's taller view hid it).
+    """
+    d = boot(nodes.MAIN_INDEX)
+    d.wait_for(_letter("A"))
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    for ch in string.ascii_uppercase[1 : string.ascii_uppercase.index(letter) + 1]:
+        d.key_then_wait(POPULATED_OR_EMPTY, "Down")
+        assert ch in _letters_shown(d)
+    d.move_focus("Right")  # alphabet panel -> items
+    _down_to_item(d, see_row)
+    # The focus goes to the target as its page shows, then to its first title as it opens.
+    with d.expect(d.FOCUS_MOVED):
+        d.key_then_wait(pattern(markers.INDEX_SUB_ITEMS_ADDED), "Return")
+    first_title = _focused(d)
+    assert first_title != heading, "the focus is still on the target's heading"
+    _, shown = taps.targets(d)  # answered once the rows have settled
+    whole = {target.text for target in shown if target.whole}
+    assert heading in whole, f"{heading!r} is not wholly in view"
+    assert first_title in whole, f"the focused {first_title!r} is not wholly in view"
+
+
 def _focused(d: Driver) -> str:
     """Return the text of the row the last focus line names."""
     found = re.search(r'Nav focus on \w+ "([^"]*)"\.', d.last_line(d.FOCUS_MOVED))

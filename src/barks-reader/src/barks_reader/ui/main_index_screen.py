@@ -10,6 +10,7 @@ from barks_fantagraphics.barks_tags import (
 )
 from barks_fantagraphics.barks_titles import Titles
 from comic_utils.timing import Timing
+from kivy.clock import Clock
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[import-not-found]
@@ -287,23 +288,58 @@ class MainIndexScreen(IndexScreen):
 
         A target on the page already shown is opened in place: the page is not rebuilt
         (which would close every open tag and scroll to the top), and a target already
-        open stays open.
+        open stays open. One on another page is opened a frame on, once its page is
+        laid out (see `_open_see_target`).
         """
         assert isinstance(item.id, Tags)
         logger.info(log_markers.INDEX_SEE_FOLLOWED.format(name=item.display_text, see=item.see))
         letter = index_letter(item.see)
-        if self._selected_letter_button is None or self._selected_letter_button.text != letter:
+        on_another_page = (
+            self._selected_letter_button is None or self._selected_letter_button.text != letter
+        )
+        if on_another_page:
             self.on_letter_press(self._alphabet_buttons[letter])
         if item.id not in self._tag_entries:
             logger.warning(f'No entry "{item.see}" for the cross-reference "{item.display_text}".')
             return
         target_button, target_item = self._tag_entries[item.id]
         self._hand_focus_to(target_button)
+        if on_another_page:
+            grid_version = self._grid_version
+            Clock.schedule_once(
+                lambda _dt: self._open_see_target(target_button, target_item, grid_version), 0
+            )
+            return
         is_open, _ = self._get_level_of_click_for_collapse(target_button)
         if is_open:
             logger.debug(f'"{item.see}" is open already.')
             return
         self._on_index_item_press(target_button, target_item)
+
+    def _open_see_target(self, button: Button, item: IndexItem, grid_version: int) -> None:
+        """Open a cross-reference's target on the page just shown for it, in view.
+
+        Opened in the frame its page was built, the target's row was not laid out yet:
+        the pin that holds a row still as it opens measured it where it was not, and the
+        heading and its first titles ended above the view. So this waits for the layout,
+        then brings the target into view before it is pressed, a page being taller than
+        the view and the target anywhere down it.
+        """
+        if self._grid_version != grid_version or button.parent is None:
+            return  # another page was shown in the frames between
+        scroll_view = self.ids.index_scroll_view
+        content = scroll_view.children[0]
+        if any(
+            layout._trigger_layout.is_triggered  # noqa: SLF001
+            for layout in (content, *self._get_col_layouts())
+        ):
+            Clock.schedule_once(lambda _dt: self._open_see_target(button, item, grid_version), 0)
+            return
+        if content.height > scroll_view.height:
+            scroll_view.scroll_to(button, animate=False)
+            # Now, not on the next frame: the pin measures where the row is on screen.
+            scroll_view.update_from_scroll()
+        self._on_index_item_press(button, item)
 
     @override
     def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:

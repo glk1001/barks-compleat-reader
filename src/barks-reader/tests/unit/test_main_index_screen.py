@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import barks_reader.core.main_index
 import barks_reader.ui.index_screen
@@ -17,6 +17,7 @@ from kivy.clock import Clock
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from unit_helpers import run_at_once, run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Sequence
@@ -304,6 +305,22 @@ class TestTitleRowButton:
         assert button.shorten_from == "right"
 
 
+def _lay_out_page(screen: MainIndexScreen, *, content_height: int, view_height: int) -> MagicMock:
+    """Give `screen` a laid-out page of that height in a view of that height; return the view."""
+
+    def laid_out(height: int) -> MagicMock:
+        layout = MagicMock(height=height)
+        layout._trigger_layout.is_triggered = False
+        return layout
+
+    scroll_view = MagicMock(height=view_height, children=[laid_out(content_height)])
+    screen.ids.index_scroll_view = scroll_view
+    screen.ids.left_column_layout = laid_out(content_height)
+    screen.ids.middle_column_layout = laid_out(content_height)
+    screen.ids.right_column_layout = laid_out(content_height)
+    return scroll_view
+
+
 class TestSeeReferences:
     """A "See" cross-reference goes to its target's entry, on its letter page, and opens it."""
 
@@ -317,24 +334,31 @@ class TestSeeReferences:
 
         return MagicMock(side_effect=show_page)
 
-    def test_a_cross_reference_opens_its_target_on_its_letter_page(
+    def test_a_cross_reference_shows_its_targets_page_and_opens_it_a_frame_on(
         self, main_index_screen: MainIndexScreen, loguru_sink: list[str]
     ) -> None:
+        """Pressed in the frame its page was built, the target was not laid out yet."""
         target_button = MagicMock()
         target_item = IndexItem(Tags.BLACK_PETE, "Black Pete")
         page = self._page_with(main_index_screen, {Tags.BLACK_PETE: (target_button, target_item)})
         letters = {"B": MagicMock(name="B")}
         see = IndexItem(Tags.BLACK_PETE, "Pete", see="Black Pete")
+        main_index_screen._grid_version = 7
         with (
             patch.object(main_index_screen, "on_letter_press", page),
             patch.object(main_index_screen, "_alphabet_buttons", letters, create=True),
             patch.object(main_index_screen, "_hand_focus_to") as hand_focus,
             patch.object(main_index_screen, "_on_index_item_press") as press,
+            patch.object(main_index_screen, "_open_see_target") as open_target,
+            patch.object(Clock, "schedule_once") as schedule,
         ):
             assert main_index_screen._handle_terminal_item(MagicMock(), see) is True
-        page.assert_called_once_with(letters["B"])
-        hand_focus.assert_called_once_with(target_button)
-        press.assert_called_once_with(target_button, target_item)
+            page.assert_called_once_with(letters["B"])
+            hand_focus.assert_called_once_with(target_button)
+            open_target.assert_not_called()
+            run_last_scheduled(schedule)
+        open_target.assert_called_once_with(target_button, target_item, 7)
+        press.assert_not_called()
         assert 'Following "Pete" to "Black Pete".' in loguru_sink
 
     def test_a_digit_heading_is_on_the_0_page(self, main_index_screen: MainIndexScreen) -> None:
@@ -388,11 +412,14 @@ class TestSeeReferences:
             for item in screen._get_items_for_letter(letter):
                 screen._create_index_button(item)
 
+        screen._grid_version = 0
+        _lay_out_page(screen, content_height=300, view_height=400)
         with (
             patch.object(screen, "_alphabet_buttons", letters, create=True),
             patch.object(screen, "_populate_index_grid", side_effect=populate),
             patch.object(barks_reader.ui.main_index_screen, "IndexItemButton"),
             patch.object(screen, "_handle_item_expansion") as handle_tag,
+            patch.object(Clock, "schedule_once", side_effect=run_at_once),
         ):
             screen._follow_see_reference(IndexItem(Tags.BLACK_PETE, "Pete", see="Black Pete"))
 
@@ -440,6 +467,85 @@ class TestSeeReferences:
         hand_focus.assert_called_once_with(target_button)
         press.assert_not_called()
         assert '"Gyro Gearloose" is open already.' in loguru_sink
+
+    @pytest.fixture
+    def target(self, main_index_screen: MainIndexScreen) -> tuple[MagicMock, IndexItem]:
+        """Return a target entry on the page shown, with the grid at version 3."""
+        main_index_screen._grid_version = 3
+        return MagicMock(name="target"), IndexItem(Tags.BLACK_PETE, "Black Pete")
+
+    def test_a_target_on_a_page_taller_than_the_view_is_brought_into_view_then_pressed(
+        self, main_index_screen: MainIndexScreen, target: tuple[MagicMock, IndexItem]
+    ) -> None:
+        """At once, and placed before the press: the pin holds the row where it finds it."""
+        screen = main_index_screen
+        scroll_view = _lay_out_page(screen, content_height=900, view_height=400)
+        steps = MagicMock()
+        steps.attach_mock(scroll_view.scroll_to, "scroll_to")
+        steps.attach_mock(scroll_view.update_from_scroll, "update_from_scroll")
+        with patch.object(screen, "_on_index_item_press") as press:
+            steps.attach_mock(press, "press")
+            screen._open_see_target(*target, 3)
+        assert steps.mock_calls == [
+            call.scroll_to(target[0], animate=False),
+            call.update_from_scroll(),
+            call.press(*target),
+        ]
+
+    def test_a_target_on_a_page_that_fits_the_view_is_pressed_where_it_is(
+        self, main_index_screen: MainIndexScreen, target: tuple[MagicMock, IndexItem]
+    ) -> None:
+        screen = main_index_screen
+        scroll_view = _lay_out_page(screen, content_height=400, view_height=400)
+        with patch.object(screen, "_on_index_item_press") as press:
+            screen._open_see_target(*target, 3)
+        scroll_view.scroll_to.assert_not_called()
+        press.assert_called_once_with(*target)
+
+    def test_a_target_is_not_opened_once_another_page_is_shown(
+        self, main_index_screen: MainIndexScreen, target: tuple[MagicMock, IndexItem]
+    ) -> None:
+        screen = main_index_screen
+        scroll_view = _lay_out_page(screen, content_height=900, view_height=400)
+        with patch.object(screen, "_on_index_item_press") as press:
+            screen._open_see_target(*target, 2)
+        press.assert_not_called()
+        scroll_view.scroll_to.assert_not_called()
+
+    def test_a_target_taken_off_its_page_is_not_opened(
+        self, main_index_screen: MainIndexScreen, target: tuple[MagicMock, IndexItem]
+    ) -> None:
+        screen = main_index_screen
+        _lay_out_page(screen, content_height=900, view_height=400)
+        target[0].parent = None
+        with patch.object(screen, "_on_index_item_press") as press:
+            screen._open_see_target(*target, 3)
+        press.assert_not_called()
+
+    @pytest.mark.parametrize("pending", ["content", "column"])
+    def test_a_target_waits_for_its_page_s_layout(
+        self,
+        main_index_screen: MainIndexScreen,
+        target: tuple[MagicMock, IndexItem],
+        pending: str,
+    ) -> None:
+        """The rows' places, and the page's height, are the layout's to give."""
+        screen = main_index_screen
+        scroll_view = _lay_out_page(screen, content_height=900, view_height=400)
+        layout = scroll_view.children[0] if pending == "content" else screen._get_col_layouts()[1]
+        layout._trigger_layout.is_triggered = True
+        with (
+            patch.object(screen, "_on_index_item_press") as press,
+            patch.object(Clock, "schedule_once") as schedule,
+        ):
+            screen._open_see_target(*target, 3)
+            press.assert_not_called()
+            scroll_view.scroll_to.assert_not_called()
+
+            layout._trigger_layout.is_triggered = False
+            run_last_scheduled(schedule)
+        scroll_view.scroll_to.assert_called_once_with(target[0], animate=False)
+        press.assert_called_once_with(*target)
 
     def test_every_tag_row_on_a_page_is_remembered_but_no_cross_reference(
         self, main_index_screen: MainIndexScreen
