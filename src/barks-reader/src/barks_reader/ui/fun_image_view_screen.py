@@ -265,18 +265,28 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
             name: regions[name] for name in ("left margin", "right margin") if name in regions
         }
         if self.layout_mode == MainLayoutMode.SPREAD.value and "left margin" in regions:
-            targets = self._page_targets(width, regions["left margin"])
+            targets = self._page_targets(regions["left margin"])
         return {
             name: window_rect(self, self.x + x, self.y + y, w, h)
             for name, (x, y, w, h) in targets.items()
         }
 
+    def _page_third(self) -> int:
+        """Return a third of the spread page's width, in whole pixels.
+
+        The one figure both the tap targets and a press go by: the targets were in
+        rounded thirds and a press in exact ones, so a press on a target's first
+        pixel could do its neighbour's work.
+        """
+        return round(round(self.width) / 3)
+
     def _page_targets(
-        self, width: int, band: tuple[int, int, int, int]
+        self, band: tuple[int, int, int, int]
     ) -> dict[str, tuple[int, int, int, int]]:
         """Return the spread page's targets in thirds, within the margins' band `band`."""
         _, y, _, h = band
-        third = round(width / 3)
+        width = round(self.width)
+        third = self._page_third()
         targets = {
             "left margin": (0, y, third, h),
             "right margin": (2 * third, y, width - 2 * third, h),
@@ -358,7 +368,7 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
         if not self._navigation.y_bottom_margin <= y_rel <= self._navigation.y_top_margin:
             return False
 
-        third = self.width / 3
+        third = self._page_third()
         if x_rel < third:
             logger.debug(log_markers.LEFT_MARGIN_PRESSED.format(x=x_rel, y=y_rel))
             self._goto_previous_image()

@@ -1022,6 +1022,33 @@ class TestTheSpreadsTwoTiers:
             **expected_middle,
         }
 
+    def test_a_press_on_a_target_s_edge_does_what_the_target_says(
+        self, screen_setup: _Setup
+    ) -> None:
+        """The targets were in rounded thirds and a press in exact ones: a pixel apart.
+
+        A third of the 100 wide view is 33 for the targets, so the middle is 33 to 65
+        and the right margin starts at 66; a press went by 33.3 and 66.7.
+        """
+        screen, nav, _ = screen_setup
+        _stack_the_tiers(screen, nav)
+        with (
+            patch.object(screen, "_goto_previous_image") as back,
+            patch.object(screen, "_goto_next_image") as forward,
+        ):
+            screen.on_touch_down(MagicMock(button="left", x=32, y=20))
+            back.assert_called_once()
+            screen.on_touch_down(MagicMock(button="left", x=66, y=20))
+            forward.assert_called_once()
+            assert not screen.zoomed
+
+            screen.on_touch_down(MagicMock(button="left", x=33, y=20))
+            assert screen.zoomed == "lower"
+            screen.on_touch_down(MagicMock(button="left", x=65, y=20))
+            assert not screen.zoomed
+            back.assert_called_once()
+            forward.assert_called_once()
+
     def test_a_lone_image_has_no_middle_target(self, screen_setup: _Setup) -> None:
         screen, nav, _ = screen_setup
         _stack_the_tiers(screen, nav)
