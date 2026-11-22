@@ -525,6 +525,8 @@ class SettingLongPathPopup(PopupFrame):
         self.setting_widget = setting_widget
         self._updating = False  # Flag to prevent infinite loops
         self._update_event = None  # Store the scheduled event
+        # Up while the list is being moved to a typed path: its selection then is not a pick.
+        self._showing_typed_path = False
         self.key_handler = self._handle_key
         self.bind(on_open=self._log_opened)
 
@@ -620,6 +622,7 @@ class SettingLongPathPopup(PopupFrame):
             # noinspection PyBroadException
             try:
                 self._updating = True
+                self._showing_typed_path = True
                 path = Path(text).expanduser()
                 if path.is_dir():
                     self.ids.file_chooser.set_path(str(path))
@@ -633,11 +636,20 @@ class SettingLongPathPopup(PopupFrame):
                 logger.info(f'Invalid path in long path file chooser: "{text}"')
             finally:
                 self._updating = False
+                self._showing_typed_path = False
 
         self._update_event = Clock.schedule_once(do_update, 0.5)
 
     def on_file_selection(self, _instance, value: list[str]) -> None:  # noqa: ANN001
-        """Handle file chooser selection changes."""
+        """Show a folder picked in the list in the box, from its start.
+
+        Not a selection the popup itself made to show a typed path: the box then
+        holds what was typed, and rewriting it sent the cursor to its start, so
+        the next characters typed went in front of the path.
+        """
+        if self._showing_typed_path:
+            return
+
         # Cancel any pending path updates from typing.
         if self._update_event:
             self._update_event.cancel()

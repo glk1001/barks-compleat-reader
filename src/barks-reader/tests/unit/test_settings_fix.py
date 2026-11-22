@@ -645,6 +645,7 @@ class TestTypingAPath:
         chooser.ids.file_chooser.set_path.assert_called_once_with(str(tmp_path))
         assert chooser.ids.file_chooser.selection == [str(tmp_path)]
         assert chooser._updating is False
+        assert chooser._showing_typed_path is False
 
     def test_a_new_name_in_a_folder_shows_that_folder(self, tmp_path: Path) -> None:
         typed = tmp_path / "not yet made"
@@ -670,6 +671,67 @@ class TestTypingAPath:
         assert 'Invalid path in long path file chooser: "~nobody/comics"' in loguru_sink
         chooser.ids.file_chooser.set_path.assert_not_called()
         assert chooser._updating is False
+
+
+class _SelectingList(EventDispatcher):
+    """A file chooser whose selection tells the popup, as the kv rule has the real one do."""
+
+    selection = ListProperty()
+    path = StringProperty()
+
+    def __init__(self, popup: MagicMock) -> None:
+        super().__init__()
+        self.set_path = MagicMock()
+        self.bind(
+            selection=lambda _list, value: SettingLongPathPopup.on_file_selection(
+                popup, self, value
+            )
+        )
+
+
+class TestTypingAPathWithTheListListening:
+    """The list is moved to what was typed, and the box is left as it was typed.
+
+    The list's new selection came back as a pick from the list: the box was rewritten
+    without its last slash and its cursor sent to the start, so the next characters
+    typed went in front of the path.
+    """
+
+    @staticmethod
+    def _typed(text: str) -> tuple[MagicMock, _SelectingList]:
+        popup = MagicMock()
+        popup._updating = False
+        popup._update_event = None
+        popup.ids.path_input.text = text
+        popup.ids.path_input.cursor = (len(text), 0)
+        chooser = _SelectingList(popup)
+        popup.ids.file_chooser = chooser
+        with patch.object(settings_fix, "Clock") as clock:
+            SettingLongPathPopup.update_file_chooser_path(popup, text)
+            run_last_scheduled(clock.schedule_once, 0.5)
+        return popup, chooser
+
+    def test_a_folder_typed_with_its_slash_is_left_as_typed(self, tmp_path: Path) -> None:
+        typed = f"{tmp_path}/"
+        popup, chooser = self._typed(typed)
+        assert chooser.selection == [str(tmp_path)]  # the list did move
+        assert popup.ids.path_input.text == typed
+        assert popup.ids.path_input.cursor == (len(typed), 0)
+        assert popup._updating is False  # the next keystroke is still typing
+
+    def test_a_half_typed_name_is_left_as_typed(self, tmp_path: Path) -> None:
+        typed = str(tmp_path / "Fanta")
+        popup, chooser = self._typed(typed)
+        chooser.set_path.assert_called_once_with(str(tmp_path))
+        assert popup.ids.path_input.text == typed
+        assert popup.ids.path_input.cursor == (len(typed), 0)
+
+    def test_a_pick_from_the_list_afterwards_still_fills_the_box(self, tmp_path: Path) -> None:
+        popup, chooser = self._typed(f"{tmp_path}/")
+        with patch.object(settings_fix, "Clock"):
+            chooser.selection = [str(tmp_path / "library")]
+        assert popup.ids.path_input.text == str(tmp_path / "library")
+        assert popup.ids.path_input.cursor == (0, 0)
 
 
 class TestAltEscapeKeySetting:
@@ -932,6 +994,7 @@ class TestAFolderPickedInTheList:
     def _picked(selection: list[str], *, typing_pending: bool = False) -> tuple[MagicMock, Any]:
         chooser = MagicMock()
         chooser._updating = False
+        chooser._showing_typed_path = False
         chooser.ids.path_input.text = "/typed"
         chooser.ids.path_input.cursor = (6, 0)
         chooser.ids.file_chooser.path = "/library/comics"
