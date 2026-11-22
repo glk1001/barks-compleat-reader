@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import pytest
 from barks_fantagraphics.barks_tags import Tags
 from barks_fantagraphics.entity_types import EntityType
-from barks_gui import expected, memory, nodes
+from barks_gui import expected, memory, nodes, taps
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -120,6 +120,21 @@ def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
     raise AssertionError(msg)
 
 
+def _assert_speech_buttons_keep_to_their_rows(d: Driver) -> None:
+    """Each speech button on show is no taller than the title row it is beside.
+
+    Taller, it runs over into the next row, and a tap there shows the wrong story's bubbles.
+    """
+    _, shown = taps.targets(d)
+    rows = {t.top: t for t in shown if t.kind == "_SpeechIndexTitleItemButton" and t.whole}
+    buttons = [t for t in shown if t.kind == "TitleShowSpeechButton" and t.whole]
+    assert buttons, "no speech button is on show"
+    for button in buttons:
+        row = rows.get(button.top)
+        assert row is not None, f"no title row starts level with the speech button at {button}"
+        assert button.height == row.height, (button, row)
+
+
 def test_speech_index_prefix_bar_and_bubbles(boot: AppBoot) -> None:
     """Right from the letters is the prefix bar; Enter picks a prefix, a term, then bubbles."""
     d = boot(nodes.SPEECH_INDEX)
@@ -137,6 +152,7 @@ def test_speech_index_prefix_bar_and_bubbles(boot: AppBoot) -> None:
     assert term == _item_display_text(d)
     assert term.lower().startswith(prefix[0].lower()), (prefix, term)
     d.move_focus("Down")  # first title under the term
+    _assert_speech_buttons_keep_to_their_rows(d)
     d.move_focus("Right")  # its speech button
     d.key_then_wait(pattern(markers.SHOW_BUBBLES_FOR_INDEX_TERMS), "Return")
     d.key_then_wait(markers.BUBBLES_POPUP_DISMISSED, "Escape")

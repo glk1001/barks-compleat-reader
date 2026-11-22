@@ -441,6 +441,10 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             title_speech_info,
         ) in sub_items_to_display:
             show_speech_bubbles_button = TitleShowSpeechButton()
+            # As tall as its row: at the kv rule's taller size it ran over into the row
+            # above, where a tap went to the row below's bubbles. Set once built, as the
+            # kv rule's size beats one handed to the constructor.
+            show_speech_bubbles_button.size = (INDEX_ITEM_ROW_HEIGHT, INDEX_ITEM_ROW_HEIGHT)
             title_button = _SpeechIndexTitleItemButton(
                 full_text=title_str_with_pages,
                 padding=[sub_item_padding, 0, 0, 0],
@@ -449,7 +453,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
                 background_color_down=self.index_theme.TITLE_BG_SELECTED,
                 font_name=self._font_manager.index_title_item_font_name,
                 font_size=self._font_manager.index_title_item_font_size,
-                fill_past_right=self.index_theme.ROW_HEIGHT,
+                fill_past_right=INDEX_ITEM_ROW_HEIGHT,
             )
             sub_item = title_row_item(
                 title_str, first_page_to_goto, title_str_with_pages, title_speech_info

@@ -772,7 +772,14 @@ class TestTheTitleRowsOfATerm:
         assert title.size_hint_x == 1
         assert title.padding[0] == _PARENT_PADDING + _INDENT_STEP / 2
         # The tint runs on under the speech button, to the column's edge.
-        assert title.fill_past_right == _THEME_ROW_HEIGHT
+        assert title.fill_past_right == _speech_module.INDEX_ITEM_ROW_HEIGHT
+
+    def test_a_speech_button_is_a_square_as_tall_as_its_row(self, layout: BoxLayout) -> None:
+        """Taller, it ran over into the row above and took that row's taps."""
+        for row in layout.children:
+            _, speech = row.children[1], row.children[0]
+            assert speech.height == row.height == _speech_module.INDEX_ITEM_ROW_HEIGHT
+            assert speech.width == speech.height
 
     def test_a_title_row_is_paired_with_the_speech_button_beside_it(
         self, speech_index_screen: SpeechIndexScreen, layout: BoxLayout
