@@ -12,6 +12,7 @@ import kivy.base
 import kivy.clock
 import pytest
 from barks_reader._version import VERSION
+from barks_reader.core.markup_text import plain_text
 from barks_reader.ui import error_handling, kivy_standalone_error_popup
 
 if TYPE_CHECKING:
@@ -108,10 +109,14 @@ def _exc_info_with_subscripts() -> _ExcInfo:
     raise AssertionError  # pragma: no cover
 
 
-def test_plain_text_keeps_a_bracket_that_was_text() -> None:
-    line = "got items[i] & one of ['a', 'b']"
-    markup = f"[b]Error:[/b] {error_handling.escape_markup(line)}"
-    assert error_handling.plain_text(markup) == f"Error: {line}"
+def test_an_error_s_bracketed_text_reaches_the_log(loguru_sink: list[str]) -> None:
+    """An OSError's "[Errno 2]" in a message is text, not a tag to take out."""
+    error_handling._log_the_error(  # noqa: SLF001
+        "app", "[b]Could not start[/b]", "[Errno 2] No such file"
+    )
+
+    assert any(line.endswith("An app error occurred: Could not start.") for line in loguru_sink)
+    assert any(line.endswith("[Errno 2] No such file") for line in loguru_sink)
 
 
 def test_a_tracebacks_brackets_reach_the_popup_escaped_and_the_log_whole(
@@ -127,7 +132,7 @@ def test_a_tracebacks_brackets_reach_the_popup_escaped_and_the_log_whole(
 
     details = show.call_args.kwargs["details"]
     assert "[" not in details  # nothing for the popup's labels to read as a tag
-    assert _SUBSCRIPT_LINE in error_handling.plain_text(details)
+    assert _SUBSCRIPT_LINE in plain_text(details)
     assert any(_SUBSCRIPT_LINE in line for line in loguru_sink)
 
 

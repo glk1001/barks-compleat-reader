@@ -95,9 +95,9 @@ def _get_error_content(  # noqa: C901
     from kivy.uix.label import Label
     from kivy.uix.widget import Widget
 
+    from barks_reader.core.markup_text import plain_text
     from barks_reader.core.reader_palette import theme
 
-    from .error_handling import plain_text
     from .popup_frame import popup_fonts
 
     # The banner and the headings are its own; the text is the popups' (the window is

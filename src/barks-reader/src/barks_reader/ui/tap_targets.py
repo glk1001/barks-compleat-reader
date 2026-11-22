@@ -15,7 +15,6 @@ not whole: a tap on it goes to the one on top.
 from __future__ import annotations
 
 import os
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -30,6 +29,7 @@ from kivy.uix.vkeyboard import VKeyboard
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.markup_text import plain_text
 from barks_reader.core.tap_targets import (
     TAP_TARGETS_FILE_ENV_VAR,
     FoundTarget,
@@ -54,9 +54,6 @@ _SERVICE: list[Callable[[float], None]] = []
 
 # A popup is listed too, as the panel it is: a tap outside it closes most of them.
 _TAPPABLE = (ButtonBehavior, TreeViewNode, TextInput, VKeyboard, ModalView)
-_MARKUP_TAG_RE = re.compile(r"\[/?[a-z_]+(?:=[^\]]*)?\]")
-# Kivy markup's escapes for its own brackets, and the ampersand last.
-_MARKUP_ESCAPES = (("&bl;", "["), ("&br;", "]"), ("&amp;", "&"))
 
 
 def window_rect(widget: Widget, x: float, y: float, width: float, height: float) -> Rect:
@@ -108,9 +105,7 @@ def _text(widget: Widget) -> str:
         title = getattr(widget, "title", None)  # a popup's
         return " ".join(title.split()) if isinstance(title, str) else ""
     if getattr(widget, "markup", False):
-        text = _MARKUP_TAG_RE.sub("", text)
-        for escape, char in _MARKUP_ESCAPES:
-            text = text.replace(escape, char)
+        text = plain_text(text)
     return " ".join(text.split())
 
 

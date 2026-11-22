@@ -7,10 +7,11 @@ import sys
 import threading
 from typing import TYPE_CHECKING, NoReturn
 
-from barks_fantagraphics.speech_markup import escape_markup, unescape_markup
+from barks_fantagraphics.speech_markup import escape_markup
 from loguru import logger
 
 from barks_reader.core.crash_report import crash_report
+from barks_reader.core.markup_text import plain_text
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -113,24 +114,6 @@ def handle_app_fail(
 def _log_the_error(app_type: str, message: str, details: str) -> None:
     logger.critical(f"An {app_type} error occurred: {plain_text(message)}.")
     logger.critical(plain_text(details))
-
-
-def plain_text(markup: str) -> str:
-    """Return the error popup's markup as plain text: its tags gone, its escapes undone.
-
-    Args:
-        markup: Kivy markup, a bracket that is text escaped (``escape_markup``) as a
-            traceback's are.
-
-    Returns:
-        The text for the log, the saved report and the clipboard.
-
-    """
-    from barks_reader.core.reader_formatter import (  # noqa: PLC0415
-        get_text_with_markup_stripped,
-    )
-
-    return unescape_markup(get_text_with_markup_stripped(markup))
 
 
 def _fail_on_main_thread(exc_value: BaseException) -> None:
