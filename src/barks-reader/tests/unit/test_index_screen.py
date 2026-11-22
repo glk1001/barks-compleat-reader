@@ -1164,7 +1164,7 @@ class TestSetBackgroundImage:
     def test_a_panel_really_from_good_neighbors_is_captioned_and_can_be_gone_to(
         self, index_screen: ConcreteIndexScreen
     ) -> None:
-        """The selector's stand-in is of that story too: told apart by its flag, not its title."""
+        """The stand-in once named that story: it is told by its flag, not its title."""
         texture = MagicMock()
         real = ImageInfo(from_title=Titles.GOOD_NEIGHBORS, filename=Path("dir/neighbors.png"))
         index_screen._show_background_image(real, texture)

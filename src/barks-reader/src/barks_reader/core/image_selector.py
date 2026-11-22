@@ -265,7 +265,7 @@ class ImageSelector:
     def _get_fallback_image_info(self) -> ImageInfo:
         return ImageInfo(
             self._resolver.get_comic_inset_file(EMERGENCY_INSET_FILE),
-            Titles.GOOD_NEIGHBORS,
+            EMERGENCY_INSET_FILE,
             FIT_MODE_COVER,
             is_fallback=True,
         )

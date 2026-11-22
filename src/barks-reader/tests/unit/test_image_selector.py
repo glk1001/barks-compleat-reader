@@ -228,7 +228,7 @@ class TestImageSelector:
             info = image_selector.get_random_image([mock_title_info])
 
             assert info.filename == Path("inset.png")
-            assert info.from_title == Titles.GOOD_NEIGHBORS
+            assert info.from_title == EMERGENCY_INSET_FILE
 
     def test_get_random_image_for_title(
         self, image_selector: ImageSelector, fake_resolver: FakeResolver
@@ -312,7 +312,7 @@ class TestImageSelector:
 
     def test_empty_title_list_returns_fallback(self, image_selector: ImageSelector) -> None:
         info = image_selector.get_random_image([])
-        assert info.from_title == Titles.GOOD_NEIGHBORS
+        assert info.from_title == EMERGENCY_INSET_FILE
         assert info.filename == Path("inset.png")
 
     def test_icon_image_cycles(self, image_selector: ImageSelector) -> None:
@@ -621,7 +621,7 @@ class TestImageSelector:
         info = image_selector.get_random_search_image()
 
         assert info.filename == Path("emergency.png")
-        assert info.from_title == Titles.GOOD_NEIGHBORS
+        assert info.from_title == EMERGENCY_INSET_FILE
 
 
 class TestAdaptiveFitMode:
@@ -968,10 +968,10 @@ class TestImageInfoBuilders:
 
         resolver.get_comic_inset_file.assert_called_once_with(EMERGENCY_INSET_FILE)
         assert info.filename == fake_resolver.inset_file
-        assert info.from_title is Titles.GOOD_NEIGHBORS
+        assert info.from_title is EMERGENCY_INSET_FILE
         assert info.fit_mode == FIT_MODE_COVER
         assert info.is_fallback is True
-        assert ImageInfo(info.filename, Titles.GOOD_NEIGHBORS).is_fallback is False
+        assert ImageInfo(info.filename, EMERGENCY_INSET_FILE).is_fallback is False
 
     def test_search_image_for_title(
         self, image_selector: ImageSelector, fake_resolver: FakeResolver
@@ -1351,7 +1351,7 @@ class TestGetRandomImageBookkeeping:
             info = image_selector.get_random_image([title_info])
 
         assert mock_select.call_count == is_module.NUM_RAND_ATTEMPTS
-        assert info.from_title is Titles.GOOD_NEIGHBORS
+        assert info.from_title is EMERGENCY_INSET_FILE
 
     def test_the_edited_preference_reaches_the_title_selection(
         self, image_selector: ImageSelector
