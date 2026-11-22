@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib
 import pkgutil
 import sys
+from pathlib import Path
 
 import barks_reader.core.navigation
 import pytest
@@ -31,13 +32,16 @@ from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.navigation import (
     AppendixDestination,
     ArticleDestination,
+    BottomScreen,
     CategoriesDestination,
     CategoryDestination,
     CensorshipFixesDocDestination,
     ChooseForMeDestination,
     ChronologicalDestination,
     ContinueReadingDestination,
+    CorpusStatsDestination,
     Destination,
+    DocumentDestination,
     HistoryDestination,
     HowToDocDestination,
     IndexDestination,
@@ -51,6 +55,7 @@ from barks_reader.core.navigation import (
     PlaylistsDestination,
     RandomTitlesDestination,
     ReadingDestination,
+    ReopenKind,
     SearchDestination,
     SeriesDestination,
     SpeechIndexDestination,
@@ -64,6 +69,7 @@ from barks_reader.core.navigation import (
     ThisMonthDestination,
     TitleDestination,
     TitleSearchDestination,
+    WikiIndexDestination,
     WordSearchDestination,
     YearRangeDestination,
     YearRangeKind,
@@ -430,6 +436,127 @@ def test_tag_context_returns_none_for_non_tag_destinations(
     model: NavigationModel, destination: Destination
 ) -> None:
     assert model.tag_context(destination) is None
+
+
+# --- what a node is, from its destination ------------------------------
+
+_A_CHAPTER = DocumentDestination(
+    view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+    doc_dir=Path("history/chapter-1"),
+    title="Chapter 1",
+)
+
+# One of each kind the three questions below are asked of and say no to.
+_OTHER_DESTINATIONS = [
+    None,
+    IntroDestination(),
+    HowToDocDestination(),
+    SearchDestination(),
+    TitleSearchDestination(),
+    IndexDestination(),
+    AppendixDestination(),
+    ReadingDestination(),
+    TagDestination(tag=Tags.AIRPLANES),
+    YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CHRONO),
+]
+
+
+def test_a_title_destination_is_a_title(model: NavigationModel) -> None:
+    assert model.is_title(TitleDestination(fanta_info=fake_fanta_info()))
+
+
+@pytest.mark.parametrize(
+    "destination",
+    [
+        *_OTHER_DESTINATIONS,
+        MainIndexDestination(),
+        HistoryDestination(),
+        WikiIndexDestination(),
+        _A_CHAPTER,
+        ArticleDestination(article_title=Titles.VOODOO_HOODOO, view_state=ViewStates.ON_INTRO_NODE),
+    ],
+)
+def test_nothing_else_is_a_title(model: NavigationModel, destination: Destination | None) -> None:
+    assert not model.is_title(destination)
+
+
+@pytest.mark.parametrize(
+    ("destination", "screen"),
+    [
+        (MainIndexDestination(), BottomScreen.MAIN_INDEX),
+        (SpeechIndexDestination(), BottomScreen.SPEECH_INDEX),
+        # Words shows the speech index's own screen.
+        (SpeechWordsDestination(), BottomScreen.SPEECH_INDEX),
+        (NamesIndexDestination(), BottomScreen.NAMES_INDEX),
+        (LocationsIndexDestination(), BottomScreen.LOCATIONS_INDEX),
+        (StatisticsDestination(), BottomScreen.STATISTICS),
+        (HistoryDestination(), BottomScreen.HISTORY),
+    ],
+)
+def test_enter_moves_the_keys_into_the_nodes_bottom_screen(
+    model: NavigationModel, destination: Destination, screen: BottomScreen
+) -> None:
+    assert model.bottom_screen_on_enter(destination) is screen
+
+
+def test_every_bottom_screen_has_a_node_that_enters_it(model: NavigationModel) -> None:
+    destinations = [
+        MainIndexDestination(),
+        SpeechIndexDestination(),
+        SpeechWordsDestination(),
+        NamesIndexDestination(),
+        LocationsIndexDestination(),
+        StatisticsDestination(),
+        HistoryDestination(),
+    ]
+    assert {model.bottom_screen_on_enter(d) for d in destinations} == set(BottomScreen)
+
+
+@pytest.mark.parametrize(
+    "destination",
+    [
+        *_OTHER_DESTINATIONS,
+        TitleDestination(fanta_info=fake_fanta_info()),
+        WikiIndexDestination(),
+        CorpusStatsDestination(),
+        _A_CHAPTER,
+    ],
+)
+def test_enter_on_any_other_node_moves_into_no_bottom_screen(
+    model: NavigationModel, destination: Destination | None
+) -> None:
+    assert model.bottom_screen_on_enter(destination) is None
+
+
+@pytest.mark.parametrize(
+    ("destination", "kind"),
+    [
+        (WikiIndexDestination(), ReopenKind.WIKI),
+        (CorpusStatsDestination(), ReopenKind.CORPUS_STATS),
+        (_A_CHAPTER, ReopenKind.DOCUMENT),
+    ],
+)
+def test_go_back_onto_a_full_window_screens_node_opens_it_again(
+    model: NavigationModel, destination: Destination, kind: ReopenKind
+) -> None:
+    assert model.reopens_on_back(destination) is kind
+
+
+@pytest.mark.parametrize(
+    "destination",
+    [
+        *_OTHER_DESTINATIONS,
+        TitleDestination(fanta_info=fake_fanta_info()),
+        MainIndexDestination(),
+        StatisticsDestination(),
+        HistoryDestination(),
+        ArticleDestination(article_title=Titles.VOODOO_HOODOO, view_state=ViewStates.ON_INTRO_NODE),
+    ],
+)
+def test_go_back_onto_any_other_node_reopens_nothing(
+    model: NavigationModel, destination: Destination | None
+) -> None:
+    assert model.reopens_on_back(destination) is None
 
 
 # --- purity check ----------------------------------------------------

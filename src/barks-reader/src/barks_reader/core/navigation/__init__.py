@@ -49,7 +49,7 @@ from .destinations import (
     YearRangeDestination,
     YearRangeKind,
 )
-from .navigation_model import NavigationModel
+from .navigation_model import BottomScreen, NavigationModel, ReopenKind
 from .tree_spec import (
     NodeKind,
     NodeRegistration,
@@ -62,6 +62,7 @@ __all__ = [
     "AllSeriesDestination",
     "AppendixDestination",
     "ArticleDestination",
+    "BottomScreen",
     "CategoriesDestination",
     "CategoryDestination",
     "CensorshipFixesDocDestination",
@@ -89,6 +90,7 @@ __all__ = [
     "PressAction",
     "RandomTitlesDestination",
     "ReadingDestination",
+    "ReopenKind",
     "SearchDestination",
     "SeriesDestination",
     "SpeechIndexDestination",

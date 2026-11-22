@@ -8,6 +8,7 @@ switching on widget subclass or node text.
 
 from __future__ import annotations
 
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.fanta_comics_info import (
@@ -124,6 +125,46 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
 }
 
 
+class BottomScreen(Enum):
+    """A bottom screen with keys of its own, that Enter on its tree node moves them into."""
+
+    MAIN_INDEX = auto()
+    SPEECH_INDEX = auto()
+    NAMES_INDEX = auto()
+    LOCATIONS_INDEX = auto()
+    STATISTICS = auto()
+    HISTORY = auto()
+
+
+class ReopenKind(Enum):
+    """A full-window screen that Go Back onto its tree node opens again."""
+
+    WIKI = auto()
+    CORPUS_STATS = auto()
+    DOCUMENT = auto()
+
+
+# The Words node under the Speech Bubble Index shows the speech index's own screen.
+_DESTINATION_TO_BOTTOM_SCREEN: dict[type[Destination], BottomScreen] = {
+    MainIndexDestination: BottomScreen.MAIN_INDEX,
+    SpeechIndexDestination: BottomScreen.SPEECH_INDEX,
+    SpeechWordsDestination: BottomScreen.SPEECH_INDEX,
+    NamesIndexDestination: BottomScreen.NAMES_INDEX,
+    LocationsIndexDestination: BottomScreen.LOCATIONS_INDEX,
+    StatisticsDestination: BottomScreen.STATISTICS,
+    HistoryDestination: BottomScreen.HISTORY,
+}
+
+# Destinations whose node opens a full-window screen. Back onto one of these means
+# "take me back in", not "show me the static view the node falls back to": a chapter
+# left for one of its stories comes back at the page it was left on.
+_DESTINATION_TO_REOPEN_KIND: dict[type[Destination], ReopenKind] = {
+    WikiIndexDestination: ReopenKind.WIKI,
+    CorpusStatsDestination: ReopenKind.CORPUS_STATS,
+    DocumentDestination: ReopenKind.DOCUMENT,
+}
+
+
 class NavigationModel:
     """Kivy-free navigation policy engine.
 
@@ -207,6 +248,32 @@ class NavigationModel:
         # view; as a YearRangeDestination it would silently get the chronological one.
         msg = f"A {dest.kind.value} year range is not a YearRangeDestination: {dest}"
         raise RuntimeError(msg)
+
+    @staticmethod
+    def is_title(dest: Destination | None) -> bool:
+        """Whether `dest` is a story's own row, not a group of them.
+
+        A title row is the only node with a `TitleDestination`: selecting it shows the
+        title, and it has nothing to open or close.
+        """
+        return isinstance(dest, TitleDestination)
+
+    @staticmethod
+    def bottom_screen_on_enter(dest: Destination | None) -> BottomScreen | None:
+        """Return the bottom screen that Enter on `dest`'s node moves the keys into.
+
+        None for a node whose screen has no keys of its own to move into: Enter there
+        is a press.
+        """
+        return None if dest is None else _DESTINATION_TO_BOTTOM_SCREEN.get(type(dest))
+
+    @staticmethod
+    def reopens_on_back(dest: Destination | None) -> ReopenKind | None:
+        """Return the full-window screen that Go Back onto `dest`'s node opens again.
+
+        None for the rest: Go Back shows the node's view as it was left.
+        """
+        return None if dest is None else _DESTINATION_TO_REOPEN_KIND.get(type(dest))
 
     @staticmethod
     def auto_select_target(

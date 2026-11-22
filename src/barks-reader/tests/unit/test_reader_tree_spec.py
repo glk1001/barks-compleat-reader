@@ -61,6 +61,7 @@ from barks_reader.core.navigation import (
     TagGroupDestination,
     TagYearRangeDestination,
     ThisMonthDestination,
+    TitleDestination,
     YearRangeKind,
     build_reader_tree_spec,
 )
@@ -121,7 +122,7 @@ from barks_reader.core.this_month import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
     from pathlib import Path
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -576,6 +577,30 @@ class TestStoriesSubtree:
         rows = tag_spec.lazy_children()
         assert len(rows) == len(in_collection)
         assert tag_spec.text == get_markup_text_with_num_titles(Tags.DAISY.value, len(rows))
+
+
+def _every_spec(specs: Iterable[NodeSpec]) -> Iterator[NodeSpec]:
+    """Walk the whole tree, the rows a node makes on opening too."""
+    for spec in specs:
+        yield spec
+        yield from _every_spec(spec.children)
+        if spec.lazy_children is not None:
+            yield from _every_spec(spec.lazy_children())
+
+
+def test_no_node_but_a_title_row_goes_to_a_title(specs: tuple[NodeSpec, ...]) -> None:
+    """`NavigationModel.is_title` tells a title row by its destination alone.
+
+    A row's `TitleDestination` is its widget's to make (`TitleTreeViewNode`), so no
+    spec carries one; a group that did would be taken for a title row.
+    """
+    every_spec = list(_every_spec(specs))
+    assert any(spec.kind is NodeKind.TITLE_ROW for spec in every_spec)
+    for spec in every_spec:
+        assert not isinstance(spec.destination, TitleDestination), spec.text
+        if spec.kind is NodeKind.TITLE_ROW:
+            assert spec.destination is None
+            assert spec.fanta_info is not None
 
 
 def _find_tag_spec(specs: tuple[NodeSpec, ...], tag: Tags) -> NodeSpec:
