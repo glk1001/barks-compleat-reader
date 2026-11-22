@@ -896,14 +896,6 @@ class TestNodesThatDoNothingMore:
         screen_mocks["tree_view"].select_node.assert_called_once_with(node)
         scroll.assert_not_called()
 
-    def test_the_speech_words_node_is_the_one_created(
-        self, tree_view_manager: TreeViewManager
-    ) -> None:
-        assert tree_view_manager.speech_words_node is None
-        words = MagicMock()
-        tree_view_manager.on_speech_words_node_created(words)
-        assert tree_view_manager.speech_words_node is words
-
 
 class _TreeScreen:
     """The tree-view screen's node methods over a real tree, as TreeViewScreen has them."""
@@ -1112,25 +1104,6 @@ class TestWhatOnlyTheGuiTestsRan:
 
         holders = [name for name, mock in screen_mocks.items() if mock.treeview_index_node is node]
         assert holders == [screen]
-
-    @pytest.mark.parametrize(
-        ("created", "kept"),
-        [
-            ("on_statistics_node_created", "statistics_node"),
-            ("on_history_node_created", "history_node"),
-        ],
-    )
-    def test_a_node_the_manager_keeps_is_the_one_created(
-        self, tree_view_manager: TreeViewManager, created: str, kept: str
-    ) -> None:
-        assert getattr(tree_view_manager, kept) is None
-        node = MagicMock()
-
-        getattr(tree_view_manager, created)(node)
-
-        assert getattr(tree_view_manager, kept) is node
-        others = {"statistics_node", "history_node"} - {kept}
-        assert all(getattr(tree_view_manager, other) is None for other in others)
 
     def test_the_wiki_node_opens_the_wiki(
         self,

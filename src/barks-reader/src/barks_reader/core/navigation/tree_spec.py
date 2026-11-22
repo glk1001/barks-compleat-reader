@@ -202,11 +202,8 @@ class NodeRegistration(Enum):
     """Which 'node created' hook the walker calls with the built widget."""
 
     SEARCH = auto()
-    HISTORY = auto()
-    STATISTICS = auto()
     MAIN_INDEX = auto()
     SPEECH_INDEX = auto()
-    SPEECH_WORDS = auto()
     NAMES_INDEX = auto()
     LOCATIONS_INDEX = auto()
 
@@ -676,7 +673,6 @@ class _SpecBuilder:
                     text=HISTORY_NODE_TEXT,
                     destination=HistoryDestination(),
                     press_action=PressAction.SET_VIEW_STATE,
-                    register_as=NodeRegistration.HISTORY,
                 ),
             ),
         )
@@ -825,7 +821,6 @@ class _SpecBuilder:
                     text=APPENDIX_STATISTICS_NODE_TEXT,
                     destination=StatisticsDestination(),
                     press_action=PressAction.SET_VIEW_STATE,
-                    register_as=NodeRegistration.STATISTICS,
                 ),
             ),
         )
@@ -850,7 +845,6 @@ class _SpecBuilder:
                         text=INDEX_SPEECH_WORDS_TEXT,
                         destination=SpeechWordsDestination(),
                         press_action=PressAction.SET_VIEW_STATE,
-                        register_as=NodeRegistration.SPEECH_WORDS,
                     ),
                     NodeSpec(
                         kind=NodeKind.MAIN,

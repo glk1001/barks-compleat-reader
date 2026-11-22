@@ -16,6 +16,19 @@ from barks_reader.core.keys import (
     KEY_TAB,
     KEY_UP,
 )
+from barks_reader.core.navigation import (
+    Destination,
+    HistoryDestination,
+    IndexDestination,
+    LocationsIndexDestination,
+    MainIndexDestination,
+    NamesIndexDestination,
+    SpeechIndexDestination,
+    SpeechWordsDestination,
+    StatisticsDestination,
+    TitleDestination,
+)
+from barks_reader.core.testing import fake_fanta_info
 from barks_reader.ui import main_screen_nav as nav_module
 from barks_reader.ui.main_screen_nav import MainScreenNavigation
 from barks_reader.ui.tree_view_nodes import ButtonTreeViewNode, TitleTreeViewNode
@@ -24,6 +37,23 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
     from barks_reader.ui.screen_bundle import ScreenBundle
+
+
+_BOTTOM_SCREEN_ATTRS = (
+    "_main_index_screen",
+    "_speech_index_screen",
+    "_names_index_screen",
+    "_locations_index_screen",
+    "_statistics_screen",
+    "_history_screen",
+)
+
+
+def _title_node() -> MagicMock:
+    """Return a title row as the tree builds it: with its story's destination."""
+    return MagicMock(
+        spec=TitleTreeViewNode, destination=TitleDestination(fanta_info=fake_fanta_info())
+    )
 
 
 class FakeTrigger:
@@ -434,7 +464,7 @@ class TestTitleRenderDebounce:
     @staticmethod
     def _setup_title_nodes(nav: MainScreenNavigation, count: int) -> list[MagicMock]:
         """Set up title nodes with selection tracked through select_node calls."""
-        nodes = [MagicMock(spec=TitleTreeViewNode) for _ in range(count)]
+        nodes = [_title_node() for _ in range(count)]
         nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[missing-attribute]
         nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
@@ -545,7 +575,7 @@ class TestTreeNavActivate:
         nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[missing-attribute]
 
     def test_title_node_enters_panel_focus_at_portal(self, nav: MainScreenNavigation) -> None:
-        selected = MagicMock(spec=TitleTreeViewNode)
+        selected = _title_node()
         nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
         nav._bottom_title_view_screen.is_visible = True
 
@@ -562,133 +592,65 @@ class TestTreeNavActivate:
         nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[missing-attribute]
         assert nav.is_in_bottom_focus
 
-    def test_index_node_enters_bottom_focus(self, nav: MainScreenNavigation) -> None:
-        node = MagicMock()
-        nav._main_index_screen.treeview_index_node = node
-        nav._speech_index_screen.treeview_index_node = MagicMock()
-        nav._names_index_screen.treeview_index_node = MagicMock()
-        nav._locations_index_screen.treeview_index_node = MagicMock()
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = node  # ty: ignore[missing-attribute]
-        nav._main_index_screen.is_visible = True
-
-        with patch.object(nav_module, "Clock"):
-            nav._tree_nav_activate()
-
-        # Should have entered bottom focus since screen is visible
-        assert nav.is_in_bottom_focus
-
-    def test_history_node_enters_bottom_focus_when_visible(self, nav: MainScreenNavigation) -> None:
-        history_node = MagicMock()
-        nav._main_index_screen.treeview_index_node = MagicMock()
-        nav._speech_index_screen.treeview_index_node = MagicMock()
-        nav._names_index_screen.treeview_index_node = MagicMock()
-        nav._locations_index_screen.treeview_index_node = MagicMock()
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.history_node = history_node  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = history_node  # ty: ignore[missing-attribute]
-        nav._history_screen.is_visible = True
-
-        with patch.object(nav_module, "Clock"):
-            nav._tree_nav_activate()
-
-        assert nav.is_in_bottom_focus
-
-    def test_history_node_activates_then_enters_bottom_focus_when_hidden(
-        self, nav: MainScreenNavigation
+    @pytest.mark.parametrize(
+        ("destination", "screen_attr"),
+        [
+            (MainIndexDestination(), "_main_index_screen"),
+            (SpeechIndexDestination(), "_speech_index_screen"),
+            # Words, under the Speech Bubble Index, shows the speech index's screen.
+            (SpeechWordsDestination(), "_speech_index_screen"),
+            (NamesIndexDestination(), "_names_index_screen"),
+            (LocationsIndexDestination(), "_locations_index_screen"),
+            (StatisticsDestination(), "_statistics_screen"),
+            (HistoryDestination(), "_history_screen"),
+        ],
+    )
+    def test_a_node_with_a_bottom_screen_of_its_own_enters_it_when_visible(
+        self, nav: MainScreenNavigation, destination: Destination, screen_attr: str
     ) -> None:
-        history_node = MagicMock()
-        nav._main_index_screen.treeview_index_node = MagicMock()
-        nav._speech_index_screen.treeview_index_node = MagicMock()
-        nav._names_index_screen.treeview_index_node = MagicMock()
-        nav._locations_index_screen.treeview_index_node = MagicMock()
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.history_node = history_node  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = history_node  # ty: ignore[missing-attribute]
-        nav._history_screen.is_visible = False
-
-        with patch.object(nav_module, "Clock") as mock_clock:
-            nav._tree_nav_activate()
-
-        nav._tree_view_manager.activate_node.assert_called_with(history_node)  # ty: ignore[missing-attribute]
-        mock_clock.schedule_once.assert_called_once()
-
-    def test_statistics_node_enters_bottom_focus_when_visible(
-        self, nav: MainScreenNavigation
-    ) -> None:
-        statistics_node = MagicMock()
-        nav._main_index_screen.treeview_index_node = MagicMock()
-        nav._speech_index_screen.treeview_index_node = MagicMock()
-        nav._names_index_screen.treeview_index_node = MagicMock()
-        nav._locations_index_screen.treeview_index_node = MagicMock()
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.statistics_node = statistics_node  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = statistics_node  # ty: ignore[missing-attribute]
-        for screen in (
-            nav._main_index_screen,
-            nav._speech_index_screen,
-            nav._names_index_screen,
-            nav._locations_index_screen,
-        ):
-            screen.is_visible = False
-        nav._statistics_screen.is_visible = True
+        """The screen is the destination's, whichever node object carries it."""
+        selected = MagicMock(spec=ButtonTreeViewNode, destination=destination)
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
+        for hidden in set(_BOTTOM_SCREEN_ATTRS) - {screen_attr}:
+            getattr(nav, hidden).is_visible = False
+        screen = getattr(nav, screen_attr)
+        screen.is_visible = True
 
         with patch.object(nav_module, "Clock"):
             nav._tree_nav_activate()
 
         assert nav.is_in_bottom_focus
-        nav._statistics_screen.enter_nav_focus.assert_called_once_with(nav.exit_bottom_focus)  # ty: ignore[missing-attribute]
+        screen.enter_nav_focus.assert_called_once_with(nav.exit_bottom_focus)
         nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[missing-attribute]
 
-    def test_statistics_node_activates_then_enters_bottom_focus_when_hidden(
-        self, nav: MainScreenNavigation
+    @pytest.mark.parametrize(
+        ("destination", "screen_attr"),
+        [
+            (MainIndexDestination(), "_main_index_screen"),
+            (StatisticsDestination(), "_statistics_screen"),
+            (HistoryDestination(), "_history_screen"),
+        ],
+    )
+    def test_a_hidden_bottom_screen_is_shown_by_a_press_and_then_entered(
+        self, nav: MainScreenNavigation, destination: Destination, screen_attr: str
     ) -> None:
-        statistics_node = MagicMock()
-        nav._main_index_screen.treeview_index_node = MagicMock()
-        nav._speech_index_screen.treeview_index_node = MagicMock()
-        nav._names_index_screen.treeview_index_node = MagicMock()
-        nav._locations_index_screen.treeview_index_node = MagicMock()
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.statistics_node = statistics_node  # ty: ignore[invalid-assignment]
-        nav._tree_view_screen.get_selected_node.return_value = statistics_node  # ty: ignore[missing-attribute]
-        nav._statistics_screen.is_visible = False
+        selected = MagicMock(spec=ButtonTreeViewNode, destination=destination)
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
+        getattr(nav, screen_attr).is_visible = False
 
         with patch.object(nav_module, "Clock") as mock_clock:
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_once_with(statistics_node)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.activate_node.assert_called_once_with(selected)  # ty: ignore[missing-attribute]
         mock_clock.schedule_once.assert_called_once()
         assert not nav.is_in_bottom_focus
 
     def test_button_node_toggles_in_place(self, nav: MainScreenNavigation) -> None:
         """Enter on a closed parent opens it but keeps selection on it (mouse parity)."""
-        selected = MagicMock(spec=ButtonTreeViewNode)
+        selected = MagicMock(spec=ButtonTreeViewNode, destination=IndexDestination())
         selected.is_open = False
         selected.nodes = [MagicMock()]
         nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
-        nav._main_index_screen.treeview_index_node = MagicMock()
-        nav._speech_index_screen.treeview_index_node = MagicMock()
-        nav._names_index_screen.treeview_index_node = MagicMock()
-        nav._locations_index_screen.treeview_index_node = MagicMock()
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
-        # noinspection PyPropertyAccess
-        nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
         nav._search_screen.is_visible = False
 
         with patch.object(nav_module, "Clock") as mock_clock:
@@ -697,6 +659,16 @@ class TestTreeNavActivate:
         nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[missing-attribute]
         nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[missing-attribute]
         mock_clock.schedule_once.assert_not_called()
+
+    def test_a_node_with_no_destination_is_pressed(self, nav: MainScreenNavigation) -> None:
+        selected = MagicMock(spec=ButtonTreeViewNode, destination=None)
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
+        nav._search_screen.is_visible = False
+
+        with patch.object(nav_module, "Clock"):
+            nav._tree_nav_activate()
+
+        nav._tree_view_manager.activate_node.assert_called_once_with(selected)  # ty: ignore[missing-attribute]
 
 
 class TestTreeNavCollapseToParent:

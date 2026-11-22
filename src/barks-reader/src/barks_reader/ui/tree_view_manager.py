@@ -97,10 +97,6 @@ class TreeViewManager:
         # under the images it was left with, as a collapse does (2026-10-30).
         self._keep_images_for_caller = False
         self._search_node: MainTreeViewNode | None = None
-        self._speech_words_node: ButtonTreeViewNode | None = None
-
-        self._statistics_node: ButtonTreeViewNode | None = None
-        self._history_node: ButtonTreeViewNode | None = None
 
         self._tree_view_screen.setup_collapse_overlay(self._on_collapse_overlay_pressed)
 
@@ -543,16 +539,6 @@ class TreeViewManager:
         logger.info('"By the Numbers" node pressed.')
         self._nav.open_corpus_stats()
 
-    def on_speech_words_node_created(self, node: MainTreeViewNode) -> None:
-        """Keep the Words node of the speech index."""
-        # Words child shares the same speech index screen's treeview node.
-        self._speech_words_node = node
-
-    @property
-    def speech_words_node(self) -> ButtonTreeViewNode | None:
-        """The Words node of the speech index, once the tree has built it."""
-        return self._speech_words_node
-
     def on_names_index_node_created(self, names_index_node: MainTreeViewNode) -> None:
         """Give the names index screen its tree node, where it keeps its place."""
         self._names_index_screen.treeview_index_node = names_index_node
@@ -560,24 +546,6 @@ class TreeViewManager:
     def on_locations_index_node_created(self, locations_index_node: MainTreeViewNode) -> None:
         """Give the locations index screen its tree node, where it keeps its place."""
         self._locations_index_screen.treeview_index_node = locations_index_node
-
-    def on_statistics_node_created(self, node: ButtonTreeViewNode) -> None:
-        """Handle creation of the Statistics tree node."""
-        self._statistics_node = node
-
-    @property
-    def statistics_node(self) -> ButtonTreeViewNode | None:
-        """The Statistics node, once the tree has built it."""
-        return self._statistics_node
-
-    def on_history_node_created(self, node: ButtonTreeViewNode) -> None:
-        """Handle creation of the History tree node."""
-        self._history_node = node
-
-    @property
-    def history_node(self) -> ButtonTreeViewNode | None:
-        """The Reading History node, once the tree has built it."""
-        return self._history_node
 
     def on_search_node_created(self, node: MainTreeViewNode) -> None:
         """Handle creation of the Search tree node."""

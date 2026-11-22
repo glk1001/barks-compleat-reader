@@ -19,6 +19,7 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.navigation import BottomScreen, NavigationModel
 
 from .reader_keyboard_nav import clear_focus_highlight, draw_focus_highlight
 from .tree_view_nodes import (
@@ -91,6 +92,16 @@ class MainScreenNavigation:
         self._statistics_screen = screens.statistics
         self._history_screen = screens.history
         self._search_screen = screens.search
+        # The screens Enter on a tree node moves the keys into, by the model's name for
+        # each (`NavigationModel.bottom_screen_on_enter`).
+        self._bottom_screens: dict[BottomScreen, HistoryScreen | IndexScreen | StatisticsScreen] = {
+            BottomScreen.MAIN_INDEX: self._main_index_screen,
+            BottomScreen.SPEECH_INDEX: self._speech_index_screen,
+            BottomScreen.NAMES_INDEX: self._names_index_screen,
+            BottomScreen.LOCATIONS_INDEX: self._locations_index_screen,
+            BottomScreen.STATISTICS: self._statistics_screen,
+            BottomScreen.HISTORY: self._history_screen,
+        }
         self._search_screen.on_request_nav_focus = self._claim_bottom_focus_for_search
         self._bottom_base_view_screen = bottom_base_view_screen
         self._enter_menu_mode = enter_menu_mode
@@ -471,26 +482,10 @@ class MainScreenNavigation:
         if selected is None:
             return
 
-        # Map special nodes to their index screen for direct focus entry.
-        index_node_to_screen: dict[int, IndexScreen] = {
-            id(self._main_index_screen.treeview_index_node): self._main_index_screen,
-            id(self._speech_index_screen.treeview_index_node): self._speech_index_screen,
-            id(self._names_index_screen.treeview_index_node): self._names_index_screen,
-            id(self._locations_index_screen.treeview_index_node): self._locations_index_screen,
-            id(self._tree_view_manager.speech_words_node): self._speech_index_screen,
-        }
-
-        screen = index_node_to_screen.get(id(selected))
-        if screen is not None:
-            self._enter_nav_screen_bottom_focus(screen, selected)
-            return
-
-        if selected is self._tree_view_manager.statistics_node:
-            self._enter_nav_screen_bottom_focus(self._statistics_screen, selected)
-            return
-
-        if selected is self._tree_view_manager.history_node:
-            self._enter_nav_screen_bottom_focus(self._history_screen, selected)
+        # A node whose bottom screen has keys of its own: straight into it.
+        bottom_screen = NavigationModel.bottom_screen_on_enter(selected.destination)
+        if bottom_screen is not None:
+            self._enter_nav_screen_bottom_focus(self._bottom_screens[bottom_screen], selected)
             return
 
         if isinstance(selected, TitleTreeViewNode):

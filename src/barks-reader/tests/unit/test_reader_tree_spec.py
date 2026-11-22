@@ -50,7 +50,6 @@ from barks_reader.core.navigation import (
     HistoryDestination,
     IllustratedHistoryDestination,
     NodeKind,
-    NodeRegistration,
     NodeSpec,
     PlaylistDestination,
     PlaylistsDestination,
@@ -270,14 +269,14 @@ MAIN text='Appendix' dest=AppendixDestination() press=TOGGLE_ONLY register=None 
   MAIN text='Maggie Thompson: Comics Readers Find...' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE, article_title=Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD) press=OPEN_ARTICLE register=None lazy=False repopulate=False
   MAIN text='George Lucas: An Appreciation' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE, article_title=Titles.GEORGE_LUCAS___AN_APPRECIATION) press=OPEN_ARTICLE register=None lazy=False repopulate=False
   MAIN text='Censorship Fixes and Other Changes' dest=CensorshipFixesDocDestination() press=OPEN_CENSORSHIP_FIXES_DOC register=None lazy=False repopulate=False
-  MAIN text='Statistics' dest=StatisticsDestination() press=SET_VIEW_STATE register=STATISTICS lazy=False repopulate=False
+  MAIN text='Statistics' dest=StatisticsDestination() press=SET_VIEW_STATE register=None lazy=False repopulate=False
 """  # noqa: E501
 
 _INDEX_SNAPSHOT = """
 MAIN text='Indexes' dest=IndexDestination() press=TOGGLE_ONLY register=None lazy=False repopulate=False
   MAIN text='Main Index' dest=MainIndexDestination() press=SET_VIEW_STATE register=MAIN_INDEX lazy=False repopulate=False
   MAIN text='Speech Bubble Index' dest=SpeechIndexDestination() press=TOGGLE_ONLY register=SPEECH_INDEX lazy=False repopulate=False
-    MAIN text='Words' dest=SpeechWordsDestination() press=SET_VIEW_STATE register=SPEECH_WORDS lazy=False repopulate=False
+    MAIN text='Words' dest=SpeechWordsDestination() press=SET_VIEW_STATE register=None lazy=False repopulate=False
     MAIN text='Names' dest=NamesIndexDestination() press=SET_VIEW_STATE register=NAMES_INDEX lazy=False repopulate=False
     MAIN text='Locations' dest=LocationsIndexDestination() press=SET_VIEW_STATE register=LOCATIONS_INDEX lazy=False repopulate=False
 """  # noqa: E501
@@ -985,11 +984,11 @@ class TestReadingSubtree:
             HISTORY_NODE_TEXT,
         ]
 
-    def test_history_registration_and_press_action(self, specs: tuple[NodeSpec, ...]) -> None:
+    def test_history_destination_and_press_action(self, specs: tuple[NodeSpec, ...]) -> None:
         history = specs[3].children[4]
         assert history.text == HISTORY_NODE_TEXT
         assert isinstance(history.destination, HistoryDestination)
-        assert history.register_as is NodeRegistration.HISTORY
+        assert history.register_as is None  # Enter finds its screen by its destination
         assert history.press_action is PressAction.SET_VIEW_STATE
         assert not history.children
         assert history.lazy_children is None
