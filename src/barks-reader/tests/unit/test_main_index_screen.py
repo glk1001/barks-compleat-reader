@@ -642,6 +642,13 @@ class TestSmallPaths:
 
         assert main_index_screen._get_background_title_str(Titles.GIFT_LION) == "Africa / Gift Lion"
 
+    def test_the_menu_has_the_letters_the_index_files_under_and_no_apostrophe(
+        self, main_index_screen: MainIndexScreen
+    ) -> None:
+        """Nothing is filed under an apostrophe: its page could only ever be empty."""
+        assert main_index_screen._get_alphabet_letters() == "0ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        assert main_index_screen._letter_order == "0ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
     def test_a_letter_with_no_entries_says_so_in_its_one_row(
         self, main_index_screen: MainIndexScreen, mock_font_manager: MagicMock
     ) -> None:

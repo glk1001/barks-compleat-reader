@@ -27,6 +27,7 @@ from barks_reader.core.index_headings import (
 )
 from barks_reader.core.index_items import IndexItem
 from barks_reader.core.main_index import (
+    MAIN_INDEX_LETTERS,
     TitleHierarchy,
     build_main_index,
     index_item_markup,
@@ -122,6 +123,11 @@ class MainIndexScreen(IndexScreen):
 
         self._item_index: dict[str, list[IndexItem]] = self._build_index()
         self._populate_alphabet_menu()
+
+    @override
+    def _get_alphabet_letters(self) -> str:
+        """Return the letter pages the index can have: no apostrophe, which none is filed under."""
+        return MAIN_INDEX_LETTERS
 
     @override
     def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:

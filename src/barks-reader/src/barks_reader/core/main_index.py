@@ -6,9 +6,10 @@ tags (each at the pages the tag is on), under a tag group its tags.
 
 from __future__ import annotations
 
+import string
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_GROUPS,
@@ -40,6 +41,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+
+
+# The letter pages there can be, in the order of the menu: what `index_letter` returns.
+MAIN_INDEX_LETTERS: Final = "0" + string.ascii_uppercase
 
 
 def index_letter(heading: str) -> str:

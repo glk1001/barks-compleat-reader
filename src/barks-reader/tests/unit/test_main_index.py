@@ -13,6 +13,7 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
 from barks_reader.core.index_items import IndexItem
 from barks_reader.core.main_index import (
+    MAIN_INDEX_LETTERS,
     TitleHierarchy,
     build_main_index,
     index_item_markup,
@@ -73,6 +74,14 @@ class TestBuildMainIndex:
         assert o_texts.index("O'Gilt, Goldie") < o_texts.index("Ohio")
         d_texts = [item.display_text for item in index["D"]]
         assert d_texts.index("Daisy Duck") + 1 == d_texts.index("Daisy Duck: first appearance")
+
+    def test_every_page_of_the_index_is_a_letter_of_its_menu(
+        self, index: dict[str, list[IndexItem]]
+    ) -> None:
+        """And no page is filed under the apostrophe the other indexes' menus have."""
+        assert set(index) <= set(MAIN_INDEX_LETTERS)
+        assert "'" not in MAIN_INDEX_LETTERS
+        assert all(index_letter(letter) == letter for letter in MAIN_INDEX_LETTERS)
 
     def test_a_digit_heading_lists_on_the_0_page(self) -> None:
         assert (index_letter("313"), index_letter("alaska")) == ("0", "A")
