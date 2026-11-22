@@ -14,10 +14,12 @@ from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     ArticleDestination,
     ChronologicalDestination,
+    CorpusStatsDestination,
     DocumentDestination,
     IntroDestination,
     MainIndexDestination,
     RandomTitlesDestination,
+    ReopenKind,
     SearchDestination,
     SpeechIndexDestination,
     SpeechWordsDestination,
@@ -261,6 +263,27 @@ class TestTreeViewManager:
         screen_mocks["tree_view"].select_node.assert_called_with(wiki_node)
         tree_view_manager_deps["nav_coordinator"].open_wiki.assert_called_once_with()
         mock_setup.assert_not_called()
+
+    def test_go_back_to_by_the_numbers_reopens_it(
+        self,
+        tree_view_manager: TreeViewManager,
+        tree_view_manager_deps: dict[str, MagicMock],
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        stats_node = MagicMock(spec=ButtonTreeViewNode)
+        stats_node.destination = CorpusStatsDestination()
+        mock_tree.previous_selected_node = stats_node
+
+        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+            tree_view_manager.go_back_to_previous_node()
+
+        screen_mocks["tree_view"].select_node.assert_called_with(stats_node)
+        tree_view_manager_deps["nav_coordinator"].open_corpus_stats.assert_called_once_with()
+        mock_setup.assert_not_called()
+
+    def test_every_screen_go_back_reopens_has_a_way_to_open_it(self) -> None:
+        assert set(barks_reader.ui.tree_view_manager._REOPEN_ON_BACK) == set(ReopenKind)
 
     def test_go_back_to_a_chapter_reopens_it_where_it_was_left(
         self,

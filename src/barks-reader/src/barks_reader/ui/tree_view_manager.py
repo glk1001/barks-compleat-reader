@@ -10,11 +10,10 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     ArticleDestination,
-    CorpusStatsDestination,
     DocumentDestination,
     NavigationModel,
+    ReopenKind,
     TitleDestination,
-    WikiIndexDestination,
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import (
@@ -53,13 +52,12 @@ def _open_chapter(nav: NavigationCoordinator, destination: Destination | None) -
     nav.open_document(destination.doc_dir, destination.title, destination.view_state, resume=True)
 
 
-# Destinations whose node opens a full-window screen. Back onto one of these means
-# "take me back in", not "show me the static view the node falls back to": a chapter
-# left for one of its stories comes back at the page it was left on.
-_REOPEN_ON_BACK: dict[type, Callable[[NavigationCoordinator, Destination | None], None]] = {
-    WikiIndexDestination: lambda nav, _destination: nav.open_wiki(),
-    CorpusStatsDestination: lambda nav, _destination: nav.open_corpus_stats(),
-    DocumentDestination: _open_chapter,
+# How each full-window screen that Go Back opens again is opened; which nodes these
+# are, and why, is the model's (`NavigationModel.reopens_on_back`).
+_REOPEN_ON_BACK: dict[ReopenKind, Callable[[NavigationCoordinator, Destination | None], None]] = {
+    ReopenKind.WIKI: lambda nav, _destination: nav.open_wiki(),
+    ReopenKind.CORPUS_STATS: lambda nav, _destination: nav.open_corpus_stats(),
+    ReopenKind.DOCUMENT: _open_chapter,
 }
 
 
@@ -224,8 +222,8 @@ class TreeViewManager:
         # doesn't auto-launch a full-window screen. When Back returns to one
         # in-session, the user means "take me back in": select the node (mirrors a
         # fresh open's back-history) and re-open the screen.
-        reopen = _REOPEN_ON_BACK.get(type(prev_node.destination))
-        if reopen is not None:
+        reopen_kind = self._nav_model.reopens_on_back(prev_node.destination)
+        if reopen_kind is not None:
             # The tree as a fresh open leaves it: the branch left for closed, the
             # node's parents open and the node in view, so closing the screen lands on
             # the node and not on the story it was left for (2026-10-30).
@@ -235,7 +233,7 @@ class TreeViewManager:
                 self._tree_view_screen.open_all_parent_nodes(prev_node)
             self._tree_view_screen.select_node(prev_node)
             self.scroll_to_node(prev_node)
-            reopen(self._nav, prev_node.destination)
+            _REOPEN_ON_BACK[reopen_kind](self._nav, prev_node.destination)
             return
 
         # Under the images the node was left with: Go Back from a fun image's title
