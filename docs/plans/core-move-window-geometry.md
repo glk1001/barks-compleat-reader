@@ -1,6 +1,12 @@
 # Plan: the window geometry sums into `core`
 
-> Status: **proposed 2026-11-22**, nothing started. One of four plans from the
+> Status: **all five commits made 2026-11-22**, in one evening by the maintainer's
+> choice (the plan said one a night for 3 to 5); the overnight round's Windows and
+> macOS results are still to be read, and the by-hand checks below still to do. What
+> the sums read is two values, `WindowUnits` and `WindowPlace`, not one `WindowFacts`:
+> a sum that only converts units then makes no monitor lookup. `aspect_correction`
+> answers with an enum and a size; a layout fit raised to the minimum no longer logs
+> that it was. One of four plans from the
 > `ui` review of that date (see `core-move-navigation-coordinator.md`).
 
 ## Context

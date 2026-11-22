@@ -18,6 +18,7 @@ from barks_reader.core.window_geometry import (
     layout_fit_at,
     on_monitor_position,
     raised_to_minimum,
+    rotation_fit,
 )
 from barks_reader.core.window_minimum import minimum_window_size
 
@@ -270,3 +271,59 @@ class TestAspectCorrection:
             1245, MONITOR_WIDTH, CHROME, COMIC_PAGE_ASPECT_RATIO
         )
         assert correction.size[1] == 1245  # noqa: PLR2004
+
+
+FIT = 0.9
+
+
+class TestRotationFit:
+    def test_on_a_landscape_monitor_the_height_is_the_limit(self) -> None:
+        monitor = _monitor(width=2560, height=1440)
+        width, height, (left, top) = rotation_fit(
+            monitor, CHROME, COMIC_PAGE_ASPECT_RATIO, (1, 1), FIT
+        )
+        assert height == int(FIT * 1440)
+        assert (width, height) == size_under_bar(height, 2560, CHROME, COMIC_PAGE_ASPECT_RATIO)
+        assert (left, top) == ((2560 - width) // 2, (1440 - height) // 2)
+
+    def test_turned_to_portrait_the_width_is_the_limit(self) -> None:
+        monitor = _monitor(width=1440, height=2560)
+        width, height, (left, top) = rotation_fit(
+            monitor, CHROME, COMIC_PAGE_ASPECT_RATIO, (1, 1), FIT
+        )
+        assert width == int(FIT * 1440)
+        assert height == round(width * COMIC_PAGE_ASPECT_RATIO) + CHROME
+        assert height < int(FIT * 2560)
+        assert (left, top) == ((1440 - width) // 2, (2560 - height) // 2)
+
+    def test_the_window_stays_inside_the_fraction_of_the_monitor(self) -> None:
+        """To a pixel: the width comes from a height that was rounded from the width.
+
+        The spread on a 1080-wide portrait monitor comes out 973 wide, where 90% is 972.
+        """
+        rounding = 1
+        for size in ((2560, 1440), (1440, 2560), (1920, 1080), (1080, 1920)):
+            for ratio in (COMIC_PAGE_ASPECT_RATIO, SPREAD):
+                monitor = _monitor(width=size[0], height=size[1])
+                width, height, (left, top) = rotation_fit(monitor, CHROME, ratio, (1, 1), FIT)
+                assert width <= int(FIT * size[0]) + rounding
+                assert height <= int(FIT * size[1])
+                assert left >= 0
+                assert top >= 0
+
+    def test_it_is_centred_on_a_second_monitor(self) -> None:
+        monitor = _monitor(x=2560, y=200, width=1920, height=1080)
+        width, height, (left, top) = rotation_fit(
+            monitor, CHROME, COMIC_PAGE_ASPECT_RATIO, (1, 1), FIT
+        )
+        assert left == 2560 + (1920 - width) // 2
+        assert top == 200 + (1080 - height) // 2
+
+    def test_a_fit_below_the_minimum_is_the_minimum_centred(self) -> None:
+        monitor = _monitor(width=1920, height=1080)
+        minimum = (700, 1040)
+        assert rotation_fit(monitor, CHROME, COMIC_PAGE_ASPECT_RATIO, minimum, FIT) == (
+            700,
+            1040,
+            ((1920 - 700) // 2, (1080 - 1040) // 2),
+        )

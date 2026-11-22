@@ -17,7 +17,6 @@ from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
     ScreenInfo,
-    calculate_fitted_window_height,
     get_best_window_height_fit,
 )
 from barks_reader.core.window_geometry import (
@@ -29,6 +28,7 @@ from barks_reader.core.window_geometry import (
     layout_fit_at,
     on_monitor_position,
     raised_to_minimum,
+    rotation_fit,
 )
 from barks_reader.core.window_minimum import minimum_window_size
 
@@ -637,15 +637,13 @@ class AppWindowGeometryHelper:
         self._refit_pending = False  # the resize below is the refit
         self.evaluate_layout("rotation", refit=False)
 
-        new_height = calculate_fitted_window_height(
-            screen_width=monitor.width_pixels,
-            screen_height=monitor.height_pixels,
-            aspect_ratio=self.content_aspect_ratio,
-            action_bar_height=self._chrome_in_size_units(),
-            fit_fraction=ROTATION_FIT_FRACTION,
+        new_width, new_height, (center_x, center_y) = rotation_fit(
+            monitor,
+            self._chrome_in_size_units(),
+            self.content_aspect_ratio,
+            self._minimum_size(),
+            ROTATION_FIT_FRACTION,
         )
-        new_width, new_height, center_x = self._layout_fit_at(new_height)
-        center_y = monitor.monitor_y + (monitor.height_pixels - new_height) // 2
 
         logger.info(
             f"Rotation resize: ({new_width}, {new_height}) at ({center_x}, {center_y})"

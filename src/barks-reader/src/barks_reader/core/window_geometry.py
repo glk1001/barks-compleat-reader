@@ -19,6 +19,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from .main_layout import size_under_bar
+from .screen_metrics import calculate_fitted_window_height
 
 if TYPE_CHECKING:
     from .screen_metrics import ScreenInfo
@@ -236,3 +237,38 @@ def aspect_correction(
     held = held_to_minimum(target, minimum)
     kind = AspectCorrectionKind.IN_PROPORTION if held == size else AspectCorrectionKind.RESIZE
     return AspectCorrection(kind, held, held_at_minimum=held != target)
+
+
+def rotation_fit(
+    monitor: ScreenInfo,
+    chrome: int,
+    aspect_ratio: float,
+    minimum: tuple[int, int],
+    fit_fraction: float,
+) -> tuple[int, int, tuple[int, int]]:
+    """Return the window's size and position on a monitor that has turned or changed.
+
+    The layout as tall as `fit_fraction` of the monitor allows, or as its width
+    allows when that is less, in the middle of the monitor.
+
+    Args:
+        monitor: The monitor as it is now.
+        chrome: The height of the chrome under the content.
+        aspect_ratio: The content's height over its width, for the layout.
+        minimum: The smallest window allowed on this monitor.
+        fit_fraction: How much of the monitor's width and height the window may take.
+
+    Returns:
+        The width, the height, and the left and top that centre them.
+
+    """
+    height = calculate_fitted_window_height(
+        screen_width=monitor.width_pixels,
+        screen_height=monitor.height_pixels,
+        aspect_ratio=aspect_ratio,
+        action_bar_height=chrome,
+        fit_fraction=fit_fraction,
+    )
+    width, height, left = layout_fit_at(height, monitor, chrome, aspect_ratio, minimum)
+    top = monitor.monitor_y + (monitor.height_pixels - height) // 2
+    return width, height, (left, top)
