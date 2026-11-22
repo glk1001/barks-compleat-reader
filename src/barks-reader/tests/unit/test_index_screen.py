@@ -35,10 +35,13 @@ from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
 from unit_helpers import run_at_once, run_last_scheduled
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from kivy.uix.widget import Widget
 
 
 # Create a concrete implementation for testing
@@ -1870,3 +1873,149 @@ class TestThePopupsNavState:
         draw.assert_called_once_with(
             entries[1], POPUP_NAV_FOCUS_GROUP, line_width=3, under_children=True
         )
+
+
+def _has_ring(widget: Widget, group: str = _module.INDEX_NAV_FOCUS_GROUP) -> bool:
+    """Whether a focus ring of `group` is drawn on `widget`, in either of its layers."""
+    canvas = widget.canvas
+    assert canvas is not None
+    return bool(canvas.after.get_group(group) or canvas.before.get_group(group))
+
+
+class TestTheItemsFocusOnRealWidgets:
+    """The focus ring and fill on real columns of buttons, as the screen builds them.
+
+    The other tests stand a mock in for every row, so none of them sees a ring drawn or
+    a fill put back.
+    """
+
+    @pytest.fixture
+    def screen(self, index_screen: ConcreteIndexScreen) -> ConcreteIndexScreen:
+        """Return the screen in nav mode over a real left column of three item rows."""
+        column = BoxLayout(orientation="vertical")
+        for name in ("Ant", "Apple", "Axe"):
+            column.add_widget(Button(text=name))
+        index_screen.ids.left_column_layout = column
+        index_screen.ids.middle_column_layout = BoxLayout(orientation="vertical")
+        index_screen.ids.right_column_layout = BoxLayout(orientation="vertical")
+        index_screen._nav_active = True
+        index_screen._nav_panel = _module._IndexNavPanel.ITEMS
+        index_screen._nav_focused_col = 0
+        index_screen._nav_focused_item_idx = 0
+        return index_screen
+
+    @staticmethod
+    def _rows(screen: ConcreteIndexScreen) -> list[Button]:
+        return screen._get_col_buttons(0)
+
+    def test_the_focused_row_has_the_ring_and_the_fill(self, screen: ConcreteIndexScreen) -> None:
+        screen._draw_item_focus()
+        first, second, _ = self._rows(screen)
+        assert _has_ring(first)
+        assert list(first.background_color) == list(screen.index_theme.ITEM_BG_FOCUS)
+        assert not _has_ring(second)
+        screen.ids.index_scroll_view.scroll_into_view.assert_called_once_with(first)
+
+    def test_down_moves_the_ring_and_the_fill_and_puts_the_old_rows_fill_back(
+        self, screen: ConcreteIndexScreen
+    ) -> None:
+        screen._draw_item_focus()
+        first, second, _ = self._rows(screen)
+
+        assert screen.handle_key(_module.KEY_DOWN) is True
+
+        assert not _has_ring(first)
+        assert list(first.background_color) == list(screen.index_theme.ITEM_BG)
+        assert _has_ring(second)
+        assert list(second.background_color) == list(screen.index_theme.ITEM_BG_FOCUS)
+
+    def test_clearing_the_focus_reaches_a_row_of_sub_items_inside_the_column(
+        self, screen: ConcreteIndexScreen
+    ) -> None:
+        """Sub-items sit in a layout of their own in the column, a level down."""
+        sub_items = BoxLayout(orientation="vertical")
+        title = Button(text="A title under Apple")
+        sub_items.add_widget(title)
+        screen.ids.left_column_layout.add_widget(sub_items, index=1)  # under "Apple"
+        assert [row.text for row in self._rows(screen)] == [
+            "Ant",
+            "Apple",
+            "A title under Apple",
+            "Axe",
+        ]
+        screen._nav_focused_item_idx = 2
+        screen._draw_item_focus()
+        assert _has_ring(title)
+
+        screen._clear_all_item_focus()
+
+        assert not _has_ring(title)
+        assert list(title.background_color) == list(screen.index_theme.ITEM_BG)
+
+    def test_a_button_in_no_column_is_not_one_the_focus_can_be_placed_on(
+        self, screen: ConcreteIndexScreen
+    ) -> None:
+        assert screen._place_focus_on(Button(text="elsewhere")) is False
+        assert screen._nav_focused_item_idx == 0
+
+    def test_leaving_nav_mode_twice_clears_nothing_the_second_time(
+        self, screen: ConcreteIndexScreen
+    ) -> None:
+        screen._nav_active = False
+        with patch.object(screen, "_clear_all_item_focus") as clear:
+            screen.exit_nav_focus()
+        clear.assert_not_called()
+
+
+def test_the_alphabet_panel_leaves_a_key_that_is_not_its_own(
+    index_screen: ConcreteIndexScreen,
+) -> None:
+    index_screen._nav_active = True
+    index_screen._nav_panel = _module._IndexNavPanel.ALPHABET
+    assert index_screen.handle_key(ord("q")) is False
+
+
+def test_a_letter_pressed_that_the_menu_does_not_have_moves_no_letter_focus(
+    index_screen: ConcreteIndexScreen,
+) -> None:
+    """A button not of the menu (a saved letter of another index): the page is still shown."""
+    index_screen._nav_active = True
+    index_screen._nav_focused_letter_idx = 3
+    with (
+        patch.object(ConcreteIndexScreen, "_populate_index_for_letter") as populate,
+        patch.object(ConcreteIndexScreen, "_draw_letter_focus") as draw,
+    ):
+        index_screen.on_letter_press(MagicMock(text="?"))
+    populate.assert_called_once_with("?")
+    assert index_screen._nav_focused_letter_idx == 3
+    draw.assert_not_called()
+
+
+def test_a_bubble_s_text_box_keeps_its_title_and_content() -> None:
+    box = TextBoxWithTitleAndBorder("Page 5", "Quack!")
+    assert (box.title, box.content) == ("Page 5", "Quack!")
+
+
+class TestPopupKeyboardNavOnRealWidgets:
+    def test_escape_closes_the_popup(self) -> None:
+        nav, _, _ = _popup_nav([MagicMock()])
+        assert nav.handle_key(KEY_ESCAPE) is True
+        _stand_in_popup(nav).dismiss.assert_called_once_with()
+
+    def test_the_focused_bubble_gets_the_ring_and_is_scrolled_into_view(self) -> None:
+        """Over a real scroll view of real bubbles: Down rings the second and shows it."""
+        grid = GridLayout(cols=1)
+        bubbles = [BoxLayout(), BoxLayout(), BoxLayout()]
+        for bubble in bubbles:
+            grid.add_widget(bubble)
+        body = ScrollView()
+        body.add_widget(grid)
+        nav = PopupKeyboardNav(MagicMock(body=body))
+
+        with patch.object(body, "scroll_to") as scroll_to:
+            nav._draw_focus()
+            assert nav.handle_key(_module.KEY_DOWN) is True
+
+        group = _module.POPUP_NAV_FOCUS_GROUP
+        assert [_has_ring(bubble, group) for bubble in bubbles] == [False, True, False]
+        assert [found.args for found in scroll_to.call_args_list] == [(bubbles[0],), (bubbles[1],)]
