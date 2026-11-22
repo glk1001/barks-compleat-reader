@@ -21,7 +21,14 @@ from barks_reader.core.screen_metrics import (
     calculate_fitted_window_height,
     get_best_window_height_fit,
 )
-from barks_reader.core.window_geometry import WindowPlace, WindowUnits, on_monitor_position
+from barks_reader.core.window_geometry import (
+    WindowPlace,
+    WindowUnits,
+    held_to_minimum,
+    layout_fit_at,
+    on_monitor_position,
+    raised_to_minimum,
+)
 from barks_reader.core.window_minimum import minimum_window_size
 
 if TYPE_CHECKING:
@@ -231,13 +238,13 @@ class AppWindowGeometryHelper:
 
     def _layout_fit_at(self, height: int) -> tuple[int, int, int]:
         """Return the layout's width and height at ``height``, and its left, centred."""
-        monitor = self._current_monitor
-        chrome = self._chrome_in_size_units()
-        new_width, new_height = self._no_smaller_than_minimum(
-            *size_under_bar(height, monitor.width_pixels, chrome, self.content_aspect_ratio)
+        return layout_fit_at(
+            height,
+            self._current_monitor,
+            self._chrome_in_size_units(),
+            self.content_aspect_ratio,
+            self._minimum_size(),
         )
-        left = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
-        return new_width, new_height, left
 
     def _decide_layout(self) -> MainLayoutMode:
         return self._decide_layout_on(self._current_monitor)
@@ -324,17 +331,16 @@ class AppWindowGeometryHelper:
         one too small is armed again at the raised size.
         """
         if self._resize_event is not None:
-            guarded_width, guarded_height = self._resize_requested_size
-            raised = max(guarded_width, min_width), max(guarded_height, min_height)
+            raised = raised_to_minimum(self._resize_requested_size, (min_width, min_height))
             if raised != self._resize_requested_size:
                 self._schedule_guarded_resize(
                     *raised, reposition=self._on_monitor_position(*raised)
                 )
             return
 
-        system_width, system_height = Window.system_size
-        raised = max(system_width, min_width), max(system_height, min_height)
-        if raised == (system_width, system_height):
+        system_size = tuple(Window.system_size)
+        raised = raised_to_minimum(system_size, (min_width, min_height))
+        if raised == system_size:
             return
         position = self._on_monitor_position(*raised)
         Window.size = raised
@@ -373,13 +379,11 @@ class AppWindowGeometryHelper:
         SDL would hold the window at the minimum anyway, and the resize guard then
         fought it, forcing the smaller size back on every resize event until it expired.
         """
-        min_width, min_height = self._minimum_size()
-        if width >= min_width and height >= min_height:
-            return width, height
-        logger.debug(
-            f"Window size ({width}, {height}) raised to the minimum ({min_width}, {min_height})."
-        )
-        return min_width, min_height
+        minimum = self._minimum_size()
+        held = held_to_minimum((width, height), minimum)
+        if held != (width, height):
+            logger.debug(f"Window size ({width}, {height}) raised to the minimum {minimum}.")
+        return held
 
     # --- Window event handlers (bound by the app) ---
 

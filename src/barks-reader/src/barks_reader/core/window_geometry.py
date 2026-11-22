@@ -17,6 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .main_layout import size_under_bar
+
 if TYPE_CHECKING:
     from .screen_metrics import ScreenInfo
 
@@ -100,3 +102,67 @@ def on_monitor_position(place: WindowPlace, width: int, height: int) -> tuple[in
         centred_if_over(place.top, height, monitor.monitor_y, monitor.height_pixels),
     )
     return None if position == (place.left, place.top) else position
+
+
+def raised_to_minimum(size: tuple[int, int], minimum: tuple[int, int]) -> tuple[int, int]:
+    """Return `size` with only its short sides raised to the minimum's.
+
+    For a window that stands, or a resize on its way: the other side is still wanted,
+    and the aspect correction then settles the shape.
+
+    Args:
+        size: A width and height.
+        minimum: The smallest width and height allowed.
+
+    Returns:
+        The size, each side no less than the minimum's.
+
+    """
+    return max(size[0], minimum[0]), max(size[1], minimum[1])
+
+
+def held_to_minimum(size: tuple[int, int], minimum: tuple[int, int]) -> tuple[int, int]:
+    """Return a size to ask for: `size`, or the whole minimum when either side is below it.
+
+    For a size worked out in the layout's shape: the minimum has that shape too, so a
+    size short on one side is short on both, give or take the rounding, and the minimum
+    is the size to ask for. SDL would hold the window there anyway.
+
+    Args:
+        size: A width and height in the layout's shape.
+        minimum: The smallest width and height allowed, in the same shape.
+
+    Returns:
+        The size, or the minimum.
+
+    """
+    if size[0] >= minimum[0] and size[1] >= minimum[1]:
+        return size
+    return minimum
+
+
+def layout_fit_at(
+    height: int,
+    monitor: ScreenInfo,
+    chrome: int,
+    aspect_ratio: float,
+    minimum: tuple[int, int],
+) -> tuple[int, int, int]:
+    """Return the layout's width and height at `height`, and its left, centred.
+
+    Args:
+        height: The window height to fit, the chrome included.
+        monitor: The monitor the window is on: no wider than it, and centred on it.
+        chrome: The height of the chrome under the content, in the same units.
+        aspect_ratio: The content's height over its width, for the layout.
+        minimum: The smallest window allowed.
+
+    Returns:
+        The width, the height, and the left that centres that width on the monitor.
+
+    """
+    width, fitted_height = held_to_minimum(
+        size_under_bar(height, monitor.width_pixels, chrome, aspect_ratio), minimum
+    )
+    left = monitor.monitor_x + (monitor.width_pixels - width) // 2
+    return width, fitted_height, left
