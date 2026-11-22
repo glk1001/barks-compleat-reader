@@ -15,6 +15,24 @@ from . import log_markers
 _MAX_LOGGED_TEXT = 40
 
 
+def logged_text(text: str) -> str:
+    """Return `text` as a focus line names it: on one line, a long one cut with an ellipsis.
+
+    Args:
+        text: A widget's text.
+
+    Returns:
+        The text with its runs of whitespace as single spaces, cut to
+        ``_MAX_LOGGED_TEXT`` characters, the ellipsis among them. A GUI test waiting on
+        a row by its text waits on this.
+
+    """
+    text = " ".join(text.split())
+    if len(text) > _MAX_LOGGED_TEXT:
+        text = text[: _MAX_LOGGED_TEXT - 1] + "…"
+    return text
+
+
 def describe_widget(widget: object) -> str:
     """Name a widget for the log: its class, plus its text when it has some.
 
@@ -44,10 +62,7 @@ def describe_widget(widget: object) -> str:
         text = getattr(widget, "text", None)
     if not isinstance(text, str) or not text.strip():
         return name
-    text = " ".join(text.split())
-    if len(text) > _MAX_LOGGED_TEXT:
-        text = text[: _MAX_LOGGED_TEXT - 1] + "…"
-    return f'{name} "{text}"'
+    return f'{name} "{logged_text(text)}"'
 
 
 def log_nav_focus(widget: object) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from barks_reader.core.nav_focus import describe_widget, log_nav_focus
+from barks_reader.core.nav_focus import describe_widget, log_nav_focus, logged_text
 
 
 class TestDescribeWidget:
@@ -82,3 +82,14 @@ def test_log_nav_focus_writes_the_focus_line(loguru_sink: list[str]) -> None:
     widget.text = "Titles"
     log_nav_focus(widget)
     assert 'Nav focus on MagicMock "Titles".' in loguru_sink
+
+
+def test_a_text_is_logged_on_one_line_and_a_long_one_cut_to_forty_characters() -> None:
+    """What a GUI test looks for when it waits on a row by its text."""
+    assert logged_text("Black  Pete\n") == "Black Pete"
+    assert logged_text("a" * 40) == "a" * 40
+    cut = logged_text("Scrooge. See Uncle Scrooge: outside the Uncle Scrooge series")
+    assert cut == "Scrooge. See Uncle Scrooge: outside the…"
+    assert len(cut) == 40  # noqa: PLR2004
+    widget = type("Row", (), {"text": "b" * 41})()
+    assert describe_widget(widget) == f'Row "{"b" * 39}…"'

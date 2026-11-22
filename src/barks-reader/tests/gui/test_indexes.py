@@ -13,6 +13,7 @@ from barks_gui import expected, memory, nodes, taps
 from barks_gui.logs import last_field
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
+from barks_reader.core.nav_focus import logged_text
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -185,9 +186,13 @@ MAX_ITEM_STEPS = 80
 
 
 def _down_to_item(d: Driver, text: str) -> None:
-    """Step Down the index items until the focus is on the row showing `text`."""
+    """Step Down the index items until the focus is on the row showing `text`.
+
+    A focus line cuts a long text short (`logged_text`): a row is looked for as logged.
+    """
+    logged = logged_text(text)
     for _ in range(MAX_ITEM_STEPS):
-        if f'"{text}"' in d.last_line(d.FOCUS_MOVED):
+        if f'"{logged}"' in d.last_line(d.FOCUS_MOVED):
             return
         d.move_focus("Down")
     msg = f"no index row {text!r} within {MAX_ITEM_STEPS} steps"
@@ -291,6 +296,12 @@ def test_a_cross_reference_shows_its_targets_page_and_opens_it(boot: AppBoot) ->
         ("P", "Pete. [i]See[/i] Black Pete", "Black Pete"),
         ("H", "Helper. [i]See[/i] Little Helper", "Little Helper"),
         ("Z", "Zombie. [i]See[/i] Bombie the Zombie", "Bombie the Zombie"),
+        # A row longer than a focus line logs whole, to a page that fits the view.
+        (
+            "S",
+            "Scrooge. [i]See[/i] Uncle Scrooge: outside the Uncle Scrooge series",
+            "Uncle Scrooge: outside the Uncle Scrooge series",
+        ),
     ],
 )
 def test_a_cross_reference_to_another_page_opens_its_target_in_view(
