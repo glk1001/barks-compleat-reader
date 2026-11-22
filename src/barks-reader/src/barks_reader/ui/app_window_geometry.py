@@ -21,6 +21,7 @@ from barks_reader.core.screen_metrics import (
     calculate_fitted_window_height,
     get_best_window_height_fit,
 )
+from barks_reader.core.window_geometry import WindowPlace, WindowUnits, on_monitor_position
 from barks_reader.core.window_minimum import minimum_window_size
 
 if TYPE_CHECKING:
@@ -342,40 +343,20 @@ class AppWindowGeometryHelper:
 
     @staticmethod
     def _on_monitor_position(width: int, height: int) -> tuple[int, int] | None:
-        """Return where a window this size stays on its monitor, or None if it need not move.
-
-        Raised or refitted where it stands, its far edge can pass the monitor's. Only a
-        side that does is centred, as a rotation and a layout refit centre the window.
-        """
-        monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
-        if monitor is None:
-            return None
-        position = (
-            _centred_if_over(Window.left, width, monitor.monitor_x, monitor.width_pixels),
-            _centred_if_over(Window.top, height, monitor.monitor_y, monitor.height_pixels),
-        )
-        return None if position == (Window.left, Window.top) else position
+        """Return where a window this size stays on its monitor, or None if it need not move."""
+        return on_monitor_position(_window_place(), width, height)
 
     # --- Window units ---
     #
-    # Kivy reads ``Window.size`` (and gives resize events) in pixels, but takes a
-    # ``Window.size =`` in ``Window.system_size`` units, the units screeninfo gives the
-    # monitors in. They differ on a Retina Mac, two pixels to a point: a correction
-    # worked out in pixels and set as points doubled the window, again on each
-    # correction after (2026-10-14). So the geometry below is worked out in
-    # ``system_size`` units; elsewhere the factor is 1.
+    # The geometry below is worked out in ``Window.system_size`` units, not the pixels
+    # ``Window.size`` reads in (`core.window_geometry`: the two differ on a Retina Mac).
 
     @staticmethod
-    def _pixels_per_size_unit() -> float:
-        system_width = Window.system_size[0]
-        return Window.size[0] / system_width if system_width > 0 else 1.0
-
-    def _in_size_units(self, width: int, height: int) -> tuple[int, int]:
-        scale = self._pixels_per_size_unit()
-        return round(width / scale), round(height / scale)
+    def _in_size_units(width: int, height: int) -> tuple[int, int]:
+        return _window_units().in_size_units(width, height)
 
     def _chrome_in_size_units(self) -> int:
-        return round(self._constraints.chrome_height / self._pixels_per_size_unit())
+        return _window_units().length_in_size_units(self._constraints.chrome_height)
 
     def _minimum_size(self) -> tuple[int, int]:
         monitor = self._current_monitor
@@ -740,11 +721,15 @@ def _move_window(position: tuple[int, int]) -> None:
     Window.left, Window.top = position
 
 
-def _centred_if_over(position: int, size: int, monitor_start: int, monitor_size: int) -> int:
-    """Return `position`, or the centred one if a window of `size` passes the monitor's end."""
-    if position + size <= monitor_start + monitor_size:
-        return position
-    return max(monitor_start, monitor_start + (monitor_size - size) // 2)
+def _window_units() -> WindowUnits:
+    """Read the window's size in pixels and in the units a size is set in."""
+    return WindowUnits(size_pixels=tuple(Window.size), system_size=tuple(Window.system_size))
+
+
+def _window_place() -> WindowPlace:
+    """Read where the window is and which monitor that is on."""
+    left, top = Window.left, Window.top
+    return WindowPlace(left=left, top=top, monitor=SCREEN_METRICS.get_monitor_for_pos(left, top))
 
 
 def _set_window_minimum_size(width: int, height: int) -> None:
