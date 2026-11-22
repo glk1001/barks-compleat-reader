@@ -50,6 +50,24 @@ def has_page_images(doc_dir: Path) -> bool:
     return any(p.suffix.lower() in PAGE_IMAGE_EXTENSIONS for p in doc_dir.iterdir())
 
 
+def list_document_pages(doc_dir: Path) -> list[Path]:
+    """Return a document folder's page images, in file-name order.
+
+    Args:
+        doc_dir: The folder.
+
+    Returns:
+        The page images; none when the folder is missing or cannot be listed, which
+        is logged rather than raised (the caller is a press on the document's row).
+
+    """
+    try:
+        return sorted(p for p in doc_dir.iterdir() if p.suffix.lower() in PAGE_IMAGE_EXTENSIONS)
+    except OSError as e:
+        logger.warning(log_markers.DOCUMENT_FOLDER_UNREADABLE.format(path=doc_dir, error=e))
+        return []
+
+
 def find_document_chapters(root: Path) -> list[DocumentChapter]:
     """Return the parts of a many-part document, in folder-name order.
 

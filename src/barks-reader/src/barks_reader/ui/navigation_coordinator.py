@@ -31,6 +31,7 @@ from barks_reader.core.collection_page_groups import (
     get_collection_group_page_range,
     year_range_group,
 )
+from barks_reader.core.document_chapters import list_document_pages
 from barks_reader.core.goto_page import GotoPageOffer, goto_page_after_reading
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_consts_and_types import (
@@ -517,6 +518,12 @@ class NavigationCoordinator:
             single_page: Show one page at a time on the two-page spread as well.
 
         """
+        # Before the main screen is left: a folder the data pack lacks raised from the
+        # reader's listing, with the main screen already inactive under no reader.
+        if not list_document_pages(doc_dir):
+            logger.error(log_markers.DOCUMENT_NOT_OPENED.format(title=title, path=doc_dir))
+            return
+
         self._on_active_changed(False)  # noqa: FBT003
         self._doc_reader_close_view_state = return_view_state
         self._screen_switchers.switch_to_document_reader(

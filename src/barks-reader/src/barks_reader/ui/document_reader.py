@@ -19,7 +19,7 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.display_unit import DisplayUnit, build_document_units
-from barks_reader.core.document_chapters import PAGE_IMAGE_EXTENSIONS
+from barks_reader.core.document_chapters import list_document_pages
 from barks_reader.core.document_links import StoryLink, load_story_links
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_formatter import get_action_bar_title
@@ -189,9 +189,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         self._last_used_btn_idx = self._default_btn_idx
 
         self._doc_dir = doc_dir
-        self._page_paths = sorted(
-            p for p in doc_dir.iterdir() if p.suffix.lower() in PAGE_IMAGE_EXTENSIONS
-        )
+        self._page_paths = list_document_pages(doc_dir)
         self._units, self._unit_idx_for_index = build_document_units(len(self._page_paths))
         last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
         self._current_page_index = max(0, min(last_index, len(self._page_paths) - 1))

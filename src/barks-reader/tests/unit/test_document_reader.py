@@ -1062,3 +1062,12 @@ def test_the_screen_is_built_from_its_kv_file() -> None:
     builder.load_file.assert_called_once_with(str(document_reader_module.DOCUMENT_READER_KV_FILE))
     assert screen is made
     assert cls.call_args.kwargs["name"] == "document"
+
+
+def test_a_missing_folder_opens_as_an_empty_document(
+    screen: DocumentReaderScreen, tmp_path: Path
+) -> None:
+    """Listing it raised from the Kivy callback that opened it."""
+    _open(screen, tmp_path / "gone")
+
+    assert screen.page_source == ""

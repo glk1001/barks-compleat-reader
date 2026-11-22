@@ -9,7 +9,11 @@ from unittest.mock import patch
 
 import pytest
 from barks_reader.core import log_markers
-from barks_reader.core.document_chapters import DocumentChapter, find_document_chapters
+from barks_reader.core.document_chapters import (
+    DocumentChapter,
+    find_document_chapters,
+    list_document_pages,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -113,3 +117,39 @@ def test_a_chapter_without_a_title_is_named_by_its_folder(
             path=blank / "document.json", error="no title"
         ),
     ]
+
+
+class TestListDocumentPages:
+    def test_the_pages_come_in_file_name_order_and_other_files_are_left_out(
+        self, tmp_path: Path
+    ) -> None:
+        for name in ("page-002.JPG", "page-001.png", "page-001.json", "notes.txt"):
+            (tmp_path / name).write_bytes(b"")
+
+        assert list_document_pages(tmp_path) == [
+            tmp_path / "page-001.png",
+            tmp_path / "page-002.JPG",
+        ]
+
+    def test_a_missing_folder_has_no_pages(self, tmp_path: Path, loguru_sink: list[str]) -> None:
+        """Raised from the press that opens it, a folder a data pack lacks ended the app."""
+        gone = tmp_path / "How To"
+
+        assert list_document_pages(gone) == []
+        assert any(
+            line.startswith(f'Document folder "{gone}" cannot be listed (') for line in loguru_sink
+        )
+
+    def test_a_folder_that_cannot_be_listed_has_no_pages(
+        self, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+
+        with patch.object(Path, Path.iterdir.__name__, _listing_refused_for(tmp_path)):
+            assert list_document_pages(tmp_path) == []
+        assert (
+            log_markers.DOCUMENT_FOLDER_UNREADABLE.format(
+                path=tmp_path, error=f"Permission denied: '{tmp_path}'"
+            )
+            in loguru_sink
+        )

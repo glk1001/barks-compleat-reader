@@ -13,6 +13,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENU
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
+from barks_reader.core import log_markers
 from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
@@ -921,3 +922,44 @@ class TestNoPageOfferedForATitleNotGoneTo:
 
         assert went_there is True
         nav_coord_deps["renderer"].render_title.assert_called_once()
+
+
+class TestOpenDocument:
+    def test_a_document_with_pages_opens_over_an_inactive_main_screen(
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
+        (tmp_path / "page-001.png").write_bytes(b"")
+
+        nav_coord.open_document(tmp_path, "How To", ViewStates.ON_INTRO_HOW_TO_NODE, resume=True)
+
+        nav_coord_deps["on_active_changed"].assert_called_once_with(False)  # noqa: FBT003
+        nav_coord_deps["screen_switchers"].switch_to_document_reader.assert_called_once_with(
+            tmp_path, "How To", resume=True, single_page=False
+        )
+
+    def test_a_document_whose_folder_is_missing_leaves_the_main_screen_as_it_is(
+        self,
+        nav_coord: NavigationCoordinator,
+        nav_coord_deps: dict[str, MagicMock],
+        tmp_path: Path,
+        loguru_sink: list[str],
+    ) -> None:
+        """Left inactive under no reader, the main screen took no key."""
+        gone = tmp_path / "How To"
+
+        nav_coord.open_document(gone, "How To", ViewStates.ON_INTRO_HOW_TO_NODE)
+
+        nav_coord_deps["on_active_changed"].assert_not_called()
+        nav_coord_deps["screen_switchers"].switch_to_document_reader.assert_not_called()
+        assert log_markers.DOCUMENT_NOT_OPENED.format(title="How To", path=gone) in loguru_sink
+        nav_coord.on_document_closed()  # none comes, and no view waits to be rendered
+        nav_coord_deps["renderer"].render_state.assert_not_called()
+
+    def test_a_document_folder_with_no_pages_is_not_opened(
+        self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
+        (tmp_path / "notes.txt").write_bytes(b"")
+
+        nav_coord.open_document(tmp_path, "How To")
+
+        nav_coord_deps["screen_switchers"].switch_to_document_reader.assert_not_called()
