@@ -151,11 +151,21 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         self._setup_action_bar_nav([self.ids.close_button])
 
         # A resize drag would otherwise rebuild the page on every frame: this waits for a
-        # gap in it, as a timeout of 0 would only merge the calls within one frame.
+        # gap in it (`_rebuild_after_a_pause`), as a timeout of 0 would only merge the
+        # calls within one frame.
         self._rebuild_trigger = Clock.create_trigger(
             lambda _dt: self._rebuild(), _REBUILD_AFTER_RESIZE_SECS
         )
-        self.ids.stats_page.bind(width=lambda *_args: self._rebuild_trigger())
+        self.ids.stats_page.bind(width=self._rebuild_after_a_pause)
+
+    def _rebuild_after_a_pause(self, *_args: object) -> None:
+        """Rebuild the page once its width has stopped changing.
+
+        Cancelled first: a trigger already waiting ignores a call, and does not start
+        its wait again, so the page was rebuilt every tenth of a second through a drag.
+        """
+        self._rebuild_trigger.cancel()
+        self._rebuild_trigger()
 
     # --- Lifecycle -------------------------------------------------------
 

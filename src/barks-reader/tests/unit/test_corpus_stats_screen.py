@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from barks_reader.core import log_markers
@@ -412,6 +412,16 @@ class TestResizing:
     ) -> None:
         """A timeout of 0 would only merge the calls within one frame."""
         assert screen._rebuild_trigger.timeout > 0
+
+    def test_each_new_width_puts_the_rebuild_off_again(self, screen: CorpusStatsScreen) -> None:
+        """A trigger already waiting ignores a call: it does not start its wait again.
+
+        So the page was rebuilt every tenth of a second through a drag, not once after it.
+        """
+        waiting = MagicMock()
+        screen._rebuild_trigger = waiting
+        screen._rebuild_after_a_pause(screen.ids["stats_page"], 900)
+        assert waiting.mock_calls == [call.cancel(), call()]
 
 
 class TestTheCloseButton:
