@@ -50,12 +50,12 @@ from barks_reader.core.speech_hits import SpeechHitRow, comic_pages, speech_hit_
 from .index_screen import (
     INDEX_NAV_FOCUS_GROUP,
     IndexItemButton,
-    IndexNoItemsButton,
     IndexPrefixButton,
     IndexScreen,
     TitleShowSpeechButton,
     _IndexNavPanel,
     create_speech_bubble_popup,
+    move_selection,
     show_speech_bubbles_popup,
 )
 from .panel_texture_loader import PanelTextureLoader
@@ -201,7 +201,6 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         # every speech bubble of every match in memory for the app's lifetime.
         self._background_titles_cache: dict[IndexItem, list[str]] = {}
 
-        self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
 
         self._nav_on_speech_btn: bool = False
@@ -402,26 +401,16 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         return button
 
     @override
-    def _get_no_items_button(self, letter: str) -> IndexNoItemsButton:
-        return IndexNoItemsButton(
-            text=f"*** No index items for '{letter}' ***",
-            color=self.index_theme.MENU_TEXT,
-            font_name=self._font_manager.speech_index_item_font_name,
-            font_size=self._font_manager.speech_index_item_font_size,
+    def _index_item_font(self) -> tuple[str, float]:
+        return (
+            self._font_manager.speech_index_item_font_name,
+            self._font_manager.speech_index_item_font_size,
         )
 
-    def _add_title_sub_items(self, _dt: float) -> None:
-        """Create and add the sub-item widgets to the layout."""
-        assert self._open_tag_item is not None
-        item = self._open_tag_item
+    @override
+    def _get_sub_items_layout(self, item: IndexItem) -> BoxLayout:
         assert type(item.id) is str
-        logger.debug(f'Adding title sub-items for "{item.id}".')
-
-        sub_items_layout = self._get_title_sub_items_layout(item)
-        self._insert_title_sub_items_layout(sub_items_layout)
-
-    def _get_title_sub_items_layout(self, item: IndexItem) -> BoxLayout:
-        index_term: str = item.id  # ty: ignore[invalid-assignment]
+        index_term: str = item.id
         logger.info(f'Laying out title sub-items for for index term "{index_term}".')
 
         sub_items_to_display = self._get_sub_items_data(item)
@@ -434,8 +423,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         # A row to a title, each the column's width: the title, cut short with an
         # ellipsis where the column is too narrow for it, and its speech button at
         # the column's right edge.
-        sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)
-        sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
+        sub_items_layout = self._new_sub_items_layout()
 
         for (
             title_str,
@@ -500,16 +488,12 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
         return speech_hit_rows(found_words, max_len=MAX_TITLE_AND_PAGES_LEN, sortable=True)
 
-    def _insert_title_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
-        button = self._open_tag_button
-        assert button is not None
-        target_layout = button.parent
-        insertion_index = target_layout.children.index(button)
-        target_layout.add_widget(sub_items_layout, index=insertion_index)
-        sub_items_layout.owner_button = button  # Tag the layout with its owner
-        self._open_tag_widgets.append(sub_items_layout)
+    @override
+    def _insert_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
+        super()._insert_sub_items_layout(sub_items_layout)
         # The open word reads as the heading of the titles under it.
-        button.bold = True
+        assert self._open_tag_button is not None
+        self._open_tag_button.bold = True
 
     @override
     def _close_open_widgets_from(self, level: int) -> None:
@@ -529,9 +513,7 @@ class SpeechSubItemsIndexScreen(IndexScreen):
     def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
         logger.info(log_markers.INDEX_TERM_HANDLED.format(term=item.id))
 
-        self._open_tag_button = button
-        self._open_tag_item = item
-        self._schedule_sub_items(self._add_title_sub_items)
+        self._open_sub_items(button, item)
 
     def _show_title_speech_bubbles(
         self, title_str: str, index_terms: str, title_speech_info: TitleInfo
@@ -697,9 +679,7 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY] = prefix
         self._saved_prefix_letter = first_letter
 
-        if self._selected_prefix_button and self._selected_prefix_button != button:
-            self._selected_prefix_button.is_selected = False
-        button.is_selected = True
+        move_selection(self._selected_prefix_button, button)
         self._selected_prefix_button = button
 
         terms = self._cleaned_alpha_split_terms[first_letter.lower()][prefix]

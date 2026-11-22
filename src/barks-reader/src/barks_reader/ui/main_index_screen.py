@@ -16,7 +16,6 @@ from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[import-not-found]
     ColorProperty,
 )
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from loguru import logger
 
@@ -39,11 +38,12 @@ from barks_reader.core.main_index import (
 )
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 
-from .index_screen import IndexItemButton, IndexNoItemsButton, IndexScreen
+from .index_screen import IndexItemButton, IndexScreen
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from kivy.uix.boxlayout import BoxLayout
 
     from barks_reader.core.reader_settings import ReaderSettings
 
@@ -117,7 +117,6 @@ class MainIndexScreen(IndexScreen):
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
         self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}
 
-        self._open_tag_item: IndexItem | None = None
         # The shown letter page's tag entries, for a cross-reference to go to.
         self._tag_entries: dict[Tags, tuple[Button, IndexItem]] = {}
 
@@ -188,36 +187,33 @@ class MainIndexScreen(IndexScreen):
         return button
 
     @override
-    def _get_no_items_button(self, letter: str) -> IndexNoItemsButton:
-        return IndexNoItemsButton(
-            text=f"*** No index items for '{letter}' ***",
-            color=self.index_theme.MENU_TEXT,
-            font_name=self._font_manager.main_index_item_font_name,
-            font_size=self._font_manager.main_index_item_font_size,
+    def _index_item_font(self) -> tuple[str, float]:
+        return (
+            self._font_manager.main_index_item_font_name,
+            self._font_manager.main_index_item_font_size,
         )
 
-    def _add_sub_items(self, _dt: float) -> None:
-        """Create and add the sub-item widgets to the layout."""
-        assert self._open_tag_item is not None
-        item_id: Tags | TagGroups = self._open_tag_item.id
-        logger.debug(f"Adding sub-items for {item_id.name}")
-
-        sub_items_layout = self._get_sub_item_layout(item_id)
-        self._insert_tag_sub_items_layout(sub_items_layout)
+    @override
+    def _sub_items_added(self, item: IndexItem, sub_items_layout: BoxLayout) -> None:
+        assert isinstance(item.id, Tags | TagGroups)
         logger.debug(
             log_markers.INDEX_SUB_ITEMS_ADDED.format(
-                name=item_id.name, count=len(sub_items_layout.children)
+                name=item.id.name, count=len(sub_items_layout.children)
             )
         )
 
-    def _get_sub_item_layout(self, item_id: Tags | TagGroups) -> BoxLayout:
+    @override
+    def _get_sub_items_layout(self, item: IndexItem) -> BoxLayout:
+        item_id = item.id
+        assert isinstance(item_id, Tags | TagGroups)
+        logger.debug(f"Adding sub-items for {item_id.name}")
         # The new padding is the parent button's padding plus an indent step.
         assert self._open_tag_button is not None
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
         # --- Determine what items to display in the new sub-list ---
-        if type(self._open_tag_item.id) is Tags:
+        if type(item_id) is Tags:
             assert isinstance(item_id, Tags)
             use_italic = True
             sub_items_to_display: list[tuple[Titles | Tags, str, str]] = list(
@@ -229,8 +225,7 @@ class MainIndexScreen(IndexScreen):
             sub_items_to_display = list(tag_group_sub_items(item_id))
 
         # Now create the layout.
-        sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)
-        sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
+        sub_items_layout = self._new_sub_items_layout()
         for (
             sub_item_id,
             sub_item_page_to_goto,
@@ -269,15 +264,6 @@ class MainIndexScreen(IndexScreen):
             )
 
         return sub_items_layout
-
-    def _insert_tag_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
-        button = self._open_tag_button
-        assert button is not None
-        target_layout = button.parent
-        insertion_index = target_layout.children.index(button)
-        target_layout.add_widget(sub_items_layout, index=insertion_index)
-        sub_items_layout.owner_button = self._open_tag_button  # Tag the layout with its owner
-        self._open_tag_widgets.append(sub_items_layout)
 
     @override
     def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:
@@ -374,6 +360,4 @@ class MainIndexScreen(IndexScreen):
             self._open_tag_button = None
             return
 
-        self._open_tag_button = button
-        self._open_tag_item = item
-        self._schedule_sub_items(self._add_sub_items)
+        self._open_sub_items(button, item)

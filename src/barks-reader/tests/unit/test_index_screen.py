@@ -75,6 +75,14 @@ class ConcreteIndexScreen(IndexScreen):
     def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
         pass
 
+    def _get_sub_items_layout(self, item: IndexItem) -> BoxLayout:
+        layout = self._new_sub_items_layout()
+        layout.add_widget(Button(text=f"under {item.display_text}"))
+        return layout
+
+    def _index_item_font(self) -> tuple[str, float]:
+        return "Roboto", 14
+
     def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:
         if first_letter == "A":
             return [
@@ -1986,6 +1994,80 @@ def test_an_open_container_is_found_by_the_button_it_opened_under(
     assert index_screen._get_level_of_click_for_collapse(closed) == (False, -1)
     assert index_screen._first_sub_item_rows(tag, 2) == first_rows
     assert index_screen._first_sub_item_rows(closed, 2) == []
+
+
+class TestOpeningSubItems:
+    """What every index does to open an item: written once, in the base screen."""
+
+    @pytest.fixture
+    def opened(self, index_screen: ConcreteIndexScreen) -> tuple[ConcreteIndexScreen, Button]:
+        """Return the screen with "Apple" opened in a real column, and its row."""
+        column = BoxLayout(orientation="vertical")
+        rows = [Button(text=name) for name in ("Ant", "Apple", "Axe")]
+        for row in rows:
+            column.add_widget(row)
+        index_screen.ids.left_column_layout = column
+        item = IndexItem(id="Apple", display_text="Apple")
+        with (
+            patch.object(_module.Clock, "schedule_once", side_effect=run_at_once),
+            patch.object(index_screen, "_sub_items_added") as added,
+        ):
+            index_screen._open_sub_items(rows[1], item)
+        added.assert_called_once_with(item, index_screen._open_tag_widgets[-1])
+        return index_screen, rows[1]
+
+    def test_the_sub_items_go_in_directly_under_the_items_row(
+        self, opened: tuple[ConcreteIndexScreen, Button]
+    ) -> None:
+        screen, row = opened
+        assert [button.text for button in screen._get_col_buttons(0)] == [
+            "Ant",
+            "Apple",
+            "under Apple",
+            "Axe",
+        ]
+        assert (screen._open_tag_button, screen._open_tag_item) == (
+            row,
+            IndexItem(id="Apple", display_text="Apple"),
+        )
+
+    def test_their_layout_is_tagged_with_the_row_and_is_as_tall_as_its_rows(
+        self, opened: tuple[ConcreteIndexScreen, Button]
+    ) -> None:
+        screen, row = opened
+        (layout,) = screen._open_tag_widgets
+        assert layout.owner_button is row
+        assert screen._is_open_owner(row) is True
+        assert layout.size_hint_y is None
+        layout.minimum_height = 75
+        assert layout.height == 75
+
+    def test_the_row_for_a_letter_with_no_items_is_in_the_index_s_item_font(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        with patch.object(_module, "IndexNoItemsButton") as button_cls:
+            button = IndexScreen._get_no_items_button(index_screen, "X")
+        assert button is button_cls.return_value
+        assert button_cls.call_args.kwargs == {
+            "text": "*** No index items for 'X' ***",
+            "color": index_screen.index_theme.MENU_TEXT,
+            "font_name": "Roboto",
+            "font_size": 14,
+        }
+
+    @pytest.mark.parametrize("was_selected", [True, False])
+    def test_a_selection_moves_from_the_button_that_had_it(self, *, was_selected: bool) -> None:
+        old = MagicMock(is_selected=True) if was_selected else None
+        new = MagicMock(is_selected=False)
+        _module.move_selection(old, new)
+        assert new.is_selected is True
+        if old is not None:
+            assert old.is_selected is False
+
+    def test_a_button_pressed_again_keeps_its_selection(self) -> None:
+        button = MagicMock(is_selected=True)
+        _module.move_selection(button, button)
+        assert button.is_selected is True
 
 
 def test_the_alphabet_panel_leaves_a_key_that_is_not_its_own(

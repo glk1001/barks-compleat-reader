@@ -606,9 +606,15 @@ def test_an_open_popup_takes_the_keys(speech_index_screen: SpeechIndexScreen) ->
 def test_no_items_for_a_letter_shows_a_row_that_says_so(
     speech_index_screen: SpeechIndexScreen,
 ) -> None:
-    with patch.object(_speech_module, "IndexNoItemsButton") as button_cls:
+    with patch.object(barks_reader.ui.index_screen, "IndexNoItemsButton") as button_cls:
         speech_index_screen._get_no_items_button("Q")
-    assert button_cls.call_args.kwargs["text"] == "*** No index items for 'Q' ***"
+    font_manager = speech_index_screen._font_manager
+    assert button_cls.call_args.kwargs == {
+        "text": "*** No index items for 'Q' ***",
+        "color": speech_index_screen.index_theme.MENU_TEXT,
+        "font_name": font_manager.speech_index_item_font_name,
+        "font_size": font_manager.speech_index_item_font_size,
+    }
 
 
 def test_a_letter_with_more_prefixes_than_the_bar_holds_shows_the_first_that_fit(
@@ -668,7 +674,7 @@ class TestSubItemsInARealGrid:
         button = _row(column, from_top)
         screen._open_tag_button = button
         sub_items = BoxLayout(orientation="vertical", size_hint_y=None, height=_SUB_ITEMS_HEIGHT)
-        screen._insert_title_sub_items_layout(sub_items)
+        screen._insert_sub_items_layout(sub_items)
         column.do_layout()
         return button, sub_items
 
@@ -761,7 +767,7 @@ class TestTheTitleRowsOfATerm:
             patch.object(_speech_module, "title_row_item", side_effect=lambda *row: row),
             patch.object(_speech_module, "STR_TITLE_TO_ENUM", known),
         ):
-            yield screen._get_title_sub_items_layout(IndexItem("duck", "duck"))
+            yield screen._get_sub_items_layout(IndexItem("duck", "duck"))
 
     def test_a_title_the_index_has_and_the_app_does_not_is_left_out_and_reported(
         self, screen: SpeechIndexScreen, loguru_sink: list[str]
@@ -776,7 +782,7 @@ class TestTheTitleRowsOfATerm:
             patch.object(screen, "_get_sub_items_data", return_value=rows),
             patch.object(_speech_module, "title_row_item", side_effect=lambda *row: row),
         ):
-            layout = screen._get_title_sub_items_layout(IndexItem("duck", "duck"))
+            layout = screen._get_sub_items_layout(IndexItem("duck", "duck"))
         assert [title.full_text for title, _ in self._rows(layout)] == [f"{known}, 7"]
         assert 'No title "A Title Since Renamed" for the index term "duck".' in loguru_sink
 
@@ -848,10 +854,10 @@ class TestTheTitleRowsOfATerm:
         item = IndexItem("duck", "duck")
         speech_index_screen._open_tag_item = item
         with (
-            patch.object(speech_index_screen, "_get_title_sub_items_layout") as build,
-            patch.object(speech_index_screen, "_insert_title_sub_items_layout") as insert,
+            patch.object(speech_index_screen, "_get_sub_items_layout") as build,
+            patch.object(speech_index_screen, "_insert_sub_items_layout") as insert,
         ):
-            speech_index_screen._add_title_sub_items(0)
+            speech_index_screen._add_sub_items(0)
 
         build.assert_called_once_with(item)
         insert.assert_called_once_with(build.return_value)
@@ -1570,7 +1576,7 @@ class TestATermsRow:
         assert 'Handling index term: "duck".' in loguru_sink
         assert speech_index_screen._open_tag_button is button
         assert speech_index_screen._open_tag_item is item
-        schedule.assert_called_once_with(speech_index_screen._add_title_sub_items)
+        schedule.assert_called_once_with(speech_index_screen._add_sub_items)
 
     def test_a_term_not_searched_before_is_searched_and_kept(
         self, speech_index_screen: SpeechIndexScreen

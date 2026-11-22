@@ -87,6 +87,16 @@ INDEX_NAV_FOCUS_GROUP = "index_nav_focus"
 _PAGE_SCROLL_STEP = 0.2
 
 
+def move_selection(selected: Button | None, button: Button) -> None:
+    """Mark `button` selected in place of `selected`, the one that was (or none).
+
+    The .kv file colors a letter or prefix button by its ``is_selected``.
+    """
+    if selected and selected != button:
+        selected.is_selected = False
+    button.is_selected = True
+
+
 def _scroll_a_page_step(scroll_view: ScrollView, direction: int) -> None:
     """Scroll `scroll_view` a page step down (`direction` 1) or up (-1), no further than its end."""
     scroll_view.scroll_y = max(0.0, min(1.0, scroll_view.scroll_y - direction * _PAGE_SCROLL_STEP))
@@ -428,6 +438,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
 
         self._alphabet_buttons: dict[str, Button] = {}
         self._open_tag_button: Button | None = None
+        self._open_tag_item: IndexItem | None = None  # the item `_open_tag_button` shows
         self._open_tag_widgets: list[Widget] = []
         self._row_pinner: RowScrollPinner | None = None  # made on the first press
 
@@ -974,8 +985,18 @@ class IndexScreen(NavExitMixin, FloatLayout):
         """Return the button that shows ``item`` in the grid."""
 
     @abstractmethod
+    def _index_item_font(self) -> tuple[str, float]:
+        """Return the font name and size of this index's item rows."""
+
     def _get_no_items_button(self, letter: str) -> IndexNoItemsButton:
         """Return the placeholder button shown when a letter has no items."""
+        font_name, font_size = self._index_item_font()
+        return IndexNoItemsButton(
+            text=f"*** No index items for '{letter}' ***",
+            color=self.index_theme.MENU_TEXT,
+            font_name=font_name,
+            font_size=font_size,
+        )
 
     def _cancel_index_image_change_events(self) -> None:
         if self._index_image_change_event:
@@ -1000,10 +1021,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
         assert self.treeview_index_node is not None
         self.treeview_index_node.saved_state[SAVED_NODE_STATE_FIRST_LETTER_KEY] = first_letter
 
-        # Let the .kv file handle the color changes by setting the property.
-        if self._selected_letter_button and self._selected_letter_button != button:
-            self._selected_letter_button.is_selected = False
-        button.is_selected = True
+        move_selection(self._selected_letter_button, button)
         self._selected_letter_button = button
 
         self._populate_index_for_letter(first_letter)
@@ -1203,7 +1221,45 @@ class IndexScreen(NavExitMixin, FloatLayout):
 
     @abstractmethod
     def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
-        """Expand an item into its sub-items below ``button``."""
+        """Expand an item into its sub-items below ``button`` (see `_open_sub_items`)."""
+
+    def _open_sub_items(self, button: Button, item: IndexItem) -> None:
+        """Open `item`'s sub-items under `button`, its row: built and put in on the next frame."""
+        self._open_tag_button = button
+        self._open_tag_item = item
+        self._schedule_sub_items(self._add_sub_items)
+
+    def _add_sub_items(self, _dt: float) -> None:
+        """Build the open item's sub-items and put them in under its row."""
+        item = self._open_tag_item
+        assert item is not None
+        sub_items_layout = self._get_sub_items_layout(item)
+        self._insert_sub_items_layout(sub_items_layout)
+        self._sub_items_added(item, sub_items_layout)
+
+    @abstractmethod
+    def _get_sub_items_layout(self, item: IndexItem) -> BoxLayout:
+        """Return a layout (`_new_sub_items_layout`) holding the rows under ``item``."""
+
+    @staticmethod
+    def _new_sub_items_layout() -> BoxLayout:
+        """Return an empty column for an item's sub-items, as tall as the rows put in it."""
+        sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)
+        sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
+        return sub_items_layout
+
+    def _insert_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
+        """Put `sub_items_layout` in under the open item's row, tagged with that row."""
+        button = self._open_tag_button
+        assert button is not None
+        target_layout = button.parent
+        insertion_index = target_layout.children.index(button)
+        target_layout.add_widget(sub_items_layout, index=insertion_index)
+        sub_items_layout.owner_button = button  # Tag the layout with its owner
+        self._open_tag_widgets.append(sub_items_layout)
+
+    def _sub_items_added(self, item: IndexItem, sub_items_layout: BoxLayout) -> None:
+        """Take note that ``item``'s sub-items are in: for a screen with a line to log."""
 
     def _get_level_of_click_for_collapse(self, button: Button) -> tuple[bool, int]:
         level = self._open_level_of(button)

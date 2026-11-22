@@ -55,6 +55,7 @@ def main_index_screen(
             screen._alphabet_buttons = {}
             screen._open_tag_widgets = []
             screen._nav_filled_item_btn = None
+            screen._open_tag_item = None
             screen.treeview_index_node = MagicMock()
             screen.treeview_index_node.saved_state = {}
 
@@ -240,8 +241,8 @@ class TestTagMarkers:
         layout = MagicMock()
         layout.children = [MagicMock()] * 3
         with (
-            patch.object(main_index_screen, "_get_sub_item_layout", return_value=layout),
-            patch.object(main_index_screen, "_insert_tag_sub_items_layout"),
+            patch.object(main_index_screen, "_get_sub_items_layout", return_value=layout),
+            patch.object(main_index_screen, "_insert_sub_items_layout"),
         ):
             main_index_screen._add_sub_items(0)
         assert f"Index sub-items added under '{group.name}': 3." in loguru_sink
@@ -259,11 +260,11 @@ class TestTagMarkers:
             patch.object(
                 barks_reader.core.main_index, "get_all_tags_in_tag_group", return_value=set(members)
             ),
-            patch.object(module, "BoxLayout"),
+            patch.object(screen, "_new_sub_items_layout"),
             patch.object(module, "_MainIndexTitleItemButton"),
             patch.object(module, "IndexItem") as index_item,
         ):
-            screen._get_sub_item_layout(item_id)
+            screen._get_sub_items_layout(screen._open_tag_item)
         return [c.kwargs["id"] for c in index_item.call_args_list]
 
     def test_a_tags_titles_are_listed_in_the_order_barks_submitted_them(
@@ -602,7 +603,7 @@ class TestSubItemsUnderTheirRow:
         main_index_screen._open_tag_button = tag_row
         sub_items = BoxLayout()
 
-        main_index_screen._insert_tag_sub_items_layout(sub_items)
+        main_index_screen._insert_sub_items_layout(sub_items)
 
         # A layout's children run last-added first: the rows read top to bottom reversed.
         assert list(reversed(column.children)) == [above, tag_row, sub_items, below]
