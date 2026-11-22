@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 import pyphen
-from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_location
+from barks_fantagraphics.barks_covers import (
+    COVER_BY_TITLE,
+    get_cover_display_title,
+    get_cover_location,
+)
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
 from barks_fantagraphics.barks_titles import Titles
@@ -14,6 +18,7 @@ from barks_fantagraphics.comic_book_info import (
     BARKS_TITLE_INFO,
     COVERS_SET,
     ONE_PAGERS,
+    get_one_pager_display_title,
     get_one_pager_fanta_page,
 )
 from barks_fantagraphics.comic_issues import ISSUE_NAME, SHORT_ISSUE_NAME, Issues
@@ -204,6 +209,42 @@ def get_comic_display_title(comic_book_info: ComicBookInfo) -> str:
     if comic_book_info.is_barks_title:
         return comic_book_info.get_title_str()
     return comic_book_info.get_title_from_issue_name()
+
+
+def get_title_view_main_title(comic_book_info: ComicBookInfo) -> str:
+    """Return the heading the title view gives a comic.
+
+    Args:
+        comic_book_info: The comic to name.
+
+    Returns:
+        A one-pager's issue and page and a cover's issue and date, since each is read
+        as a page of its collection rather than as a comic of its own; a long title
+        of Barks's own split over two lines (``LONG_TITLE_SPLITS``); else the name the
+        reader's bar gives it (``get_comic_display_title``).
+
+    """
+    title = comic_book_info.title
+    if title in ONE_PAGERS:
+        return get_one_pager_display_title(title)
+    if title in COVERS_SET:
+        return get_cover_display_title(COVER_BY_TITLE[title])
+    if comic_book_info.is_barks_title and title in LONG_TITLE_SPLITS:
+        return LONG_TITLE_SPLITS[title]
+    return get_comic_display_title(comic_book_info)
+
+
+def get_rejected_footnote_text(fanta_info: FantaComicBookInfo) -> str:
+    """Return the title view's footnote for a story Western rejected.
+
+    Args:
+        fanta_info: The story, whose title is starred (``title_needs_footnote``).
+
+    Returns:
+        The footnote, naming the issue the story was meant for.
+
+    """
+    return f"[*] Rejected by Western but intended for {fanta_info.get_short_issue_title()}"
 
 
 def get_comic_display_subtitle(comic_book_info: ComicBookInfo) -> str:

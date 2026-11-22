@@ -5,11 +5,9 @@ from math import ceil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_display_title
 from barks_fantagraphics.comic_book_info import (
     COVERS_SET,
     ONE_PAGERS,
-    get_one_pager_display_title,
 )
 from comic_utils.timing import Timing
 from kivy.animation import Animation
@@ -40,10 +38,10 @@ from barks_reader.core.keys import (
 )
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_formatter import (
-    LONG_TITLE_SPLITS,
     ReaderFormatter,
     get_comic_display_subtitle,
-    get_comic_display_title,
+    get_rejected_footnote_text,
+    get_title_view_main_title,
 )
 from barks_reader.core.reader_utils import (
     title_needs_footnote,
@@ -275,12 +273,12 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
             or fanta_info.comic_book_info.title in COVERS_SET
         )
 
-        title_text = self._get_main_title_str(fanta_info)
+        title_text = get_title_view_main_title(fanta_info.comic_book_info)
         add_footnote = title_needs_footnote(fanta_info)
         self.main_title_text = self._formatter.get_main_title(title_text, add_footnote)
         self.main_title_subtitle = get_comic_display_subtitle(fanta_info.comic_book_info)
         self._set_title_info_text(fanta_info)
-        self.main_title_footnote = "" if not add_footnote else self._get_footnote_text()
+        self.main_title_footnote = get_rejected_footnote_text(fanta_info) if add_footnote else ""
         self.title_extra_info_text = self._formatter.get_title_extra_info(fanta_info)
         self.wiki_button_visible = self._title_has_wiki_page(fanta_info.comic_book_info.title)
 
@@ -302,12 +300,6 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
         # with the window's height: left alone, it stretched or shrank against them.
         if self._fanta_info is not None:
             self._set_title_info_text(self._fanta_info)
-
-    def _get_footnote_text(self) -> str:
-        assert self._fanta_info is not None
-        return (
-            f"[*] Rejected by Western but intended for {self._fanta_info.get_short_issue_title()}"
-        )
 
     def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:
         logger.debug(log_markers.USE_OVERRIDES_CHANGED.format(value=use_overrides))
@@ -673,23 +665,3 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
             )
 
         self._texture_loader.load_texture(inset_image_source, on_ready)
-
-    @staticmethod
-    def _get_main_title_str(fanta_info: FantaComicBookInfo) -> str:
-        comic_book_info = fanta_info.comic_book_info
-
-        # One-pagers always show their issue plus the page within that issue
-        # (rather than the gag's own title), since they are read as a page of the
-        # "All One-Pagers" collection rather than as a standalone comic.
-        if comic_book_info.title in ONE_PAGERS:
-            return get_one_pager_display_title(comic_book_info.title)
-
-        # Covers similarly show their issue plus cover date, e.g.
-        # "Uncle Scrooge #7 (Sep 1954)".
-        if comic_book_info.title in COVERS_SET:
-            return get_cover_display_title(COVER_BY_TITLE[comic_book_info.title])
-
-        if comic_book_info.is_barks_title and comic_book_info.title in LONG_TITLE_SPLITS:
-            return LONG_TITLE_SPLITS[comic_book_info.title]
-
-        return get_comic_display_title(comic_book_info)

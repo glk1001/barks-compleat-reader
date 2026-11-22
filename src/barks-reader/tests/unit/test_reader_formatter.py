@@ -5,8 +5,14 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_display_title
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET, ONE_PAGERS
+from barks_fantagraphics.comic_book_info import (
+    BARKS_TITLE_INFO,
+    COVERS_SET,
+    ONE_PAGERS,
+    get_one_pager_display_title,
+)
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import reader_formatter
@@ -33,6 +39,54 @@ def test_a_non_barks_comic_goes_by_its_issue() -> None:
     info = MagicMock(title=Titles.LOST_IN_THE_ANDES, is_barks_title=False)
     info.get_title_from_issue_name.return_value = "Issue Title"
     assert reader_formatter.get_comic_display_title(info) == "Issue Title"
+
+
+class TestTitleViewMainTitle:
+    """The title view's heading: a collection page by its issue, a long title split."""
+
+    def test_a_long_title_of_barks_s_own_is_split_over_two_lines(self) -> None:
+        info = BARKS_TITLE_INFO[Titles.DONALD_DUCK_FINDS_PIRATE_GOLD]
+        assert info.is_barks_title
+        assert reader_formatter.get_title_view_main_title(info) == "Donald Duck\nFinds Pirate Gold"
+
+    def test_a_split_is_only_for_a_title_barks_gave(self) -> None:
+        info = MagicMock(title=Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, is_barks_title=False)
+        info.get_title_from_issue_name.return_value = "Issue Title"
+        assert reader_formatter.get_title_view_main_title(info) == "Issue Title"
+
+    def test_an_article_is_named_as_its_tree_node_is(self) -> None:
+        article = ALL_FANTA_COMIC_BOOK_INFO[Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION]
+        assert (
+            reader_formatter.get_title_view_main_title(article.comic_book_info)
+            == "Don Ault: Fantagraphics Introduction"
+        )
+
+    def test_any_other_comic_has_the_name_the_reader_s_bar_gives_it(self) -> None:
+        info = BARKS_TITLE_INFO[Titles.LOST_IN_THE_ANDES]
+        assert reader_formatter.get_title_view_main_title(
+            info
+        ) == reader_formatter.get_comic_display_title(info)
+
+    def test_a_one_pager_shows_its_issue_and_page_rather_than_its_gag(self) -> None:
+        one_pager = ONE_PAGERS[0]
+        assert reader_formatter.get_title_view_main_title(
+            BARKS_TITLE_INFO[one_pager]
+        ) == get_one_pager_display_title(one_pager)
+
+    def test_a_cover_shows_its_issue_and_date(self) -> None:
+        title, cover = next(iter(COVER_BY_TITLE.items()))
+        assert reader_formatter.get_title_view_main_title(
+            BARKS_TITLE_INFO[title]
+        ) == get_cover_display_title(cover)
+
+
+def test_a_rejected_story_s_footnote_names_the_issue_it_was_meant_for() -> None:
+    fanta_info = MagicMock()
+    fanta_info.get_short_issue_title.return_value = "WDCS 64"
+    assert (
+        reader_formatter.get_rejected_footnote_text(fanta_info)
+        == "[*] Rejected by Western but intended for WDCS 64"
+    )
 
 
 def test_an_untitled_story_has_its_assigned_name_as_a_subtitle() -> None:

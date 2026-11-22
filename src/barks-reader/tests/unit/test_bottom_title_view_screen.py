@@ -11,15 +11,11 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_display_title
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import (
     BARKS_TITLE_INFO,
-    ONE_PAGERS,
-    get_one_pager_display_title,
 )
 from barks_fantagraphics.comics_consts import FONT_DIR
-from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
 from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
@@ -471,36 +467,6 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
             self.screen.set_title_view(mock_info)
 
         assert not self.screen.wiki_button_visible
-
-    def test_get_main_title_str(self) -> None:
-        # Case 1: Barks title
-        mock_info = MagicMock()
-        mock_info.comic_book_info.is_barks_title = True
-        mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        assert "Donald Duck\nFinds" in self.screen._get_main_title_str(mock_info)
-
-        # Case 2: Non-Barks title
-        mock_info.comic_book_info.is_barks_title = False
-        mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        mock_info.comic_book_info.get_title_from_issue_name.return_value = "Issue Title"
-        assert self.screen._get_main_title_str(mock_info) == "Issue Title"
-
-        # Case 3: an article, named as its tree node is rather than by its issue
-        article = ALL_FANTA_COMIC_BOOK_INFO[Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION]
-        assert not article.comic_book_info.is_barks_title
-        assert self.screen._get_main_title_str(article) == "Don Ault: Fantagraphics Introduction"
-
-    def test_a_one_pager_shows_its_issue_and_page_rather_than_its_gag(self) -> None:
-        one_pager = ONE_PAGERS[0]
-        mock_info = MagicMock()
-        mock_info.comic_book_info.title = one_pager
-        assert self.screen._get_main_title_str(mock_info) == get_one_pager_display_title(one_pager)
-
-    def test_a_cover_shows_its_issue_and_date(self) -> None:
-        title, cover = next(iter(COVER_BY_TITLE.items()))
-        mock_info = MagicMock()
-        mock_info.comic_book_info.title = title
-        assert self.screen._get_main_title_str(mock_info) == get_cover_display_title(cover)
 
     @pytest.mark.parametrize(
         ("name", "default"),
