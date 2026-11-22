@@ -1557,6 +1557,25 @@ class TestFocusFollowsAPress:
         assert index_screen._letter_order[index_screen._nav_focused_letter_idx] == "C"
         draw.assert_called_once_with()
 
+    def test_a_letter_shown_by_a_key_pressed_item_moves_the_letter_focus_without_drawing_it(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """A cross-reference shows another page: Left from its items is then on that letter."""
+        index_screen._nav_active = True
+        index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+        index_screen._pressing_focused_item = True
+        index_screen._nav_focused_letter_idx = index_screen._letter_order.index("A")
+        index_screen.treeview_index_node = MagicMock()
+        index_screen.treeview_index_node.saved_state = {}
+        with (
+            patch.object(ConcreteIndexScreen, "_populate_index_for_letter"),
+            patch.object(ConcreteIndexScreen, "_draw_letter_focus") as draw,
+        ):
+            index_screen.on_letter_press(MagicMock(text="C"))
+        assert index_screen._letter_order[index_screen._nav_focused_letter_idx] == "C"
+        assert index_screen._nav_panel == barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+        draw.assert_not_called()
+
 
 class TestMovingBetweenThePanels:
     """Left, Right, Enter and Escape between the A-Z menu and the items."""

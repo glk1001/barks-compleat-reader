@@ -991,16 +991,17 @@ class IndexScreen(NavExitMixin, FloatLayout):
         self._selected_letter_button = button
 
         self._populate_index_for_letter(first_letter)
-        if (
-            self._nav_active
-            and not self._pressing_focused_item
-            and first_letter in self._letter_order
-        ):
+        if first_letter not in self._letter_order:
+            return
+        # Whoever pressed it, the letters' focus is on the letter shown: an item pressed
+        # by the keys that shows another page (a cross-reference) left it on the old
+        # letter, where Left from the items then drew the ring.
+        self._nav_focused_letter_idx = self._letter_order.index(first_letter)
+        if self._nav_active and not self._pressing_focused_item:
             # The focus follows a mouse press on a letter: the next key goes on from it.
             self._clear_all_item_focus()
             self._clear_letter_focus()
             self._nav_panel = _IndexNavPanel.ALPHABET
-            self._nav_focused_letter_idx = self._letter_order.index(first_letter)
             self._draw_letter_focus()
 
     def _populate_index_grid(self, letter: str) -> None:
