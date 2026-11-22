@@ -733,7 +733,8 @@ class TestTheTitleRowsOfATerm:
     """The sub-items themselves: a row for each title found, and its speech button."""
 
     @pytest.fixture
-    def layout(self, speech_index_screen: SpeechIndexScreen) -> Generator[BoxLayout]:
+    def screen(self, speech_index_screen: SpeechIndexScreen) -> SpeechIndexScreen:
+        """Return the screen with the theme, fonts and open term a title row is built from."""
         screen = speech_index_screen
         screen.index_theme.SUB_ITEM_INDENT_STEP = _INDENT_STEP
         screen.index_theme.ROW_HEIGHT = _THEME_ROW_HEIGHT
@@ -743,15 +744,41 @@ class TestTheTitleRowsOfATerm:
         screen._font_manager.index_title_item_font_name = "Roboto"
         screen._font_manager.index_title_item_font_size = 14
         screen._open_tag_button = Button(padding=[_PARENT_PADDING, 0, 0, 0])
+        return screen
+
+    @pytest.fixture
+    def layout(self, screen: SpeechIndexScreen) -> Generator[BoxLayout]:
         rows = [
             ("Title One", "3", "Title One, 3", "info one"),
             ("A Much Longer Title Two", "7", "Much Longer Title Two, A, 7, 9", "info two"),
+        ]
+        known = {
+            "Title One": Titles.LOST_IN_THE_ANDES,
+            "A Much Longer Title Two": Titles.VOODOO_HOODOO,
+        }
+        with (
+            patch.object(screen, "_get_sub_items_data", return_value=rows),
+            patch.object(_speech_module, "title_row_item", side_effect=lambda *row: row),
+            patch.object(_speech_module, "STR_TITLE_TO_ENUM", known),
+        ):
+            yield screen._get_title_sub_items_layout(IndexItem("duck", "duck"))
+
+    def test_a_title_the_index_has_and_the_app_does_not_is_left_out_and_reported(
+        self, screen: SpeechIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """A search index older than a title's renaming: opening the word raised a KeyError."""
+        known = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
+        rows = [
+            ("A Title Since Renamed", "3", "Title Since Renamed, A, 3", {}),
+            (known, "7", f"{known}, 7", {}),
         ]
         with (
             patch.object(screen, "_get_sub_items_data", return_value=rows),
             patch.object(_speech_module, "title_row_item", side_effect=lambda *row: row),
         ):
-            yield screen._get_title_sub_items_layout(IndexItem("duck", "duck"))
+            layout = screen._get_title_sub_items_layout(IndexItem("duck", "duck"))
+        assert [title.full_text for title, _ in self._rows(layout)] == [f"{known}, 7"]
+        assert 'No title "A Title Since Renamed" for the index term "duck".' in loguru_sink
 
     @staticmethod
     def _rows(layout: BoxLayout) -> list[tuple[Button, Button]]:
@@ -1283,6 +1310,21 @@ def test_a_bubble_goto_with_no_focus_hand_off_still_goes_to_the_title(
         speech_index_screen._handle_title_from_bubble_press("Donald Duck Finds Pirate Gold", "5")
     run_last_scheduled(schedule)
     goto.assert_called_once()
+
+
+def test_a_bubble_goto_to_a_title_the_app_does_not_have_is_reported_and_goes_nowhere(
+    speech_index_screen: SpeechIndexScreen, loguru_sink: list[str]
+) -> None:
+    goto = MagicMock()
+    speech_index_screen.on_goto_title = goto
+    with patch.object(Clock, "schedule_once") as schedule:
+        speech_index_screen._handle_title_from_bubble_press("A Title Since Renamed", "5")
+    schedule.assert_not_called()
+    goto.assert_not_called()
+    cast("MagicMock", speech_index_screen._speech_bubble_browser_popup).dismiss.assert_called_once()
+    assert (
+        'No title "A Title Since Renamed" to go to from the speech bubble browser.' in loguru_sink
+    )
 
 
 def test_a_bubble_goto_to_a_title_in_no_volume_is_a_notice_not_a_crash(

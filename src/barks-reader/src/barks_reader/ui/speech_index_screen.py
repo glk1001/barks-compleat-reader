@@ -443,6 +443,10 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             title_str_with_pages,
             title_speech_info,
         ) in sub_items_to_display:
+            if title_str not in STR_TITLE_TO_ENUM:
+                # A search index older than a title's renaming: the rest still open.
+                logger.warning(f'No title "{title_str}" for the index term "{index_term}".')
+                continue
             show_speech_bubbles_button = TitleShowSpeechButton()
             # As tall as its row: at the kv rule's taller size it ran over into the row
             # above, where a tap went to the row below's bubbles. Set once built, as the
@@ -551,7 +555,11 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         )
         self._speech_bubble_browser_popup.dismiss()
 
-        image_info = ImageInfo(from_title=STR_TITLE_TO_ENUM[title_str], filename=None)
+        title = STR_TITLE_TO_ENUM.get(title_str)
+        if title is None:
+            logger.warning(f'No title "{title_str}" to go to from the speech bubble browser.')
+            return
+        image_info = ImageInfo(from_title=title, filename=None)
         pages = self._bubble_title_pages
 
         def goto_title() -> None:
