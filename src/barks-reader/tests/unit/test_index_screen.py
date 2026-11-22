@@ -1967,6 +1967,27 @@ class TestTheItemsFocusOnRealWidgets:
         clear.assert_not_called()
 
 
+def test_an_open_container_is_found_by_the_button_it_opened_under(
+    index_screen: ConcreteIndexScreen,
+) -> None:
+    """One lookup, by identity, behind "is it open", "close it" and "its first rows"."""
+    group, tag, closed = MagicMock(), MagicMock(), MagicMock()
+    first_rows = [MagicMock(), MagicMock()]
+    outer = MagicMock(owner_button=group, children=[MagicMock(), MagicMock()])
+    inner = MagicMock(owner_button=tag, children=list(reversed(first_rows)))
+    index_screen._open_tag_widgets = [outer, inner]
+
+    assert index_screen._open_level_of(group) == 0
+    assert index_screen._open_level_of(tag) == 1
+    assert index_screen._open_level_of(closed) is None
+    assert index_screen._is_open_owner(tag) is True
+    assert index_screen._is_open_owner(closed) is False
+    assert index_screen._get_level_of_click_for_collapse(tag) == (True, 1)
+    assert index_screen._get_level_of_click_for_collapse(closed) == (False, -1)
+    assert index_screen._first_sub_item_rows(tag, 2) == first_rows
+    assert index_screen._first_sub_item_rows(closed, 2) == []
+
+
 def test_the_alphabet_panel_leaves_a_key_that_is_not_its_own(
     index_screen: ConcreteIndexScreen,
 ) -> None:

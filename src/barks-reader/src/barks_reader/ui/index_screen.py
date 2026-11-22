@@ -83,7 +83,14 @@ SAVED_NODE_STATE_FIRST_LETTER_KEY = "first_letter"
 
 INDEX_NAV_FOCUS_GROUP = "index_nav_focus"
 
+# The share of its range Page Up or Page Down scrolls the index, or the bubbles popup.
 _PAGE_SCROLL_STEP = 0.2
+
+
+def _scroll_a_page_step(scroll_view: ScrollView, direction: int) -> None:
+    """Scroll `scroll_view` a page step down (`direction` 1) or up (-1), no further than its end."""
+    scroll_view.scroll_y = max(0.0, min(1.0, scroll_view.scroll_y - direction * _PAGE_SCROLL_STEP))
+
 
 _THREE_COLUMNS = 3
 
@@ -206,7 +213,6 @@ def show_speech_bubbles_popup(
 
 
 POPUP_NAV_FOCUS_GROUP = "popup_nav_focus"
-_POPUP_SCROLL_STEP = 0.2
 
 
 class PopupKeyboardNav:
@@ -313,7 +319,7 @@ class PopupKeyboardNav:
     def _scroll(self, direction: int) -> None:
         sv = self._popup.body
         if isinstance(sv, ScrollView):
-            sv.scroll_y = max(0.0, min(1.0, sv.scroll_y - direction * _POPUP_SCROLL_STEP))
+            _scroll_a_page_step(sv, direction)
 
 
 def create_speech_bubble_popup(
@@ -750,10 +756,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
         self._draw_item_focus(scroll=False)
 
     def _scroll_page(self, direction: int) -> None:
-        scroll_view = self.ids.index_scroll_view
-        scroll_view.scroll_y = max(
-            0.0, min(1.0, scroll_view.scroll_y - direction * _PAGE_SCROLL_STEP)
-        )
+        _scroll_a_page_step(self.ids.index_scroll_view, direction)
 
     def _enter_alphabet_panel(self) -> None:
         self._clear_all_item_focus()
@@ -1163,9 +1166,19 @@ class IndexScreen(NavExitMixin, FloatLayout):
             revealed_marker=log_markers.INDEX_SUB_ITEMS_REVEALED,
         )
 
+    def _open_level_of(self, button: Button) -> int | None:
+        """Return the level of the open container of `button`'s sub-items; None when it has none.
+
+        The containers are kept outermost first, each tagged with the button it opened under.
+        """
+        for level, container in enumerate(self._open_tag_widgets):
+            if getattr(container, "owner_button", None) is button:
+                return level
+        return None
+
     def _is_open_owner(self, button: Button) -> bool:
         """Return whether `button` has sub-items open under it."""
-        return any(getattr(w, "owner_button", None) is button for w in self._open_tag_widgets)
+        return self._open_level_of(button) is not None
 
     def _first_sub_item_rows(self, button: Button, count: int) -> list[Widget]:
         """Return the first `count` rows open under `button`, as the index shows them.
@@ -1174,12 +1187,10 @@ class IndexScreen(NavExitMixin, FloatLayout):
         theirs once more); its children are kept last-added-first. A grid of several
         columns (the speech indexes' title and speech button) holds a row per column.
         """
-        layout = next(
-            (w for w in self._open_tag_widgets if getattr(w, "owner_button", None) is button),
-            None,
-        )
-        if layout is None:
+        level = self._open_level_of(button)
+        if level is None:
             return []
+        layout = self._open_tag_widgets[level]
         while len(layout.children) == 1 and layout.children[0].children:
             layout = layout.children[0]
         per_row = layout.cols if isinstance(layout, GridLayout) and layout.cols else 1
@@ -1195,10 +1206,8 @@ class IndexScreen(NavExitMixin, FloatLayout):
         """Expand an item into its sub-items below ``button``."""
 
     def _get_level_of_click_for_collapse(self, button: Button) -> tuple[bool, int]:
-        for i, container in enumerate(self._open_tag_widgets):
-            if getattr(container, "owner_button", None) == button:
-                return True, i
-        return False, -1
+        level = self._open_level_of(button)
+        return (False, -1) if level is None else (True, level)
 
     def _get_level_of_click_for_expand_or_switch(self, button: Button) -> int:
         """Return the level of the innermost open container holding ``button``, or -1.
