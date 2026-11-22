@@ -421,14 +421,14 @@ the view pipeline:
    `BARKS_TAGGED_PAGES`.
 
 Programmatic navigation (Back history, "goto title" from a background image, a
-search or index result) opens the tree to the right node. The node lookups the
+search or index result) opens the tree to the right node. The node lookup the
 builder collected (`reader_tree_builder.py`: the chronological, one-pager and
-cover year-range nodes and the series nodes) are handed to
+cover year-range nodes, keyed by section and years) is handed to
 `NavigationCoordinator` in `MainScreen.build_tree_view`
-(`set_year_range_nodes`, `set_one_pager_year_range_nodes`,
-`set_cover_year_range_nodes`, `set_series_nodes`), and
-`navigate_to_chrono_title` uses them to find a title's parent year-range node
-(`_get_title_parent_node`), open it and select the row; restoring a saved or
+(`set_year_range_nodes`). `navigate_to_chrono_title` asks
+`core/navigation/title_position.py`'s `title_year_range` which group a title
+sits in, finds that group's node (`_get_title_parent_node`), opens it and
+selects the row; restoring a saved or
 Back-history node goes through `TreeViewManager.setup_and_select_node`.
 
 ### 4.4 Extending it
