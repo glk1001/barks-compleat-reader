@@ -31,6 +31,7 @@ from .index_headings import (
     tag_group_heading,
     tag_heading,
     tag_heading_markup,
+    without_accents,
 )
 from .index_items import IndexItem
 from .index_text import indexable_title
@@ -48,10 +49,29 @@ MAIN_INDEX_LETTERS: Final = "0" + string.ascii_uppercase
 
 
 def index_letter(heading: str) -> str:
-    """Return the letter page `heading` is listed on: its first letter, or "0" for a digit."""
-    first_letter = heading[0].upper()
-    assert ("0" <= first_letter <= "9") or ("A" <= first_letter <= "Z")
-    return "0" if "0" <= first_letter <= "9" else first_letter
+    """Return the letter page `heading` is listed on: its first letter, or "0" for a digit.
+
+    An accented letter is listed under the plain one ("Éclair" under E), as the entity
+    indexes list theirs.
+
+    Args:
+        heading: A title, tag or tag group as the index heads it.
+
+    Returns:
+        One of `MAIN_INDEX_LETTERS`.
+
+    Raises:
+        ValueError: If the heading is empty or starts with neither a letter nor a
+            digit: there is no page to list it on.
+
+    """
+    first_letter = without_accents(heading[:1]).upper()[:1]
+    if "0" <= first_letter <= "9":
+        return "0"
+    if not "A" <= first_letter <= "Z":
+        msg = f'No index page for the heading "{heading}": it starts with no letter or digit.'
+        raise ValueError(msg)
+    return first_letter
 
 
 def index_item_markup(item: IndexItem) -> str:

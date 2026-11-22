@@ -88,10 +88,14 @@ class TestBuildMainIndex:
         assert (index_letter("0 to 60"), index_letter("9 lives")) == ("0", "0")
         assert (index_letter("zinc"), index_letter("Zinc")) == ("Z", "Z")
 
-    @pytest.mark.parametrize("heading", ["@home", ":x", "[x]", "_x"])
+    @pytest.mark.parametrize("heading", ["@home", ":x", "[x]", "_x", "'Twas", "", "Øre"])
     def test_a_heading_must_start_with_a_letter_or_digit(self, heading: str) -> None:
-        with pytest.raises(AssertionError):
+        """A real error, not an assert: one a build with asserts off still raises."""
+        with pytest.raises(ValueError, match="No index page for the heading"):
             index_letter(heading)
+
+    def test_an_accented_letter_lists_under_the_plain_one(self) -> None:
+        assert (index_letter("Éclair"), index_letter("éclair")) == ("E", "E")
 
     def test_a_cross_reference_row_reads_see_in_italics(self) -> None:
         item = IndexItem(Tags.GOLDIE_OGILT, "Glittering Goldie", see="O'Gilt, Goldie")
