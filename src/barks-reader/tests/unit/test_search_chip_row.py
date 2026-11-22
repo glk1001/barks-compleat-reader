@@ -195,6 +195,34 @@ def test_enter_picks_the_focused_chip_and_keeps_the_focus(
     assert loguru_sink == ['Nav focus on MagicMock "Scrooge".']
 
 
+def test_enter_on_a_chip_whose_pick_rebuilds_the_row_logs_the_focus_once(
+    row: ChipRow, loguru_sink: list[str]
+) -> None:
+    """The screen rebuilds a basket's row on a pick and puts the focus back where it was."""
+
+    def rebuild_and_refocus(**_kwargs: object) -> None:
+        row.set_options(OPTIONS)
+        row.enter_focus(2)
+
+    row.enter_focus(2)
+    _chips(row)[2].trigger_action.side_effect = rebuild_and_refocus
+    loguru_sink.clear()
+    assert row.handle_key(KEY_ENTER) is RowKey.HANDLED
+    assert row.focused == 2  # noqa: PLR2004
+    assert loguru_sink == ['Nav focus on MagicMock "Scrooge".']
+
+
+def test_enter_on_a_chip_whose_pick_rebuilds_the_row_and_leaves_it_draws_no_focus(
+    row: ChipRow, loguru_sink: list[str]
+) -> None:
+    row.enter_focus(2)
+    _chips(row)[2].trigger_action.side_effect = lambda **_kwargs: row.set_options(OPTIONS)
+    loguru_sink.clear()
+    assert row.handle_key(KEY_ENTER) is RowKey.HANDLED
+    assert row.focused is None
+    assert loguru_sink == []
+
+
 @pytest.mark.parametrize(
     ("key", "outcome"),
     [

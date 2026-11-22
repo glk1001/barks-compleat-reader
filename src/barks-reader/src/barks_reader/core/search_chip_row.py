@@ -194,8 +194,12 @@ class ChipRow:
             return RowKey.EXIT_UP
         if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             if self._chips and self._focused is not None and self._focused < len(self._chips):
-                self._chips[self._focused].trigger_action(duration=0)
-                if self._focused is not None:  # unless the pick gave the keyboard away
+                chips = self._chips
+                chips[self._focused].trigger_action(duration=0)
+                # Unless the pick gave the keyboard away, or the screen rebuilt the row
+                # (`set_options`): it then put the focus back itself (`enter_focus`), and
+                # drawn again here the focus line was logged twice.
+                if self._focused is not None and self._chips is chips:
                     self._draw_focus()
             return RowKey.HANDLED
         if is_escape_key(key):
