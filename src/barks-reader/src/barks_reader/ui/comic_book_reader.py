@@ -48,6 +48,7 @@ from barks_reader.core.reader_utils import (
     get_win_dimensions,
 )
 from barks_reader.core.screen_metrics import SCREEN_METRICS
+from barks_reader.core.window_state import WindowModeCallbacks
 
 from .action_bar_helpers import (
     ACTION_BAR_SIZE_Y,
@@ -59,7 +60,6 @@ from .action_bar_helpers import (
 from .adapters import KivyClockScheduler, KivyCursor
 from .platform_window_utils import (
     WindowManager,
-    WindowModeCallbacks,
     WindowModeController,
     log_window_geometry,
 )

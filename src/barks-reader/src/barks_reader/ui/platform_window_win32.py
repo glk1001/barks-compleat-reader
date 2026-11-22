@@ -28,7 +28,7 @@ from barks_reader.core.win32_window import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .platform_window_utils import WindowState
+    from barks_reader.core.window_state import WindowState
 
 # Windows needs longer than other platforms: SDL fullscreen-exit fires a resize
 # storm that can starve the Kivy Clock and leave the window at its hit-test
@@ -210,7 +210,7 @@ class Win32WindowBackend:
             )
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 save state failed, falling back to Kivy: {e}")
-            state.save_state_now()
+            state.save(tuple(Window.system_size), (Window.left, Window.top))
 
     def hold_windowed_rect(self, state: WindowState) -> None:
         """Keep the window at ``state``'s rectangle through the fullscreen exit to come.

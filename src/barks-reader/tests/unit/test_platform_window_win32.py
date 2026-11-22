@@ -12,8 +12,8 @@ from contextlib import ExitStack
 from typing import TYPE_CHECKING, Self
 from unittest.mock import MagicMock, patch
 
+from barks_reader.core.window_state import WindowState
 from barks_reader.ui import platform_window_win32 as win32_module
-from barks_reader.ui.platform_window_utils import WindowState
 from barks_reader.ui.platform_window_win32 import Win32WindowBackend
 from unit_helpers import run_last_scheduled
 
@@ -301,11 +301,13 @@ def test_the_saved_state_is_the_windows_own_rectangle() -> None:
 
 def test_a_save_that_raises_takes_the_state_from_kivy(loguru_sink: list[str]) -> None:
     backend = _backend(MagicMock(), MagicMock(side_effect=OSError("bad handle")))
-    state = MagicMock(spec=WindowState)
+    state = WindowState()
+    kivy_window = MagicMock(system_size=[800, 600], left=10, top=20)
 
-    backend.save_state(state)
+    with patch.object(win32_module, "Window", kivy_window):
+        backend.save_state(state)
 
-    state.save_state_now.assert_called_once_with()
+    assert (state.size, state.pos) == ((800, 600), (10, 20))
     assert any("Win32 save state failed" in line for line in loguru_sink)
 
 

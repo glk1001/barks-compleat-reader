@@ -35,8 +35,8 @@ from barks_reader.core.win32_window import (
     hold_window_rect,
     release_window_rect,
 )
+from barks_reader.core.window_state import WindowState
 from barks_reader.ui import platform_window_win32 as win32_module
-from barks_reader.ui.platform_window_utils import WindowState
 from barks_reader.ui.platform_window_win32 import Win32WindowBackend
 
 if TYPE_CHECKING:

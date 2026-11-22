@@ -24,6 +24,7 @@ from barks_reader.core.document_links import StoryLink, load_story_links
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
+from barks_reader.core.window_state import WindowModeCallbacks
 
 from .action_bar_helpers import (
     ACTION_BAR_SIZE_Y,
@@ -34,7 +35,6 @@ from .action_bar_helpers import (
 )
 from .platform_window_utils import (
     WindowManager,
-    WindowModeCallbacks,
     WindowModeController,
     log_window_geometry,
 )

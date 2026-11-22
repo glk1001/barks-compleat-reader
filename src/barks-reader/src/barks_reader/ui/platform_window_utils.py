@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
 from typing import TYPE_CHECKING, Protocol
 
 from kivy.clock import Clock
@@ -11,11 +9,14 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.screen_metrics import SCREEN_METRICS
+from barks_reader.core.window_state import WindowState, screen_mode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from kivy.uix.widget import Widget
+
+    from barks_reader.core.window_state import WindowModeCallbacks
 
     from .app_window_geometry import RectReshape
 
@@ -37,71 +38,6 @@ def log_window_geometry(reason: str) -> None:
             reason=reason, width=width, height=height, left=Window.left, top=Window.top
         )
     )
-
-
-class FullscreenEnum(Enum):
-    """The window's two modes."""
-
-    FULLSCREEN = "fullscreen"
-    WINDOWED = "windowed"
-
-
-@dataclass(frozen=True, slots=True)
-class WindowModeCallbacks:
-    """The per-screen completion callbacks for one window-mode transition.
-
-    Passed to ``WindowManager.goto_fullscreen_mode`` / ``goto_windowed_mode`` on
-    each call rather than baked into the manager, so a single shared
-    ``WindowManager`` can serve multiple screens.
-    """
-
-    on_windowed_first_resize: Callable[[], None]
-    on_finished_windowed: Callable[[], None]
-    on_finished_fullscreen: Callable[[], None]
-
-
-@dataclass(slots=True)
-class WindowState:
-    """The windowed size and position saved for the return from fullscreen."""
-
-    # In Window.system_size units, the ones a ``Window.size =`` restore takes. Window.size
-    # reads in pixels, twice as many on a Retina Mac, so saving it doubled the window
-    # on leaving fullscreen.
-    size: tuple[int, int] = (0, 0)
-    pos: tuple[int, int] = (-1, -1)
-
-    def edges(self) -> tuple[int, int, int, int]:
-        """Return the saved rectangle as its edges: left, top, right, bottom."""
-        x, y = self.pos
-        width, height = self.size
-        return x, y, x + width, y + height
-
-    def save_state_now(self) -> None:
-        """Take the size and position from Kivy's window as it is now."""
-        self.size = tuple(Window.system_size)
-        self.pos = (Window.left, Window.top)
-
-    def is_saved_state_same_as_current(self) -> bool:
-        """Whether Kivy's window is at the saved size and position."""
-        return tuple(Window.system_size) == self.size and (Window.left, Window.top) == self.pos
-
-    def is_unsaved(self) -> bool:
-        """Return True while no geometry has been captured (still the defaults).
-
-        ``goto_fullscreen_mode`` skips its save when the window is *already*
-        fullscreen (e.g. at app start), so a later windowed restore can be
-        reached with nothing to restore. Restoring the sentinel would apply a
-        nonsense size/position, so the restore guards on this.
-
-        A real window can sit at (-1, -1), and would read as unsaved here: its
-        restore is then skipped. Not seen in use, and left so.
-        """
-        return self.size == (0, 0) or self.pos == (-1, -1)
-
-    @staticmethod
-    def get_current_screen_mode() -> FullscreenEnum:
-        """Return the mode Kivy's window is in now."""
-        return FullscreenEnum.FULLSCREEN if Window.fullscreen else FullscreenEnum.WINDOWED
 
 
 class WindowBackend(Protocol):
@@ -168,7 +104,7 @@ class KivyWindowBackend:
             state: The state to fill.
 
         """
-        state.save_state_now()
+        state.save(tuple(Window.system_size), (Window.left, Window.top))
 
     @staticmethod
     def hold_windowed_rect(state: WindowState) -> None:
@@ -328,7 +264,7 @@ class WindowManager:
     @staticmethod
     def get_screen_mode_now() -> str:
         """Return the name of the mode Kivy's window is in now."""
-        return WindowState.get_current_screen_mode().value
+        return screen_mode(Window.fullscreen).value
 
     def save_state_now(self) -> None:
         """Save the window's size and position through the platform's backend."""
@@ -539,7 +475,7 @@ class WindowManager:
 
         log_func = (
             logger.info
-            if self._saved_window_state.is_saved_state_same_as_current()
+            if self._saved_window_state.is_at(tuple(Window.system_size), (Window.left, Window.top))
             else logger.warning
         )
 

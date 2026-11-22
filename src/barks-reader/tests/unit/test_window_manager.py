@@ -23,15 +23,13 @@ import pytest
 from barks_reader.core.platform_info import Platform
 from barks_reader.core.screen_metrics import ScreenInfo
 from barks_reader.core.testing import FakeClock
+from barks_reader.core.window_state import WindowModeCallbacks, WindowState
 from barks_reader.ui import platform_window_utils as window_utils_module
 from barks_reader.ui import platform_window_win32 as win32_module
 from barks_reader.ui.platform_window_utils import (
-    FullscreenEnum,
     KivyWindowBackend,
     WindowManager,
-    WindowModeCallbacks,
     WindowModeController,
-    WindowState,
 )
 
 if TYPE_CHECKING:
@@ -444,26 +442,7 @@ class TestStaticHelpers:
         assert wm.get_screen_mode_now() == "fullscreen"
 
 
-class TestWindowState:
-    def test_the_saved_rectangle_as_its_edges(self) -> None:
-        state = WindowState()
-        state.size, state.pos = (700, 500), (150, 120)
-
-        assert state.edges() == (150, 120, 850, 620)
-
-    def test_save_state_now(self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(window_utils_module, "Window", fake_window)
-        state = WindowState()
-        fake_window.fullscreen = False
-        fake_window.size = (800, 600)
-        fake_window.left = 10
-        fake_window.top = 20
-
-        state.save_state_now()
-
-        assert state.size == (800, 600)
-        assert state.pos == (10, 20)
-
+class TestKivyBackendSave:
     def test_a_retina_window_is_saved_in_the_units_a_restore_takes(
         self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -471,43 +450,20 @@ class TestWindowState:
         monkeypatch.setattr(window_utils_module, "Window", fake_window)
         fake_window.size = (1748, 2730)
         type(fake_window).system_size = property(lambda _w: (874, 1365))
+        fake_window.left, fake_window.top = 10, 20
         state = WindowState()
 
-        state.save_state_now()
+        KivyWindowBackend().save_state(state)
 
-        assert state.size == (874, 1365)
-        assert state.is_saved_state_same_as_current() is True
+        assert (state.size, state.pos) == ((874, 1365), (10, 20))
 
-    def test_is_saved_state_same_as_current(
-        self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch
+    @pytest.mark.parametrize(("fullscreen", "mode"), [(False, "windowed"), ("auto", "fullscreen")])
+    def test_the_mode_now_is_read_from_kivy_s_window(
+        self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch, fullscreen: object, mode: str
     ) -> None:
         monkeypatch.setattr(window_utils_module, "Window", fake_window)
-        state = WindowState()
-        state.size = (1200, 1800)
-        state.pos = (100, 50)
-        # fake_window has matching values from fixture.
-        assert state.is_saved_state_same_as_current() is True
-
-        state.size = (999, 999)
-        assert state.is_saved_state_same_as_current() is False
-
-    def test_get_current_screen_mode(
-        self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(window_utils_module, "Window", fake_window)
-        fake_window.fullscreen = False
-        assert WindowState.get_current_screen_mode() == FullscreenEnum.WINDOWED
-        fake_window.fullscreen = True
-        assert WindowState.get_current_screen_mode() == FullscreenEnum.FULLSCREEN
-
-    def test_is_unsaved(self) -> None:
-        # Defaults are the sentinel -> unsaved.
-        assert WindowState().is_unsaved() is True
-        # Both captured (pos (0, 0) is a real corner, not the (-1, -1) sentinel).
-        assert WindowState(size=(800, 600), pos=(0, 0)).is_unsaved() is False
-        # Either sentinel alone still counts as unsaved.
-        assert WindowState(size=(800, 600)).is_unsaved() is True  # pos default (-1, -1)
-        assert WindowState(pos=(10, 20)).is_unsaved() is True  # size default (0, 0)
+        fake_window.fullscreen = fullscreen
+        assert WindowManager.get_screen_mode_now() == mode
 
 
 class TestRoundTrip:
