@@ -153,9 +153,10 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
     @override
     def handle_key(self, key: int) -> bool:
-        # The speech-bubble popup owns the keyboard directly via its own Window
-        # binding (see PopupKeyboardNav) while open, so this handler is normally not
-        # reached then — the modal-popup guard in main_screen yields first.
+        # While the speech-bubble popup is open its frame has the keys, and asks
+        # PopupKeyboardNav about each first (the frame's `key_handler`), so this
+        # handler is normally not reached then: the modal-popup guard in main_screen
+        # yields first.
         if self._popup_nav.is_open:
             return self._popup_nav.handle_key(key)
         return super().handle_key(key)
@@ -285,10 +286,12 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         title_strs = self._background_titles_cache.get(rand_item)
         if title_strs is None:
             # Searched here, on the UI thread: 36 to 61 ms measured (2026-11-13), once
-            # per word and then cached, at most every 15 seconds while the index
-            # shows. A worker thread would need the search made safe to share and its
-            # result handed back and checked against a letter changed since: more
-            # machinery than a hitch nobody sees is worth.
+            # per word and then cached. That is each time a letter or prefix is shown,
+            # so with every key along the letters or the prefix bar, and then every
+            # 15 seconds while the index shows; each of those keys fills the grid
+            # anew as well. A worker thread would need the search made safe to share
+            # and its result handed back and checked against a letter changed since:
+            # more machinery than a hitch nobody sees is worth.
             title_strs = list(self._find_words_for_item(rand_item))
             _store_bounded(self._background_titles_cache, rand_item, title_strs)
 

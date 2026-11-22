@@ -1869,9 +1869,9 @@ class SearchScreen(FloatLayout):
             Whether the key was taken.
 
         """
-        # While the speech-bubble popup is open it owns the keyboard directly via
-        # its own Window binding (see PopupKeyboardNav), so this handler is not
-        # reached — the modal-popup guard in main_screen yields first.
+        # While the speech-bubble popup is open its frame has the keys, and asks
+        # PopupKeyboardNav about each first (the frame's `key_handler`), so this
+        # handler is not reached: the modal-popup guard in main_screen yields first.
         if not self._focus.active:
             return False
 

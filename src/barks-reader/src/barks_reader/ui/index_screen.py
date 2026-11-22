@@ -354,7 +354,8 @@ class PopupKeyboardNav:
             key: The key's code.
 
         Returns:
-            True always: the popup takes every key while it is open.
+            Whether the key was one of the popup's own (Escape, Up, Down, Enter and
+            the page keys); the popup's frame deals with any other.
 
         """
         if is_escape_key(key):
@@ -1175,7 +1176,11 @@ class IndexScreen(NavExitMixin, FloatLayout):
         )
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
-        """When the widget becomes visible, automatically press the 'A' button."""
+        """Show the index as it becomes visible; stop its backgrounds as it is hidden.
+
+        First shown, the letter it was left on is pressed (the tree node's saved
+        state), or 'A'; shown again, only the background image is changed.
+        """
         if not value:
             self._cancel_index_image_change_events()
             return
