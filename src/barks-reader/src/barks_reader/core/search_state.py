@@ -19,7 +19,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
 from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_query import Combine
 from barks_fantagraphics.speech_speakers import CHARACTER_SPEAKER_OPTIONS, NARRATOR
@@ -285,6 +286,41 @@ class EraChoice:
 
 # The speaker value for anyone: no filter.
 ALL_SPEAKERS = ""
+
+
+def listed_title(title_str: str) -> Titles | None:
+    """Return the title a listed display title is, or None for a row that is no title.
+
+    Args:
+        title_str: A results row's text: a story as displayed, or a notice.
+
+    Returns:
+        The story, told by its plain title (a display title's parentheses taken off).
+
+    """
+    return STR_TITLE_TO_ENUM.get(ComicBookInfo.get_title_str_from_display_title(title_str))
+
+
+def title_row_detail(title_str: str, pages: str = "") -> str:
+    """Return what a results row says after its story: "FC 408, 1952, p 3-4,7".
+
+    Args:
+        title_str: The row's text: a story as displayed, or a notice.
+        pages: The pages the row's story lists ("3-4,7"), or "" for none.
+
+    Returns:
+        The story's issue and the year it came out, then its pages if it lists any;
+        just the pages, or "", for a row that is no story.
+
+    """
+    title = listed_title(title_str)
+    parts = []
+    if title is not None:
+        info = BARKS_TITLE_INFO[title]
+        parts.append(f"{info.get_shortest_issue_title()}, {info.issue_year}")
+    if pages:
+        parts.append(f"p {pages}")
+    return ", ".join(parts)
 
 
 def offered_speakers(indexed: Collection[str]) -> list[str]:

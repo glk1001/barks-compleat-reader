@@ -33,7 +33,6 @@ from barks_reader.ui.search_widgets import (
     _SuggestionButton,
     _TagQueryChip,
     _TagRow,
-    _title_detail,
     _WordRow,
 )
 from kivy.metrics import dp
@@ -3885,15 +3884,6 @@ class TestTagListKeys:
         screen._focus.area = FocusArea.INPUT
         assert screen.handle_key(search_screen.KEY_DOWN) is True
         assert screen._focus.area == "results"
-
-
-def test_a_story_row_shows_its_issue_and_the_year_it_came_out() -> None:
-    assert _title_detail("The Golden Helmet") == "FC 408, 1952"
-    assert _title_detail("(The Victory Garden)") == "CS 31, 1943"  # its display form
-
-
-def test_a_row_that_is_no_story_shows_no_detail() -> None:
-    assert _title_detail("None in 1950-55") == ""
 
 
 def test_listed_stories_carry_their_detail_and_keep_their_title() -> None:

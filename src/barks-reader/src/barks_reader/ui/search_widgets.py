@@ -11,8 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
-from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
 from barks_fantagraphics.speech_speakers import speaker_display_name
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[import-not-found]
@@ -80,20 +78,6 @@ def _show_from_the_top(layout: BoxLayout) -> None:
     """Show a list just filled from its first row: its scroll view keeps its place otherwise."""
     if isinstance(layout.parent, ScrollView):
         layout.parent.scroll_y = 1
-
-
-def _listed_title(title_str: str) -> Titles | None:
-    """Return the title a listed display title is, or None for a row that is no title."""
-    return STR_TITLE_TO_ENUM.get(ComicBookInfo.get_title_str_from_display_title(title_str))
-
-
-def _title_detail(title_str: str) -> str:
-    """Return a listed story's issue and the year it came out: "FC 408, 1952"."""
-    title = _listed_title(title_str)
-    if title is None:
-        return ""
-    info = BARKS_TITLE_INFO[title]
-    return f"{info.get_shortest_issue_title()}, {info.issue_year}"
 
 
 class _QueryRowButton(_SearchResultButton):

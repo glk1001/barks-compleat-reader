@@ -69,6 +69,8 @@ from barks_reader.core.search_state import (
     TagBasket,
     TagScope,
     WordBasket,
+    listed_title,
+    title_row_detail,
 )
 from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.core.speech_hits import (
@@ -95,7 +97,6 @@ from .search_widgets import (
     _chip_bg_member,
     _chip_stack,
     _chips_of,
-    _listed_title,
     _make_basket_chip,
     _make_era_chip,
     _NoticeLabel,
@@ -112,7 +113,6 @@ from .search_widgets import (
     _TagChipButton,
     _TagQueryChip,
     _TagRow,
-    _title_detail,
     _WordRow,
 )
 from .touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
@@ -413,10 +413,8 @@ class SearchScreen(FloatLayout):
         layout.clear_widgets()
         self._selected_result_buttons.pop(mode, None)
         for i, title_str in enumerate(title_strings):
-            is_cover = _listed_title(title_str) in COVERS_SET
-            detail = _title_detail(title_str)
-            if pages_of is not None and (pages := pages_of(title_str)):
-                detail = f"{detail}, p {pages}" if detail else f"p {pages}"
+            is_cover = listed_title(title_str) in COVERS_SET
+            detail = title_row_detail(title_str, "" if pages_of is None else pages_of(title_str))
             btn = _SearchResultButton(
                 text=COVER_ROW_TEXT if is_cover else title_str,
                 row_index=i,
@@ -451,7 +449,7 @@ class SearchScreen(FloatLayout):
         tags = self._listed_tags()
 
         def pages_text(title_str: str) -> str:
-            title = _listed_title(title_str)
+            title = listed_title(title_str)
             if title is None:
                 return ""
             pages = get_tagged_pages(tags, title)

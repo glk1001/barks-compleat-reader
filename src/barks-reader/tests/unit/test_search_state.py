@@ -29,9 +29,11 @@ from barks_reader.core.search_state import (
     TagScope,
     TagState,
     WordBasket,
+    listed_title,
     offered_speakers,
     speaker_story_counts,
     stories_said_by,
+    title_row_detail,
 )
 
 
@@ -320,3 +322,24 @@ def test_each_speaker_counts_the_stories_they_say_a_found_bubble_in() -> None:
         "Scrooge": 2,  # twice in Story 1 counts it once
         "Gyro": 0,
     }
+
+
+class TestTitleRowDetail:
+    """What a results row says after its story's title."""
+
+    def test_a_story_row_shows_its_issue_and_the_year_it_came_out(self) -> None:
+        assert title_row_detail("The Golden Helmet") == "FC 408, 1952"
+
+    def test_a_title_in_its_display_form_is_the_same_story(self) -> None:
+        assert listed_title("(The Victory Garden)") is Titles.VICTORY_GARDEN_THE
+        assert title_row_detail("(The Victory Garden)") == "CS 31, 1943"
+
+    def test_the_pages_a_story_lists_come_after_its_year(self) -> None:
+        assert title_row_detail("The Golden Helmet", "3-4,7") == "FC 408, 1952, p 3-4,7"
+
+    def test_a_row_that_is_no_story_shows_no_detail(self) -> None:
+        assert listed_title("None in 1950-55") is None
+        assert title_row_detail("None in 1950-55") == ""
+
+    def test_a_row_that_is_no_story_shows_only_the_pages_it_is_given(self) -> None:
+        assert title_row_detail("None in 1950-55", "3") == "p 3"
