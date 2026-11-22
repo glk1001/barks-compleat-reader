@@ -25,12 +25,8 @@ from barks_reader.core.navigation import (
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.view_pipeline import ImageThemes
-from barks_reader.core.view_request import ViewRequest
-from barks_reader.ui.view_renderer import (
-    ImageThemesChange,
-    ImageThemesToUse,
-    ViewRenderer,
-)
+from barks_reader.core.view_request import ImageThemesChange, ImageThemesToUse, ViewRequest
+from barks_reader.ui.view_renderer import ViewRenderer
 
 if TYPE_CHECKING:
     from barks_reader.ui.screen_bundle import ScreenBundle

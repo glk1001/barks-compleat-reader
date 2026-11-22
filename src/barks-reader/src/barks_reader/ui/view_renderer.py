@@ -14,14 +14,12 @@ wiring) that doesn't belong in `core/`.
 from __future__ import annotations
 
 from dataclasses import replace
-from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from loguru import logger
 
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.view_pipeline import ImageThemes, ViewPipeline
-from barks_reader.core.view_request import ViewRequest
+from barks_reader.core.view_request import FunImageThemeChoice, ViewRequest
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -35,23 +33,15 @@ if TYPE_CHECKING:
     from barks_reader.core.navigation import NavigationModel
     from barks_reader.core.navigation.destinations import Destination
     from barks_reader.core.reader_settings import ReaderSettings
+    from barks_reader.core.view_pipeline import ViewPipeline
+    from barks_reader.core.view_request import (
+        ImageThemes,
+        ImageThemesChange,
+        ImageThemesToUse,
+    )
 
     from .screen_bundle import ScreenBundle
     from .snapshot_applicator import SnapshotApplicator
-
-
-class ImageThemesToUse(Enum):
-    """Whether to use all themes or the user's custom selection."""
-
-    ALL = auto()
-    CUSTOM = auto()
-
-
-class ImageThemesChange(Enum):
-    """Mutation kinds for the custom fun-image-theme set."""
-
-    ADD = auto()
-    DISCARD = auto()
 
 
 class ViewRenderer:
@@ -74,8 +64,7 @@ class ViewRenderer:
         self._nav_model = nav_model
         self._on_view_state_changed = on_view_state_changed
 
-        self._bottom_view_fun_image_themes: set[ImageThemes] | None = None
-        self._bottom_view_fun_custom_image_themes: set[ImageThemes] = set(ImageThemes)
+        self._fun_image_theme_choice = FunImageThemeChoice()
 
         screens.bottom_title_view.is_visible = False
         screens.fun_image_view.is_visible = False
@@ -111,22 +100,13 @@ class ViewRenderer:
     # ------------------------------------------------------------------
     def bottom_view_fun_image_themes_changed(self, themes_to_use: ImageThemesToUse) -> None:
         """Switch between using all themes vs the user's custom theme set."""
-        if themes_to_use == ImageThemesToUse.ALL:
-            self._bottom_view_fun_image_themes = None
-        elif themes_to_use == ImageThemesToUse.CUSTOM:
-            self._bottom_view_fun_image_themes = self._bottom_view_fun_custom_image_themes
-        else:
-            msg = f'Unimplemented ImageThemesToUse: "{themes_to_use}"'
-            raise ValueError(msg)
+        self._fun_image_theme_choice.use(themes_to_use)
 
     def bottom_view_alter_fun_image_themes(
         self, image_theme: ImageThemes, alteration: ImageThemesChange
     ) -> None:
         """Add or discard an `ImageTheme` from the user's custom theme set."""
-        if alteration == ImageThemesChange.ADD:
-            self._bottom_view_fun_custom_image_themes.add(image_theme)
-        else:
-            self._bottom_view_fun_custom_image_themes.discard(image_theme)
+        self._fun_image_theme_choice.alter(image_theme, alteration)
 
     # ------------------------------------------------------------------
     # Primary render paths
@@ -239,7 +219,7 @@ class ViewRenderer:
         keeps `refresh` — which replays the pipeline's stored navigation context —
         honouring the latest theme selection.
         """
-        request = replace(request, fun_image_themes=self._bottom_view_fun_image_themes)
+        request = replace(request, fun_image_themes=self._fun_image_theme_choice.themes)
         snapshot = self._pipeline.render(request, force_fresh_fun_image=force_fresh_fun_image)
         self._applicator.apply(snapshot)
         self._on_view_state_changed(request.view_state)

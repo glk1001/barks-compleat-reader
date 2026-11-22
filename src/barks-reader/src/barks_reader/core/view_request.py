@@ -65,3 +65,62 @@ class ViewRequest:
     title_image_file: PanelPath | None = None
     preserve_top_view: bool = False
     preserve_fun_view: bool = False
+
+
+class ImageThemesToUse(Enum):
+    """Whether to use all themes or the user's custom selection."""
+
+    ALL = auto()
+    CUSTOM = auto()
+
+
+class ImageThemesChange(Enum):
+    """Mutation kinds for the custom fun-image-theme set."""
+
+    ADD = auto()
+    DISCARD = auto()
+
+
+class FunImageThemeChoice:
+    """Which themes the fun view's pictures are drawn from: all, or the user's own set.
+
+    The user's set starts as every theme and is kept while all are in use, so going
+    back to it finds it as it was left.
+    """
+
+    def __init__(self) -> None:
+        self._use_custom = False
+        self._custom: set[ImageThemes] = set(ImageThemes)
+
+    def use(self, themes_to_use: ImageThemesToUse) -> None:
+        """Switch between all the themes and the user's own set.
+
+        Args:
+            themes_to_use: Which of the two to draw from.
+
+        Raises:
+            ValueError: For a choice that is neither.
+
+        """
+        if themes_to_use not in (ImageThemesToUse.ALL, ImageThemesToUse.CUSTOM):
+            msg = f'Unimplemented ImageThemesToUse: "{themes_to_use}"'
+            raise ValueError(msg)
+        self._use_custom = themes_to_use == ImageThemesToUse.CUSTOM
+
+    def alter(self, image_theme: ImageThemes, alteration: ImageThemesChange) -> None:
+        """Add a theme to the user's own set, or take it out.
+
+        Args:
+            image_theme: The theme.
+            alteration: Whether it is added or discarded.
+
+        """
+        if alteration == ImageThemesChange.ADD:
+            self._custom.add(image_theme)
+        else:
+            self._custom.discard(image_theme)
+
+    @property
+    def themes(self) -> set[ImageThemes] | None:
+        """The themes to draw from as a view request names them: None for all of them."""
+        return set(self._custom) if self._use_custom else None

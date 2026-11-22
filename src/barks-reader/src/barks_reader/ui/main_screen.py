@@ -54,6 +54,7 @@ from barks_reader.core.user_error_types import (
     TitleNotInFantaInfoError,
     get_volume_not_available_error_info,
 )
+from barks_reader.core.view_request import ImageThemesChange, ImageThemesToUse
 from barks_reader.core.window_minimum import (
     is_screen_too_small,
     is_screen_warning_suppressed,
@@ -78,7 +79,6 @@ from .reader_keyboard_nav import (
 from .reader_screens import ReaderScreen
 from .reader_tree_builder import ReaderTreeBuilder
 from .settings_keyboard_nav import SettingsKeyboardNav
-from .view_renderer import ImageThemesChange, ImageThemesToUse
 
 if TYPE_CHECKING:
     from collections.abc import Callable

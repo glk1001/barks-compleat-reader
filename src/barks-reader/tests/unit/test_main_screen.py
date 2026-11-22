@@ -28,11 +28,11 @@ from barks_reader.core.read_cue import READ_CUE_ALWAYS, READ_CUE_FIRST_FEW, READ
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, READ_CUE
 from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
+from barks_reader.core.view_request import ImageThemesChange, ImageThemesToUse
 from barks_reader.ui.action_bar_helpers import ACTION_BAR_SIZE_Y
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
 from barks_reader.ui.popup_frame import PopupFrame
-from barks_reader.ui.view_renderer import ImageThemesChange, ImageThemesToUse
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
 from kivy.uix.modalview import ModalView
