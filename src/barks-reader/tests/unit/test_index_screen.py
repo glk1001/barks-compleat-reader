@@ -32,6 +32,7 @@ from barks_reader.ui.index_screen import (
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 from kivy.clock import Clock
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from unit_helpers import run_at_once, run_last_scheduled
@@ -1633,6 +1634,31 @@ class TestMovingBetweenThePanels:
         assert screen.handle_key(_module.KEY_RIGHT) is True
 
         assert screen._nav_panel is _module._IndexNavPanel.ALPHABET
+
+    def test_the_row_that_says_a_letter_has_no_items_is_not_one_the_keys_reach(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """Built as the screen builds an empty letter: Right from the alphabet stays."""
+        column = BoxLayout()
+        column.add_widget(_module.IndexNoItemsButton(text="*** No index items for 'X' ***"))
+        index_screen.ids.left_column_layout = column
+        index_screen._nav_active = True
+        index_screen._nav_panel = _module._IndexNavPanel.ALPHABET
+
+        assert index_screen._get_col_buttons(0) == []
+        assert index_screen.handle_key(_module.KEY_RIGHT) is True
+        assert index_screen._nav_panel is _module._IndexNavPanel.ALPHABET
+
+    def test_an_item_beside_the_no_items_row_is_still_reached(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        column = BoxLayout()
+        item = _module.IndexItemButton(text="Apple")
+        column.add_widget(_module.IndexNoItemsButton(text="none"))
+        column.add_widget(item)
+        index_screen.ids.left_column_layout = column
+
+        assert index_screen._get_col_buttons(0) == [item]
 
     @pytest.mark.parametrize("key", [_module.KEY_LEFT, KEY_ESCAPE])
     def test_left_from_the_first_column_and_escape_go_back_to_the_alphabet(

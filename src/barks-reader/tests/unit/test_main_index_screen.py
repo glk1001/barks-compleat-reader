@@ -652,3 +652,4 @@ class TestSmallPaths:
         button = main_index_screen._get_no_items_button("X")
 
         assert button.text == "*** No index items for 'X' ***"
+        assert isinstance(button, barks_reader.ui.index_screen.IndexNoItemsButton)

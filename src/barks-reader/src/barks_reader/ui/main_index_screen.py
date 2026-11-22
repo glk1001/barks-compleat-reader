@@ -38,7 +38,7 @@ from barks_reader.core.main_index import (
 )
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 
-from .index_screen import IndexItemButton, IndexScreen
+from .index_screen import IndexItemButton, IndexNoItemsButton, IndexScreen
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
@@ -181,8 +181,9 @@ class MainIndexScreen(IndexScreen):
             self._tag_entries[item.id] = (button, item)
         return button
 
-    def _get_no_items_button(self, letter: str) -> IndexItemButton:
-        return IndexItemButton(
+    @override
+    def _get_no_items_button(self, letter: str) -> IndexNoItemsButton:
+        return IndexNoItemsButton(
             text=f"*** No index items for '{letter}' ***",
             color=self.index_theme.MENU_TEXT,
             font_name=self._font_manager.main_index_item_font_name,

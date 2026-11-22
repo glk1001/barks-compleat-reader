@@ -121,6 +121,14 @@ class IndexItemButton(Button):
     """A custom button for the index items, styled in the .kv file."""
 
 
+class IndexNoItemsButton(IndexItemButton):
+    """The row that says a letter has no items: an item's look, but no item.
+
+    The keys pass it over (`IndexScreen._collect_buttons`): it was focused as the
+    letter's first item, where Enter did nothing.
+    """
+
+
 class TitleShowSpeechButton(Button):
     """A custom button for showing speech bubbles for titles, styled in the .kv file."""
 
@@ -829,6 +837,8 @@ class IndexScreen(NavExitMixin, FloatLayout):
 
     def _collect_buttons(self, widget: Widget, result: list[Button]) -> None:
         for child in reversed(widget.children):
+            if isinstance(child, IndexNoItemsButton):
+                continue
             if isinstance(child, Button):
                 result.append(child)
             else:
@@ -961,7 +971,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
         """Return the button that shows ``item`` in the grid."""
 
     @abstractmethod
-    def _get_no_items_button(self, letter: str) -> IndexItemButton:
+    def _get_no_items_button(self, letter: str) -> IndexNoItemsButton:
         """Return the placeholder button shown when a letter has no items."""
 
     def _cancel_index_image_change_events(self) -> None:

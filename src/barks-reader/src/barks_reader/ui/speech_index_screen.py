@@ -49,6 +49,7 @@ from barks_reader.core.speech_hits import SpeechHitRow, comic_pages, speech_hit_
 from .index_screen import (
     INDEX_NAV_FOCUS_GROUP,
     IndexItemButton,
+    IndexNoItemsButton,
     IndexPrefixButton,
     IndexScreen,
     TitleShowSpeechButton,
@@ -399,8 +400,9 @@ class SpeechSubItemsIndexScreen(IndexScreen):
         )
         return button
 
-    def _get_no_items_button(self, letter: str) -> IndexItemButton:
-        return IndexItemButton(
+    @override
+    def _get_no_items_button(self, letter: str) -> IndexNoItemsButton:
+        return IndexNoItemsButton(
             text=f"*** No index items for '{letter}' ***",
             color=self.index_theme.MENU_TEXT,
             font_name=self._font_manager.speech_index_item_font_name,

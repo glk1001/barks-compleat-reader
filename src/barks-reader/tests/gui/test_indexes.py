@@ -106,7 +106,7 @@ def test_speech_index_letters_repopulate(boot: AppBoot) -> None:
 
 
 def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
-    """Walking the alphabet finds a letter with nothing under it, and it is logged as such."""
+    """Walking the alphabet finds a letter with nothing under it, logged as such; Right stays."""
     d = boot(nodes.MAIN_INDEX)
     d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
     for _ in range(LETTERS):
@@ -115,6 +115,11 @@ def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
             shown = _letters_shown(d)
             assert shown == list(string.ascii_uppercase[: len(shown)]), "Down walks the alphabet"
             assert last_field(d, markers.INDEX_LETTER_EMPTY, "letter") == shown[-1]
+            # Right has no item to go to (the row saying so is none): the letters keep
+            # the keys, and Down goes on to the next.
+            d.key("Right")
+            d.key_then_wait(POPULATED_OR_EMPTY, "Down")
+            assert len(_letters_shown(d)) == len(shown) + 1
             return
     msg = "every letter of the main index has items"
     raise AssertionError(msg)

@@ -605,7 +605,7 @@ def test_an_open_popup_takes_the_keys(speech_index_screen: SpeechIndexScreen) ->
 def test_no_items_for_a_letter_shows_a_row_that_says_so(
     speech_index_screen: SpeechIndexScreen,
 ) -> None:
-    with patch.object(_speech_module, "IndexItemButton") as button_cls:
+    with patch.object(_speech_module, "IndexNoItemsButton") as button_cls:
         speech_index_screen._get_no_items_button("Q")
     assert button_cls.call_args.kwargs["text"] == "*** No index items for 'Q' ***"
 
