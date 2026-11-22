@@ -229,3 +229,61 @@ def tag_group_sub_items(tag_group: TagGroups) -> list[tuple[Tags, str, str]]:
         ((tag, "", tag_heading(tag)) for tag in get_all_tags_in_tag_group(tag_group)),
         key=lambda t: index_sort_key(t[2]),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class SubIndexRow:
+    """One row opened under a main index entry: what it stands for and how it reads.
+
+    Attributes:
+        item: What the row stands for and opens: a title at its tagged pages, or a tag.
+        text: The row's text: a title with the tag's pages in it, or a tag's heading
+            as markup.
+        markup: Whether `text` is markup (a tag's heading).
+        italic: Whether the row is a title, set in italics; a tag's row is bold.
+
+    """
+
+    item: IndexItem
+    text: str
+    markup: bool
+    italic: bool
+
+
+def sub_index_rows(item_id: Tags | TagGroups) -> list[SubIndexRow]:
+    """Return the rows opened under a tag or a tag group of the main index.
+
+    Args:
+        item_id: The entry opened.
+
+    Returns:
+        Under a tag, the titles it tags in the order Barks submitted them, each
+        opening at the tag's first page in it with all of them to step through;
+        under a tag group, its tags by heading.
+
+    """
+    if type(item_id) is Tags:
+        return [
+            SubIndexRow(
+                IndexItem(
+                    id=title,
+                    display_text=text,
+                    page_to_goto=page,
+                    tagged_pages=tagged_pages(item_id, title),
+                ),
+                text,
+                markup=False,
+                italic=True,
+            )
+            for title, page, text in tag_sub_items(item_id)
+        ]
+    assert isinstance(item_id, TagGroups)
+    return [
+        SubIndexRow(
+            IndexItem(id=tag, display_text=text),
+            tag_heading_markup(tag),
+            markup=True,
+            italic=False,
+        )
+        for tag, _page, text in tag_group_sub_items(item_id)
+    ]

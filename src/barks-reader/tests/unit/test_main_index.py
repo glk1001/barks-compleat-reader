@@ -11,19 +11,23 @@ import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import COVERS_SET
+from barks_reader.core.index_headings import tag_heading_markup
 from barks_reader.core.index_items import IndexItem
 from barks_reader.core.main_index import (
     MAIN_INDEX_LETTERS,
+    SubIndexRow,
     TitleHierarchy,
     build_main_index,
     index_item_markup,
     index_letter,
+    sub_index_rows,
     tag_group_sub_items,
     tag_sub_items,
     tagged_pages,
     tagged_title_with_page_nums,
     titles_for_letter,
 )
+from barks_reader.core.reader_utils import get_concat_page_nums_str
 
 
 def _index_scope(fixture_name: str, config: pytest.Config) -> Literal["module", "function"]:  # noqa: ARG001
@@ -254,3 +258,36 @@ class TestTaggedTitleRows:
 
     def test_a_tag_under_a_group_carries_no_pages(self) -> None:
         assert tagged_pages(TagGroups.AFRICA, Tags.ALASKA) == ()
+
+
+class TestSubIndexRows:
+    """The rows opened under an entry: which they are, how each reads and what it opens."""
+
+    def test_a_tag_s_rows_are_its_titles_in_italics_each_at_the_tag_s_pages(self) -> None:
+        rows = sub_index_rows(Tags.ALASKA)
+
+        assert [(row.item.id, row.item.page_to_goto, row.text) for row in rows] == [
+            (title, page, text) for title, page, text in tag_sub_items(Tags.ALASKA)
+        ]
+        assert all(row.italic and not row.markup for row in rows)
+        assert all(row.item.display_text == row.text for row in rows)
+
+    def test_a_title_listed_at_pages_steps_through_every_one_of_them(self) -> None:
+        paged = [row for row in sub_index_rows(Tags.ALASKA) if row.item.page_to_goto]
+
+        assert paged  # the tag marks pages in at least one story
+        for row in paged:
+            assert row.item.tagged_pages[0] == row.item.page_to_goto
+            assert row.text.endswith(get_concat_page_nums_str(list(row.item.tagged_pages)))
+
+    def test_a_tag_group_s_rows_are_its_tags_by_heading_as_markup_and_not_italic(self) -> None:
+        rows = sub_index_rows(TagGroups.PIG_VILLAINS)
+
+        assert [(row.item.id, row.item.display_text) for row in rows] == [
+            (tag, text) for tag, _page, text in tag_group_sub_items(TagGroups.PIG_VILLAINS)
+        ]
+        assert all(isinstance(row, SubIndexRow) and row.markup and not row.italic for row in rows)
+        assert all(row.item.page_to_goto == "" and row.item.tagged_pages == () for row in rows)
+        for row in rows:
+            assert isinstance(row.item.id, Tags)
+            assert row.text == tag_heading_markup(row.item.id)

@@ -16,19 +16,13 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageSelector
-from barks_reader.core.index_headings import (
-    tag_heading_markup,
-)
-from barks_reader.core.index_items import IndexItem
 from barks_reader.core.main_index import (
     MAIN_INDEX_LETTERS,
     TitleHierarchy,
     build_main_index,
     index_item_markup,
     index_letter,
-    tag_group_sub_items,
-    tag_sub_items,
-    tagged_pages,
+    sub_index_rows,
     titles_for_letter,
 )
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
@@ -41,6 +35,7 @@ if TYPE_CHECKING:
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
 
+    from barks_reader.core.index_items import IndexItem
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .font_manager import FontManager
@@ -171,32 +166,14 @@ class MainIndexScreen(IndexScreen):
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
-        # --- Determine what items to display in the new sub-list ---
-        if type(item_id) is Tags:
-            assert isinstance(item_id, Tags)
-            use_italic = True
-            sub_items_to_display: list[tuple[Titles | Tags, str, str]] = list(
-                tag_sub_items(item_id)
-            )
-        else:  # It's a TagGroup
-            assert isinstance(item_id, TagGroups)
-            use_italic = False
-            sub_items_to_display = list(tag_group_sub_items(item_id))
-
-        # Now create the layout.
         sub_items_layout = self._new_sub_items_layout()
-        for (
-            sub_item_id,
-            sub_item_page_to_goto,
-            sub_item_text,
-        ) in sub_items_to_display:
-            is_tag = isinstance(sub_item_id, Tags)
+        for row in sub_index_rows(item_id):
             title_button = IndexTitleItemButton(
-                full_text=tag_heading_markup(sub_item_id) if is_tag else sub_item_text,
-                markup=is_tag,
+                full_text=row.text,
+                markup=row.markup,
                 size_hint=(0.90, None),
-                italic=use_italic,
-                bold=not use_italic,  # not a title so must be TagGroup
+                italic=row.italic,
+                bold=not row.italic,  # not a title so must be a tag group's tag
                 font_name=str(self._font_manager.index_title_item_font_name),
                 font_size=self._font_manager.index_title_item_font_size,
                 color=self.index_theme.TITLE_TEXT,
@@ -205,12 +182,7 @@ class MainIndexScreen(IndexScreen):
                 height=self.index_theme.ROW_HEIGHT,
                 padding=[sub_item_padding, 0, 0, 0],
             )
-            sub_item = IndexItem(
-                id=sub_item_id,
-                display_text=sub_item_text,
-                page_to_goto=sub_item_page_to_goto,
-                tagged_pages=tagged_pages(item_id, sub_item_id),
-            )
+            sub_item = row.item
             title_button.bind(
                 on_release=lambda btn, bound_item=sub_item: self._on_index_item_press(
                     btn, bound_item
@@ -220,7 +192,7 @@ class MainIndexScreen(IndexScreen):
             # One line a row, at debug: an info line beside it doubled the log written
             # in the frame a tag of a few hundred titles opens in.
             logger.debug(
-                f'Added sub-item "{sub_item_text}", page to goto = {sub_item_page_to_goto}.'
+                f'Added sub-item "{sub_item.display_text}", page to goto = {sub_item.page_to_goto}.'
             )
 
         return sub_items_layout

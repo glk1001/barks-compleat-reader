@@ -259,12 +259,17 @@ class TestTagMarkers:
             patch.object(
                 barks_reader.core.main_index, "get_all_tags_in_tag_group", return_value=set(members)
             ),
-            patch.object(screen, "_new_sub_items_layout"),
-            patch.object(module, "IndexTitleItemButton"),
-            patch.object(module, "IndexItem") as index_item,
+            patch.object(screen, "_new_sub_items_layout") as new_layout,
+            patch.object(module, "IndexTitleItemButton") as row_cls,
+            patch.object(screen, "_on_index_item_press") as pressed,
         ):
             screen._get_sub_items_layout(screen._open_tag_item)
-        return [c.kwargs["id"] for c in index_item.call_args_list]
+            # Each row built is added in turn, and its press opens the item bound to it.
+            added = [c.args[0] for c in new_layout.return_value.add_widget.call_args_list]
+            assert added == [row_cls.return_value] * len(members)
+            for bound in row_cls.return_value.bind.call_args_list:
+                bound.kwargs["on_release"](row_cls.return_value)
+        return [c.args[1].id for c in pressed.call_args_list]
 
     @pytest.mark.parametrize(
         ("item_id", "member", "is_markup"),
