@@ -86,6 +86,23 @@ def get_title_str(title: Titles | None) -> str:
     return ENUM_TO_STR_TITLE[title] if title is not None else ""
 
 
+def caption_title(image_info: ImageInfo) -> Titles | None:
+    """Return the story an image is captioned with and offered as somewhere to go.
+
+    The selector's stand-in is of a story nobody asked for: shown, but with no
+    caption and no goto target. It is told by its flag, not its title, so a panel
+    really from the story it names keeps its caption.
+
+    Args:
+        image_info: The image on show.
+
+    Returns:
+        The image's story, or None for an image from none and for the stand-in.
+
+    """
+    return None if image_info.is_fallback else image_info.from_title
+
+
 @runtime_checkable
 class ImageFileResolver(Protocol):
     """Protocol for resolving image files for comic titles."""

@@ -13,7 +13,7 @@ from comic_utils.timing import Timing
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.image_selector import ImageInfo, get_title_str
+from barks_reader.core.image_selector import ImageInfo, caption_title, get_title_str
 
 from .panel_texture_loader import PanelTextureLoader
 
@@ -96,8 +96,10 @@ class SnapshotApplicator:
 
         self._load_texture(self._top_view_texture_loader, top.image_info, apply_tex)
 
+        # An image from no story leaves the caption as it is; the selector's stand-in
+        # names one nobody asked for, and clears it (and with it the goto arrow).
         if top.image_info.from_title is not None:
-            self._screens.tree_view.set_title(top.image_info.from_title)
+            self._screens.tree_view.set_title(caption_title(top.image_info))
 
     # ------------------------------------------------------------------
     # Fun (bottom decorative) view

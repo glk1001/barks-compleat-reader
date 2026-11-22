@@ -3251,6 +3251,18 @@ class TestBackgroundAndGoto:
         screen.set_background_image(ImageInfo(from_title=None, filename=None))
         assert screen.current_title_str == ""
 
+    def test_the_selector_s_stand_in_has_no_caption_and_nowhere_to_go(
+        self, screen: SearchScreen
+    ) -> None:
+        screen.set_background_image(ImageInfo(from_title=HELMET, filename=None))
+        stand_in = ImageInfo(from_title=Titles.GOOD_NEIGHBORS, filename=None, is_fallback=True)
+
+        screen.set_background_image(stand_in)
+
+        assert screen.current_title_str == ""
+        screen.on_goto_background_title()
+        screen.on_goto_background_title_func.assert_not_called()
+
     def test_a_word_result_goes_to_its_story_at_its_page(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:

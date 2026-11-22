@@ -313,6 +313,21 @@ class TestWhatIsLeftAlone:
         assert screen_mocks["tree_view"].top_view_image_texture is not None
         screen_mocks["tree_view"].set_title.assert_not_called()
 
+    def test_the_selector_s_stand_in_clears_the_top_view_s_caption(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        """Shown, but of a story nobody asked for: no caption, and so no goto arrow."""
+        snap = _make_snapshot()
+        stand_in = ImageInfo(
+            filename=Path("inset.png"), from_title=Titles.GOOD_NEIGHBORS, is_fallback=True
+        )
+        snap = replace(snap, top_view=replace(snap.top_view, image_info=stand_in))
+
+        applicator.apply(snap)
+
+        assert screen_mocks["tree_view"].top_view_image_texture is not None
+        screen_mocks["tree_view"].set_title.assert_called_once_with(None)
+
     def test_a_visible_fun_view_with_no_image_is_left_as_it_is(
         self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
     ) -> None:

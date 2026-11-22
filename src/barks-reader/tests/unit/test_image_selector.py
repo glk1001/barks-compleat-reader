@@ -18,6 +18,7 @@ from barks_reader.core.image_selector import (
     FIT_MODE_COVER,
     ImageInfo,
     ImageSelector,
+    caption_title,
     get_title_str,
     resolve_all_title_image_files,
 )
@@ -1025,6 +1026,25 @@ class TestImageInfoBuilders:
         assert info.filename == Path("/faves") / title_dir / "129-3.png"
         assert info.from_title is Titles.CRAZY_QUIZ_SHOW_THE
         assert info.fit_mode == FIT_MODE_COVER
+
+
+class TestCaptionTitle:
+    """The story an image is captioned with, and offered as somewhere to go."""
+
+    def test_an_image_is_captioned_with_the_story_it_is_from(self) -> None:
+        info = ImageInfo(Path("andes.png"), Titles.LOST_IN_THE_ANDES)
+        assert caption_title(info) == Titles.LOST_IN_THE_ANDES
+
+    def test_an_image_from_no_story_has_no_caption(self) -> None:
+        assert caption_title(ImageInfo(Path("emblem.png"))) is None
+
+    def test_the_stand_in_has_no_caption_though_it_names_a_story(self) -> None:
+        stand_in = ImageInfo(Path("inset.png"), Titles.GOOD_NEIGHBORS, is_fallback=True)
+        assert caption_title(stand_in) is None
+
+    def test_a_panel_really_from_the_stand_in_s_story_is_captioned(self) -> None:
+        real = ImageInfo(Path("neighbors.png"), Titles.GOOD_NEIGHBORS)
+        assert caption_title(real) == Titles.GOOD_NEIGHBORS
 
 
 class TestGetTitleStr:

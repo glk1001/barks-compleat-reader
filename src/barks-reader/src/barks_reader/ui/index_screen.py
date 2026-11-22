@@ -34,7 +34,7 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.focus_cursors import GridCursor, deal_into_columns, wrapped
-from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.image_selector import ImageInfo, caption_title
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -1065,12 +1065,13 @@ class IndexScreen(NavExitMixin, FloatLayout):
         """
         # The selector's stand-in is of a story the index did not ask for: shown, but
         # not captioned or offered as somewhere to go.
-        if image_info.from_title is None or image_info.is_fallback:
+        title = caption_title(image_info)
+        if title is None:
             self._current_image_info = None
             self.current_title_str = ""
         else:
             self._current_image_info = image_info
-            self.current_title_str = self._get_background_title_str(image_info.from_title)
+            self.current_title_str = self._get_background_title_str(title)
         self.image_texture = texture
         filename = "none" if image_info.filename is None else image_info.filename.name
         logger.debug(log_markers.INDEX_BACKGROUND_SHOWN.format(filename=filename))

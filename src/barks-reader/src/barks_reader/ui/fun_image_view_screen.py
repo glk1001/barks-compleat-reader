@@ -16,7 +16,7 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_history import ImageHistory
-from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo
+from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo, caption_title
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -400,7 +400,7 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
         assert self._load_image is not None
         self._set_zoom("")
         self._load_image(image_info)
-        self._set_title(image_info.from_title)
+        self._set_title(caption_title(image_info))
         self._refresh_lower_tier()
 
     def _needs_a_second_image(self) -> bool:
@@ -454,7 +454,7 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
             if self._wanted_previous is not previous:
                 return  # Another step overtook this load.
             self.previous_image_fit_mode = previous.fit_mode
-            self.previous_title_str = get_display_title_str(previous.from_title)
+            self.previous_title_str = get_display_title_str(caption_title(previous))
             self.previous_image_texture = texture
             self._shown_previous = previous
             self._update_tiered()  # a texture the same as the last fires no change
@@ -487,7 +487,7 @@ class FunImageViewScreen(NavExitMixin, BoxLayout):
 
         """
         self._set_zoom("")
-        self._set_title(image_info.from_title)
+        self._set_title(caption_title(image_info))
 
         self._history.add(image_info)
         assert image_info.filename

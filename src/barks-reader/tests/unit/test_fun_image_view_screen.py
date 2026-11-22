@@ -778,6 +778,25 @@ class TestTheSpreadsTwoTiers:
         )
         assert any(re.search(marker, line) for line in loguru_sink)
 
+    def test_the_selector_s_stand_in_has_no_caption_or_goto_on_either_tier(
+        self, screen_setup: _Setup
+    ) -> None:
+        screen, _, _ = screen_setup
+        loader = self._on_the_spread(screen)
+        stand_in = ImageInfo(Path("inset.png"), Titles.GOOD_NEIGHBORS, is_fallback=True)
+
+        screen.set_last_loaded_image_info(stand_in)
+
+        assert screen.current_title_str == ""
+        assert not screen.fun_view_from_title
+        assert not screen.goto_title_button_active
+
+        screen.set_last_loaded_image_info(_info("b.png", Titles.GIFT_LION))
+        loader.call_args.args[1](_texture(400, 300))
+
+        assert screen.previous_title_str == ""
+        assert not screen.lower_goto_title_button_active
+
     def test_the_lower_caption_of_a_title_barks_did_not_name_is_in_parentheses(
         self, screen_setup: _Setup, loguru_sink: list[str]
     ) -> None:

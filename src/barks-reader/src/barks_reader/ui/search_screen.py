@@ -24,7 +24,7 @@ from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.image_selector import ImageInfo, caption_title
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -1706,9 +1706,14 @@ class SearchScreen(FloatLayout):
     # --- Background Image ---
 
     def set_background_image(self, image_info: ImageInfo) -> None:
-        """Show `image_info` as the background, and name its story."""
-        self._current_image_info = image_info
-        self.current_title_str = get_display_title_str(image_info.from_title)
+        """Show `image_info` as the background, and name its story.
+
+        An image with no story to name (the selector's stand-in too) has no caption
+        and is nowhere for the arrow to go.
+        """
+        title = caption_title(image_info)
+        self._current_image_info = None if title is None else image_info
+        self.current_title_str = get_display_title_str(title)
 
     def on_goto_background_title(self) -> None:
         """Go to the story the background shows."""
