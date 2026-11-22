@@ -8,7 +8,7 @@ from kivy.core.window import Window
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.reader_utils import get_win_dimensions
+from barks_reader.core.main_layout import size_under_bar
 from barks_reader.core.window_state import WindowModeCallbacks
 
 from .action_bar_helpers import (
@@ -262,10 +262,7 @@ class MainScreenWindowHelper:
             window where the window is wider than the content.
 
         """
-        width, content_h = get_win_dimensions(
-            height - ACTION_BAR_SIZE_Y, Window.width, self._content_aspect_ratio()
-        )
-        return width, content_h + ACTION_BAR_SIZE_Y
+        return size_under_bar(height, Window.width, ACTION_BAR_SIZE_Y, self._content_aspect_ratio())
 
     def _update_fonts_for_fullscreen_box(self) -> None:
         # The box's height, not the window's: on a screen narrower than the content the box

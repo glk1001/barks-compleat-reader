@@ -24,8 +24,8 @@ from okf_reader.ui.viewer import BODY_MAX_WIDTH, CONTENT_PADDING, OKFViewer
 
 from barks_reader.core import log_markers
 from barks_reader.core.keys import KEY_ESCAPE, KEY_F, KEY_LEFT, is_escape_key
-from barks_reader.core.main_layout import MainLayoutMode, content_aspect_ratio
-from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
+from barks_reader.core.main_layout import MainLayoutMode, content_aspect_ratio, size_under_bar
+from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
     BarksTableRewriter,
@@ -90,10 +90,7 @@ def wiki_fullscreen_viewer_size(
         The (width, height) for the viewer, in pixels.
 
     """
-    content_w, content_h = get_win_dimensions(
-        window_height - top_bar_height, window_width, aspect_ratio
-    )
-    return content_w, content_h + top_bar_height
+    return size_under_bar(window_height, window_width, top_bar_height, aspect_ratio)
 
 
 class _GotoTitleActionProvider:

@@ -8,9 +8,13 @@ from kivy.core.window import Window, WindowBase
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.main_layout import MainLayoutMode, choose_main_layout, content_aspect_ratio
+from barks_reader.core.main_layout import (
+    MainLayoutMode,
+    choose_main_layout,
+    content_aspect_ratio,
+    size_under_bar,
+)
 from barks_reader.core.platform_info import PLATFORM, Platform
-from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
     ScreenInfo,
@@ -228,10 +232,9 @@ class AppWindowGeometryHelper:
         """Return the layout's width and height at ``height``, and its left, centred."""
         monitor = self._current_monitor
         chrome = self._chrome_in_size_units()
-        new_width, content_h = get_win_dimensions(
-            height - chrome, monitor.width_pixels, self.content_aspect_ratio
+        new_width, new_height = self._no_smaller_than_minimum(
+            *size_under_bar(height, monitor.width_pixels, chrome, self.content_aspect_ratio)
         )
-        new_width, new_height = self._no_smaller_than_minimum(new_width, content_h + chrome)
         left = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
         return new_width, new_height, left
 
@@ -555,8 +558,7 @@ class AppWindowGeometryHelper:
         monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
         monitor_w = monitor.width_pixels if monitor else 0
         aspect_ratio = self.content_aspect_ratio
-        correct_width, content_h = get_win_dimensions(unit_height - chrome, monitor_w, aspect_ratio)
-        correct_height = content_h + chrome
+        correct_width, correct_height = size_under_bar(unit_height, monitor_w, chrome, aspect_ratio)
 
         # Refuse to schedule a degenerate correction. Can happen when ``Window.left``/``top``
         # is off-screen (monitor lookup returns ``None``): there is no width to correct to.

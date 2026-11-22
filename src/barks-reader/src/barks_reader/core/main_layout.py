@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from .reader_utils import COMIC_PAGE_ASPECT_RATIO
+from .reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 
 # The setting's values, as the settings panel shows them and the ini stores them.
 MATCH_THE_SCREEN = "Match the screen"
@@ -140,6 +140,29 @@ def choose_main_layout(
     if spread_fits(screen_width, screen_height, chrome_height, page_aspect_ratio):
         return MainLayoutMode.SPREAD
     return MainLayoutMode.SINGLE
+
+
+def size_under_bar(
+    height: int, max_width: int, bar_height: int, aspect_ratio: float = COMIC_PAGE_ASPECT_RATIO
+) -> tuple[int, int]:
+    """Return the size of content of a fixed shape with a bar over it, fitted to a height.
+
+    The content takes what the bar leaves of `height`, and is as wide as its shape
+    makes it; where that is wider than `max_width` it takes that width, and less height.
+
+    Args:
+        height: The height to fit, the bar included.
+        max_width: The widest the content may be.
+        bar_height: The bar's height (an action bar, a title bar).
+        aspect_ratio: The content's height over its width: a page's, or the pair's on
+            the two-page spread.
+
+    Returns:
+        The width, and the height with the bar.
+
+    """
+    width, content_height = get_win_dimensions(height - bar_height, max_width, aspect_ratio)
+    return width, content_height + bar_height
 
 
 def page_width(spread_width: float) -> float:

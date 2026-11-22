@@ -33,7 +33,7 @@ from barks_reader.core.collection_page_groups import (
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_page_manager import ComicPageManager
 from barks_reader.core.goto_page import GotoPageButtonKind, goto_page_button_kind
-from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES, MainLayoutMode
+from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES, MainLayoutMode, size_under_bar
 from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import (
@@ -45,7 +45,6 @@ from barks_reader.core.reader_navigation import ReaderNavigation
 from barks_reader.core.reader_utils import (
     COMIC_PAGE_ASPECT_RATIO,
     PNG_EXT_FOR_KIVY,
-    get_win_dimensions,
 )
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.window_state import WindowModeCallbacks
@@ -1250,7 +1249,7 @@ class ComicBookReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Ac
         aspect_ratio = COMIC_PAGE_ASPECT_RATIO
         if self.comic_book_reader.two_up:
             aspect_ratio /= SPREAD_WIDTH_IN_PAGES
-        w, _ = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width, aspect_ratio)
+        w, _ = size_under_bar(Window.height, Window.width, ACTION_BAR_SIZE_Y, aspect_ratio)
         self.action_bar_width = max(1, w)
 
     def _update_widget_states(self) -> None:

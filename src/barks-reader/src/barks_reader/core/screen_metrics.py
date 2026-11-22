@@ -7,8 +7,9 @@ from typing import Any
 from loguru import logger
 from screeninfo import ScreenInfoError, get_monitors
 
+from .main_layout import size_under_bar
 from .platform_info import IS_MACOS, PLATFORM, Platform
-from .reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
+from .reader_utils import COMIC_PAGE_ASPECT_RATIO
 
 _WINDOWS_TASKBAR_HEIGHT = 60
 _OTHER_TASKBAR_HEIGHT = 55
@@ -81,8 +82,7 @@ def largest_window_size(
 
     """
     height = get_best_window_height_fit(screen_height) - WINDOW_HEIGHT_MARGIN
-    width, content_height = get_win_dimensions(height - chrome_height, screen_width, aspect_ratio)
-    return width, content_height + chrome_height
+    return size_under_bar(height, screen_width, chrome_height, aspect_ratio)
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,10 +273,7 @@ def calculate_fitted_window_height(
     max_total_w = int(fit_fraction * screen_width)
 
     # The tallest content that fits, or the content the width allows when that is less.
-    _width, content_h = get_win_dimensions(
-        max_total_h - action_bar_height, max_total_w, aspect_ratio
-    )
-    return content_h + action_bar_height
+    return size_under_bar(max_total_h, max_total_w, action_bar_height, aspect_ratio)[1]
 
 
 SCREEN_METRICS = ScreenMetrics()

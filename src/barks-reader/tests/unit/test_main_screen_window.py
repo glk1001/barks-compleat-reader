@@ -356,7 +356,7 @@ class TestChangeFullscreenWinSize:
     def test_sets_size(self, hf: HelperFixture) -> None:
         with (
             patch.object(window_module, "Window") as mock_window,
-            patch.object(window_module, "get_win_dimensions", return_value=(1600, 1000)),
+            patch.object(window_module, "size_under_bar", return_value=(1600, 1000)),
         ):
             mock_window.height = 900
             mock_window.left = 0
@@ -374,7 +374,7 @@ class TestChangeFullscreenWinSize:
         with (
             patch.object(window_module, "Window") as mock_window,
             patch.object(
-                window_module, "get_win_dimensions", return_value=(1600, 1000)
+                window_module, "size_under_bar", return_value=(1600, 1000)
             ) as mock_get_width,
         ):
             mock_window.height = 1080

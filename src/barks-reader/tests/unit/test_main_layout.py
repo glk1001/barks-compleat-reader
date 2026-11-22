@@ -14,6 +14,7 @@ from barks_reader.core.main_layout import (
     content_aspect_ratio,
     page_width,
     page_width_at,
+    size_under_bar,
     spread_fits,
 )
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
@@ -121,3 +122,37 @@ def test_a_page_in_the_spread_is_as_wide_as_the_single_column_at_the_same_height
     single_width = height / COMIC_PAGE_ASPECT_RATIO
     spread_width = height / content_aspect_ratio(MainLayoutMode.SPREAD)
     assert page_width(spread_width) == pytest.approx(single_width)
+
+
+class TestSizeUnderBar:
+    """Content of a fixed shape with a bar over it, fitted to a height."""
+
+    BAR = 45
+    SPREAD = COMIC_PAGE_ASPECT_RATIO / SPREAD_WIDTH_IN_PAGES
+
+    def test_the_content_takes_what_the_bar_leaves_and_the_height_comes_back_whole(self) -> None:
+        width, height = size_under_bar(1045, 10_000, self.BAR)
+        assert height == 1045  # noqa: PLR2004
+        assert width == round(1000 / COMIC_PAGE_ASPECT_RATIO)
+
+    def test_too_wide_for_the_width_it_takes_the_width_and_less_height(self) -> None:
+        width, height = size_under_bar(1045, 500, self.BAR)
+        assert width == 500  # noqa: PLR2004
+        assert height == round(500 * COMIC_PAGE_ASPECT_RATIO) + self.BAR
+
+    def test_exactly_as_wide_as_the_width_it_keeps_its_height(self) -> None:
+        exact = round(1000 / COMIC_PAGE_ASPECT_RATIO)
+        assert size_under_bar(1045, exact, self.BAR) == (exact, 1045)
+
+    def test_the_spread_is_twice_as_wide_under_the_same_bar(self) -> None:
+        page_wide, _ = size_under_bar(1045, 10_000, self.BAR)
+        spread_wide, height = size_under_bar(1045, 10_000, self.BAR, self.SPREAD)
+        assert height == 1045  # noqa: PLR2004
+        assert spread_wide == pytest.approx(SPREAD_WIDTH_IN_PAGES * page_wide, abs=1)
+
+    def test_no_bar_is_the_content_alone(self) -> None:
+        assert size_under_bar(1000, 10_000, 0) == (round(1000 / COMIC_PAGE_ASPECT_RATIO), 1000)
+
+    def test_no_width_to_fit_gives_no_content_only_the_bar(self) -> None:
+        """An off-screen window has no monitor width: the caller sees nothing to correct to."""
+        assert size_under_bar(1045, 0, self.BAR) == (0, self.BAR)
