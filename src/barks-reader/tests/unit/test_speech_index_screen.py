@@ -39,6 +39,7 @@ from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.gridlayout import GridLayout
 from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
@@ -610,19 +611,22 @@ def test_no_items_for_a_letter_shows_a_row_that_says_so(
     assert button_cls.call_args.kwargs["text"] == "*** No index items for 'Q' ***"
 
 
-def test_a_letter_with_more_prefixes_than_the_bar_holds_is_logged(
+def test_a_letter_with_more_prefixes_than_the_bar_holds_shows_the_first_that_fit(
     speech_index_screen: SpeechIndexScreen, loguru_sink: list[str]
 ) -> None:
+    """On the bar's own kind of grid, which raises on a button more than it has cells for."""
     limit = _speech_module.MAX_PREFIX_BUTTONS_PER_LETTER
     speech_index_screen._cleaned_alpha_split_terms = {
         "z": {f"p{n}": [f"p{n}"] for n in range(limit + 1)}
     }
-    with (
-        patch.object(_speech_module, "IndexPrefixButton"),
-        patch.object(speech_index_screen, "on_letter_prefix_press"),
-    ):
+    bar = GridLayout(cols=limit, rows=1)
+    speech_index_screen.ids.alphabet_top_split_layout = bar
+    with patch.object(speech_index_screen, "on_letter_prefix_press") as press:
         speech_index_screen._populate_top_alphabet_split_menu("Z")
     assert any("prefix buttons but the bar holds" in line for line in loguru_sink)
+    assert [button.prefix for button in reversed(bar.children)] == [f"p{n}" for n in range(limit)]
+    assert list(speech_index_screen._prefix_buttons) == [f"p{n}" for n in range(limit)]
+    press.assert_called_once_with(speech_index_screen._prefix_buttons["p0"])
 
 
 _COLUMN_WIDTH = 200

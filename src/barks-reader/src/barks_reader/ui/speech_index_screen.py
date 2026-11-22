@@ -4,6 +4,7 @@ import random
 import re
 from collections import defaultdict
 from functools import cached_property
+from itertools import islice
 from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
@@ -625,6 +626,10 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
             logger.warning(
                 f"Letter '{first_letter}' needs {len(first_letter_split_terms)} prefix"
                 f" buttons but the bar holds {MAX_PREFIX_BUTTONS_PER_LETTER}."
+            )
+            # The first that fit: one more, and the bar's grid raises on being given it.
+            first_letter_split_terms = dict(
+                islice(first_letter_split_terms.items(), MAX_PREFIX_BUTTONS_PER_LETTER)
             )
 
         alphabet_top_split_layout: GridLayout = self.ids.alphabet_top_split_layout
