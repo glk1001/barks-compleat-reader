@@ -787,15 +787,16 @@ class TestTheTitleRowsOfATerm:
         for title, speech in self._rows(layout):
             assert speech_index_screen._get_paired_speech_button(title) is speech
 
-    def test_a_title_row_goes_to_its_title_at_its_first_page(
+    def test_a_title_row_is_pressed_as_any_item_with_its_first_page(
         self, speech_index_screen: SpeechIndexScreen, layout: BoxLayout
     ) -> None:
+        """Through the one press path: there the focus follows a mouse press onto the row."""
         _, (title, _) = self._rows(layout)
 
-        with patch.object(speech_index_screen, "_handle_title") as handle_title:
+        with patch.object(speech_index_screen, "_on_index_item_press") as pressed:
             title.dispatch("on_release")
 
-        handle_title.assert_called_once_with(
+        pressed.assert_called_once_with(
             title,
             ("A Much Longer Title Two", "7", "Much Longer Title Two, A, 7, 9", "info two"),
         )
@@ -1452,9 +1453,44 @@ class TestATermsRow:
             button.dispatch("on_release")
         pressed.assert_called_once_with(button, item)
 
-    def test_a_term_is_never_a_title_to_go_to(self, speech_index_screen: SpeechIndexScreen) -> None:
+    def test_a_term_is_not_a_title_to_go_to(self, speech_index_screen: SpeechIndexScreen) -> None:
         item = IndexItem("duck", "duck")
-        assert speech_index_screen._handle_terminal_item(MagicMock(), item) is False
+        with patch.object(speech_index_screen, "_handle_title") as handle_title:
+            assert speech_index_screen._handle_terminal_item(MagicMock(), item) is False
+        handle_title.assert_not_called()
+
+    def test_a_title_row_pressed_goes_to_its_title(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        button = MagicMock()
+        item = IndexItem(Titles.LOST_IN_THE_ANDES, "Lost in the Andes!, 3", page_to_goto="3")
+        with patch.object(speech_index_screen, "_handle_title") as handle_title:
+            assert speech_index_screen._handle_terminal_item(button, item) is True
+        handle_title.assert_called_once_with(button, item)
+
+    def test_a_title_row_pressed_by_mouse_takes_the_focus_and_goes_to_its_title(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        """Bound straight to the title, the ring stayed on the term it was left on."""
+        screen = speech_index_screen
+        screen._nav_active = True
+        screen._pressing_focused_item = False
+        button = MagicMock()
+        item = IndexItem(Titles.LOST_IN_THE_ANDES, "Lost in the Andes!, 3", page_to_goto="3")
+
+        def activate() -> None:  # the keys' press of the focused row
+            screen._pressing_focused_item = True
+            screen._on_index_item_press(button, item)
+            screen._pressing_focused_item = False
+
+        with (
+            patch.object(screen, "_place_focus_on", return_value=True) as place,
+            patch.object(screen, "_activate_focused_item", side_effect=activate),
+            patch.object(screen, "_handle_title") as handle_title,
+        ):
+            screen._on_index_item_press(button, item)
+        place.assert_called_once_with(button)
+        handle_title.assert_called_once_with(button, item)
 
     def test_a_term_pressed_opens_its_titles_on_the_next_frame(
         self, speech_index_screen: SpeechIndexScreen, loguru_sink: list[str]

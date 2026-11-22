@@ -460,8 +460,11 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             sub_item = title_row_item(
                 title_str, first_page_to_goto, title_str_with_pages, title_speech_info
             )
+            # Through the one press path, as a term's is: the focus follows a mouse press.
             title_button.bind(
-                on_release=lambda btn, bound_item=sub_item: self._handle_title(btn, bound_item),
+                on_release=lambda btn, bound_item=sub_item: self._on_index_item_press(
+                    btn, bound_item
+                ),
             )
 
             def _on_speech_btn(
@@ -511,9 +514,10 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
     @override
     def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:
-        # Word/entity items are never titles; a title only ever appears as a sub-item.
-        del button
-        assert type(item.id) is not Titles
+        # A title, a term's sub-item, is a terminal action: handle it and leave the UI alone.
+        if type(item.id) is Titles:
+            self._handle_title(button, item)
+            return True
         return False
 
     @override

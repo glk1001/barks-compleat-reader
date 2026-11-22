@@ -542,6 +542,32 @@ def test_speech_index_prefix_term_and_bubbles_taps(boot: AppBoot) -> None:
         taps.tap_outside(d, kind="SpeechBubblesPopup")
 
 
+def test_a_tapped_speech_index_title_row_takes_the_keys_focus(boot: AppBoot) -> None:
+    """With the keys on a term's first title, a tap on another goes to it, the focus with it."""
+    d = _boot(boot, nodes.SPEECH_INDEX)
+    d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
+    d.move_focus("Right")  # alphabet -> prefix bar
+    with d.expect(pattern(markers.INDEX_PREFIX_PRESSED)), d.expect(d.FOCUS_MOVED):
+        d.key("Return")
+    # Return opens the first term's titles and lands the focus on the first of them.
+    with d.expect(pattern(markers.INDEX_TERM_HANDLED)), d.expect(d.FOCUS_MOVED):
+        d.key("Return")
+    focused = d.last_line(d.FOCUS_MOVED)
+    _, shown = taps.targets(d)
+    others = [
+        target
+        for target in shown
+        if target.kind == "_SpeechIndexTitleItemButton"
+        and target.whole
+        and f'"{target.text}"' not in focused
+    ]
+    assert others, "the first term of the Words index is said in one story only"
+    row = others[-1]
+    on_the_row = f'{d.FOCUS_MOVED} _SpeechIndexTitleItemButton "{re.escape(row.text)}"'
+    with d.expect(on_the_row), d.expect(pattern(markers.GOTO_TITLE)):
+        taps.tap(d, text=row.text, kind="_SpeechIndexTitleItemButton")
+
+
 # ------------------------------------------------------------- the search box --
 
 
