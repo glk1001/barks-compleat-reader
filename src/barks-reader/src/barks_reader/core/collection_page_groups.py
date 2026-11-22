@@ -16,9 +16,18 @@ from __future__ import annotations
 from functools import cache
 from itertools import pairwise
 
-from barks_fantagraphics.barks_covers import get_cover_title, get_located_covers
+from barks_fantagraphics.barks_covers import (
+    get_cover_display_title,
+    get_cover_title,
+    get_located_covers,
+)
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import get_located_one_pagers
+from barks_fantagraphics.comic_book_info import (
+    get_located_one_pagers,
+    get_one_pager_display_title,
+    is_covers_collection,
+    is_one_pager_collection,
+)
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 
 from .reader_consts_and_types import COVER_YEAR_RANGES, ONE_PAGER_YEAR_RANGES
@@ -163,3 +172,40 @@ def get_collection_group_page_range(collection_title: Titles, page_num: int) -> 
 
     msg = f"Page {page_num} is outside every group of {collection_title}."
     raise ValueError(msg)
+
+
+def collection_item_titles(title: Titles) -> list[str] | None:
+    """Return the name of each page's item in a one-item-a-page collection, else None.
+
+    Args:
+        title: The comic opened.
+
+    Returns:
+        For "All One-Pagers" and "All Covers", each located item's display title in
+        the collection's page order; None for any other comic.
+
+    """
+    if is_one_pager_collection(title):
+        return [get_one_pager_display_title(one_pager) for one_pager in get_located_one_pagers()]
+    if is_covers_collection(title):
+        return [get_cover_display_title(cover) for cover in get_located_covers()]
+    return None
+
+
+def collection_item_title(titles: list[str], page_str: str) -> str | None:
+    """Return the name of the item on a collection's page, or None for a page with none.
+
+    Args:
+        titles: The collection's items (``collection_item_titles``).
+        page_str: The page's display number: a collection's pages are ``1..N`` in the
+            items' order, so page ``N`` is ``titles[N - 1]``.
+
+    Returns:
+        The item's name; None for a page that is no number or is off the collection.
+
+    """
+    try:
+        page_num = int(page_str)
+    except ValueError:
+        return None
+    return titles[page_num - 1] if 1 <= page_num <= len(titles) else None

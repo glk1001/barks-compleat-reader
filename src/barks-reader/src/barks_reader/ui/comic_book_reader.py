@@ -5,13 +5,6 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from barks_fantagraphics.barks_covers import get_cover_display_title, get_located_covers
-from barks_fantagraphics.comic_book_info import (
-    get_located_one_pagers,
-    get_one_pager_display_title,
-    is_covers_collection,
-    is_one_pager_collection,
-)
 from barks_fantagraphics.comics_consts import PageType
 from barks_kivy_ui.scrolling import ReaderDropDown
 from comic_utils.timing import Timing
@@ -33,8 +26,13 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
+from barks_reader.core.collection_page_groups import (
+    collection_item_title,
+    collection_item_titles,
+)
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_page_manager import ComicPageManager
+from barks_reader.core.goto_page import GotoPageButtonKind, goto_page_button_kind
 from barks_reader.core.main_layout import SPREAD_WIDTH_IN_PAGES, MainLayoutMode
 from barks_reader.core.page_placement import PagePlacement, fitted_page_rect, log_page_placement
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
@@ -76,7 +74,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
-    from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
     from kivy.input import MotionEvent
@@ -110,6 +107,12 @@ GOTO_PAGE_BUTTON_NONBODY_COLOR = (0, 0.5, 0.5, 1)
 GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR = (1, 1, 0, 1)
 # A page the tag the comic was opened through marks.
 GOTO_PAGE_BUTTON_TAGGED_COLOR = (1, 0.55, 0, 1)
+_GOTO_PAGE_BUTTON_COLORS = {
+    GotoPageButtonKind.CURRENT: GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR,
+    GotoPageButtonKind.TAGGED: GOTO_PAGE_BUTTON_TAGGED_COLOR,
+    GotoPageButtonKind.BODY: GOTO_PAGE_BUTTON_BODY_COLOR,
+    GotoPageButtonKind.NON_BODY: GOTO_PAGE_BUTTON_NONBODY_COLOR,
+}
 
 COMIC_BOOK_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -124,15 +127,6 @@ def _call_if_alive[T](owner: weakref.ref[T], method_name: str) -> None:
     obj = owner()
     if obj is not None:
         getattr(obj, method_name)()
-
-
-def _get_collection_titles(title: Titles) -> list[str] | None:
-    """Return the name of each page's item in a one-item-a-page collection, else None."""
-    if is_one_pager_collection(title):
-        return [get_one_pager_display_title(one_pager) for one_pager in get_located_one_pagers()]
-    if is_covers_collection(title):
-        return [get_cover_display_title(cover) for cover in get_located_covers()]
-    return None
 
 
 class ComicBookReader(FloatLayout):
@@ -385,7 +379,7 @@ class ComicBookReader(FloatLayout):
 
         # For the collections the window title is per-page (set in _show_page); for
         # everything else it is the comic's title, set once here.
-        self._collection_titles = _get_collection_titles(fanta_info.comic_book_info.title)
+        self._collection_titles = collection_item_titles(fanta_info.comic_book_info.title)
 
         self._stop_pending_poll()
         self._all_loaded = False
@@ -498,11 +492,9 @@ class ComicBookReader(FloatLayout):
         Collection display pages are ``1..N`` in the order of *titles*, so page ``N``
         maps to ``titles[N - 1]``.
         """
-        try:
-            title = titles[int(page_str) - 1]
-        except (ValueError, IndexError):
-            return
-        self.action_bar_title = get_action_bar_title(self._font_manager, title)
+        title = collection_item_title(titles, page_str)
+        if title is not None:
+            self.action_bar_title = get_action_bar_title(self._font_manager, title)
 
     def _show_page(self) -> None:
         """Display the image for the current_page_index.
@@ -549,10 +541,7 @@ class ComicBookReader(FloatLayout):
 
         ``right`` is ``None`` outside double-page mode (a single page).
         """
-        display_unit = self._page_manager.get_current_display_unit()
-        if display_unit is not None and self._page_manager.double_page_mode:
-            return display_unit.left_page_index, display_unit.right_page_index
-        return self._current_page_index, None
+        return self._page_manager.get_current_display_indices()
 
     @staticmethod
     def _needed_indices(left_page_index: int, right_page_index: int | None) -> list[int]:
@@ -768,17 +757,12 @@ class ComicBookReader(FloatLayout):
         selected_index = self._get_current_page_button_index()
         # Update button colors to highlight the current page before opening
         for index, button in enumerate(self._goto_page_buttons):
-            page_info = self._page_map[button.text]
-            if index == selected_index:
-                button.background_color = GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR
-            elif button.text in self._tagged_pages:
-                button.background_color = GOTO_PAGE_BUTTON_TAGGED_COLOR
-            else:
-                button.background_color = (
-                    GOTO_PAGE_BUTTON_BODY_COLOR
-                    if page_info.page_type == PageType.BODY
-                    else GOTO_PAGE_BUTTON_NONBODY_COLOR
-                )
+            kind = goto_page_button_kind(
+                is_current=index == selected_index,
+                is_tagged=button.text in self._tagged_pages,
+                is_body=self._page_map[button.text].page_type == PageType.BODY,
+            )
+            button.background_color = _GOTO_PAGE_BUTTON_COLORS[kind]
 
         assert self._goto_page_widget is not None
         if not open_dropdown(self._goto_page_dropdown, self._goto_page_widget):

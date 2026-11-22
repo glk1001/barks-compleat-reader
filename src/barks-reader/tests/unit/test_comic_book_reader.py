@@ -21,7 +21,6 @@ import barks_reader.ui.reader_keyboard_nav
 import pytest
 from barks_fantagraphics.barks_covers import get_cover_display_title, get_located_covers
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import get_located_one_pagers, get_one_pager_display_title
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core import log_markers
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
@@ -259,7 +258,7 @@ class TestComicBookReader:
         reader._page_manager.get_current_page_index.return_value = page_index
         reader._page_manager.get_current_page_str.return_value = str(page_index)
         reader._page_manager.get_page_str.return_value = str(page_index)
-        reader._page_manager.get_current_display_unit.return_value = None
+        reader._page_manager.get_current_display_indices.return_value = (page_index, None)
         reader._collection_titles = None
 
     def test_first_page_drawn_reveals_the_reader_screen(self, reader: ComicBookReader) -> None:
@@ -829,15 +828,6 @@ class TestComicBookReader:
         reader._set_collection_action_bar_title(["a", "b", "c"], page_str)
         assert reader.action_bar_title == "as before"
 
-    def test_only_the_collections_name_each_page(self) -> None:
-        one_pagers = _reader_module._get_collection_titles(Titles.ALL_ONE_PAGERS)
-        assert one_pagers is not None
-        assert one_pagers[0] == get_one_pager_display_title(get_located_one_pagers()[0])
-        covers = _reader_module._get_collection_titles(Titles.ALL_COVERS)
-        assert covers is not None
-        assert covers[0] == get_cover_display_title(get_located_covers()[0])
-        assert _reader_module._get_collection_titles(Titles.LOST_IN_THE_ANDES) is None
-
     # --- the reader's own small jobs, with a comic open ---
 
     def test_the_page_turn_margins_are_set_for_where_the_reader_is(
@@ -898,10 +888,8 @@ class TestComicBookReader:
         render.assert_not_called()
 
     def test_double_page_mode_shows_both_pages_of_the_unit(self, reader: ComicBookReader) -> None:
-        reader._page_manager = MagicMock(double_page_mode=True)
-        reader._page_manager.get_current_display_unit.return_value = MagicMock(
-            left_page_index=4, right_page_index=5
-        )
+        reader._page_manager = MagicMock()
+        reader._page_manager.get_current_display_indices.return_value = (4, 5)
         assert reader._get_current_display_indices() == (4, 5)
 
     def test_a_pair_of_pages_is_drawn_from_the_pair_the_loader_makes(

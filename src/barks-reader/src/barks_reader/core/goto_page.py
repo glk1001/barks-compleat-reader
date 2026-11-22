@@ -7,6 +7,7 @@ tag's first page, with a tag's pages (and the page last read) a step away.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from .reader_consts_and_types import COMIC_BEGIN_PAGE
@@ -132,3 +133,33 @@ def goto_page_after_reading(last_read_page: str, tagged_pages: Sequence[str] = (
     if tagged_pages:
         return GotoPageOffer.make(tagged_pages[0], active=True, tagged_pages=tagged_pages)
     return GotoPageOffer()
+
+
+class GotoPageButtonKind(Enum):
+    """What a page's button in the comic reader's goto-page list is marked as."""
+
+    CURRENT = auto()
+    TAGGED = auto()
+    BODY = auto()
+    NON_BODY = auto()
+
+
+def goto_page_button_kind(
+    *, is_current: bool, is_tagged: bool, is_body: bool
+) -> GotoPageButtonKind:
+    """Return how the comic reader's goto-page list marks a page.
+
+    Args:
+        is_current: Whether the page is the one on show.
+        is_tagged: Whether it is a page of the tag the comic was reached under.
+        is_body: Whether it is a page of the story, not a cover or other front matter.
+
+    Returns:
+        The page on show first, then a tagged page, else by whether it is the story's.
+
+    """
+    if is_current:
+        return GotoPageButtonKind.CURRENT
+    if is_tagged:
+        return GotoPageButtonKind.TAGGED
+    return GotoPageButtonKind.BODY if is_body else GotoPageButtonKind.NON_BODY

@@ -527,3 +527,41 @@ def test_next_page_with_pages_but_none_current_stays_put_in_single_page_mode(
     assert pm.get_current_page_index() == -1
     on_page_change.assert_not_called()
     assert loguru_sink == ["Already on the last page: current index = -1."]
+
+
+class TestCurrentDisplayIndices:
+    """The pages on show for the current page: its pair in double-page mode, else itself."""
+
+    @staticmethod
+    def _at(page: str, *, double_page_mode: bool) -> ComicPageManager:
+        pm = ComicPageManager(MagicMock())
+        pm.double_page_mode = double_page_mode
+        pm.set_layout(_layout(_page_map(*_SEVEN_PAGES)), COMIC_BEGIN_PAGE)
+        pm.set_current_page_index_from_str(page)
+        return pm
+
+    @pytest.mark.parametrize("page", ["0", "2", "6"])
+    def test_a_single_page_shows_itself_alone(self, page: str) -> None:
+        pm = self._at(page, double_page_mode=False)
+        assert pm.get_current_display_indices() == (int(page), None)
+
+    @pytest.mark.parametrize(
+        ("page", "shown"),
+        [("1", (1, 2)), ("2", (1, 2)), ("5", (5, 6)), ("6", (5, 6))],
+    )
+    def test_in_double_page_mode_a_paired_page_shows_with_its_pair(
+        self, page: str, shown: tuple[int, int]
+    ) -> None:
+        assert self._at(page, double_page_mode=True).get_current_display_indices() == shown
+
+    @pytest.mark.parametrize("page", ["0", "3", "4"])
+    def test_in_double_page_mode_a_page_that_stands_alone_has_no_right_page(
+        self, page: str
+    ) -> None:
+        pm = self._at(page, double_page_mode=True)
+        assert pm.get_current_display_indices() == (int(page), None)
+
+    def test_with_no_page_current_there_is_none_to_show(self) -> None:
+        pm = ComicPageManager(MagicMock())
+        pm.double_page_mode = True
+        assert pm.get_current_display_indices() == (-1, None)

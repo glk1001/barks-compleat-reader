@@ -94,6 +94,19 @@ class ComicPageManager:
         """Return the display unit that contains the current page index."""
         return self._unit_of(self._current_page_index)
 
+    def get_current_display_indices(self) -> tuple[int, int | None]:
+        """Return the (left, right) page indices on show for the current page.
+
+        Returns:
+            In double-page mode the current unit's pages, its right one None for a
+            page that stands alone; otherwise the current page and None.
+
+        """
+        display_unit = self.get_current_display_unit()
+        if display_unit is not None and self.double_page_mode:
+            return display_unit.left_page_index, display_unit.right_page_index
+        return self._current_page_index, None
+
     def set_current_page_index_from_str(self, page_str: str) -> None:
         """Make the page named `page_str` current: in double-page mode, its pair's left page.
 

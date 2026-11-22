@@ -4,14 +4,23 @@ from typing import TYPE_CHECKING, ClassVar
 from unittest.mock import patch
 
 import pytest
-from barks_fantagraphics.barks_covers import get_cover_title, get_located_covers
+from barks_fantagraphics.barks_covers import (
+    get_cover_display_title,
+    get_cover_title,
+    get_located_covers,
+)
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import get_located_one_pagers
+from barks_fantagraphics.comic_book_info import (
+    get_located_one_pagers,
+    get_one_pager_display_title,
+)
 from barks_reader.core import collection_page_groups as cpg_module
 from barks_reader.core.collection_page_groups import (
     _assert_tiling,
     _group_ranges,
     _submitted_year,
+    collection_item_title,
+    collection_item_titles,
     get_collection_group_page_range,
     get_cover_collection_group_ranges,
     get_one_pager_collection_group_ranges,
@@ -274,3 +283,25 @@ class TestGetCollectionGroupPageRange:
     def test_page_outside_every_group_raises(self) -> None:
         with pytest.raises(ValueError, match="outside every group"):
             get_collection_group_page_range(Titles.ALL_COVERS, 999)
+
+
+class TestCollectionItemTitles:
+    def test_only_the_collections_name_each_page(self) -> None:
+        one_pagers = collection_item_titles(Titles.ALL_ONE_PAGERS)
+        assert one_pagers is not None
+        assert one_pagers[0] == get_one_pager_display_title(get_located_one_pagers()[0])
+        assert len(one_pagers) == len(get_located_one_pagers())
+        covers = collection_item_titles(Titles.ALL_COVERS)
+        assert covers is not None
+        assert covers[0] == get_cover_display_title(get_located_covers()[0])
+        assert len(covers) == len(get_located_covers())
+        assert collection_item_titles(Titles.LOST_IN_THE_ANDES) is None
+
+    @pytest.mark.parametrize(("page_str", "item"), [("1", "a"), ("2", "b"), ("3", "c")])
+    def test_page_n_of_a_collection_is_its_item_n_less_one(self, page_str: str, item: str) -> None:
+        assert collection_item_title(["a", "b", "c"], page_str) == item
+
+    @pytest.mark.parametrize("page_str", ["4", "0", "-1", "0x", ""])
+    def test_a_page_off_the_collection_or_no_number_has_no_item(self, page_str: str) -> None:
+        """Page 0 is none either: a list's index -1 is its last item, not the page before 1."""
+        assert collection_item_title(["a", "b", "c"], page_str) is None

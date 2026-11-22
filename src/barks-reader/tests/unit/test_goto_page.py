@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import pytest
-from barks_reader.core.goto_page import GotoPageOffer, goto_page_after_reading
+from barks_reader.core.goto_page import (
+    GotoPageButtonKind,
+    GotoPageOffer,
+    goto_page_after_reading,
+    goto_page_button_kind,
+)
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 
 # Adventure Down Under under Australian Aboriginals: 7, 13 and 16 to 23.
@@ -80,3 +85,29 @@ class TestAfterReading:
     @pytest.mark.parametrize("last_read", ["", COMIC_BEGIN_PAGE])
     def test_with_nothing_read_and_no_tag_none_is_offered(self, last_read: str) -> None:
         assert goto_page_after_reading(last_read) == GotoPageOffer()
+
+
+class TestGotoPageButtonKind:
+    """How the comic reader's goto-page list marks a page."""
+
+    @pytest.mark.parametrize("is_tagged", [True, False])
+    @pytest.mark.parametrize("is_body", [True, False])
+    def test_the_page_on_show_is_marked_as_that_whatever_else_it_is(
+        self, *, is_tagged: bool, is_body: bool
+    ) -> None:
+        kind = goto_page_button_kind(is_current=True, is_tagged=is_tagged, is_body=is_body)
+        assert kind is GotoPageButtonKind.CURRENT
+
+    @pytest.mark.parametrize("is_body", [True, False])
+    def test_a_tagged_page_is_marked_tagged_before_body_or_not(self, *, is_body: bool) -> None:
+        kind = goto_page_button_kind(is_current=False, is_tagged=True, is_body=is_body)
+        assert kind is GotoPageButtonKind.TAGGED
+
+    @pytest.mark.parametrize(
+        ("is_body", "kind"),
+        [(True, GotoPageButtonKind.BODY), (False, GotoPageButtonKind.NON_BODY)],
+    )
+    def test_any_other_page_is_marked_by_whether_it_is_the_story_s(
+        self, *, is_body: bool, kind: GotoPageButtonKind
+    ) -> None:
+        assert goto_page_button_kind(is_current=False, is_tagged=False, is_body=is_body) is kind
