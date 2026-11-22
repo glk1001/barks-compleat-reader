@@ -7,7 +7,15 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.core.index_items import entity_index, title_row_item
+from barks_fantagraphics.entity_types import EntityType
+from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
+from barks_reader.core.index_items import (
+    IndexItem,
+    context_entities,
+    entity_index,
+    title_row_item,
+    word_index_items,
+)
 
 
 def test_a_title_row_opens_at_its_first_page_with_every_page_it_lists() -> None:
@@ -75,3 +83,46 @@ class TestEntityIndex:
     def test_a_letter_with_no_plain_form_is_still_an_error(self) -> None:
         with pytest.raises(RuntimeError, match="non-alpha prefix"):
             entity_index(["Øresund"])
+
+
+class TestContextEntities:
+    def test_every_ambiguous_word_has_its_fallback_and_each_rule_s_entity(self) -> None:
+        entities = context_entities()
+
+        assert set(entities) == set(CONTEXT_SENSITIVE_WORDS)
+        for word, (fallback_type, fallback_canonical, rules) in CONTEXT_SENSITIVE_WORDS.items():
+            assert (fallback_type, fallback_canonical) in entities[word]
+            assert len(entities[word]) == 1 + len(rules)
+
+    def test_a_word_s_entities_are_in_their_names_order_whatever_the_case(self) -> None:
+        for named in context_entities().values():
+            names = [canonical.lower() for _kind, canonical in named]
+            assert names == sorted(names)
+
+    def test_daisy_is_a_person_and_a_flower(self) -> None:
+        assert context_entities()["daisy"] == [
+            (EntityType.PERSON, "Daisy"),
+            (EntityType.MISC, "daisy"),
+        ]
+
+
+class TestWordIndexItems:
+    _ENTITIES = {  # noqa: RUF012
+        "donald": [(EntityType.PERSON, "Donald Duck"), (EntityType.PERSON, "Donald Mallard")]
+    }
+
+    def test_a_plain_word_is_one_row_with_no_entity(self) -> None:
+        assert word_index_items(["duck"], self._ENTITIES) == [IndexItem("duck", "duck")]
+
+    def test_a_word_that_names_entities_is_listed_as_each_of_them_in_its_place(self) -> None:
+        items = word_index_items(["dog", "Donald", "duck"], self._ENTITIES)
+
+        assert [(i.id, i.display_text, i.entity_type) for i in items] == [
+            ("dog", "dog", None),
+            ("Donald Duck", "Donald Duck", EntityType.PERSON),
+            ("Donald Mallard", "Donald Mallard", EntityType.PERSON),
+            ("duck", "duck", None),
+        ]
+
+    def test_no_terms_make_no_rows(self) -> None:
+        assert word_index_items([], self._ENTITIES) == []

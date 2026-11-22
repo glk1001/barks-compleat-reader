@@ -10,7 +10,6 @@ from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
-from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[import-not-found]
@@ -21,10 +20,14 @@ from loguru import logger
 
 from barks_reader.core import log_markers
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
-from barks_reader.core.index_items import IndexItem, title_row_item
+from barks_reader.core.index_items import (
+    IndexItem,
+    context_entities,
+    title_row_item,
+    word_index_items,
+)
 from barks_reader.core.index_text import (
     MAX_TITLE_AND_PAGES_LEN,
-    shorten_if_necessary,
     stacked_prefix_label,
 )
 from barks_reader.core.keys import (
@@ -55,7 +58,6 @@ from .panel_texture_loader import PanelTextureLoader
 from .reader_keyboard_nav import clear_focus_in_list, draw_focus_highlight
 
 if TYPE_CHECKING:
-    from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleDict, TitleInfo
     from kivy.uix.button import Button
     from kivy.uix.gridlayout import GridLayout
@@ -497,15 +499,8 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
 
         self.has_prefix_bar = True
 
-        # Map from base word (lowercase) → sorted list of (EntityType, canonical) pairs.
-        # Built from CONTEXT_SENSITIVE_WORDS so ambiguous words expand into typed index entries.
-        self._context_entity_map: dict[str, list[tuple[EntityType, str]]] = {}
-        for word, (fallback_type, fallback_canonical, rules) in CONTEXT_SENSITIVE_WORDS.items():
-            entries: list[tuple[EntityType, str]] = [(fallback_type, fallback_canonical)]
-            for _pat, etype, canon in rules:
-                entries.append((etype, canon))
-            entries.sort(key=lambda x: x[1].lower())
-            self._context_entity_map[word] = entries
+        # What each ambiguous word may name, so it is listed as typed index entries.
+        self._context_entity_map = context_entities()
 
         self._prefix_buttons: dict[str, IndexPrefixButton] = {}
         # The letter whose bar the saved prefix was pressed on, or None while the saved
@@ -604,20 +599,7 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         self._selected_prefix_button = button
 
         terms = self._cleaned_alpha_split_terms[first_letter.lower()][prefix]
-        items: list[IndexItem] = []
-        for t in terms:
-            if t.lower() in self._context_entity_map:
-                for entity_type, canonical in self._context_entity_map[t.lower()]:
-                    items.append(
-                        IndexItem(
-                            id=canonical,
-                            display_text=shorten_if_necessary(canonical),
-                            entity_type=entity_type,
-                        )
-                    )
-            else:
-                items.append(IndexItem(t, shorten_if_necessary(t)))
-        self._item_index[first_letter] = items
+        self._item_index[first_letter] = word_index_items(terms, self._context_entity_map)
 
         self._populate_index_grid(first_letter)
 

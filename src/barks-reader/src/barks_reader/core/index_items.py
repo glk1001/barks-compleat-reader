@@ -7,18 +7,23 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
+from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
 
 from .index_headings import without_accents
 from .index_text import shorten_if_necessary
 from .speech_hits import comic_pages
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
+
+
+# What an ambiguous word may name: each entity's type and canonical name, by the word.
+type ContextEntities = Mapping[str, list[tuple[EntityType, str]]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,3 +103,48 @@ def entity_index(terms: Iterable[str]) -> dict[str, list[IndexItem]]:
             raise RuntimeError(msg)
         index[ch.upper()].append(IndexItem(term, shorten_if_necessary(term)))
     return index
+
+
+def context_entities() -> dict[str, list[tuple[EntityType, str]]]:
+    """Return what each ambiguous word of the word index may name.
+
+    Read from ``CONTEXT_SENSITIVE_WORDS``: a word such as "daisy" is a person here and
+    a flower there, so the index lists it once as each.
+
+    Returns:
+        By the word, in lower case: its entities' types and canonical names, the
+        fallback's among them, in the names' order.
+
+    """
+    by_word: dict[str, list[tuple[EntityType, str]]] = {}
+    for word, (fallback_type, fallback_canonical, rules) in CONTEXT_SENSITIVE_WORDS.items():
+        entries = [(fallback_type, fallback_canonical)]
+        entries.extend((entity_type, canonical) for _pattern, entity_type, canonical in rules)
+        entries.sort(key=lambda entry: entry[1].lower())
+        by_word[word] = entries
+    return by_word
+
+
+def word_index_items(terms: Iterable[str], entities: ContextEntities) -> list[IndexItem]:
+    """Return the word index's rows for the terms under one prefix.
+
+    Args:
+        terms: The terms, in the order their rows are listed.
+        entities: What each ambiguous word may name (``context_entities``).
+
+    Returns:
+        A row per term, but an ambiguous word's place is taken by a row for each
+        entity it may name, typed so its press searches that entity's index.
+
+    """
+    items: list[IndexItem] = []
+    for term in terms:
+        named = entities.get(term.lower())
+        if named is None:
+            items.append(IndexItem(term, shorten_if_necessary(term)))
+            continue
+        items.extend(
+            IndexItem(id=canonical, display_text=shorten_if_necessary(canonical), entity_type=kind)
+            for kind, canonical in named
+        )
+    return items
