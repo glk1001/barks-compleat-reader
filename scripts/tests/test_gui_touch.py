@@ -51,15 +51,15 @@ def test_the_device_is_named_and_has_its_axes() -> None:
 
 
 def _names_the_app_skips() -> set[str]:
-    """Read the app's own list from its source: importing the module would import Kivy."""
-    source = _REPO_ROOT / "src/barks-reader/src/barks_reader/ui/touch_keyboard.py"
+    """Read the app's own list from its source, where the scan of sysfs is."""
+    source = _REPO_ROOT / "src/barks-reader/src/barks_reader/core/touchscreen_devices.py"
     for node in ast.parse(source.read_text(encoding="utf-8")).body:
         if isinstance(node, ast.Assign) and any(
             isinstance(target, ast.Name) and target.id == "_EXCLUDE_DEVICE_NAMES"
             for target in node.targets
         ):
             return set(ast.literal_eval(node.value))
-    pytest.fail("touch_keyboard.py no longer has _EXCLUDE_DEVICE_NAMES: follow where it went")
+    pytest.fail("touchscreen_devices.py no longer has _EXCLUDE_DEVICE_NAMES: follow where it went")
 
 
 def test_the_name_is_not_one_the_app_skips() -> None:

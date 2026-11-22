@@ -4,7 +4,7 @@ On Linux, Kivy's SDL2 backend converts touchscreen finger events into
 ordinary mouse events, making them indistinguishable from real mouse clicks.
 This module works around the problem in three layers:
 
-1. **Device detection** — :func:`_find_touchscreen_devices` scans ``/sys/class/input``
+1. **Device detection** — ``core.touchscreen_devices.find_touchscreen_devices`` scans sysfs
    for devices with ``ABS_MT_POSITION_X`` capability whose name does *not*
    indicate a touchpad, mouse, or pen.
 
@@ -36,55 +36,13 @@ from kivy.uix.textinput import TextInput
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.touchscreen_devices import find_touchscreen_devices
 
 if TYPE_CHECKING:
     from kivy.input import MotionEvent
 
-# ---------------------------------------------------------------------------
-# Touchscreen device discovery
-# ---------------------------------------------------------------------------
-
-_ABS_MT_POSITION_X = 0x35
-_EXCLUDE_DEVICE_NAMES = {"touchpad", "mouse", "pen"}
-_SYSFS_INPUT = Path("/sys/class/input")
 # Whether the touchscreen providers and the ``Window.on_motion`` patch are in place.
 _touchscreen_input_enabled = False
-
-
-def _find_touchscreen_devices() -> list[str]:
-    """Return ``/dev/input/eventN`` paths for likely touchscreen devices.
-
-    Scans sysfs for input devices that have ``ABS_MT_POSITION_X`` capability
-    (multitouch) and whose name does not contain "Touchpad", "Mouse", or "Pen".
-    """
-    import ctypes  # noqa: PLC0415
-
-    long_bit = ctypes.sizeof(ctypes.c_long) * 8
-    devices: list[str] = []
-    if not _SYSFS_INPUT.is_dir():
-        return devices
-    for entry in sorted(_SYSFS_INPUT.glob("event*")):
-        name_path = entry / "device" / "name"
-        try:
-            name = name_path.read_text().strip()
-        except OSError:
-            continue
-        if any(exc in name.lower() for exc in _EXCLUDE_DEVICE_NAMES):
-            continue
-
-        caps_path = entry / "device" / "capabilities" / "abs"
-        try:
-            words = caps_path.read_text().strip().split()
-        except OSError:
-            continue
-        bits: list[bool] = []
-        for word in words:
-            val = int(word, 16)
-            bits[:0] = [bool(val & (1 << i)) for i in range(long_bit)]
-        if len(bits) > _ABS_MT_POSITION_X and bits[_ABS_MT_POSITION_X]:
-            devices.append(f"/dev/input/{entry.name}")
-
-    return devices
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +70,7 @@ def enable_linux_touchscreen_input() -> None:
     from kivy.base import EventLoop  # noqa: PLC0415
     from kivy.input.factory import MotionEventFactory  # noqa: PLC0415
 
-    touchscreen_devices = _find_touchscreen_devices()
+    touchscreen_devices = find_touchscreen_devices()
     if not touchscreen_devices:
         logger.info("No touchscreen devices found in sysfs.")
         return

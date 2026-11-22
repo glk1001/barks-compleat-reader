@@ -1,22 +1,20 @@
-"""Touchscreen support: which devices count as touchscreens, and which keyboard a press gets.
+"""Touchscreen support: the providers registered, and which keyboard a press gets.
 
 The touch-aware search box logs which keyboard a press chose, for the GUI tap tests.
-The device scan reads a fake sysfs tree, built under ``tmp_path``.
 """
 
 from __future__ import annotations
 
-import ctypes
 import time
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import log_markers
+from barks_reader.core.touchscreen_devices import find_touchscreen_devices
 from barks_reader.ui import touch_keyboard
 from barks_reader.ui.touch_keyboard import (
     TouchAwareTextInput,
-    _find_touchscreen_devices,
     enable_linux_touchscreen_input,
 )
 from kivy.base import EventLoop
@@ -26,7 +24,6 @@ from kivy.uix.textinput import TextInput
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
 
 WIDGET = "TouchAwareTextInput"
 
@@ -157,67 +154,6 @@ def test_a_click_that_raises_still_gives_the_virtual_keyboard_back(
 
 
 # A C long's bits: sysfs writes a capability bitmap in words of that size (32 on Windows).
-_LONG_BIT = ctypes.sizeof(ctypes.c_long) * 8
-_ABS_MT_POSITION_X = 0x35
-
-
-def _abs_caps(bit: int) -> str:
-    """Return a sysfs abs-capabilities bitmap with one bit set: hex words, highest first."""
-    value = 1 << bit
-    words = [
-        (value >> (i * _LONG_BIT)) & ((1 << _LONG_BIT) - 1) for i in range(bit // _LONG_BIT + 1)
-    ]
-    return " ".join(f"{w:x}" for w in reversed(words))
-
-
-# The multitouch X axis, the one a touchscreen has.
-_MULTITOUCH = _abs_caps(_ABS_MT_POSITION_X)
-
-
-def _device(sysfs: Path, event: str, name: str | None, abs_caps: str | None) -> None:
-    device = sysfs / event / "device"
-    (device / "capabilities").mkdir(parents=True)
-    if name is not None:
-        (device / "name").write_text(f"{name}\n")
-    if abs_caps is not None:
-        (device / "capabilities" / "abs").write_text(f"{abs_caps}\n")
-
-
-@pytest.fixture
-def sysfs(tmp_path: Path) -> Iterator[Path]:
-    with patch.object(touch_keyboard, "_SYSFS_INPUT", tmp_path):
-        yield tmp_path
-
-
-class TestFindTouchscreenDevices:
-    def test_a_multitouch_screen_is_found(self, sysfs: Path) -> None:
-        _device(sysfs, "event4", "ELAN Touchscreen", _MULTITOUCH)
-        _device(sysfs, "event2", "AT Translated Set 2 keyboard", "0")
-        assert _find_touchscreen_devices() == ["/dev/input/event4"]
-
-    def test_the_multitouch_bit_may_be_in_the_last_of_several_words(self, sysfs: Path) -> None:
-        """Sysfs writes the highest word first: the bits are counted from the last word."""
-        _device(sysfs, "event5", "Wacom HID 52A2 Finger", f"1 {_MULTITOUCH}")
-        _device(sysfs, "event6", "Not multitouch", f"{_MULTITOUCH} 0")
-        assert _find_touchscreen_devices() == ["/dev/input/event5"]
-
-    @pytest.mark.parametrize("name", ["ELAN TouchPad", "Logitech Mouse", "Stylus Pen"])
-    def test_touchpads_mice_and_pens_are_not_touchscreens(self, sysfs: Path, name: str) -> None:
-        _device(sysfs, "event7", name, _MULTITOUCH)
-        assert _find_touchscreen_devices() == []
-
-    def test_a_device_whose_name_or_capabilities_cannot_be_read_is_skipped(
-        self, sysfs: Path
-    ) -> None:
-        _device(sysfs, "event8", None, _MULTITOUCH)
-        _device(sysfs, "event9", "ELAN Touchscreen", None)
-        assert _find_touchscreen_devices() == []
-
-    def test_with_no_sysfs_input_there_is_none(self, tmp_path: Path) -> None:
-        with patch.object(touch_keyboard, "_SYSFS_INPUT", tmp_path / "missing"):
-            assert _find_touchscreen_devices() == []
-
-
 class TestEnableLinuxTouchscreenInput:
     @pytest.fixture
     def window(self) -> Iterator[MagicMock]:
@@ -249,7 +185,7 @@ class TestEnableLinuxTouchscreenInput:
     @staticmethod
     def _enable(providers: dict[str, object], devices: list[str]) -> MagicMock:
         with (
-            patch.object(touch_keyboard, "_find_touchscreen_devices", return_value=devices),
+            patch.object(touch_keyboard, find_touchscreen_devices.__name__, return_value=devices),
             patch.object(MotionEventFactory, "get", side_effect=providers.get),
             patch.object(EventLoop, "add_input_provider") as add_input_provider,
         ):
