@@ -27,6 +27,7 @@ from barks_reader.core.navigation import (
     TagDestination,
     TagGroupDestination,
     TitleDestination,
+    YearRangeKind,
 )
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES
 from barks_reader.core.testing import fake_fanta_info
@@ -212,7 +213,7 @@ def test_chrono_year_range_boundaries_resolve_to_correct_node(
     for submitted_year in (start, end):
         year_node = MagicMock()
         year_node.nodes = []
-        nav_coord.set_year_range_nodes({year_range: year_node})
+        nav_coord.set_year_range_nodes({(YearRangeKind.CHRONO, year_range): year_node})
 
         fanta = MagicMock()
         fanta.comic_book_info.get_title_str.return_value = "T"

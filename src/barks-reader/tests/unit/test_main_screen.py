@@ -1549,14 +1549,7 @@ class TestWhatTheMainScreenHandsOn:
             read_states=main_screen._read_state_source.states,
         )
         coordinator = main_screen._nav_coord
-        coordinator.set_year_range_nodes.assert_called_once_with(builder.chrono_year_range_nodes)
-        coordinator.set_one_pager_year_range_nodes.assert_called_once_with(
-            builder.one_pager_year_range_nodes
-        )
-        coordinator.set_cover_year_range_nodes.assert_called_once_with(
-            builder.cover_year_range_nodes
-        )
-        coordinator.set_series_nodes.assert_called_once_with(builder.series_nodes)
+        coordinator.set_year_range_nodes.assert_called_once_with(builder.year_range_nodes)
         main_screen._app_initializer.start.assert_called_once_with(
             builder, main_screen._on_tree_build_finished
         )

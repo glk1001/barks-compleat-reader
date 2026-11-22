@@ -16,6 +16,7 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
 from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.navigation import YearRangeKind
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.user_error_types import ErrorTypes, TitleNotInFantaInfoError
@@ -48,7 +49,7 @@ class TestNavigationCoordinator:
 
         mock_year_node = MagicMock()
         mock_year_node.nodes = []
-        nav_coord.set_year_range_nodes({(1942, 1946): mock_year_node})
+        nav_coord.set_year_range_nodes({(YearRangeKind.CHRONO, (1942, 1946)): mock_year_node})
 
         with (
             patch.object(
@@ -91,7 +92,7 @@ class TestNavigationCoordinator:
         nav_coord.set_tree_view_manager(tree_manager)
         mock_fanta_info = MagicMock()
         mock_fanta_info.comic_book_info.submitted_year = 1942
-        nav_coord.set_year_range_nodes({(1942, 1946): MagicMock(nodes=[])})
+        nav_coord.set_year_range_nodes({(YearRangeKind.CHRONO, (1942, 1946)): MagicMock(nodes=[])})
 
         with (
             patch.object(
@@ -127,7 +128,7 @@ class TestNavigationCoordinator:
 
         mock_year_node = MagicMock()
         mock_year_node.nodes = []
-        nav_coord.set_one_pager_year_range_nodes({(1946, 1952): mock_year_node})
+        nav_coord.set_year_range_nodes({(YearRangeKind.ONE_PAGER, (1946, 1952)): mock_year_node})
 
         mock_title_node = MagicMock()
         with (
@@ -166,7 +167,7 @@ class TestNavigationCoordinator:
 
         mock_year_node = MagicMock()
         mock_year_node.nodes = []
-        nav_coord.set_cover_year_range_nodes({(1953, 1955): mock_year_node})
+        nav_coord.set_year_range_nodes({(YearRangeKind.COVER, (1953, 1955)): mock_year_node})
 
         mock_title_node = MagicMock()
         with (
@@ -199,7 +200,7 @@ class TestNavigationCoordinator:
 
         mock_year_node = MagicMock()
         mock_year_node.nodes = []
-        nav_coord.set_cover_year_range_nodes({(1960, 1965): mock_year_node})
+        nav_coord.set_year_range_nodes({(YearRangeKind.COVER, (1960, 1965)): mock_year_node})
 
         with (
             patch.object(
@@ -228,7 +229,7 @@ class TestNavigationCoordinator:
 
         mock_year_node = MagicMock()
         mock_year_node.nodes = []
-        nav_coord.set_year_range_nodes({(1942, 1946): mock_year_node})
+        nav_coord.set_year_range_nodes({(YearRangeKind.CHRONO, (1942, 1946)): mock_year_node})
 
         mock_search_node = MagicMock()
         nav_coord_deps["tree_view_screen"].get_selected_node.return_value = mock_search_node
@@ -667,15 +668,26 @@ class TestAVolumeNotAvailable:
 
 
 class TestYearRangeParentNode:
-    def test_a_title_with_no_year_range_is_an_error(self) -> None:
-        info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+    def test_a_title_with_no_year_range_is_an_error(self, nav_coord: NavigationCoordinator) -> None:
+        info = MagicMock()
+        info.comic_book_info.submitted_year = 1900  # in no chronological range
         with pytest.raises(RuntimeError, match="No year range found"):
-            NavigationCoordinator._year_range_parent_node(None, {}, info)
+            nav_coord._get_title_parent_node(Titles.LOST_IN_THE_ANDES, info)
 
-    def test_a_range_with_no_tree_node_is_an_error(self) -> None:
+    def test_a_range_with_no_tree_node_is_an_error(self, nav_coord: NavigationCoordinator) -> None:
         info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+        nav_coord.set_year_range_nodes({})
         with pytest.raises(RuntimeError, match=r"No year node found for range '\(1947, 1950\)'"):
-            NavigationCoordinator._year_range_parent_node((1947, 1950), {}, info)
+            nav_coord._get_title_parent_node(Titles.LOST_IN_THE_ANDES, info)
+
+    def test_a_range_of_another_section_is_not_the_titles(
+        self, nav_coord: NavigationCoordinator
+    ) -> None:
+        """The same years under One Pagers are another node: the section is in the key."""
+        info = ALL_FANTA_COMIC_BOOK_INFO[Titles.LOST_IN_THE_ANDES]
+        nav_coord.set_year_range_nodes({(YearRangeKind.ONE_PAGER, (1947, 1950)): MagicMock()})
+        with pytest.raises(RuntimeError, match="No year node found"):
+            nav_coord._get_title_parent_node(Titles.LOST_IN_THE_ANDES, info)
 
 
 class TestNavigateToTitleWithPage:
@@ -904,7 +916,7 @@ class TestNoPageOfferedForATitleNotGoneTo:
         nav_coord.set_tree_view_manager(MagicMock())
         fanta_info = MagicMock()
         fanta_info.comic_book_info.submitted_year = 1942
-        nav_coord.set_year_range_nodes({(1942, 1946): MagicMock(nodes=[])})
+        nav_coord.set_year_range_nodes({(YearRangeKind.CHRONO, (1942, 1946)): MagicMock(nodes=[])})
 
         with (
             patch.object(

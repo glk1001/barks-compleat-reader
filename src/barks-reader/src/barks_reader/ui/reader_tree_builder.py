@@ -20,7 +20,6 @@ from barks_reader.core.navigation import (
     NodeKind,
     NodeRegistration,
     PressAction,
-    SeriesDestination,
     TagYearRangeDestination,
     YearRangeDestination,
     YearRangeKind,
@@ -42,7 +41,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
-    from barks_reader.core.navigation import NodeSpec
+    from barks_reader.core.navigation import NodeSpec, YearRangeKey
     from barks_reader.core.read_state import ReadStates
     from barks_reader.core.reader_settings import ReaderSettings
 
@@ -84,10 +83,9 @@ class ReaderTreeBuilder:
         self._title_lists = title_lists
         self._include_one_pagers_in_chrono = include_one_pagers_in_chrono
         self._tree_build_timing = Timing()
-        self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
-        self.one_pager_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
-        self.cover_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
-        self.series_nodes: dict[str, ButtonTreeViewNode] = {}
+        # The year-range nodes title rows sit under, for the goto-title flows
+        # (`core.navigation.title_year_range` names a title's).
+        self.year_range_nodes: dict[YearRangeKey, ButtonTreeViewNode] = {}
 
         self._press_handlers: dict[PressAction, Callable | None] = {
             PressAction.TOGGLE_ONLY: None,
@@ -204,22 +202,20 @@ class ReaderTreeBuilder:
 
         return _NODE_CLASSES[spec.kind](text=spec.text, destination=spec.destination)
 
-    _YEAR_RANGE_KIND_TO_LOOKUP: ClassVar[dict[YearRangeKind, str]] = {
-        YearRangeKind.CHRONO: "chrono_year_range_nodes",
-        YearRangeKind.ONE_PAGER: "one_pager_year_range_nodes",
-        YearRangeKind.COVER: "cover_year_range_nodes",
-    }
+    # The sections whose year-range groups hold title rows a goto-title can land on.
+    _TITLE_YEAR_RANGE_KINDS: ClassVar[frozenset[YearRangeKind]] = frozenset(
+        {YearRangeKind.CHRONO, YearRangeKind.ONE_PAGER, YearRangeKind.COVER}
+    )
 
     def _collect_lookup_node(self, spec: NodeSpec, node: ButtonTreeViewNode) -> None:
         """Index the nodes the `NavigationCoordinator` needs for goto-title flows."""
         destination = spec.destination
-        if isinstance(destination, YearRangeDestination):
-            lookup_attr = self._YEAR_RANGE_KIND_TO_LOOKUP.get(destination.kind)
-            if lookup_attr is not None:
-                lookup: dict[tuple[int, int], ButtonTreeViewNode] = getattr(self, lookup_attr)
-                lookup[(destination.start, destination.end)] = node
-        elif isinstance(destination, SeriesDestination):
-            self.series_nodes[destination.series_name] = node
+        if (
+            isinstance(destination, YearRangeDestination)
+            and destination.kind in self._TITLE_YEAR_RANGE_KINDS
+        ):
+            key = (destination.kind, (destination.start, destination.end))
+            self.year_range_nodes[key] = node
 
     def _defer_node_population(
         self,

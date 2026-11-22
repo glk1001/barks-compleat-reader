@@ -50,6 +50,7 @@ from .destinations import (
     YearRangeKind,
 )
 from .navigation_model import BottomScreen, NavigationModel, ReopenKind
+from .title_position import YearRangeKey, title_year_range
 from .tree_spec import (
     NodeKind,
     NodeRegistration,
@@ -107,6 +108,8 @@ __all__ = [
     "WikiIndexDestination",
     "WordSearchDestination",
     "YearRangeDestination",
+    "YearRangeKey",
     "YearRangeKind",
     "build_reader_tree_spec",
+    "title_year_range",
 ]

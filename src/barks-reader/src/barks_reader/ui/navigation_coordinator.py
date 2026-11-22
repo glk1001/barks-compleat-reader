@@ -29,16 +29,13 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.collection_page_groups import (
     get_collection_group_page_range,
-    year_range_group,
 )
 from barks_reader.core.document_chapters import list_document_pages
 from barks_reader.core.goto_page import GotoPageOffer, goto_page_after_reading
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.navigation import title_year_range
 from barks_reader.core.reader_consts_and_types import (
-    CHRONO_YEAR_RANGES,
     COMIC_BEGIN_PAGE,
-    COVER_YEAR_RANGES,
-    ONE_PAGER_YEAR_RANGES,
 )
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
 from barks_reader.core.reader_utils import get_tagged_pages
@@ -59,6 +56,7 @@ if TYPE_CHECKING:
     from comic_utils.comic_consts import PanelPath
 
     from barks_reader.core.comic_reader_manager import ComicReaderManager
+    from barks_reader.core.navigation import YearRangeKey
     from barks_reader.core.navigation.view_states import ViewStates
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.core.saved_page_info import SavedPageInfo
@@ -119,10 +117,7 @@ class NavigationCoordinator:
         self._on_active_changed = on_active_changed
 
         self._tree_view_manager: TreeViewManager | None = None
-        self._year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
-        self._one_pager_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
-        self._cover_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
-        self._series_nodes: dict[str, ButtonTreeViewNode] = {}
+        self._year_range_nodes: dict[YearRangeKey, ButtonTreeViewNode] = {}
         self._current_fanta_info: FantaComicBookInfo | None = None
         self._read_comic_view_state: ViewStates | None = None
         # A tag's pages in the comic open now, for the goto-page row when it closes.
@@ -134,26 +129,10 @@ class NavigationCoordinator:
         self._tree_view_manager = tree_view_manager
 
     def set_year_range_nodes(
-        self, year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode]
+        self, year_range_nodes: dict[YearRangeKey, ButtonTreeViewNode]
     ) -> None:
-        """Set year-range nodes (deferred — populated after tree build)."""
+        """Set the year-range nodes title rows sit under (deferred: filled by the tree build)."""
         self._year_range_nodes = year_range_nodes
-
-    def set_one_pager_year_range_nodes(
-        self, one_pager_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode]
-    ) -> None:
-        """Set One Pagers year-range nodes (deferred — populated after tree build)."""
-        self._one_pager_year_range_nodes = one_pager_year_range_nodes
-
-    def set_cover_year_range_nodes(
-        self, cover_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode]
-    ) -> None:
-        """Set Covers year-range nodes (deferred — populated after tree build)."""
-        self._cover_year_range_nodes = cover_year_range_nodes
-
-    def set_series_nodes(self, series_nodes: dict[str, ButtonTreeViewNode]) -> None:
-        """Set series nodes (deferred — populated after tree build)."""
-        self._series_nodes = series_nodes
 
     # === State queries ===
 
@@ -250,42 +229,11 @@ class NavigationCoordinator:
     ) -> ButtonTreeViewNode:
         """Return the tree node whose children contain ``title``.
 
-        One-pagers and covers live under their own series node, each split into
-        year-range groups (like the chronological tree); every other title lives
-        under its chronological year-range node. In all cases the parent is the
-        year-range node so opening it populates that group's lazy title rows.
+        The year-range node of the group the title sits in (`title_year_range`), so
+        opening it populates that group's lazy title rows.
         """
-        submitted_year = title_fanta_info.comic_book_info.submitted_year
-        if title in ONE_PAGERS:
-            return self._year_range_parent_node(
-                year_range_group(submitted_year, ONE_PAGER_YEAR_RANGES),
-                self._one_pager_year_range_nodes,
-                title_fanta_info,
-            )
-
-        if title in COVERS_SET:
-            return self._year_range_parent_node(
-                year_range_group(submitted_year, COVER_YEAR_RANGES),
-                self._cover_year_range_nodes,
-                title_fanta_info,
-            )
-
-        return self._year_range_parent_node(
-            self._get_year_range_from_info(title_fanta_info),
-            self._year_range_nodes,
-            title_fanta_info,
-        )
-
-    @staticmethod
-    def _year_range_parent_node(
-        year_range: tuple[int, int] | None,
-        year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode],
-        title_fanta_info: FantaComicBookInfo,
-    ) -> ButtonTreeViewNode:
-        if year_range is None:
-            msg = f"No year range found for {title_fanta_info.comic_book_info.get_title_str()}."
-            raise RuntimeError(msg)
-        year_node = year_range_nodes.get(year_range)
+        kind, year_range = title_year_range(title, title_fanta_info)
+        year_node = self._year_range_nodes.get((kind, year_range))
         if not year_node:
             msg = f"No year node found for range '{year_range}'."
             raise RuntimeError(msg)
@@ -707,16 +655,6 @@ class NavigationCoordinator:
             return COMIC_BEGIN_PAGE
 
         return self._bottom_title_view_screen.goto_page_num
-
-    @staticmethod
-    def _get_year_range_from_info(fanta_info: FantaComicBookInfo) -> tuple[int, int] | None:
-        # Chronological ranges (real comics) do not fold a stray year into a group —
-        # a miss is a data problem the caller reports, unlike the collection groups.
-        sub_year = fanta_info.comic_book_info.submitted_year
-        return next(
-            (r for r in CHRONO_YEAR_RANGES if r[0] <= sub_year <= r[1]),
-            None,
-        )
 
     @staticmethod
     def _get_fanta_info(title: Titles) -> FantaComicBookInfo:

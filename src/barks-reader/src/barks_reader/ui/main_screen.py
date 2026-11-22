@@ -791,10 +791,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # comic opened or closed, an entry deleted on the History screen.
         self._reading_history_store.add_listener(self._show_read_states)
 
-        self._nav_coord.set_year_range_nodes(tree_builder.chrono_year_range_nodes)
-        self._nav_coord.set_one_pager_year_range_nodes(tree_builder.one_pager_year_range_nodes)
-        self._nav_coord.set_cover_year_range_nodes(tree_builder.cover_year_range_nodes)
-        self._nav_coord.set_series_nodes(tree_builder.series_nodes)
+        self._nav_coord.set_year_range_nodes(tree_builder.year_range_nodes)
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
 
     def _show_read_states(self) -> None:

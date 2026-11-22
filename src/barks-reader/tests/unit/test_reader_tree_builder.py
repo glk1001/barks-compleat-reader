@@ -14,7 +14,6 @@ from barks_reader.core.navigation import (
     NodeRegistration,
     NodeSpec,
     PressAction,
-    SeriesDestination,
     TagDestination,
     TagYearRangeDestination,
     YearRangeDestination,
@@ -176,11 +175,9 @@ class TestLookupNodeCollection:
 
         _build_with_spec(tree_builder, spec)
 
-        assert (1942, 1946) in tree_builder.chrono_year_range_nodes
+        assert set(tree_builder.year_range_nodes) == {(YearRangeKind.CHRONO, (1942, 1946))}
 
-    def test_cs_year_range_nodes_are_not_indexed_as_chrono(
-        self, tree_builder: ReaderTreeBuilder
-    ) -> None:
+    def test_cs_year_range_nodes_are_not_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
         spec = NodeSpec(
             kind=NodeKind.YEAR_RANGE,
             text="1942-1946",
@@ -189,7 +186,7 @@ class TestLookupNodeCollection:
 
         _build_with_spec(tree_builder, spec)
 
-        assert tree_builder.chrono_year_range_nodes == {}
+        assert tree_builder.year_range_nodes == {}
 
     def test_one_pager_year_range_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
         spec = NodeSpec(
@@ -200,8 +197,7 @@ class TestLookupNodeCollection:
 
         _build_with_spec(tree_builder, spec)
 
-        assert (1946, 1952) in tree_builder.one_pager_year_range_nodes
-        assert tree_builder.chrono_year_range_nodes == {}
+        assert set(tree_builder.year_range_nodes) == {(YearRangeKind.ONE_PAGER, (1946, 1952))}
 
     def test_cover_year_range_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
         spec = NodeSpec(
@@ -212,19 +208,7 @@ class TestLookupNodeCollection:
 
         _build_with_spec(tree_builder, spec)
 
-        assert (1960, 1965) in tree_builder.cover_year_range_nodes
-        assert tree_builder.chrono_year_range_nodes == {}
-
-    def test_series_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
-        spec = NodeSpec(
-            kind=NodeKind.STORY_GROUP,
-            text="Some Series",
-            destination=SeriesDestination(series_name="Some Series"),
-        )
-
-        _build_with_spec(tree_builder, spec)
-
-        assert "Some Series" in tree_builder.series_nodes
+        assert set(tree_builder.year_range_nodes) == {(YearRangeKind.COVER, (1960, 1965))}
 
 
 class TestDeferredPopulation:
