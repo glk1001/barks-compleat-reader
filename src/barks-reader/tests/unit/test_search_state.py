@@ -53,6 +53,16 @@ def test_remove_and_clear() -> None:
     assert (basket.words, basket.combine, bool(basket)) == ([], Combine.ALL, False)
 
 
+def test_the_tag_basket_flips_and_heads_its_chips_as_the_word_basket_does() -> None:
+    """The mode chip and the flip are written once, for both baskets."""
+    words, tags = WordBasket(["gold"]), TagBasket()
+    tags.toggle("Gold")
+    assert words.chip_options()[0] == tags.chip_options()[0] == (BASKET_MODE_VALUE, "ALL")
+    assert words.flip() is tags.flip() is Combine.ANY
+    assert words.chip_options()[0] == tags.chip_options()[0] == (BASKET_MODE_VALUE, "ANY")
+    assert WordBasket().chip_options() == TagBasket().chip_options() == []
+
+
 def test_flip_switches_all_and_any() -> None:
     basket = WordBasket(["gold"])
     assert basket.flip() is Combine.ANY
@@ -270,6 +280,15 @@ class TestTagScope:
 
     def test_a_label_that_fits_is_left_whole(self) -> None:
         assert TagScope("Gold").label() == "Only in: Gold"
+
+    def test_a_label_cut_in_a_hyphenated_tag_keeps_to_its_row(self) -> None:
+        label = TagScope("Gold Junior-Woodchucks-of-the-World-and-their-many-ranks").label()
+        assert label.startswith("Only in: Gold Junior-")
+        assert label.endswith("…")
+        assert len(label) <= MAX_SCOPE_LABEL
+
+    def test_a_scope_with_no_tags_is_just_its_prefix(self) -> None:
+        assert TagScope().label() == "Only in:"
 
     def test_the_filter_is_the_era_s_years_and_the_scope_s_stories_in_force(self) -> None:
         era = EraChoice(ranges=((1951, 1954),))

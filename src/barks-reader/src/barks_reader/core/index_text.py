@@ -36,7 +36,7 @@ def sortable_string(text: str) -> str:
 
 def indexable_title_from_str(title_str: str) -> str:
     """Return a title as an index row shows it: shortened to fit, then made sortable."""
-    return sortable_string(_shortened(title_str, MAX_TITLE_AND_PAGES_LEN))
+    return sortable_string(shortened_at_a_word(title_str, MAX_TITLE_AND_PAGES_LEN))
 
 
 def indexable_title(title: Titles) -> str:
@@ -67,22 +67,31 @@ def shorten_if_necessary(text: str) -> str:
 
     if len(text) <= INDEX_ITEM_MAX_TEXT_WIDTH:
         return text
-    return _shortened(text, INDEX_ITEM_MAX_TEXT_WIDTH)
+    return shortened_at_a_word(text, INDEX_ITEM_MAX_TEXT_WIDTH)
 
 
 _ELLIPSIS = "..."
 
 
-def _shortened(text: str, width: int) -> str:
+def shortened_at_a_word(text: str, width: int, ellipsis: str = _ELLIPSIS) -> str:
     """Return `text` cut at a word to `width`, with an ellipsis; mid-word if it must be.
 
     `textwrap.shorten` drops a first word longer than `width` whole, leaving just the
     ellipsis ("500,000,000,...,000" showed as "..."), so that word is cut instead.
+
+    Args:
+        text: The text, its runs of whitespace taken as one space.
+        width: The most characters to return, the ellipsis among them.
+        ellipsis: What marks the cut.
+
+    Returns:
+        The text whole if it fits, else as many of its words as do and the ellipsis.
+
     """
-    shortened = textwrap.shorten(text, width=width, placeholder=_ELLIPSIS)
-    if shortened != _ELLIPSIS or not text.strip():
+    shortened = textwrap.shorten(text, width=width, placeholder=ellipsis)
+    if shortened != ellipsis or not text.strip():
         return shortened
-    return " ".join(text.split())[: width - len(_ELLIPSIS)].rstrip() + _ELLIPSIS
+    return " ".join(text.split())[: width - len(ellipsis)].rstrip() + ellipsis
 
 
 def stacked_prefix_label(prefix: str, terms: list[str]) -> str:

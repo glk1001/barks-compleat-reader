@@ -10,6 +10,7 @@ from barks_reader.core.index_text import (
     indexable_title,
     indexable_title_from_str,
     shorten_if_necessary,
+    shortened_at_a_word,
     sortable_string,
     stacked_prefix_label,
 )
@@ -109,3 +110,11 @@ class TestStackedPrefixLabel:
     def test_ends_that_no_longer_rejoin_fall_back_to_the_prefix(self) -> None:
         """Colliding labels are merged upstream; never show a label for the wrong span."""
         assert stacked_prefix_label("sho-shy", ["about", "zebra"]) == "sho-shy"
+
+
+def test_a_cut_is_marked_by_the_ellipsis_asked_for() -> None:
+    """One helper for the index's rows ("...") and the search's scope chip ("…")."""
+    assert shortened_at_a_word("gold and more gold", 12) == "gold and..."
+    assert shortened_at_a_word("gold and more gold", 12, ellipsis="…") == "gold and…"
+    assert shortened_at_a_word("Duckburg", 5, ellipsis="…") == "Duck…"
+    assert shortened_at_a_word("gold", 12, ellipsis="…") == "gold"

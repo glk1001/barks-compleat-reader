@@ -15,7 +15,6 @@ stories from.
 
 from __future__ import annotations
 
-import textwrap
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING
@@ -25,6 +24,8 @@ from barks_fantagraphics.search_filters import SearchFilter
 from barks_fantagraphics.search_query import Combine
 from barks_fantagraphics.speech_speakers import CHARACTER_SPEAKER_OPTIONS, NARRATOR
 from barks_fantagraphics.tag_query import TagSelection, range_text
+
+from .index_text import shortened_at_a_word
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
@@ -36,8 +37,25 @@ if TYPE_CHECKING:
 BASKET_MODE_VALUE = ""
 
 
+class _CombinedPicks:
+    """What both baskets do with how their picks combine: ALL or ANY, and its chip."""
+
+    combine: Combine
+
+    def flip(self) -> Combine:
+        """Switch between ALL and ANY, and return the new choice."""
+        self.combine = self.combine.flipped()
+        return self.combine
+
+    def _with_mode_chip(self, options: list[tuple[str, str]]) -> list[tuple[str, str]]:
+        """Return a picked row's chips with ALL/ANY ahead of them; none for an empty basket."""
+        if not options:
+            return options
+        return [(BASKET_MODE_VALUE, self.combine.upper()), *options]
+
+
 @dataclass
-class WordBasket:
+class WordBasket(_CombinedPicks):
     """The words picked to search together, in the order picked, and how they combine."""
 
     words: list[str] = field(default_factory=list)
@@ -72,11 +90,6 @@ class WordBasket:
         if word in self.words:
             self.words.remove(word)
 
-    def flip(self) -> Combine:
-        """Switch between ALL and ANY, and return the new choice."""
-        self.combine = self.combine.flipped()
-        return self.combine
-
     def clear(self) -> None:
         """Put every word back; the next word picked starts an ALL basket."""
         self.words.clear()
@@ -94,10 +107,7 @@ class WordBasket:
 
     def chip_options(self) -> list[tuple[str, str]]:
         """Return the picked-words row's chips: ALL/ANY, then each word with its x."""
-        options = [(w, f"{w}  \u00d7") for w in self.words]
-        if options:
-            options.insert(0, (BASKET_MODE_VALUE, self.combine.upper()))
-        return options
+        return self._with_mode_chip([(w, f"{w}  \u00d7") for w in self.words])
 
 
 # The picked-tags row's chips for a typed years or volumes range: never a tag's name.
@@ -112,7 +122,7 @@ class TagState(StrEnum):
 
 
 @dataclass
-class TagBasket:
+class TagBasket(_CombinedPicks):
     """The tags picked, in the order picked, each included or left out, and ALL or ANY.
 
     A typed selection may also bring a range of submitted years and of Fantagraphics
@@ -167,11 +177,6 @@ class TagBasket:
                 del self.tags[tag]
         return None
 
-    def flip(self) -> Combine:
-        """Switch between ALL and ANY, and return the new choice."""
-        self.combine = self.combine.flipped()
-        return self.combine
-
     def clear(self) -> None:
         """Put every tag back; the next tag picked starts an ALL basket."""
         self.tags.clear()
@@ -214,9 +219,7 @@ class TagBasket:
         if self.volumes is not None:
             vols = range_text(self.volumes, years=False)
             options.append((VOLUMES_KEY, f"vol {vols}" if "-" not in vols else f"vols {vols}"))
-        if options:
-            options.insert(0, (BASKET_MODE_VALUE, self.combine.upper()))
-        return options
+        return self._with_mode_chip(options)
 
 
 # The era chip that lifts the filter.
@@ -374,13 +377,10 @@ class TagScope:
     def label(self) -> str:
         """Return the scope chip's text, "Only in: <tags>", cut to fit its row."""
         prefix = "Only in:"
-        text = f"{prefix} {self.tags}"
-        shortened = textwrap.shorten(text, MAX_SCOPE_LABEL, placeholder="\u2026")
-        if shortened.removesuffix("\u2026").rstrip() != prefix:
-            return shortened
-        # One word too long for the row: shorten drops whole words, which would leave
-        # no tag at all, so cut that word instead.
-        return text[: MAX_SCOPE_LABEL - 1] + "\u2026"
+        # The tags alone are cut to what the row leaves them: a first tag too long for
+        # it is then cut mid-word, not dropped to leave "Only in:" naming no tag.
+        room = MAX_SCOPE_LABEL - len(prefix) - 1
+        return f"{prefix} {shortened_at_a_word(self.tags, room, ellipsis='\u2026')}".rstrip()
 
     def options(self) -> list[tuple[str, str]]:
         """Return the scope row's two chips: everywhere, and only in the tags' stories."""
