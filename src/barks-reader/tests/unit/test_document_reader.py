@@ -849,6 +849,7 @@ class TestGotoStoryByTheKeys:
             screen.ids["close_button"],
         ]
         screen._focused_btn_idx = screen._menu_buttons.index(screen.ids[button_id])
+        screen.ids[button_id].disabled = False  # a mock's own `disabled` is true
 
     def test_enter_on_go_to_story_opens_it_as_the_keyboard_and_is_remembered(
         self, screen: DocumentReaderScreen

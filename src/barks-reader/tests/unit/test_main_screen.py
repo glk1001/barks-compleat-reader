@@ -1753,6 +1753,7 @@ class TestTheBarAndItsDotsMenuByKeyboard:
 
     def _focus(self, screen: MainScreen, button_id: str) -> MagicMock:
         button = screen.ids[button_id]
+        button.disabled = False  # a mock's own `disabled` is true
         screen._focused_btn_idx = screen._menu_buttons.index(button)
         return button
 

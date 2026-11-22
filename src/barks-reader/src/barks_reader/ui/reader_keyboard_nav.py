@@ -323,6 +323,13 @@ class ActionBarNavMixin:
             self._last_used_btn_idx = self._default_btn_idx
 
     def _activate_focused_button(self) -> None:
+        """Press the ringed button and leave the menu; a disabled one is not pressed.
+
+        Kivy's `trigger_action` presses a disabled button all the same: the main
+        screen's greyed Collapse ran its handler from the keys, where no mouse could.
+        """
+        if self._menu_buttons[self._focused_btn_idx].disabled:
+            return
         self._last_used_btn_idx = self._focused_btn_idx
         # Record keyboard intent now: trigger_action fires on_release asynchronously,
         # after _exit_menu_mode below has already cleared _menu_mode.

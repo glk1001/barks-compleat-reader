@@ -46,6 +46,8 @@ class _StubScreen(ActionBarNavMixin):
         self, buttons: list, *, action_bar_hidden: bool = False, default_focus_idx: int = 0
     ) -> None:
         self._action_bar_hidden = action_bar_hidden
+        for button in buttons:
+            button.disabled = False  # a mock's own `disabled` is another mock, and true
         self._setup_action_bar_nav(buttons, default_focus_idx=default_focus_idx)
 
     def _is_action_bar_hidden(self) -> bool:
@@ -129,6 +131,30 @@ class TestMenuActionByKeyboardFlag:
         assert screen._menu_action_by_keyboard is True
         assert screen._menu_mode is False  # torn down, but the flag persists
         buttons[1].trigger_action.assert_called_once()
+
+    def test_a_disabled_button_is_not_pressed_and_the_menu_stays(self) -> None:
+        """Kivy's trigger_action presses a disabled button: Collapse ran while greyed."""
+        buttons = [MagicMock(), MagicMock()]
+        screen = _StubScreen(buttons)
+        buttons[1].disabled = True
+        with (
+            patch.object(nav_module, "update_focus_in_list"),
+            patch.object(nav_module, "clear_focus_in_list"),
+        ):
+            screen._enter_menu_mode()
+            assert screen._handle_reader_key(KEY_RIGHT) is True
+            assert screen._handle_reader_key(KEY_ENTER) is True  # taken, and nothing done
+
+            buttons[1].trigger_action.assert_not_called()
+            assert screen._menu_mode is True
+            assert screen._menu_action_by_keyboard is False
+            assert screen._last_used_btn_idx == 0
+
+            # The ring can still leave it, and the next button is pressed as ever.
+            assert screen._handle_reader_key(KEY_LEFT) is True
+            assert screen._handle_reader_key(KEY_ENTER) is True
+        buttons[0].trigger_action.assert_called_once_with()
+        assert screen._menu_mode is False
 
     def test_touch_clears_flag(self) -> None:
         screen = _StubScreen([MagicMock(), MagicMock()])
@@ -227,7 +253,7 @@ class TestNavFocusLog:
 
 class _StubDropdownScreen(DropdownNavMixin, ActionBarNavMixin):
     def __init__(self) -> None:
-        self._setup_action_bar_nav([MagicMock()])
+        self._setup_action_bar_nav([MagicMock(disabled=False)])
         self._setup_dropdown_nav()
         self._items = [MagicMock(), MagicMock()]
 
@@ -315,7 +341,7 @@ class _BareDropdownScreen(DropdownNavMixin, ActionBarNavMixin):
     """Overrides none of the dropdown hooks."""
 
     def __init__(self) -> None:
-        self._setup_action_bar_nav([MagicMock()])
+        self._setup_action_bar_nav([MagicMock(disabled=False)])
         self._setup_dropdown_nav()
 
 
