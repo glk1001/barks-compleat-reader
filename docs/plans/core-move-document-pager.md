@@ -1,6 +1,9 @@
 # Plan: the document reader's page walk as a core `DocumentPager`
 
-> Status: **proposed 2026-11-22**, nothing started. One of four plans from the
+> Status: **done 2026-11-22** (both commits). The story links stayed the screen's
+> and `single_page` stayed its property, passed as `two_up` (the two questions'
+> defaults); the pager gained `is_open`, `page_count` and `current_page_index`.
+> One of four plans from the
 > `ui` review of that date (see `core-move-navigation-coordinator.md`). The
 > smallest of the four.
 

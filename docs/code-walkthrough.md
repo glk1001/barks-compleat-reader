@@ -761,7 +761,7 @@ switching is an animated push/pop:
 |---|---|---|
 | `MainScreen` | `ui/main_screen.py` | The always-present shell (action bar + tree + bottom pane). |
 | `ComicBookReaderScreen` | `ui/comic_book_reader.py` | Page-by-page reader. |
-| `DocumentReaderScreen` | `ui/document_reader.py` | A folder of page images: the How To and the Illustrated History chapters (`DocumentDestination`). A page may name its figures' stories (`core/document_links`) for *Go to Story*; each document's last page is kept for the session to resume at; on the spread the pages pair up (`build_document_units`). |
+| `DocumentReaderScreen` | `ui/document_reader.py` | A folder of page images: the How To and the Illustrated History chapters (`DocumentDestination`). A page may name its figures' stories (`core/document_links`) for *Go to Story*; each document's last page is kept for the session to resume at; on the spread the pages pair up (`build_document_units`). Which page shows and the moves between them are `core/document_pager.py`'s `DocumentPager`; the screen draws its `DocumentView`. |
 | `WikiReaderScreen` | `ui/wiki_reader.py` | Embedded Carl Barks Wiki (OKF viewer). |
 | `CorpusStatsScreen` | `ui/corpus_stats_screen.py` | The Introduction's full-window *By the Numbers* page (§7.7). |
 

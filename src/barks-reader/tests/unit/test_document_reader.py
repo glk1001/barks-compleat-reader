@@ -178,7 +178,7 @@ class TestEdges:
             assert screen.on_touch_down(touch) is False
         screen_press.assert_called_once_with(touch)
         clear_menu.assert_not_called()
-        assert screen._current_page_index == 0
+        assert screen._pager.current_page_index == 0
 
     def test_a_touch_off_the_bar_and_the_page_goes_on_to_the_screen(
         self, screen: DocumentReaderScreen, tmp_path: Path
@@ -195,7 +195,7 @@ class TestEdges:
         ):
             assert screen.on_touch_down(MagicMock(button="left", pos=(5, 5), x=5, y=5)) is True
         screen_press.assert_called_once()
-        assert screen._current_page_index == 0
+        assert screen._pager.current_page_index == 0
 
 
 TWO_LINKS = (
@@ -396,7 +396,10 @@ def _pages(doc_dir: Path, count: int) -> None:
 
 
 class TestResume:
-    """A document opened to resume comes back at the page it was left on, this session."""
+    """A document opened to resume comes back at the page it was left on, this session.
+
+    The rule's cases are the pager's (``test_document_pager.py``).
+    """
 
     def test_a_resumed_document_opens_at_the_page_it_was_left_on(
         self, screen: DocumentReaderScreen, tmp_path: Path
@@ -407,39 +410,6 @@ class TestResume:
         screen.next_page()
         _open(screen, tmp_path, resume=True)
         assert screen.page_source.endswith("page-003.png")
-
-    def test_a_document_not_resumed_opens_at_its_first_page(
-        self, screen: DocumentReaderScreen, tmp_path: Path
-    ) -> None:
-        _pages(tmp_path, 4)
-        _open(screen, tmp_path)
-        screen.next_page()
-        _open(screen, tmp_path)
-        assert screen.page_source.endswith("page-001.png")
-
-    def test_each_document_keeps_its_own_page(
-        self, screen: DocumentReaderScreen, tmp_path: Path
-    ) -> None:
-        first, second = tmp_path / "first", tmp_path / "second"
-        _pages(first, 3)
-        _pages(second, 3)
-        _open(screen, first, resume=True)
-        screen.next_page()
-        _open(screen, second, resume=True)
-        assert screen.page_source.endswith("page-001.png")
-        _open(screen, first, resume=True)
-        assert screen.page_source == str(first / "page-002.png")
-
-    def test_a_document_that_lost_pages_resumes_at_its_last_one(
-        self, screen: DocumentReaderScreen, tmp_path: Path
-    ) -> None:
-        _pages(tmp_path, 3)
-        _open(screen, tmp_path, resume=True)
-        screen.next_page()
-        screen.next_page()
-        (tmp_path / "page-003.png").unlink()
-        _open(screen, tmp_path, resume=True)
-        assert screen.page_source.endswith("page-002.png")
 
 
 SEVEN_PAGES = tuple(f"page-{n:03d}.png" for n in range(1, 8))
@@ -456,7 +426,10 @@ def _shown(screen: DocumentReaderScreen) -> tuple[str, str]:
 
 
 class TestTheSpread:
-    """Pages come in pairs on the spread, from the first; a turn moves a pair."""
+    """Pages come in pairs on the spread, from the first; a turn moves a pair.
+
+    The screen draws what the pager says; the walk's cases are in ``test_document_pager.py``.
+    """
 
     def test_the_document_opens_on_its_first_pair_and_right_turns_a_pair(
         self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
@@ -481,17 +454,6 @@ class TestTheSpread:
         screen.prev_page()
         screen.prev_page()
         assert _shown(screen) == ("page-001.png", "page-002.png")
-
-    def test_an_odd_last_page_stands_alone(
-        self, screen: DocumentReaderScreen, tmp_path: Path
-    ) -> None:
-        for name in SEVEN_PAGES[:5]:
-            (tmp_path / name).write_bytes(b"")
-        _spread(screen)
-        _open(screen, tmp_path)
-        screen.next_page()
-        screen.next_page()
-        assert _shown(screen) == ("page-005.png", "")
 
     def test_a_single_page_shows_one_at_a_time_as_before(
         self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
@@ -585,18 +547,6 @@ class TestTheSpread:
         screen.next_page()
         assert screen.has_story_links is False
 
-    def test_a_resumed_document_comes_back_at_its_pair(
-        self, screen: DocumentReaderScreen, tmp_path: Path
-    ) -> None:
-        for name in SEVEN_PAGES:
-            (tmp_path / name).write_bytes(b"")
-        _spread(screen)
-        _open(screen, tmp_path)
-        screen.next_page()
-        screen.next_page()
-        _open(screen, tmp_path, resume=True)
-        assert _shown(screen) == ("page-005.png", "page-006.png")
-
 
 class TestFullscreen:
     """The bar's Fullscreen, as the comic reader's: the bar hides, and a close comes back."""
@@ -661,7 +611,7 @@ class TestFullscreen:
             )
         assert bar.disabled is False
         assert "Showing action bar on top margin press." in loguru_sink
-        assert screen._current_page_index == 0  # not a page turn
+        assert screen._pager.current_page_index == 0  # not a page turn
 
     @pytest.mark.parametrize(
         ("fullscreen", "bar_shown", "top_margin_bottom"),
@@ -770,7 +720,7 @@ class TestFullscreen:
         assert screen._menu_mode is False
         assert bar.disabled is True
         assert "Showing action bar on top margin press." not in loguru_sink
-        assert screen._current_page_index == 0  # not a page turn
+        assert screen._pager.current_page_index == 0  # not a page turn
 
     @pytest.mark.parametrize(
         ("fullscreen", "y", "hidden"),
@@ -804,7 +754,7 @@ class TestFullscreen:
             assert screen.on_touch_down(MagicMock(button="left", pos=(500, y), x=500, y=y)) is True
         assert bar.disabled is hidden
         assert ("Hiding action bar on top margin press." in loguru_sink) is hidden
-        assert screen._current_page_index == (0 if hidden else 1)  # a page turn, or not
+        assert screen._pager.current_page_index == (0 if hidden else 1)  # a page turn, or not
 
     def test_a_close_in_the_entry_mode_leaves_at_once(
         self, screen: DocumentReaderScreen, tmp_path: Path
@@ -864,9 +814,9 @@ class TestKeys:
         _open(screen, tmp_path)
 
         assert screen._on_key_down(None, KEY_RIGHT, 0, "", []) is True
-        assert screen._current_page_index == 1
+        assert screen._pager.current_page_index == 1
         assert screen._on_key_down(None, KEY_LEFT, 0, "", []) is True
-        assert screen._current_page_index == 0
+        assert screen._pager.current_page_index == 0
 
     def test_a_tap_on_the_left_half_goes_back_a_page(
         self, screen: DocumentReaderScreen, tmp_path: Path
@@ -884,7 +834,7 @@ class TestKeys:
         with patch.object(screen, "_clear_menu_on_touch"):
             assert screen.on_touch_down(MagicMock(button="left", pos=(5, 5), x=5, y=5)) is True
 
-        assert screen._current_page_index == 0
+        assert screen._pager.current_page_index == 0
 
     def test_the_bar_is_the_window_drag_region(self, screen: DocumentReaderScreen) -> None:
         assert screen.drag_region is screen.ids["doc_action_bar"].drag_region

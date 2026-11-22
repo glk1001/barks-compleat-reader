@@ -18,9 +18,9 @@ from kivy.uix.button import Button
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.display_unit import DisplayUnit, build_document_units
 from barks_reader.core.document_chapters import list_document_pages
 from barks_reader.core.document_links import StoryLink, load_story_links
+from barks_reader.core.document_pager import DocumentPager
 from barks_reader.core.main_layout import MainLayoutMode
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
@@ -146,12 +146,8 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         self._was_fullscreen_on_entry = False
         # What runs once the screen has gone (`close`), e.g. Go to Story's navigation.
         self._after_close: Callable[[], None] | None = None
-        self._doc_dir: Path | None = None
-        self._page_paths: list[Path] = []
-        self._units: list[DisplayUnit] = []
-        self._unit_idx_for_index: dict[int, int] = {}
-        self._current_page_index = 0
-        self._last_page_indexes: dict[Path, int] = {}
+        # Which page shows, the moves between them and each document's resume page.
+        self._pager = DocumentPager()
         self._story_links: list[StoryLink] = []
         self._story_dropdown: ReaderDropDown | None = None
         self._story_buttons: list[Button] = []
@@ -188,12 +184,8 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         # not the button last used in the one before.
         self._last_used_btn_idx = self._default_btn_idx
 
-        self._doc_dir = doc_dir
-        self._page_paths = list_document_pages(doc_dir)
-        self._units, self._unit_idx_for_index = build_document_units(len(self._page_paths))
-        last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
-        self._current_page_index = max(0, min(last_index, len(self._page_paths) - 1))
-        logger.info(log_markers.DOCUMENT_OPENED.format(title=title, pages=len(self._page_paths)))
+        self._pager.open(doc_dir, list_document_pages(doc_dir), resume=resume)
+        logger.info(log_markers.DOCUMENT_OPENED.format(title=title, pages=self._pager.page_count))
         if single_page:
             logger.info(log_markers.DOCUMENT_ONE_PAGE_AT_A_TIME.format(title=title))
         self._update_page_source()
@@ -211,67 +203,49 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
 
         A closed reader has no pages (`close`), so a change under it shows nothing.
         """
-        if self._page_paths:
+        if self._pager.is_open:
             self._update_page_source()
 
-    def _current_unit(self) -> DisplayUnit:
-        """Return what the current page shows: itself alone, or its pair on the spread."""
-        if self.layout_mode == MainLayoutMode.SPREAD.value and not self.single_page:
-            return self._units[self._unit_idx_for_index[self._current_page_index]]
-        return DisplayUnit(self._current_page_index, None)
+    def _shows_two_up(self) -> bool:
+        """Return whether the pages show in pairs: on the spread, unless one at a time."""
+        return self.layout_mode == MainLayoutMode.SPREAD.value and not self.single_page
 
     def _update_page_source(self) -> None:
-        if not self._page_paths:
+        """Draw what the pager says shows now: the page or pair, and its stories."""
+        view = self._pager.view(two_up=self._shows_two_up())
+        if view is None:
             self.page_source = ""
             self.right_page_source = ""
             self._story_links = []
             self.has_story_links = False
             return
 
-        unit = self._current_unit()
-        self._current_page_index = unit.left_page_index
-        page = self._page_paths[unit.left_page_index]
-        right_page = (
-            None if unit.right_page_index is None else self._page_paths[unit.right_page_index]
-        )
-        self.page_source = str(page)
-        self.right_page_source = "" if right_page is None else str(right_page)
-        self._story_links = load_story_links(page)
-        if right_page is not None:
-            self._story_links += load_story_links(right_page)
-        if self._doc_dir is not None:
-            self._last_page_indexes[self._doc_dir] = self._current_page_index
-        pages = len(self._page_paths)
+        self.page_source = str(view.left)
+        self.right_page_source = "" if view.right is None else str(view.right)
+        self._story_links = load_story_links(view.left)
+        if view.right is not None:
+            self._story_links += load_story_links(view.right)
         logger.debug(
             log_markers.DOCUMENT_PAGE.format(
-                page=unit.left_page_index + 1, pages=pages, filename=page.name
+                page=view.left_index + 1, pages=view.page_count, filename=view.left.name
             )
         )
-        if unit.right_page_index is not None and right_page is not None:
+        if view.right_index is not None and view.right is not None:
             logger.debug(
                 log_markers.DOCUMENT_RIGHT_PAGE.format(
-                    page=unit.right_page_index + 1, pages=pages, filename=right_page.name
+                    page=view.right_index + 1, pages=view.page_count, filename=view.right.name
                 )
             )
         self.has_story_links = bool(self._story_links)
 
     def next_page(self) -> None:
         """Show the page after those showing, if there is one."""
-        if not self._page_paths:
-            return  # an empty document has no unit to step on from
-        unit = self._current_unit()
-        last_shown = (
-            unit.left_page_index if unit.right_page_index is None else unit.right_page_index
-        )
-        if last_shown < len(self._page_paths) - 1:
-            self._current_page_index = last_shown + 1
+        if self._pager.next_page(two_up=self._shows_two_up()):
             self._update_page_source()
 
     def prev_page(self) -> None:
         """Turn back a page, or stay put on the first."""
-        # The page before the unit's first; on the spread its unit shows (its pair).
-        if self._current_page_index > 0:
-            self._current_page_index -= 1
+        if self._pager.prev_page():
             self._update_page_source()
 
     def tap_target_regions(self) -> dict[str, Rect]:
@@ -534,7 +508,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
             self._exit_menu_mode()
         # No pages: a layout change under a closed reader laid the document out again
         # and moved its resume page (2026-10-30). The resume pages stay (`open_document`).
-        self._page_paths = []
+        self._pager.close()
 
         self._after_close = then
         if bool(WindowManager.is_fullscreen_now()) == self._was_fullscreen_on_entry:
