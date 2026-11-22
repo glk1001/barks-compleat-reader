@@ -37,6 +37,7 @@ from barks_reader.core.keys import (
     is_escape_key,
 )
 from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.ports import TitleViewChoices
 from barks_reader.core.reader_formatter import (
     ReaderFormatter,
     get_comic_display_subtitle,
@@ -347,6 +348,15 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
     @staticmethod
     def _get_title_portal_opening_animation_duration_secs() -> float:
         return random.uniform(0, TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS)
+
+    def choices(self) -> TitleViewChoices:
+        """Return what the goto-page and use-overrides rows hold now."""
+        return TitleViewChoices(
+            goto_page_active=bool(self.goto_page_active),
+            goto_page_num=self.goto_page_num,
+            tagged_pages=tuple(self.tagged_pages),
+            use_overrides_active=bool(self.use_overrides_active),
+        )
 
     def show_goto_page(self, offer: GotoPageOffer) -> None:
         """Show `offer` on the goto-page row: its page, ticked or not, and the pages to step."""

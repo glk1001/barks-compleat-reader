@@ -357,6 +357,19 @@ class TestTreeViewManager:
 
         pin.assert_not_called()
 
+    def test_the_selected_node_and_the_back_node_are_the_tree_screens(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        """What the navigation coordinator asks of the tree, it asks of the manager."""
+        tree_screen = screen_mocks["tree_view"]
+        selected = MagicMock()
+        tree_screen.get_selected_node.return_value = selected
+
+        assert tree_view_manager.get_selected_node() is selected
+        tree_view_manager.set_back_node(selected)
+
+        tree_screen.ids.reader_tree_view.set_back_node.assert_called_once_with(selected)
+
     def test_a_title_row_collapsed_or_expanded_changes_no_view(
         self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:

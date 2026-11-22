@@ -9,6 +9,8 @@ production implementation lives where it is built:
 - `SnapshotSink`: `SnapshotApplicator` in `ui.snapshot_applicator`.
 - `ComicBookReaderPort` and `ComicBookReaderScreenPort`: the `ComicBookReader` and
   `ComicBookReaderScreen` widgets in `ui.comic_book_reader`.
+- The navigation coordinator's ports (`.navigation`): the main screen's renderer,
+  title view, tree manager and screen switchers in `ui`.
 
 The in-memory adapters for tests live in `core.testing.fakes`. Core modules import
 the ports from this package, not from its submodules.
@@ -22,6 +24,16 @@ The ports are for `core`, which must stay Kivy-free. A `ui` module that wants th
 from .color_source import ColorSource, PaletteId
 from .comic_reader import ComicBookReaderPort, ComicBookReaderScreenPort
 from .cursor import Cursor
+from .navigation import (
+    GroupNodePort,
+    ScreenSwitcherPort,
+    SwitchToDocumentReader,
+    TitleRenderer,
+    TitleViewChoices,
+    TitleViewPort,
+    TreeNode,
+    TreePort,
+)
 from .scheduler import CancelHandle, Scheduler
 from .snapshot_sink import SnapshotSink
 
@@ -31,7 +43,15 @@ __all__ = [
     "ComicBookReaderPort",
     "ComicBookReaderScreenPort",
     "Cursor",
+    "GroupNodePort",
     "PaletteId",
     "Scheduler",
+    "ScreenSwitcherPort",
     "SnapshotSink",
+    "SwitchToDocumentReader",
+    "TitleRenderer",
+    "TitleViewChoices",
+    "TitleViewPort",
+    "TreeNode",
+    "TreePort",
 ]

@@ -202,6 +202,14 @@ class TreeViewManager:
         # The node is scrolled off the top: it is brought back, not pinned there.
         self.scroll_to_node(node)
 
+    def get_selected_node(self) -> BaseTreeViewNode | None:
+        """Return the tree's selected node, or None."""
+        return self._tree_view_screen.get_selected_node()
+
+    def set_back_node(self, node: BaseTreeViewNode) -> None:
+        """Set the node Go Back returns to."""
+        self._tree_view_screen.ids.reader_tree_view.set_back_node(node)
+
     def open_node_and_parent_nodes(self, node: ButtonTreeViewNode) -> None:
         """Open `node` and its parents without showing any of their views."""
         # noinspection PyArgumentList

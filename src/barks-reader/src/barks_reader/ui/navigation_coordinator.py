@@ -7,7 +7,7 @@ callback methods that mediated between TreeViewManager, ViewStateManager, and Co
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_covers import get_cover_collection_page_num
 from barks_fantagraphics.barks_tags import TagGroups, Tags
@@ -48,7 +48,7 @@ from barks_reader.core.user_error_types import (
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
     from pathlib import Path
 
     from barks_fantagraphics.comic_book import ComicBook
@@ -58,17 +58,17 @@ if TYPE_CHECKING:
     from barks_reader.core.comic_reader_manager import ComicReaderManager
     from barks_reader.core.navigation import YearRangeKey
     from barks_reader.core.navigation.view_states import ViewStates
+    from barks_reader.core.ports import (
+        GroupNodePort,
+        ScreenSwitcherPort,
+        TitleRenderer,
+        TitleViewPort,
+        TreePort,
+    )
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.core.saved_page_info import SavedPageInfo
     from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
-
-    from .bottom_title_view_screen import BottomTitleViewScreen
-    from .reader_screens import ScreenSwitchers
-    from .tree_view_manager import TreeViewManager
-    from .tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
-    from .tree_view_screen import TreeViewScreen
-    from .user_error_handler import UserErrorHandler
-    from .view_renderer import ViewRenderer
+    from barks_reader.core.user_error_types import UserErrorHandlerPort
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,13 +96,12 @@ class NavigationCoordinator:
         self,
         reader_settings: ReaderSettings,
         comics_database: ComicsDatabase,
-        renderer: ViewRenderer,
+        renderer: TitleRenderer,
         comic_reader_manager: ComicReaderManager,
-        bottom_title_view_screen: BottomTitleViewScreen,
-        tree_view_screen: TreeViewScreen,
-        screen_switchers: ScreenSwitchers,
+        bottom_title_view_screen: TitleViewPort,
+        screen_switchers: ScreenSwitcherPort,
         special_fanta_overrides: SpecialFantaOverrides,
-        user_error_handler: UserErrorHandler,
+        user_error_handler: UserErrorHandlerPort,
         on_active_changed: Callable[[bool], None],
     ) -> None:
         self._reader_settings = reader_settings
@@ -110,27 +109,24 @@ class NavigationCoordinator:
         self._renderer = renderer
         self._comic_reader_manager = comic_reader_manager
         self._bottom_title_view_screen = bottom_title_view_screen
-        self._tree_view_screen = tree_view_screen
         self._screen_switchers = screen_switchers
         self._special_fanta_overrides = special_fanta_overrides
         self._user_error_handler = user_error_handler
         self._on_active_changed = on_active_changed
 
-        self._tree_view_manager: TreeViewManager | None = None
-        self._year_range_nodes: dict[YearRangeKey, ButtonTreeViewNode] = {}
+        self._tree: TreePort | None = None
+        self._year_range_nodes: Mapping[YearRangeKey, GroupNodePort] = {}
         self._current_fanta_info: FantaComicBookInfo | None = None
         self._read_comic_view_state: ViewStates | None = None
         # A tag's pages in the comic open now, for the goto-page row when it closes.
         self._read_comic_tagged_pages: tuple[str, ...] = ()
         self._doc_reader_close_view_state: ViewStates | None = None
 
-    def set_tree_view_manager(self, tree_view_manager: TreeViewManager) -> None:
-        """Set the TreeViewManager (deferred to break circular dependency)."""
-        self._tree_view_manager = tree_view_manager
+    def set_tree_view_manager(self, tree: TreePort) -> None:
+        """Set the tree, in the app its `TreeViewManager` (deferred: each needs the other)."""
+        self._tree = tree
 
-    def set_year_range_nodes(
-        self, year_range_nodes: dict[YearRangeKey, ButtonTreeViewNode]
-    ) -> None:
+    def set_year_range_nodes(self, year_range_nodes: Mapping[YearRangeKey, GroupNodePort]) -> None:
         """Set the year-range nodes title rows sit under (deferred: filled by the tree build)."""
         self._year_range_nodes = year_range_nodes
 
@@ -207,26 +203,26 @@ class NavigationCoordinator:
             logger.error(f'Goto title: "{image_info.from_title.name}" has no row in the tree.')
             return False
 
-        assert self._tree_view_manager is not None
+        assert self._tree is not None
 
         # Save the currently selected node so Back can return to it.
-        back_node = self._tree_view_screen.get_selected_node()
+        back_node = self._tree.get_selected_node()
 
-        self._tree_view_manager.deselect_and_close_open_nodes()
+        self._tree.deselect_and_close_open_nodes()
 
         # Restore the back node after deselect_and_close_open_nodes resets selection tracking.
         if back_node is not None:
-            self._tree_view_screen.ids.reader_tree_view.set_back_node(back_node)
+            self._tree.set_back_node(back_node)
 
-        self._tree_view_manager.open_node_and_parent_nodes(parent_node)
-        self._tree_view_manager.goto_node(cast("BaseTreeViewNode", title_node), scroll_to=True)
+        self._tree.open_node_and_parent_nodes(parent_node)
+        self._tree.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename, offer_page=offer_page)
         return True
 
     def _get_title_parent_node(
         self, title: Titles, title_fanta_info: FantaComicBookInfo
-    ) -> ButtonTreeViewNode:
+    ) -> GroupNodePort:
         """Return the tree node whose children contain ``title``.
 
         The year-range node of the group the title sits in (`title_year_range`), so
@@ -344,13 +340,14 @@ class NavigationCoordinator:
             self._report_title_not_found(e, STR_TITLE_TO_ENUM[e.title])
             return False
 
-        self._leave_for_the_reader(tagged_pages=self._bottom_title_view_screen.tagged_pages)
+        choices = self._bottom_title_view_screen.choices()
+        self._leave_for_the_reader(tagged_pages=choices.tagged_pages)
 
         self._comic_reader_manager.read_barks_comic_book(
             self._current_fanta_info,
             comic_book,
-            self._get_page_to_first_goto(),
-            self._bottom_title_view_screen.use_overrides_active,
+            choices.goto_page_num if choices.goto_page_active else COMIC_BEGIN_PAGE,
+            choices.use_overrides_active,
             tagged_pages=self._read_comic_tagged_pages,
         )
         return True
@@ -397,7 +394,7 @@ class NavigationCoordinator:
             collection_info,
             comic_book,
             str(page_num),
-            self._bottom_title_view_screen.use_overrides_active,
+            self._bottom_title_view_screen.choices().use_overrides_active,
             history_title_str=ENUM_TO_STR_TITLE[title],
             collection_page_range=collection_page_range,
         )
@@ -645,16 +642,10 @@ class NavigationCoordinator:
 
         overrides_intro_inset_file = self._special_fanta_overrides.get_inset_file(
             self._current_fanta_info.comic_book_info.title,
-            self._bottom_title_view_screen.use_overrides_active,
+            self._bottom_title_view_screen.choices().use_overrides_active,
         )
 
         return self._comics_database.get_comic_book(title_str, overrides_intro_inset_file)
-
-    def _get_page_to_first_goto(self) -> str:
-        if not self._bottom_title_view_screen.goto_page_active:
-            return COMIC_BEGIN_PAGE
-
-        return self._bottom_title_view_screen.goto_page_num
 
     @staticmethod
     def _get_fanta_info(title: Titles) -> FantaComicBookInfo:

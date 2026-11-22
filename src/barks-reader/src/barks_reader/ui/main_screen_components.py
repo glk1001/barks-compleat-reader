@@ -154,7 +154,6 @@ def build_main_screen_components(
         renderer=renderer,
         comic_reader_manager=comic_reader_manager,
         bottom_title_view_screen=host._bottom_title_view_screen,
-        tree_view_screen=host._tree_view_screen,
         screen_switchers=screen_switchers,
         special_fanta_overrides=special_fanta_overrides,
         user_error_handler=user_error_handler,

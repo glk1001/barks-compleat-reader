@@ -166,13 +166,19 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 @pytest.fixture
 def nav_coord_deps() -> dict[str, MagicMock]:
     """Make a stand-in for each collaborator a NavigationCoordinator is built with."""
+    from barks_reader.core.ports import TitleViewChoices  # noqa: PLC0415
+
+    # The title view as it opens: no page offered, the overrides in use.
+    title_view = MagicMock()
+    title_view.choices.return_value = TitleViewChoices(
+        goto_page_active=False, goto_page_num="", tagged_pages=(), use_overrides_active=True
+    )
     return {
         "reader_settings": MagicMock(),
         "comics_database": MagicMock(),
         "renderer": MagicMock(),
         "comic_reader_manager": MagicMock(),
-        "bottom_title_view_screen": MagicMock(),
-        "tree_view_screen": MagicMock(),
+        "bottom_title_view_screen": title_view,
         "screen_switchers": MagicMock(),
         "special_fanta_overrides": MagicMock(),
         "user_error_handler": MagicMock(),

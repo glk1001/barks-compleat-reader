@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, Protocol
+from typing import TYPE_CHECKING, ClassVar
 
 from kivy.app import App
 from kivy.uix.screenmanager import (
@@ -31,6 +31,8 @@ if TYPE_CHECKING:
 
     from kivy.uix.widget import Widget
 
+    from barks_reader.core.ports import SwitchToDocumentReader
+
     from .corpus_stats_screen import CorpusStatsScreen
     from .document_reader import DocumentReaderScreen
     from .wiki_reader import WikiReaderScreen
@@ -40,18 +42,6 @@ COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 DOCUMENT_READER_SCREEN = "document_reader"
 WIKI_READER_SCREEN = "wiki_reader"
 CORPUS_STATS_SCREEN = "corpus_stats"
-
-
-class SwitchToDocumentReader(Protocol):
-    """Open a folder of page images in the document reader.
-
-    With `resume` it opens at its last page; with `single_page` it shows one page at a
-    time on the two-page spread as well.
-    """
-
-    def __call__(
-        self, doc_dir: Path, title: str, *, resume: bool = False, single_page: bool = False
-    ) -> None: ...
 
 
 class _ReleasesFrameBuffers(ShaderTransition):

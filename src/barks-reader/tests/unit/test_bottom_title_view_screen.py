@@ -21,6 +21,7 @@ from barks_reader.core.goto_page import GotoPageOffer
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import MainLayoutMode
+from barks_reader.core.ports import TitleViewChoices
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui import bottom_title_view_screen
 from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
@@ -349,6 +350,21 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         self.screen.toggle_panel_peek()
 
         assert box.opacity == 0
+
+    def test_the_choices_are_what_the_two_rows_hold(self) -> None:
+        assert self.screen.choices() == TitleViewChoices(
+            goto_page_active=False, goto_page_num="", tagged_pages=(), use_overrides_active=True
+        )
+
+        _show(self.screen, "5", active=True, tagged_pages=["5", "9"])
+        self.screen.use_overrides_active = False
+
+        assert self.screen.choices() == TitleViewChoices(
+            goto_page_active=True,
+            goto_page_num="5",
+            tagged_pages=("5", "9"),
+            use_overrides_active=False,
+        )
 
     def test_show_goto_page(self) -> None:
         # Active with page
