@@ -64,11 +64,21 @@ NON_TITLE_BIAS = 0.1
 
 @dataclass(frozen=True, slots=True)
 class ImageInfo:
-    """Information about a selected image for display."""
+    """Information about a selected image for display.
+
+    Attributes:
+        filename: The image's file, or None for no image.
+        from_title: The story the image is from, or None for none.
+        fit_mode: How the image fits what shows it.
+        is_fallback: Whether this is the selector's stand-in, picked because it found
+            no image for what was asked: an image to show, of a story not asked for.
+
+    """
 
     filename: PanelPath | None = None
     from_title: Titles | None = None
     fit_mode: str = FIT_MODE_COVER
+    is_fallback: bool = False
 
 
 def get_title_str(title: Titles | None) -> str:
@@ -240,6 +250,7 @@ class ImageSelector:
             self._resolver.get_comic_inset_file(EMERGENCY_INSET_FILE),
             Titles.GOOD_NEIGHBORS,
             FIT_MODE_COVER,
+            is_fallback=True,
         )
 
     def _get_censored_images(self) -> list[tuple[Titles, str]]:

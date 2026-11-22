@@ -1062,8 +1062,9 @@ class IndexScreen(NavExitMixin, FloatLayout):
         Set as the load starts, the caption and the goto button named the new story
         over the old picture for as long as the decode took.
         """
-        # TODO: Get rid of this hack!!
-        if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
+        # The selector's stand-in is of a story the index did not ask for: shown, but
+        # not captioned or offered as somewhere to go.
+        if image_info.from_title is None or image_info.is_fallback:
             self._current_image_info = None
             self.current_title_str = ""
         else:

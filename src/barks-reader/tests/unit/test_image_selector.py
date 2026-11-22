@@ -16,6 +16,7 @@ from barks_reader.core import image_selector as is_module
 from barks_reader.core.image_selector import (
     FIT_MODE_CONTAIN,
     FIT_MODE_COVER,
+    ImageInfo,
     ImageSelector,
     get_title_str,
     resolve_all_title_image_files,
@@ -968,6 +969,8 @@ class TestImageInfoBuilders:
         assert info.filename == fake_resolver.inset_file
         assert info.from_title is Titles.GOOD_NEIGHBORS
         assert info.fit_mode == FIT_MODE_COVER
+        assert info.is_fallback is True
+        assert ImageInfo(info.filename, Titles.GOOD_NEIGHBORS).is_fallback is False
 
     def test_search_image_for_title(
         self, image_selector: ImageSelector, fake_resolver: FakeResolver

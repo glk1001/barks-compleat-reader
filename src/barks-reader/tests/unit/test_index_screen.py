@@ -1141,6 +1141,28 @@ class TestSetBackgroundImage:
         assert index_screen._current_image_info is info
         assert index_screen.current_title_str == ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
 
+    def test_a_panel_really_from_good_neighbors_is_captioned_and_can_be_gone_to(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        """The selector's stand-in is of that story too: told apart by its flag, not its title."""
+        texture = MagicMock()
+        real = ImageInfo(from_title=Titles.GOOD_NEIGHBORS, filename=Path("dir/neighbors.png"))
+        index_screen._show_background_image(real, texture)
+        assert index_screen._current_image_info is real
+        assert index_screen.current_title_str == ENUM_TO_STR_TITLE[Titles.GOOD_NEIGHBORS]
+
+    def test_the_selector_s_stand_in_is_shown_with_no_caption_and_nowhere_to_go(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        texture = MagicMock()
+        stand_in = ImageInfo(
+            from_title=Titles.GOOD_NEIGHBORS, filename=Path("dir/inset.png"), is_fallback=True
+        )
+        index_screen._show_background_image(stand_in, texture)
+        assert index_screen.image_texture is texture
+        assert index_screen._current_image_info is None
+        assert index_screen.current_title_str == ""
+
     def test_a_title_barks_did_not_name_is_captioned_in_parentheses(
         self, index_screen: ConcreteIndexScreen
     ) -> None:
