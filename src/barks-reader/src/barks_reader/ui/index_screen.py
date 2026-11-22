@@ -1111,9 +1111,6 @@ class IndexScreen(NavExitMixin, FloatLayout):
 
     def on_letter_press(self, button: Button) -> None:
         """Handle a letter button press and display the corresponding index items."""
-        self._open_tag_widgets.clear()
-        self._open_tag_button = None
-
         first_letter = button.text
         logger.debug(f"Letter '{first_letter}' pressed.")
         assert self.treeview_index_node is not None
@@ -1137,8 +1134,15 @@ class IndexScreen(NavExitMixin, FloatLayout):
             self._draw_letter_focus()
 
     def _populate_index_grid(self, letter: str) -> None:
-        """Handle a letter button press and display the corresponding index items."""
+        """Fill the columns with ``letter``'s items, in place of whatever they showed.
+
+        Nothing is open in a grid just filled: the open entries' rows went with the
+        old one, and an expansion still waiting on its frame finds its row gone.
+        """
         self._grid_version += 1
+        self._open_tag_widgets.clear()
+        self._open_tag_button = None
+        self._open_tag_item = None
         timing = Timing()
 
         self._new_index_image()

@@ -259,12 +259,32 @@ class TestIndexScreen:
 
         with patch.object(Clock, "schedule_once") as schedule:
             index_screen._schedule_sub_items(add_sub_items)
-            index_screen._open_tag_button = None  # as on_letter_press leaves it
+            index_screen._open_tag_button = None  # as a grid filled anew leaves it
             run_last_scheduled(schedule)
 
         add_sub_items.assert_not_called()
         assert index_screen._sub_items_pending is False
         assert index_screen._pending_focus_resync is None
+
+    @pytest.mark.parametrize("letter", ["A", "Q"])
+    def test_a_grid_filled_anew_has_nothing_open(
+        self, index_screen: ConcreteIndexScreen, letter: str
+    ) -> None:
+        """Whoever fills it, a prefix press as much as a letter's; with items or with none.
+
+        Left as it was, the open state went on pointing at rows taken out of the grid.
+        """
+        index_screen._open_tag_widgets = [MagicMock(), MagicMock()]
+        index_screen._open_tag_button = MagicMock()
+        index_screen._open_tag_item = IndexItem(id="Apple", display_text="Apple")
+        version = index_screen._grid_version
+
+        index_screen._populate_index_grid(letter)
+
+        assert index_screen._open_tag_widgets == []
+        assert index_screen._open_tag_button is None
+        assert index_screen._open_tag_item is None
+        assert index_screen._grid_version == version + 1
 
     def test_sub_items_are_not_added_under_a_button_gone_from_the_grid(
         self, index_screen: ConcreteIndexScreen
