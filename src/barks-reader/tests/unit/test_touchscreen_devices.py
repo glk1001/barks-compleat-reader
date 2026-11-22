@@ -6,7 +6,11 @@ import ctypes
 from pathlib import Path
 
 import pytest
-from barks_reader.core.touchscreen_devices import SYSFS_INPUT, find_touchscreen_devices
+from barks_reader.core.touchscreen_devices import (
+    SYSFS_INPUT,
+    _has_bit,
+    find_touchscreen_devices,
+)
 
 _LONG_BIT = ctypes.sizeof(ctypes.c_long) * 8
 _ABS_MT_POSITION_X = 0x35
@@ -79,3 +83,30 @@ class TestFindTouchscreenDevices:
 
     def test_the_scan_reads_sysfs_unless_told_another_folder(self) -> None:
         assert Path("/sys/class/input") == SYSFS_INPUT
+
+    def test_a_device_skipped_does_not_end_the_scan(self, sysfs: Path) -> None:
+        """Each kind of skip goes on to the next device: the touchscreen is the last."""
+        _device(sysfs, "event1", None, _MULTITOUCH)  # no name
+        _device(sysfs, "event2", "ELAN TouchPad", _MULTITOUCH)  # not a screen
+        _device(sysfs, "event3", "Screen with no capabilities", None)
+        _device(sysfs, "event4", "ELAN Touchscreen", _MULTITOUCH)
+        assert find_touchscreen_devices(sysfs) == ["/dev/input/event4"]
+
+
+class TestHasBit:
+    """A bit of a sysfs bitmap: hex words of a C long each, the highest word first."""
+
+    def test_a_bit_of_the_only_word(self) -> None:
+        assert _has_bit(["5"], 0) is True
+        assert _has_bit(["5"], 1) is False
+        assert _has_bit(["5"], 2) is True
+
+    def test_a_bit_of_a_higher_word_is_counted_past_the_lower_words(self) -> None:
+        assert _has_bit(["1", "0"], _LONG_BIT) is True
+        assert _has_bit(["1", "0"], 0) is False
+        assert _has_bit(["2", "1"], _LONG_BIT + 1) is True
+        assert _has_bit(["2", "1"], 0) is True
+
+    def test_a_bit_past_the_last_word_is_not_set(self) -> None:
+        assert _has_bit(["f"], _LONG_BIT) is False
+        assert _has_bit([], 0) is False

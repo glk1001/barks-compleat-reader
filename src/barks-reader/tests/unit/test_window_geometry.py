@@ -311,6 +311,12 @@ class TestRotationFit:
                 assert left >= 0
                 assert top >= 0
 
+    def test_the_fraction_given_is_the_one_used(self) -> None:
+        monitor = _monitor(width=2560, height=1440)
+        _, height, (_, top) = rotation_fit(monitor, CHROME, COMIC_PAGE_ASPECT_RATIO, (1, 1), 0.5)
+        assert height == 720  # noqa: PLR2004
+        assert top == 360  # noqa: PLR2004
+
     def test_it_is_centred_on_a_second_monitor(self) -> None:
         monitor = _monitor(x=2560, y=200, width=1920, height=1080)
         width, height, (left, top) = rotation_fit(

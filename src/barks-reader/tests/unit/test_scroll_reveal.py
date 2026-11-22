@@ -77,6 +77,15 @@ class TestScrollYAfterKey:
             scroll_y_after_key(scroll_y=0.5, view_height=400, content_height=500, up=False) == 0.0
         )
 
+    @pytest.mark.parametrize("content_height", [400.5, 401])
+    def test_text_a_pixel_or_less_too_tall_still_scrolls(self, content_height: float) -> None:
+        assert (
+            scroll_y_after_key(
+                scroll_y=1.0, view_height=400, content_height=content_height, up=False
+            )
+            == 0.0
+        )
+
     @pytest.mark.parametrize("content_height", [300, 400])
     def test_text_that_all_shows_stays_where_it_is(self, content_height: int) -> None:
         moved = scroll_y_after_key(

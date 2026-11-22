@@ -101,6 +101,9 @@ class TestBuildMainIndex:
     def test_an_accented_letter_lists_under_the_plain_one(self) -> None:
         assert (index_letter("Éclair"), index_letter("éclair")) == ("E", "E")
 
+    def test_a_letter_whose_capital_is_two_letters_is_listed_under_the_first(self) -> None:
+        assert index_letter("ß") == "S"
+
     def test_a_cross_reference_row_reads_see_in_italics(self) -> None:
         item = IndexItem(Tags.GOLDIE_OGILT, "Glittering Goldie", see="O'Gilt, Goldie")
         assert index_item_markup(item) == "Glittering Goldie. [i]See[/i] O'Gilt, Goldie"
@@ -269,7 +272,7 @@ class TestSubIndexRows:
         assert [(row.item.id, row.item.page_to_goto, row.text) for row in rows] == [
             (title, page, text) for title, page, text in tag_sub_items(Tags.ALASKA)
         ]
-        assert all(row.italic and not row.markup for row in rows)
+        assert all(row.italic is True and row.markup is False for row in rows)
         assert all(row.item.display_text == row.text for row in rows)
 
     def test_a_title_listed_at_pages_steps_through_every_one_of_them(self) -> None:
@@ -286,7 +289,8 @@ class TestSubIndexRows:
         assert [(row.item.id, row.item.display_text) for row in rows] == [
             (tag, text) for tag, _page, text in tag_group_sub_items(TagGroups.PIG_VILLAINS)
         ]
-        assert all(isinstance(row, SubIndexRow) and row.markup and not row.italic for row in rows)
+        assert all(isinstance(row, SubIndexRow) for row in rows)
+        assert all(row.markup is True and row.italic is False for row in rows)
         assert all(row.item.page_to_goto == "" and row.item.tagged_pages == () for row in rows)
         for row in rows:
             assert isinstance(row.item.id, Tags)

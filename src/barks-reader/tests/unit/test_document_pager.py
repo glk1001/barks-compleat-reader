@@ -32,6 +32,7 @@ class TestAnEmptyDocument:
         pager = DocumentPager()
         assert pager.is_open is False
         assert pager.page_count == 0
+        assert pager.current_page_index == 0
         assert pager.view(two_up=False) is None
 
     @pytest.mark.parametrize("two_up", [False, True])
@@ -73,6 +74,9 @@ class TestOnePageAtATime:
         assert _shown(pager, two_up=False) == (2, None)
         assert pager.prev_page() is True
         assert _shown(pager, two_up=False) == (1, None)
+        assert pager.prev_page() is True  # the second page has one before it
+        assert _shown(pager, two_up=False) == (0, None)
+        assert pager.prev_page() is False
 
     def test_the_pager_keeps_its_own_list_of_pages(self) -> None:
         pages = _pages(2)
@@ -216,6 +220,7 @@ class TestClose:
         pager.view(two_up=False)
         pager.close()
         assert pager.is_open is False
+        assert pager.page_count == 0
         assert pager.view(two_up=True) is None
         assert pager.next_page(two_up=False) is False
         assert pager.prev_page() is False
