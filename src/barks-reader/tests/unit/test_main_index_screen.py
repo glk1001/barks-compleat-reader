@@ -14,7 +14,6 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.index_items import IndexItem
 from barks_reader.ui.main_index_screen import MainIndexScreen
 from kivy.clock import Clock
-from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from unit_helpers import run_at_once, run_last_scheduled
@@ -261,11 +260,50 @@ class TestTagMarkers:
                 barks_reader.core.main_index, "get_all_tags_in_tag_group", return_value=set(members)
             ),
             patch.object(screen, "_new_sub_items_layout"),
-            patch.object(module, "_MainIndexTitleItemButton"),
+            patch.object(module, "IndexTitleItemButton"),
             patch.object(module, "IndexItem") as index_item,
         ):
             screen._get_sub_items_layout(screen._open_tag_item)
         return [c.kwargs["id"] for c in index_item.call_args_list]
+
+    @pytest.mark.parametrize(
+        ("item_id", "member", "is_markup"),
+        [
+            (Tags.AMNESIA_STORIES, Titles.VICTORY_GARDEN_THE, False),
+            (TagGroups.AFRICA, Tags.MAGICA_DE_SPELL, True),
+        ],
+    )
+    def test_a_sub_item_row_is_given_its_whole_text_to_fit_and_stops_short_of_the_column(
+        self,
+        main_index_screen: MainIndexScreen,
+        item_id: Tags | TagGroups,
+        member: Titles | Tags,
+        *,
+        is_markup: bool,
+    ) -> None:
+        """A title's row fits its text itself, pages kept; a tag's markup is Kivy's to cut."""
+        screen = main_index_screen
+        screen._open_tag_button = MagicMock(padding=[0, 0, 0, 0])
+        module = barks_reader.ui.main_index_screen
+        with (
+            patch.object(barks_reader.core.main_index, "BARKS_TAGGED_TITLES", {item_id: [member]}),
+            patch.object(
+                barks_reader.core.main_index, "get_all_tags_in_tag_group", return_value={member}
+            ),
+            patch.object(screen, "_new_sub_items_layout"),
+            patch.object(module, "IndexTitleItemButton") as row_cls,
+        ):
+            screen._get_sub_items_layout(IndexItem(item_id, ""))
+        (built,) = row_cls.call_args_list
+        assert built.kwargs["markup"] is is_markup
+        assert built.kwargs["size_hint"] == (0.90, None)
+        assert built.kwargs["full_text"]
+        assert "text" not in built.kwargs
+        if is_markup:
+            assert isinstance(member, Tags)
+            assert built.kwargs["full_text"] == barks_reader.core.main_index.tag_heading_markup(
+                member
+            )
 
     def test_a_tags_titles_are_listed_in_the_order_barks_submitted_them(
         self, main_index_screen: MainIndexScreen
@@ -297,14 +335,6 @@ class TestTagMarkers:
         schedule.assert_not_called()
         assert main_index_screen._open_tag_button is None
         assert f"No tags found for tag group: {group.name}" in loguru_sink
-
-
-class TestTitleRowButton:
-    def test_a_title_row_too_long_for_itself_ends_in_an_ellipsis(self) -> None:
-        """Wrapped, a long title ran onto the next row."""
-        button = barks_reader.ui.main_index_screen._MainIndexTitleItemButton(text="A long title")
-        assert button.shorten is True
-        assert button.shorten_from == "right"
 
 
 def _lay_out_page(screen: MainIndexScreen, *, content_height: int, view_height: int) -> MagicMock:
@@ -558,38 +588,6 @@ class TestSeeReferences:
             tag_button = main_index_screen._create_index_button(tag_item)
             main_index_screen._create_index_button(see_item)
         assert main_index_screen._tag_entries == {Tags.BLACK_PETE: (tag_button, tag_item)}
-
-
-class TestTitleRowBackground:
-    """A title row draws its own background, inset by most of its left padding."""
-
-    @pytest.mark.parametrize(
-        ("state", "colour"), [("normal", [0.1, 0.2, 0.3, 1.0]), ("down", [0.9, 0.8, 0.7, 1.0])]
-    )
-    def test_the_background_is_the_colour_of_the_rows_state(
-        self, state: str, colour: list[float]
-    ) -> None:
-        button = barks_reader.ui.main_index_screen._MainIndexTitleItemButton(
-            text="A title",
-            background_color_normal=(0.1, 0.2, 0.3, 1.0),
-            background_color_down=(0.9, 0.8, 0.7, 1.0),
-        )
-        button.padding = [50, 0, 0, 0]
-        button.pos = (10, 20)
-        button.size = (300, 25)
-
-        button.state = state  # bound: the canvas is redrawn as the state changes
-
-        canvas = button.canvas
-        assert canvas is not None
-        drawn_colour, rectangle = (
-            instruction
-            for instruction in canvas.before.children
-            if isinstance(instruction, (Color, Rectangle))
-        )
-        assert drawn_colour.rgba == pytest.approx(colour)
-        assert rectangle.pos == (10 + 40, 20)
-        assert rectangle.size == (300 - 40, 25)
 
 
 class TestSubItemsUnderTheirRow:

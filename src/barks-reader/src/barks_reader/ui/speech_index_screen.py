@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import random
-import re
 from collections import defaultdict
 from functools import cached_property
 from itertools import islice
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
@@ -13,18 +12,11 @@ from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
 from kivy.clock import Clock
-from kivy.core.text import Label as CoreLabel
-from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[import-not-found]
-    ColorProperty,
-    ListProperty,
-    NumericProperty,
     ObjectProperty,
-    StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from loguru import logger
 
 from barks_reader.core import log_markers
@@ -52,6 +44,7 @@ from .index_screen import (
     IndexItemButton,
     IndexPrefixButton,
     IndexScreen,
+    IndexTitleItemButton,
     TitleShowSpeechButton,
     _IndexNavPanel,
     create_speech_bubble_popup,
@@ -64,6 +57,7 @@ from .reader_keyboard_nav import clear_focus_in_list, draw_focus_highlight
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleDict, TitleInfo
+    from kivy.uix.button import Button
     from kivy.uix.gridlayout import GridLayout
 
     from barks_reader.core.reader_settings import ReaderSettings
@@ -87,84 +81,6 @@ def _store_bounded[K, V](cache: dict[K, V], key: K, value: V) -> None:
     if len(cache) >= _SEARCH_CACHE_MAX_ENTRIES:
         del cache[next(iter(cache))]
     cache[key] = value
-
-
-_PAGES_START = re.compile(r", \d")
-
-
-class _SpeechIndexTitleItemButton(Button):
-    background_color_normal = ColorProperty((0, 0, 0, 0))
-    background_color_down = ColorProperty((0, 0, 0, 0))
-    padding = ListProperty([0, 0, 0, 0])
-    # How far the fill runs on past the button's right edge: under its speech button.
-    fill_past_right = NumericProperty(0)
-    # The row's whole text, "Title, pages": what shows is this, or its title cut short.
-    full_text = StringProperty("")
-
-    def __init__(self, **kwargs: object) -> None:
-        super().__init__(**kwargs)
-
-        self.italic = True
-        self.size_hint = (1, None)
-        self.height = INDEX_ITEM_ROW_HEIGHT
-        self.bind(size=self.setter("text_size"))
-        self.bind(width=self._fit_text, full_text=self._fit_text)
-        self._fit_text()
-        self.background_normal = ""
-        self.background_down = ""
-        self.background_color = (0, 0, 0, 0)
-        self.halign = "left"
-        self.valign = "middle"
-
-        # `state` matters as much as pos/size: update_canvas picks the fill from it,
-        # so without this binding the pressed band never repaints.
-        self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)
-
-    def _fit_text(self, *_args: object) -> None:
-        """Show the whole text, or the title cut short with its page numbers kept."""
-        room = self.width - self.padding[0] - dp(4)
-        # Kivy picks its text provider at import: a checker sees a name that may be None.
-        assert CoreLabel is not None
-        measure = CoreLabel(font_name=self.font_name, font_size=self.font_size, italic=True)
-
-        def fits(text: str) -> bool:
-            return measure.get_extents(text)[0] <= room
-
-        full = self.full_text
-        if room <= 0 or fits(full):
-            self.text = full
-            return
-        # The pages start at the first ", <digit>": the title before them gives way.
-        pages_at = _PAGES_START.search(full)
-        title, pages = (
-            (full[: pages_at.start()], full[pages_at.start() :]) if pages_at else (full, "")
-        )
-        low, high = 0, len(title)
-        while low < high:
-            keep = (low + high + 1) // 2
-            if fits(f"{title[:keep].rstrip()}\u2026{pages}"):
-                low = keep
-            else:
-                high = keep - 1
-        self.text = f"{title[:low].rstrip()}\u2026{pages}"
-
-    def update_canvas(self, *_args: object) -> None:
-        """Redraw the row's fill, from the text's start to the row's end, for its state."""
-        canvas = cast("Canvas", self.canvas)
-        canvas.before.clear()
-        with canvas.before:
-            Color(
-                *self.background_color_normal
-                if self.state == "normal"
-                else self.background_color_down
-            )
-            # Draw background starting from text start (padding[0]) to end of button width
-            Rectangle(
-                # The row's own height and no more: the fills are translucent, so
-                # where one ran into the next row's a darker line showed.
-                pos=(self.x + self.padding[0], self.y),
-                size=(self.width - self.padding[0] + self.fill_past_right, self.height),
-            )
 
 
 class SpeechSubItemsIndexScreen(IndexScreen):
@@ -270,8 +186,8 @@ class SpeechSubItemsIndexScreen(IndexScreen):
 
     @staticmethod
     def _get_paired_speech_button(title_btn: Button) -> TitleShowSpeechButton | None:
-        """Return the TitleShowSpeechButton paired with a _SpeechIndexTitleItemButton."""
-        if not isinstance(title_btn, _SpeechIndexTitleItemButton):
+        """Return the TitleShowSpeechButton paired with an IndexTitleItemButton."""
+        if not isinstance(title_btn, IndexTitleItemButton):
             return None
         parent = title_btn.parent
         if parent is None:
@@ -440,8 +356,10 @@ class SpeechSubItemsIndexScreen(IndexScreen):
             # above, where a tap went to the row below's bubbles. Set once built, as the
             # kv rule's size beats one handed to the constructor.
             show_speech_bubbles_button.size = (INDEX_ITEM_ROW_HEIGHT, INDEX_ITEM_ROW_HEIGHT)
-            title_button = _SpeechIndexTitleItemButton(
+            title_button = IndexTitleItemButton(
                 full_text=title_str_with_pages,
+                italic=True,
+                height=INDEX_ITEM_ROW_HEIGHT,
                 padding=[sub_item_padding, 0, 0, 0],
                 color=self.index_theme.TITLE_TEXT,
                 background_color_normal=self.index_theme.TITLE_BG,

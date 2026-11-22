@@ -131,7 +131,7 @@ def _assert_speech_buttons_keep_to_their_rows(d: Driver) -> None:
     Taller, it runs over into the next row, and a tap there shows the wrong story's bubbles.
     """
     _, shown = taps.targets(d)
-    rows = {t.top: t for t in shown if t.kind == "_SpeechIndexTitleItemButton" and t.whole}
+    rows = {t.top: t for t in shown if t.kind == "IndexTitleItemButton" and t.whole}
     buttons = [t for t in shown if t.kind == "TitleShowSpeechButton" and t.whole]
     assert buttons, "no speech button is on show"
     for button in buttons:

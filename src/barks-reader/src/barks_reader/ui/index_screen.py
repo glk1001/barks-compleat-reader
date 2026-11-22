@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import re
 import string
 from abc import abstractmethod
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.speech_markup import escape_markup
@@ -13,9 +14,12 @@ from barks_kivy_ui.scrolling import ReaderScrollView
 from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.clock import Clock, ClockEvent
+from kivy.core.text import Label as CoreLabel
+from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
+    ColorProperty,
     NumericProperty,
     ObjectProperty,
     StringProperty,
@@ -69,6 +73,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.core.image import Texture
+    from kivy.graphics import Canvas
 
     from barks_reader.core.index_items import IndexItem
 
@@ -144,6 +149,98 @@ class IndexNoItemsButton(IndexItemButton):
     The keys pass it over (`IndexScreen._collect_buttons`): it was focused as the
     letter's first item, where Enter did nothing.
     """
+
+
+# In a title row's text, where its page numbers start: the title before them gives way.
+_PAGES_START = re.compile(r", \d")
+# Where a title row's fill starts, as a share of its indent: a little ahead of its text.
+_TITLE_FILL_INDENT_SHARE = 0.8
+
+
+class IndexTitleItemButton(Button):
+    """A row under an opened item: a title with its pages, or a tag under a tag group.
+
+    The row draws its own fill, from a little ahead of its text to its end. A text too
+    long for the row is cut short with an ellipsis, a title's page numbers kept; a
+    row of markup (a tag's heading) is left for Kivy to cut, which knows its tags.
+    """
+
+    background_color_normal = ColorProperty((0, 0, 0, 0))
+    background_color_down = ColorProperty((0, 0, 0, 0))
+    # How far the fill runs on past the button's right edge: under a speech button there.
+    fill_past_right = NumericProperty(0)
+    # The row's whole text, "Title, pages": what shows is this, or its title cut short.
+    full_text = StringProperty("")
+
+    def __init__(self, **kwargs: object) -> None:
+        kwargs.setdefault("size_hint", (1, None))
+        super().__init__(**kwargs)
+
+        self.background_normal = ""
+        self.background_down = ""
+        self.border = (0, 0, 0, 0)
+        self.background_color = (0, 0, 0, 0)
+        self.halign = "left"
+        self.valign = "middle"
+        self.shorten = bool(self.markup)
+        self.shorten_from = "right"
+        self.bind(size=self.setter("text_size"))
+        self.bind(width=self._fit_text, full_text=self._fit_text)
+        self._fit_text()
+
+        # `state` matters as much as pos/size: update_canvas picks the fill from it,
+        # so without this binding the pressed band never repaints.
+        self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)
+
+    def _fit_text(self, *_args: object) -> None:
+        """Show the whole text, or the title cut short with its page numbers kept."""
+        full = self.full_text
+        if self.markup:
+            self.text = full
+            return
+        room = self.width - self.padding[0] - dp(4)
+        # Kivy picks its text provider at import: a checker sees a name that may be None.
+        assert CoreLabel is not None
+        measure = CoreLabel(
+            font_name=self.font_name, font_size=self.font_size, italic=self.italic, bold=self.bold
+        )
+
+        def fits(text: str) -> bool:
+            return measure.get_extents(text)[0] <= room
+
+        if room <= 0 or fits(full):
+            self.text = full
+            return
+        pages_at = _PAGES_START.search(full)
+        title, pages = (
+            (full[: pages_at.start()], full[pages_at.start() :]) if pages_at else (full, "")
+        )
+        low, high = 0, len(title)
+        while low < high:
+            keep = (low + high + 1) // 2
+            if fits(f"{title[:keep].rstrip()}\u2026{pages}"):
+                low = keep
+            else:
+                high = keep - 1
+        self.text = f"{title[:low].rstrip()}\u2026{pages}"
+
+    def update_canvas(self, *_args: object) -> None:
+        """Redraw the row's fill, from just ahead of the text to the row's end, for its state."""
+        canvas = cast("Canvas", self.canvas)
+        canvas.before.clear()
+        indent = _TITLE_FILL_INDENT_SHARE * self.padding[0]
+        with canvas.before:
+            Color(
+                *self.background_color_down
+                if self.state == "down"
+                else self.background_color_normal
+            )
+            Rectangle(
+                # The row's own height and no more: the fills are translucent, so
+                # where one ran into the next row's a darker line showed.
+                pos=(self.x + indent, self.y),
+                size=(self.width - indent + self.fill_past_right, self.height),
+            )
 
 
 class TitleShowSpeechButton(Button):

@@ -25,6 +25,7 @@ from barks_reader.ui.index_screen import (
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
+    IndexTitleItemButton,
     PopupKeyboardNav,
     TextBoxWithTitleAndBorder,
     create_speech_bubble_popup,
@@ -32,6 +33,8 @@ from barks_reader.ui.index_screen import (
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
@@ -2122,3 +2125,151 @@ class TestPopupKeyboardNavOnRealWidgets:
         group = _module.POPUP_NAV_FOCUS_GROUP
         assert [_has_ring(bubble, group) for bubble in bubbles] == [False, True, False]
         assert [found.args for found in scroll_to.call_args_list] == [(bubbles[0],), (bubbles[1],)]
+
+
+class TestATitleCutToItsColumn:
+    """A title too long for its row gives way to an ellipsis; its pages are kept."""
+
+    WIDE = 600
+    NARROW = 150
+
+    @staticmethod
+    def _button(full_text: str, width: float) -> IndexTitleItemButton:
+        button = IndexTitleItemButton(
+            full_text=full_text,
+            font_name="Roboto",
+            font_size=14,
+            italic=True,
+            padding=[20, 0, 0, 0],
+        )
+        button.width = width
+        return button
+
+    @staticmethod
+    def _shown_width(button: IndexTitleItemButton) -> float:
+        measure = _module.CoreLabel(font_name="Roboto", font_size=14, italic=True)
+        return measure.get_extents(button.text)[0]
+
+    def test_a_title_with_room_shows_whole(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", self.WIDE)
+        assert button.text == "Donald Duck's Atom Bomb, 5"
+
+    def test_a_title_too_long_is_cut_and_keeps_its_pages(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", self.NARROW)
+
+        assert button.text.startswith("Donald")
+        assert button.text.endswith("\u2026, 5")
+        assert self._shown_width(button) <= self.NARROW - 20
+
+    def test_as_much_of_the_title_shows_as_fits(self) -> None:
+        title, pages = "Donald Duck's Atom Bomb", ", 5"
+        button = self._button(title + pages, self.NARROW)
+        kept = len(button.text) - len("\u2026" + pages)
+
+        one_more = f"{title[: kept + 1]}\u2026{pages}"
+        measure = _module.CoreLabel(font_name="Roboto", font_size=14, italic=True)
+        assert 0 < kept < len(title)
+        assert measure.get_extents(one_more)[0] > self.NARROW - 20 - dp(4)
+
+    def test_an_article_listed_after_the_title_is_cut_with_it(self) -> None:
+        button = self._button("Golden Christmas Tree, The, 11", self.NARROW)
+
+        assert button.text.startswith("Golden")
+        assert button.text.endswith("\u2026, 11")
+        assert ", The" not in button.text
+
+    def test_a_title_with_no_pages_ends_in_the_ellipsis(self) -> None:
+        button = self._button("A Very Long Title Indeed With No Page", self.NARROW)
+
+        assert button.text.startswith("A Very")
+        assert button.text.endswith("\u2026")
+
+    def test_a_row_widened_shows_the_whole_title_again(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", self.NARROW)
+
+        button.width = self.WIDE
+
+        assert button.text == "Donald Duck's Atom Bomb, 5"
+
+    def test_a_row_with_no_width_yet_keeps_the_whole_text(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", 0)
+        assert button.text == "Donald Duck's Atom Bomb, 5"
+
+    def test_a_bold_row_is_measured_in_bold(self) -> None:
+        """A tag group's rows are bold, and wider for it: measured plain, they overran."""
+        title, pages = "Donald Duck's Atom Bomb", ", 5"
+        button = IndexTitleItemButton(
+            full_text=title + pages,
+            font_name="Roboto",
+            font_size=14,
+            bold=True,
+            padding=[20, 0, 0, 0],
+        )
+        button.width = self.NARROW
+        measure = _module.CoreLabel(font_name="Roboto", font_size=14, bold=True)
+        assert button.text.endswith("\u2026, 5")
+        assert measure.get_extents(button.text)[0] <= self.NARROW - 20
+
+    def test_a_row_of_markup_is_left_whole_for_kivy_to_cut(self) -> None:
+        """A tag's heading: cut by the character, its markup tags would be cut through."""
+        heading = "Uncle Scrooge: [i]outside the Uncle Scrooge series[/i]"
+        button = IndexTitleItemButton(full_text=heading, markup=True, font_size=14)
+        button.width = self.NARROW
+        assert button.text == heading
+        assert (button.shorten, button.shorten_from) == (True, "right")
+
+    def test_a_plain_row_is_cut_here_and_not_by_kivy_as_well(self) -> None:
+        button = self._button("Donald Duck's Atom Bomb, 5", self.NARROW)
+        assert button.shorten is False
+
+    def test_a_row_fills_its_column_unless_told_otherwise(self) -> None:
+        assert IndexTitleItemButton().size_hint == [1, None]
+        assert IndexTitleItemButton(size_hint=(0.9, None)).size_hint == [0.9, None]
+
+
+class TestATitleRowsFill:
+    """A title row draws its own fill, from a little ahead of its text to its end."""
+
+    @staticmethod
+    def _fill(button: IndexTitleItemButton) -> tuple[Color, Rectangle]:
+        canvas = button.canvas
+        assert canvas is not None
+        colour, rectangle = (
+            instruction
+            for instruction in canvas.before.children
+            if isinstance(instruction, (Color, Rectangle))
+        )
+        return colour, rectangle
+
+    @pytest.mark.parametrize(
+        ("state", "colour"), [("normal", [0.1, 0.2, 0.3, 1.0]), ("down", [0.9, 0.8, 0.7, 1.0])]
+    )
+    def test_the_fill_is_the_colour_of_the_rows_state(
+        self, state: str, colour: list[float]
+    ) -> None:
+        button = IndexTitleItemButton(
+            full_text="A title",
+            background_color_normal=(0.1, 0.2, 0.3, 1.0),
+            background_color_down=(0.9, 0.8, 0.7, 1.0),
+        )
+        button.padding = [50, 0, 0, 0]
+        button.pos = (10, 20)
+        button.size = (300, 25)
+
+        button.state = state  # bound: the canvas is redrawn as the state changes
+
+        drawn_colour, rectangle = self._fill(button)
+        assert drawn_colour.rgba == pytest.approx(colour)
+        # From 0.8 of the indent, a little ahead of the text, to the row's end.
+        assert rectangle.pos == (10 + 40, 20)
+        assert rectangle.size == (300 - 40, 25)
+
+    def test_the_fill_runs_on_under_a_speech_button_beside_the_row(self) -> None:
+        button = IndexTitleItemButton(full_text="A title", fill_past_right=21)
+        button.padding = [50, 0, 0, 0]
+        button.pos = (10, 20)
+        button.size = (300, 21)
+
+        _, rectangle = self._fill(button)
+        assert rectangle.pos == (10 + 40, 20)
+        assert rectangle.size == (300 - 40 + 21, 21)

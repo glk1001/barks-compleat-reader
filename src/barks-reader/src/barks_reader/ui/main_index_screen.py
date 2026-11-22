@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_GROUPS,
@@ -11,12 +11,7 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.barks_titles import Titles
 from comic_utils.timing import Timing
 from kivy.clock import Clock
-from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
-from kivy.properties import (  # ty: ignore[import-not-found]
-    ColorProperty,
-)
-from kivy.uix.button import Button
 from loguru import logger
 
 from barks_reader.core import log_markers
@@ -38,12 +33,13 @@ from barks_reader.core.main_index import (
 )
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 
-from .index_screen import IndexItemButton, IndexScreen
+from .index_screen import IndexItemButton, IndexScreen, IndexTitleItemButton
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.button import Button
 
     from barks_reader.core.reader_settings import ReaderSettings
 
@@ -52,43 +48,6 @@ if TYPE_CHECKING:
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
-
-
-class _MainIndexTitleItemButton(Button):
-    background_color_normal = ColorProperty((0, 0, 0, 0))
-    background_color_down = ColorProperty((0, 0, 0, 0))
-
-    def __init__(self, **kwargs: object) -> None:
-        super().__init__(**kwargs)
-        self.background_normal = ""
-        self.background_down = ""
-        self.border = (0, 0, 0, 0)
-        self.background_color = (0, 0, 0, 0)
-        self.size_hint = (0.90, None)
-        self.halign = "left"
-        self.valign = "middle"
-        # A title too long for the row ends in an ellipsis: wrapped, it ran onto the next.
-        self.shorten = True
-        self.shorten_from = "right"
-
-        self.bind(size=self.setter("text_size"))
-        self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)
-
-    def update_canvas(self, *_args: object) -> None:
-        canvas = cast("Canvas", self.canvas)
-        canvas.before.clear()
-        with canvas.before:
-            Color(
-                *(
-                    self.background_color_down
-                    if self.state == "down"
-                    else self.background_color_normal
-                )
-            )
-            # Draw a rectangle that respects the button's left padding.
-            # The KV rule used 0.8 * padding[0]
-            pad = 0.8 * self.padding[0]
-            Rectangle(pos=(self.x + pad, self.y), size=(self.width - pad, self.height))
 
 
 class MainIndexScreen(IndexScreen):
@@ -232,9 +191,10 @@ class MainIndexScreen(IndexScreen):
             sub_item_text,
         ) in sub_items_to_display:
             is_tag = isinstance(sub_item_id, Tags)
-            title_button = _MainIndexTitleItemButton(
-                text=tag_heading_markup(sub_item_id) if is_tag else sub_item_text,
+            title_button = IndexTitleItemButton(
+                full_text=tag_heading_markup(sub_item_id) if is_tag else sub_item_text,
                 markup=is_tag,
+                size_hint=(0.90, None),
                 italic=use_italic,
                 bold=not use_italic,  # not a title so must be TagGroup
                 font_name=str(self._font_manager.index_title_item_font_name),

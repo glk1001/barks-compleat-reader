@@ -31,12 +31,11 @@ from barks_reader.ui.index_screen import (
 )
 from barks_reader.ui.speech_index_screen import (
     _SEARCH_CACHE_MAX_ENTRIES,
+    IndexTitleItemButton,
     SpeechIndexScreen,
-    _SpeechIndexTitleItemButton,
     _store_bounded,
 )
 from kivy.clock import Clock
-from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
@@ -376,7 +375,7 @@ class TestSpeechButtonKeyboardNav:
     @staticmethod
     def _title_row(screen: SpeechIndexScreen) -> tuple[MagicMock, MagicMock]:
         """Build a title button paired with its speech button, as the grid lays them out."""
-        title_btn = MagicMock(spec=_SpeechIndexTitleItemButton)
+        title_btn = MagicMock(spec=IndexTitleItemButton)
         speech_btn = MagicMock(spec=TitleShowSpeechButton)
         parent = MagicMock()
         # Kivy's children list runs bottom-to-top, so the speech button sits at
@@ -402,7 +401,7 @@ class TestSpeechButtonKeyboardNav:
     def test_orphan_title_button_has_no_paired_speech_button(
         self, speech_index_screen: SpeechIndexScreen
     ) -> None:
-        title_btn = MagicMock(spec=_SpeechIndexTitleItemButton)
+        title_btn = MagicMock(spec=IndexTitleItemButton)
         title_btn.parent = None
 
         assert speech_index_screen._get_paired_speech_button(title_btn) is None
@@ -798,7 +797,9 @@ class TestTheTitleRowsOfATerm:
             "Title One, 3",
             "Much Longer Title Two, A, 7, 9",
         ]
-        assert all(isinstance(title, _SpeechIndexTitleItemButton) for title, _ in rows)
+        assert all(isinstance(title, IndexTitleItemButton) for title, _ in rows)
+        assert all(title.italic for title, _ in rows)
+        assert all(title.height == _speech_module.INDEX_ITEM_ROW_HEIGHT for title, _ in rows)
         assert all(isinstance(speech, TitleShowSpeechButton) for _, speech in rows)
 
     def test_the_rows_fill_their_column_and_are_indented_half_a_step_under_the_term(
@@ -861,71 +862,6 @@ class TestTheTitleRowsOfATerm:
 
         build.assert_called_once_with(item)
         insert.assert_called_once_with(build.return_value)
-
-
-class TestATitleCutToItsColumn:
-    """A title too long for its row gives way to an ellipsis; its pages are kept."""
-
-    WIDE = 600
-    NARROW = 150
-
-    @staticmethod
-    def _button(full_text: str, width: float) -> _SpeechIndexTitleItemButton:
-        button = _SpeechIndexTitleItemButton(
-            full_text=full_text, font_name="Roboto", font_size=14, padding=[20, 0, 0, 0]
-        )
-        button.width = width
-        return button
-
-    @staticmethod
-    def _shown_width(button: _SpeechIndexTitleItemButton) -> float:
-        measure = _speech_module.CoreLabel(font_name="Roboto", font_size=14, italic=True)
-        return measure.get_extents(button.text)[0]
-
-    def test_a_title_with_room_shows_whole(self) -> None:
-        button = self._button("Donald Duck's Atom Bomb, 5", self.WIDE)
-        assert button.text == "Donald Duck's Atom Bomb, 5"
-
-    def test_a_title_too_long_is_cut_and_keeps_its_pages(self) -> None:
-        button = self._button("Donald Duck's Atom Bomb, 5", self.NARROW)
-
-        assert button.text.startswith("Donald")
-        assert button.text.endswith("\u2026, 5")
-        assert self._shown_width(button) <= self.NARROW - 20
-
-    def test_as_much_of_the_title_shows_as_fits(self) -> None:
-        title, pages = "Donald Duck's Atom Bomb", ", 5"
-        button = self._button(title + pages, self.NARROW)
-        kept = len(button.text) - len("\u2026" + pages)
-
-        one_more = f"{title[: kept + 1]}\u2026{pages}"
-        measure = _speech_module.CoreLabel(font_name="Roboto", font_size=14, italic=True)
-        assert 0 < kept < len(title)
-        assert measure.get_extents(one_more)[0] > self.NARROW - 20 - dp(4)
-
-    def test_an_article_listed_after_the_title_is_cut_with_it(self) -> None:
-        button = self._button("Golden Christmas Tree, The, 11", self.NARROW)
-
-        assert button.text.startswith("Golden")
-        assert button.text.endswith("\u2026, 11")
-        assert ", The" not in button.text
-
-    def test_a_title_with_no_pages_ends_in_the_ellipsis(self) -> None:
-        button = self._button("A Very Long Title Indeed With No Page", self.NARROW)
-
-        assert button.text.startswith("A Very")
-        assert button.text.endswith("\u2026")
-
-    def test_a_row_widened_shows_the_whole_title_again(self) -> None:
-        button = self._button("Donald Duck's Atom Bomb, 5", self.NARROW)
-
-        button.width = self.WIDE
-
-        assert button.text == "Donald Duck's Atom Bomb, 5"
-
-    def test_a_row_with_no_width_yet_keeps_the_whole_text(self) -> None:
-        button = self._button("Donald Duck's Atom Bomb, 5", 0)
-        assert button.text == "Donald Duck's Atom Bomb, 5"
 
 
 class TestAPrefixPressedByMouse:
@@ -1095,12 +1031,12 @@ class TestSpeechButtonOtherKeys:
 
 class TestPairedSpeechButtonOddCases:
     def test_a_title_button_its_parent_no_longer_holds(self) -> None:
-        title_btn = MagicMock(spec=_SpeechIndexTitleItemButton)
+        title_btn = MagicMock(spec=IndexTitleItemButton)
         title_btn.parent = MagicMock(children=[MagicMock()])
         assert SpeechIndexScreen._get_paired_speech_button(title_btn) is None
 
     def test_a_title_button_with_no_speech_button_beside_it(self) -> None:
-        title_btn = MagicMock(spec=_SpeechIndexTitleItemButton)
+        title_btn = MagicMock(spec=IndexTitleItemButton)
         title_btn.parent = MagicMock(children=[MagicMock(), title_btn])  # a plain neighbour
         assert SpeechIndexScreen._get_paired_speech_button(title_btn) is None
 
@@ -1212,7 +1148,7 @@ class TestSpeechButtonDeadEnds:
 
     @staticmethod
     def _unpaired_title(screen: SpeechIndexScreen) -> MagicMock:
-        title_btn = MagicMock(spec=_SpeechIndexTitleItemButton)
+        title_btn = MagicMock(spec=IndexTitleItemButton)
         title_btn.parent = MagicMock(children=[MagicMock(), title_btn])
         screen._nav_focused_col = 0
         screen._nav_focused_item_idx = 0
@@ -1449,7 +1385,7 @@ class TestTheRingOnATitleRow:
     @pytest.fixture
     def row(self, speech_index_screen: SpeechIndexScreen) -> Generator[tuple[Button, Button]]:
         screen = speech_index_screen
-        title_btn = _SpeechIndexTitleItemButton(text="Title One, 3")
+        title_btn = IndexTitleItemButton(text="Title One, 3")
         speech_btn = TitleShowSpeechButton()
         parent = BoxLayout()
         parent.add_widget(title_btn)

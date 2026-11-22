@@ -557,15 +557,15 @@ def test_a_tapped_speech_index_title_row_takes_the_keys_focus(boot: AppBoot) -> 
     others = [
         target
         for target in shown
-        if target.kind == "_SpeechIndexTitleItemButton"
+        if target.kind == "IndexTitleItemButton"
         and target.whole
         and f'"{target.text}"' not in focused
     ]
     assert others, "the first term of the Words index is said in one story only"
     row = others[-1]
-    on_the_row = f'{d.FOCUS_MOVED} _SpeechIndexTitleItemButton "{re.escape(row.text)}"'
+    on_the_row = f'{d.FOCUS_MOVED} IndexTitleItemButton "{re.escape(row.text)}"'
     with d.expect(on_the_row), d.expect(pattern(markers.GOTO_TITLE)):
-        taps.tap(d, text=row.text, kind="_SpeechIndexTitleItemButton")
+        taps.tap(d, text=row.text, kind="IndexTitleItemButton")
 
 
 # ------------------------------------------------------------- the search box --
