@@ -1493,30 +1493,23 @@ class TestPinnedPress:
         assert pin.kwargs["is_open"]() is True
         assert pin.kwargs["first_rows"]() == rows[:3]
 
-    def test_the_first_rows_are_found_through_a_wrapper(
-        self, index_screen: ConcreteIndexScreen
+    @pytest.mark.parametrize("titles", [1, 4])
+    def test_a_speech_index_s_first_rows_are_its_rows_not_the_buttons_in_them(
+        self, index_screen: ConcreteIndexScreen, titles: int
     ) -> None:
-        """The speech indexes wrap their sub-items layout once more."""
-        button = MagicMock()
-        rows = [MagicMock(name=f"row{i}") for i in range(2)]
-        wrapper = MagicMock()
-        wrapper.owner_button = button
-        wrapper.children = [self._owner_layout(None, *rows)]
-        index_screen._open_tag_widgets = [wrapper]
-        assert index_screen._first_sub_item_rows(button, 3) == rows
-
-    def test_a_grid_of_several_columns_holds_a_row_per_column(
-        self, index_screen: ConcreteIndexScreen
-    ) -> None:
-        """The speech indexes' grid pairs each title with its speech button."""
-        button = MagicMock()
-        cells = [MagicMock(name=f"cell{i}") for i in range(8)]
-        grid = MagicMock(spec=GridLayout)
-        grid.cols = 2
-        grid.owner_button = button
-        grid.children = list(reversed(cells))
-        index_screen._open_tag_widgets = [grid]
-        assert index_screen._first_sub_item_rows(button, 3) == cells[:6]
+        """Each row there holds a title and its speech button; a lone row is still the row."""
+        button = Button()
+        layout = index_screen._new_sub_items_layout()
+        rows = []
+        for n in range(titles):
+            row = BoxLayout(orientation="horizontal")
+            row.add_widget(Button(text=f"Title {n}"))
+            row.add_widget(Button(text="speech"))
+            layout.add_widget(row)
+            rows.append(row)
+        layout.owner_button = button
+        index_screen._open_tag_widgets = [layout]
+        assert index_screen._first_sub_item_rows(button, 3) == rows[:3]
 
     def test_the_focus_resync_after_an_expansion_does_not_scroll(
         self, index_screen: ConcreteIndexScreen
