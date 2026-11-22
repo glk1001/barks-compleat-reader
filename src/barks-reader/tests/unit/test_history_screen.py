@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.fanta_comics_info import get_fanta_info
 from barks_reader.core.keys import (
     KEY_DELETE,
     KEY_DOWN,
@@ -676,11 +678,15 @@ class TestDisplayTitle:
         assert history_screen_module._get_display_title("No Such Story") == "No Such Story"
 
     def test_a_known_title_shows_its_display_form(self) -> None:
-        title = history_screen_module.STR_TITLE_TO_ENUM["Omelet"]
-        info = history_screen_module.get_fanta_info(title)
+        info = get_fanta_info(Titles.OMELET)
         assert info is not None
         expected = info.comic_book_info.get_display_title()
         assert history_screen_module._get_display_title("Omelet") == expected
+
+    def test_a_title_in_no_fantagraphics_volume_keeps_the_parentheses_convention(self) -> None:
+        """Every other caption puts a title Barks did not give in parentheses."""
+        assert get_fanta_info(Titles.ATTIC_ANTICS) is None
+        assert history_screen_module._get_display_title("Attic Antics") == "(Attic Antics)"
 
 
 class TestViewTabs:

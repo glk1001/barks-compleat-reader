@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
-from barks_fantagraphics.fanta_comics_info import get_fanta_info
 from kivy.clock import Clock
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
@@ -52,6 +51,7 @@ from barks_reader.core.keys import (
     KEY_UP,
     is_escape_key,
 )
+from barks_reader.core.reader_formatter import get_display_title_str
 from barks_reader.core.reader_palette import theme
 from barks_reader.core.reading_history import (
     ReadEvent,
@@ -188,12 +188,9 @@ class _BuiltView:
 
 
 def _get_display_title(title_str: str) -> str:
-    """Return the title decorated per the parentheses convention, or as-is."""
+    """Return a stored title as a caption shows it, or as stored when it is no longer a title."""
     title = STR_TITLE_TO_ENUM.get(title_str)
-    fanta_info = None if title is None else get_fanta_info(title)
-    if fanta_info is None:
-        return title_str
-    return fanta_info.comic_book_info.get_display_title()
+    return title_str if title is None else get_display_title_str(title)
 
 
 def _fit_text_to_cell(cell: Label, _size: tuple[float, float]) -> None:
