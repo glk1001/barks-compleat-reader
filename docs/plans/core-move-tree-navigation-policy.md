@@ -1,6 +1,12 @@
 # Plan: tree navigation policy asked of the model, not of widget classes
 
-> Status: **proposed 2026-11-22**, nothing started. One of four plans from the
+> Status: **done 2026-11-22** (four commits). The prerequisite held: a title row is
+> the only node with a `TitleDestination` (pinned in `test_reader_tree_spec.py`).
+> `BottomScreen` and `ReopenKind` are enums in `core/navigation`. With the `id(node)`
+> dictionary gone, the tree manager's Words, Statistics and History node references
+> and their `NodeRegistration` members went too. Step 4 changed only the checks that
+> were pure policy (`on_node_expanded`, `on_node_collapsed`, `_has_view_of_its_own`);
+> the rest narrow the type before a call one class has, and stay. One of four plans from the
 > `ui` review of that date (see `core-move-navigation-coordinator.md`).
 
 ## Context

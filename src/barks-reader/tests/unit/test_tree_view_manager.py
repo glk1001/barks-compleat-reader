@@ -357,6 +357,25 @@ class TestTreeViewManager:
 
         pin.assert_not_called()
 
+    def test_a_title_row_collapsed_or_expanded_changes_no_view(
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
+    ) -> None:
+        """A title row is told by its destination; it has nothing to open or close."""
+        row = MagicMock(destination=TitleDestination(fanta_info=fake_fanta_info()))
+        overlay = cast("MagicMock", tree_view_manager._collapse_overlay)
+
+        with (
+            patch.object(tree_view_manager._scroll_pinner, "pin_while_collapsing") as pin,
+            patch.object(tree_view_manager._scroll_pinner, "pin_while_populating") as populate,
+        ):
+            tree_view_manager.on_node_collapsed(MagicMock(), row)
+            tree_view_manager.on_node_expanded(MagicMock(), row)
+
+        pin.assert_not_called()
+        populate.assert_not_called()
+        overlay.track_node.assert_not_called()
+        tree_view_manager_deps["renderer"].render.assert_not_called()
+
     def test_scrolling_to_a_node_lets_the_pins_under_way_go(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
     ) -> None:
@@ -396,7 +415,7 @@ class TestTreeViewManager:
         self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
     ) -> None:
         # No pin runs on this path to lift the overlay's suppression: it is lifted here.
-        node = MagicMock(spec=ButtonTreeViewNode)
+        node = MagicMock(spec=ButtonTreeViewNode, destination=StoriesDestination())
         overlay = cast("MagicMock", tree_view_manager._collapse_overlay)
 
         with (

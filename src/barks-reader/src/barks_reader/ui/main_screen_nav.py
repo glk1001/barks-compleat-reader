@@ -420,7 +420,7 @@ class MainScreenNavigation:
             self._render_view_of(node)
 
     def _has_view_of_its_own(self, node: BaseTreeViewNode) -> bool:
-        return isinstance(node, TitleTreeViewNode) or self._open_group(node) is not None
+        return NavigationModel.is_title(node.destination) or self._open_group(node) is not None
 
     def _render_view_of(self, node: BaseTreeViewNode) -> None:
         """Show the view of `node`, a title or an open group, arrived on by the keys."""
@@ -437,8 +437,7 @@ class MainScreenNavigation:
     def _open_group(node: BaseTreeViewNode) -> ButtonTreeViewNode | None:
         """Return `node` as an open group node with a view of its own, else None."""
         if (
-            isinstance(node, ButtonTreeViewNode)
-            and not isinstance(node, TitleTreeViewNode)
+            isinstance(node, ButtonTreeViewNode)  # a title row is not one
             and node.is_open
             and node.nodes
             and node.destination is not None

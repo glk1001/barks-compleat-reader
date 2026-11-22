@@ -283,7 +283,7 @@ class TreeViewManager:
         self._collapse_overlay.recheck_visibility()
 
         # Check allow state change flag or is leaf/title row.
-        if not self._allow_view_state_change or isinstance(node, TitleTreeViewNode):
+        if not self._allow_view_state_change or self._nav_model.is_title(node.destination):
             logger.info(log_markers.NODE_COLLAPSED_NO_STATE_CHANGE.format(name=node.get_name()))
             return
 
@@ -322,10 +322,11 @@ class TreeViewManager:
 
         # Always track the expanded node for the collapse overlay, even when
         # view-state changes are suppressed (e.g. during goto-title navigation).
-        if not isinstance(node, TitleTreeViewNode):
+        is_title = self._nav_model.is_title(node.destination)
+        if not is_title:
             self._collapse_overlay.track_node(node)
 
-        if not self._allow_view_state_change or isinstance(node, TitleTreeViewNode):
+        if not self._allow_view_state_change or is_title:
             logger.info(f"Node opened but not allowing state change: '{node.get_name()}'.")
             # No stabilization will run on this path, so lift the suppression
             # that track_node just set — otherwise end_suppression is never called.

@@ -448,7 +448,7 @@ class TestTreeNavMove:
     def test_renders_title_node_immediately_on_discrete_press(
         self, nav: MainScreenNavigation, fake_trigger: FakeTrigger
     ) -> None:
-        title_node = MagicMock(spec=TitleTreeViewNode)
+        title_node = _title_node()
         nav._tree_view_screen.get_visible_nodes.return_value = [title_node]  # ty: ignore[missing-attribute]
         nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
 
@@ -1566,7 +1566,7 @@ class TestOpenGroupNodeArrival:
         manager.set_view_state_for_node.assert_not_called()
 
     def test_a_title_renders_as_a_title(self, nav: MainScreenNavigation) -> None:
-        title = MagicMock(spec=TitleTreeViewNode)
+        title = _title_node()
         manager = self._move_onto(nav, title)
         manager.set_view_state_for_node.assert_not_called()
         manager.render_title_node.assert_called_once_with(title)
@@ -1575,7 +1575,7 @@ class TestOpenGroupNodeArrival:
         self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
     ) -> None:
         """A held key through open tags renders none of them on the way, as with titles."""
-        title = MagicMock(spec=TitleTreeViewNode)
+        title = _title_node()
         node = self._group(is_open=True)
         tree = cast("MagicMock", nav._tree_view_screen)
         manager = cast("MagicMock", nav._tree_view_manager)
@@ -1597,7 +1597,7 @@ class TestOpenGroupNodeArrival:
     def test_a_deferred_group_render_is_skipped_once_the_selection_has_moved_on(
         self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
     ) -> None:
-        title = MagicMock(spec=TitleTreeViewNode)
+        title = _title_node()
         node = self._group(is_open=True)
         tree = cast("MagicMock", nav._tree_view_screen)
         manager = cast("MagicMock", nav._tree_view_manager)
