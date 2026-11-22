@@ -18,7 +18,6 @@ from barks_reader.core.popup_gallery import (
     parse_request,
     request_text,
 )
-from barks_reader.core.user_error_messages import build_error_presentation
 from barks_reader.core.user_error_types import ErrorTypes
 from barks_reader.ui import main_screen as main_screen_module
 from barks_reader.ui import popup_frame, popup_gallery, request_service
@@ -55,20 +54,6 @@ class TestNames:
     @pytest.mark.parametrize("text", ["", "quit", "1 quit extra"])
     def test_a_request_not_an_id_and_a_name_is_none(self, text: str) -> None:
         assert core_gallery.parse_request(text) is None
-
-
-class TestSamples:
-    @pytest.mark.parametrize("error_type", list(ErrorTypes))
-    def test_each_user_errors_sample_makes_its_message(self, error_type: ErrorTypes) -> None:
-        sample = popup_gallery._ERROR_SAMPLES[error_type]  # noqa: SLF001
-        presentation = build_error_presentation(error_type, sample, MagicMock())
-        assert presentation.text
-
-    def test_the_offer_and_the_no_update_say_their_piece(self) -> None:
-        offer = popup_gallery._sample_update_check(popup_gallery.UpdateStatus.UPDATE_AVAILABLE)  # noqa: SLF001
-        assert "Install it now?" in offer.offer_message()
-        none_new = popup_gallery._sample_update_check(popup_gallery.UpdateStatus.PACKS_MISSING)  # noqa: SLF001
-        assert "barks-reader-data-2.barkspack" in none_new.no_update_message()
 
 
 class TestOpeners:

@@ -26,8 +26,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
-from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.search_results import PageInfo, SpeechInfo, TitleInfo
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
@@ -37,7 +35,7 @@ from kivy.uix.modalview import ModalView
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.data_pack import DataPackInfo, UpdateCheck, UpdateStatus
+from barks_reader.core.data_pack import UpdateStatus
 from barks_reader.core.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from barks_reader.core.popup_gallery import (
     LIVE_MODE,
@@ -46,8 +44,12 @@ from barks_reader.core.popup_gallery import (
     error_popup_name,
     parse_request,
 )
+from barks_reader.core.popup_gallery_samples import (
+    ERROR_SAMPLES,
+    sample_title_speech,
+    sample_update_check,
+)
 from barks_reader.core.reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
-from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes
 
 from .alt_escape_capture_popup import AltEscapeCapturePopup
 from .history_screen import open_clear_history_popup, open_delete_from_history_popup
@@ -65,9 +67,9 @@ from .user_error_handler import UserErrorHandler
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from datetime import datetime
 
     from barks_reader.core.reader_settings import ReaderSettings
+    from barks_reader.core.user_error_types import ErrorTypes
 
     from .font_manager import FontManager
 
@@ -106,64 +108,6 @@ class _SettingStandIn:
         """Take the chosen folder and drop it."""
 
 
-def _sample_pack(version: int, built_at: datetime) -> DataPackInfo:
-    return DataPackInfo(version, f"data-v{version}", built_at, "gallery", {})
-
-
-def _sample_update_check(status: UpdateStatus) -> UpdateCheck:
-    from datetime import UTC, datetime  # noqa: PLC0415
-
-    installed = _sample_pack(6, datetime(2026, 10, 29, tzinfo=UTC))
-    offered = _sample_pack(7, datetime(2026, 11, 14, tzinfo=UTC))
-    return UpdateCheck(
-        status,
-        Path.home() / "Downloads",
-        installed,
-        packs=(offered, offered),
-        missing=("barks-reader-data-2.barkspack",),
-    )
-
-
-def _sample_title_speech() -> TitleInfo:
-    def page(comic_page: str, *lines: str) -> PageInfo:
-        speech = [
-            SpeechInfo(str(group), group, text, text, speaker="donald")
-            for group, text in enumerate(lines, start=1)
-        ]
-        return PageInfo(comic_page, speech)
-
-    return TitleInfo(
-        fanta_vol=7,
-        fanta_pages={
-            "3": page("3", "Square eggs! Who ever heard of square eggs?"),
-            "7": page(
-                "7",
-                "These square eggs will make us rich, boys!",
-                "If we can get them home without breaking.",
-            ),
-            "21": page("21", "Square chickens lay square eggs, of course!"),
-        },
-    )
-
-
-# What each user error's popup is shown with: the fields its message reads.
-_ERROR_SAMPLES: dict[ErrorTypes, ErrorInfo | None] = {
-    ErrorTypes.FantagraphicsVolumeRootNotSet: None,
-    ErrorTypes.FantagraphicsVolumeRootNotFound: ErrorInfo(
-        file="/media/greg/Barks/Fantagraphics Carl Barks Library"
-    ),
-    ErrorTypes.DuplicateVolumeArchiveFiles: ErrorInfo(
-        file="/media/greg/Barks/Fantagraphics Carl Barks Library", duplicate_volumes=[7, 12]
-    ),
-    ErrorTypes.MissingArchiveVolumes: ErrorInfo(missing_volumes=[5, 9, 14]),
-    ErrorTypes.MissingVolumeCannotShowTitle: ErrorInfo(
-        missing_volumes=[7], title=Titles.LOST_IN_THE_ANDES
-    ),
-    ErrorTypes.ArchiveVolumeNotAvailable: ErrorInfo(file_volume=7, title=Titles.LOST_IN_THE_ANDES),
-    ErrorTypes.ComicLoadFailed: ErrorInfo(title=Titles.LOST_IN_THE_ANDES),
-}
-
-
 def _identity_art(app: GalleryApp) -> str:
     return str(app.reader_settings.sys_file_paths.get_app_identity_image_file())
 
@@ -171,7 +115,7 @@ def _identity_art(app: GalleryApp) -> str:
 def _open_user_error(error_type: ErrorTypes) -> Callable[[GalleryApp], None]:
     def open_it(app: GalleryApp) -> None:
         handler = UserErrorHandler(app.reader_settings, _ignore)
-        handler.handle_error(error_type, _ERROR_SAMPLES[error_type], on_popup_closed=_ignore)
+        handler.handle_error(error_type, ERROR_SAMPLES[error_type], on_popup_closed=_ignore)
 
     return open_it
 
@@ -188,7 +132,7 @@ def _open_speech_bubbles(app: GalleryApp) -> None:
         popup,
         "Lost in the Andes!",
         "square eggs",
-        _sample_title_speech(),
+        sample_title_speech(),
         _ignore,
         text_font_size=fm.speech_bubble_text_font_size,
     )
@@ -207,13 +151,13 @@ _OPENERS: dict[str, Callable[[GalleryApp], None]] = {
     ),
     "clear-history": lambda _app: open_clear_history_popup(_ignore),
     "data-pack-offer": lambda app: open_data_pack_offer_popup(
-        _sample_update_check(UpdateStatus.UPDATE_AVAILABLE), _ignore, _identity_art(app), None
+        sample_update_check(UpdateStatus.UPDATE_AVAILABLE), _ignore, _identity_art(app), None
     ),
     "data-pack-no-update": lambda _app: open_no_data_pack_update_popup(
-        _sample_update_check(UpdateStatus.PACKS_MISSING), None
+        sample_update_check(UpdateStatus.PACKS_MISSING), None
     ),
     "small-screen": lambda _app: open_small_screen_popup(1280, 720),
-    **{error_popup_name(error_type): _open_user_error(error_type) for error_type in _ERROR_SAMPLES},
+    **{error_popup_name(error_type): _open_user_error(error_type) for error_type in ERROR_SAMPLES},
     "about": _open_about,
     "speech-bubbles": _open_speech_bubbles,
     "folder-chooser": lambda _app: open_folder_chooser_popup(
