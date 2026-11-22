@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import string
 from abc import abstractmethod
 from enum import Enum, auto
@@ -35,6 +34,7 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.focus_cursors import GridCursor, deal_into_columns, wrapped
 from barks_reader.core.image_selector import ImageInfo, caption_title
+from barks_reader.core.index_text import shortened_keeping_pages
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -151,8 +151,6 @@ class IndexNoItemsButton(IndexItemButton):
     """
 
 
-# In a title row's text, where its page numbers start: the title before them gives way.
-_PAGES_START = re.compile(r", \d")
 # Where a title row's fill starts, as a share of its indent: a little ahead of its text.
 _TITLE_FILL_INDENT_SHARE = 0.8
 
@@ -208,21 +206,8 @@ class IndexTitleItemButton(Button):
         def fits(text: str) -> bool:
             return measure.get_extents(text)[0] <= room
 
-        if room <= 0 or fits(full):
-            self.text = full
-            return
-        pages_at = _PAGES_START.search(full)
-        title, pages = (
-            (full[: pages_at.start()], full[pages_at.start() :]) if pages_at else (full, "")
-        )
-        low, high = 0, len(title)
-        while low < high:
-            keep = (low + high + 1) // 2
-            if fits(f"{title[:keep].rstrip()}\u2026{pages}"):
-                low = keep
-            else:
-                high = keep - 1
-        self.text = f"{title[:low].rstrip()}\u2026{pages}"
+        # A row not yet laid out has no room to fit to: its whole text, until it has.
+        self.text = full if room <= 0 else shortened_keeping_pages(full, fits)
 
     def update_canvas(self, *_args: object) -> None:
         """Redraw the row's fill, from just ahead of the text to the row's end, for its state."""

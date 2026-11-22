@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.index_text import (
@@ -11,9 +13,13 @@ from barks_reader.core.index_text import (
     indexable_title_from_str,
     shorten_if_necessary,
     shortened_at_a_word,
+    shortened_keeping_pages,
     sortable_string,
     stacked_prefix_label,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @pytest.mark.parametrize(
@@ -118,3 +124,60 @@ def test_a_cut_is_marked_by_the_ellipsis_asked_for() -> None:
     assert shortened_at_a_word("gold and more gold", 12, ellipsis="…") == "gold and…"
     assert shortened_at_a_word("Duckburg", 5, ellipsis="…") == "Duck…"
     assert shortened_at_a_word("gold", 12, ellipsis="…") == "gold"
+
+
+def _fits_in(width: int, tried: list[str] | None = None) -> Callable[[str], bool]:
+    """Return a row that holds `width` characters, noting each text it is asked about."""
+
+    def fits(text: str) -> bool:
+        if tried is not None:
+            tried.append(text)
+        return len(text) <= width
+
+    return fits
+
+
+class TestShortenedKeepingPages:
+    """A title row too long for its row: the title gives way, the pages stay."""
+
+    def test_a_text_that_fits_is_left_whole(self) -> None:
+        full = "Lost in the Andes!, 3-5,12"
+        assert shortened_keeping_pages(full, _fits_in(len(full))) == full
+
+    def test_the_title_is_cut_and_its_pages_kept(self) -> None:
+        cut = shortened_keeping_pages("Lost in the Andes!, 3-5,12", _fits_in(20))
+
+        assert cut == "Lost in the\u2026, 3-5,12"
+        assert len(cut) <= 20  # noqa: PLR2004
+
+    def test_as_much_of_the_title_is_kept_as_fits(self) -> None:
+        """One more letter of the title would not fit."""
+        full = "Lost in the Andes!, 3-5,12"
+        for width in range(len("\u2026, 3-5,12"), len(full)):
+            cut = shortened_keeping_pages(full, _fits_in(width))
+            kept = cut[: cut.index("\u2026")]
+            assert len(cut) <= width
+            longer = full[: len(kept) + 1].rstrip()
+            assert longer == kept or len(f"{longer}\u2026, 3-5,12") > width
+
+    def test_a_space_before_the_ellipsis_is_dropped(self) -> None:
+        cut = shortened_keeping_pages("Lost in the Andes!, 3", _fits_in(len("Lost in \u2026, 3")))
+        assert cut == "Lost in\u2026, 3"
+
+    def test_a_title_with_no_pages_is_cut_at_its_end(self) -> None:
+        assert shortened_keeping_pages("Lost in the Andes!", _fits_in(8)) == "Lost in\u2026"
+
+    def test_a_comma_in_the_title_is_not_where_its_pages_start(self) -> None:
+        """Only a comma before a digit starts the pages."""
+        cut = shortened_keeping_pages("Ghost of the Grotto, The, 7", _fits_in(18))
+        assert cut == "Ghost of the G\u2026, 7"
+        assert len(cut) == 18  # noqa: PLR2004
+
+    def test_a_row_too_narrow_for_any_of_the_title_shows_the_ellipsis_and_pages(self) -> None:
+        assert shortened_keeping_pages("Lost in the Andes!, 3-5", _fits_in(2)) == "\u2026, 3-5"
+
+    def test_the_search_asks_about_few_texts(self) -> None:
+        """Each ask measures text: a halving, not a walk along the title."""
+        tried: list[str] = []
+        shortened_keeping_pages("A" * 64 + ", 3", _fits_in(20, tried))
+        assert len(tried) <= 8  # noqa: PLR2004

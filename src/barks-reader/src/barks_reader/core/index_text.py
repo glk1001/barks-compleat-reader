@@ -6,10 +6,15 @@ index shows, rather than by knowing its layout.
 
 from __future__ import annotations
 
+import re
 import textwrap
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.alpha_split import bucket_label_parts
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # The longest title an index row shows with its pages, before it is shortened.
 MAX_TITLE_AND_PAGES_LEN = 34 + 8  # len(", 11,...") == 8
@@ -114,3 +119,39 @@ def stacked_prefix_label(prefix: str, terms: list[str]) -> str:
     if start == end or f"{start}-{end}" != prefix:
         return prefix
     return f"{start}\n{end}"
+
+
+# In a title row's text, where its page numbers start: the title before them gives way.
+_PAGES_START = re.compile(r", \d")
+_ROW_ELLIPSIS = "\u2026"
+
+
+def shortened_keeping_pages(full: str, fits: Callable[[str], bool]) -> str:
+    """Return a title row's text cut to fit its row, its page numbers kept.
+
+    The title gives way, not the pages after it: "Lost in the An…, 3-5,12". As much
+    of the title is kept as fits, found by halving, on the footing that a longer
+    text never fits where a shorter one does not.
+
+    Args:
+        full: The row's whole text, "Title, pages", or a title alone.
+        fits: Whether a text fits the row, as its font draws it.
+
+    Returns:
+        The whole text when it fits; else the longest start of the title that fits
+        with an ellipsis and the pages after it, which is the ellipsis and the pages
+        alone when no start does.
+
+    """
+    if fits(full):
+        return full
+    pages_at = _PAGES_START.search(full)
+    title, pages = (full[: pages_at.start()], full[pages_at.start() :]) if pages_at else (full, "")
+    low, high = 0, len(title)
+    while low < high:
+        keep = (low + high + 1) // 2
+        if fits(f"{title[:keep].rstrip()}{_ROW_ELLIPSIS}{pages}"):
+            low = keep
+        else:
+            high = keep - 1
+    return f"{title[:low].rstrip()}{_ROW_ELLIPSIS}{pages}"
