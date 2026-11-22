@@ -747,11 +747,16 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         self._enter_prefix_panel()
 
     def _enter_prefix_panel(self) -> None:
+        visible = self._get_visible_prefix_buttons()
+        if not visible:
+            # A letter with no words has no prefix to ring (and no item either): the
+            # letters keep the keys, where on an empty bar no key did anything again.
+            self._enter_alphabet_panel()
+            return
         self._clear_all_item_focus()
         self._clear_letter_focus()
         self._nav_panel = _IndexNavPanel.PREFIX
         # Focus the currently selected prefix.
-        visible = self._get_visible_prefix_buttons()
         if self._selected_prefix_button and self._selected_prefix_button in visible:
             self._nav_focused_prefix_idx = visible.index(self._selected_prefix_button)
         else:
@@ -761,7 +766,10 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
     def _handle_prefix_key(self, key: int) -> bool:
         visible = self._get_visible_prefix_buttons()
         if not visible:
-            return False
+            # No bar to be on (`_enter_prefix_panel` keeps off an empty one): back to
+            # the letters, not a screen that takes no key.
+            self._enter_alphabet_panel()
+            return True
         idx = self._nav_focused_prefix_idx
         if key in (KEY_LEFT, KEY_RIGHT):
             self._clear_prefix_focus()

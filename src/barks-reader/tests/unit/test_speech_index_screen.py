@@ -1102,9 +1102,31 @@ class TestPrefixBarEdges:
             assert speech_index_screen._handle_prefix_key(KEY_ESCAPE) is True
         alphabet.assert_called_once()
 
-    def test_an_empty_bar_takes_no_key(self, speech_index_screen: SpeechIndexScreen) -> None:
+    @pytest.mark.parametrize("key", [KEY_LEFT, KEY_RIGHT, KEY_DOWN, KEY_ESCAPE, KEY_PAGE_DOWN])
+    def test_any_key_on_an_empty_bar_goes_back_to_the_alphabet(
+        self, speech_index_screen: SpeechIndexScreen, key: int
+    ) -> None:
+        """Taking no key there, the screen took none ever again."""
         self._visible(speech_index_screen, 0)
-        assert speech_index_screen._handle_prefix_key(KEY_LEFT) is False
+        with patch.object(speech_index_screen, "_enter_alphabet_panel") as alphabet:
+            assert speech_index_screen._handle_prefix_key(key) is True
+        alphabet.assert_called_once_with()
+
+    def test_a_letter_with_no_words_keeps_the_keys_on_the_alphabet(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        """Right from the letters has no prefix to go to, and no item past the bar."""
+        screen = speech_index_screen
+        self._visible(screen, 0)
+        screen._nav_panel = _IndexNavPanel.ALPHABET
+        with (
+            patch.object(screen, "_clear_letter_focus") as clear_letter,
+            patch.object(screen, "_enter_alphabet_panel") as alphabet,
+        ):
+            screen._on_right_from_alphabet()
+        assert screen._nav_panel is _IndexNavPanel.ALPHABET
+        clear_letter.assert_not_called()
+        alphabet.assert_called_once_with()
 
     def test_entering_the_bar_with_no_prefix_selected_focuses_the_first(
         self, speech_index_screen: SpeechIndexScreen
