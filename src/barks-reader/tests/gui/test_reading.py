@@ -94,8 +94,12 @@ def _only_unread_setting(boot: AppBoot) -> str:
 def test_the_only_unread_tick_keeps_a_node_s_picks_to_stories_not_yet_read(
     boot: AppBoot,
 ) -> None:
-    """Return on the tick row turns it on, and off again; a node opened between has no dots."""
-    d = boot(nodes.READING)
+    """Return on the tick row turns it on, and off again; a node opened between has no dots.
+
+    Booted with the box clear whatever the live profile holds: with it left ticked
+    there, the first Return cleared it (the main PC, 2026-11-24).
+    """
+    d = boot(nodes.READING, ini={"choose_only_unread": "0"})
     d.open_branch("Choose for me")
     d.select_node(ONLY_UNREAD_ROW)
     d.key_then_wait(pattern(markers.CHOOSE_ONLY_UNREAD_SET, value=True), "Return")
