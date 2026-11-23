@@ -238,6 +238,23 @@ def test_a_restore_left_at_the_wrong_size_recovers_through_kivy_and_moves_again(
     assert any(line.startswith("Win32 retry:") for line in loguru_sink)
 
 
+def test_a_second_move_that_fails_is_logged_and_goes_no_further(loguru_sink: list[str]) -> None:
+    """The one Win32 call made from a Clock callback: an error there would stop the app."""
+    move_window = MagicMock(side_effect=[True, OSError("the window has gone")])
+    backend = _backend(move_window, _window_at(150, 120, 136, 45))
+
+    with (
+        patch.object(win32_module, "Window", MagicMock(fullscreen=False)),
+        patch.object(win32_module, "Clock") as clock,
+    ):
+        backend._set_window_rect(150, 120, 700, 500)
+        retry = clock.schedule_once.call_args.args[0]
+        retry(0)
+
+    assert "Win32 MoveWindow retry failed: the window has gone" in loguru_sink
+    assert not any(line.startswith("Win32 retry:") for line in loguru_sink)
+
+
 def test_a_restore_at_the_size_asked_for_needs_no_recovery() -> None:
     move_window = MagicMock(return_value=True)
     backend = _backend(move_window, _window_at(150, 120, 700, 500))

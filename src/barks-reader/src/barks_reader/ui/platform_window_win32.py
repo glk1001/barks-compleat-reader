@@ -466,7 +466,12 @@ class Win32WindowBackend:
         def retry(_dt: float) -> None:
             if not self._hwnd:
                 return
-            _, actual_rect = self._move_and_read_back(x, y, width, height)
+            # In a Clock callback: an error let out of here would stop the app.
+            try:
+                _, actual_rect = self._move_and_read_back(x, y, width, height)
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"Win32 MoveWindow retry failed: {e}")
+                return
             logger.info(
                 f"Win32 retry: Requested size = ({width}, {height}); "
                 f" Actual size = ({actual_rect.right - actual_rect.left},"
