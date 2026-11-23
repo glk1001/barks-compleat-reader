@@ -40,6 +40,7 @@ from kivy.metrics import sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.modalview import ModalView
 from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
@@ -487,6 +488,45 @@ class TestPopupFrame:
                 button.dispatch("on_release")
         install.assert_called_once_with()
         dismiss.assert_called_once_with()
+
+    @pytest.mark.parametrize("faded_to", [0.6, 0.0])
+    def test_shown_again_in_its_fade_out_it_leaves_the_window_and_opens(
+        self, faded_to: float
+    ) -> None:
+        """Kivy opens nothing on a view still fading out: the next title's bubbles did not show."""
+        on_closed = MagicMock()
+        frame = _frame(on_closed=on_closed)
+        window = MagicMock()
+        window.remove_widget.side_effect = lambda _frame: frame._on_parent(frame, None)  # noqa: SLF001
+        frame._anim_alpha = faded_to  # noqa: SLF001  (0: closed before it began to show)
+        frame._window, frame._is_open = window, True  # noqa: SLF001  (open, as Kivy keeps it)
+        with patch.object(popup_frame, "Window"):
+            frame.dispatch("on_dismiss")
+        as_opened = []
+
+        def kivy_open(view: PopupFrame, *_args: object, **_kwargs: object) -> None:
+            as_opened.append((view._is_open, view.is_closing, view._anim_alpha))  # noqa: SLF001
+
+        with (
+            patch.object(ModalView, "open", autospec=True, side_effect=kivy_open),
+            patch.object(popup_frame.Animation, "cancel_all") as cancel_all,
+        ):
+            frame.open()
+
+        assert as_opened == [(False, False, 0)]
+        cancel_all.assert_called_once_with(frame, "_anim_alpha")
+        window.remove_widget.assert_called_once_with(frame)
+        on_closed.assert_called_once_with()
+
+    def test_a_frame_off_the_window_just_opens(self) -> None:
+        frame = _frame()
+        with (
+            patch.object(ModalView, "open", autospec=True) as kivy_open,
+            patch.object(popup_frame.Animation, "cancel_all") as cancel_all,
+        ):
+            frame.open(animation=False)
+        kivy_open.assert_called_once_with(frame, animation=False)
+        cancel_all.assert_not_called()
 
     def test_a_frame_shown_again_starts_on_its_first_focus(self) -> None:
         """It came back on the button last focused: Clear, not the Cancel it starts on."""

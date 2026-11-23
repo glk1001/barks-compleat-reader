@@ -27,6 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from kivy.animation import Animation
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp, sp
@@ -255,6 +256,19 @@ class PopupFrame(ModalView):
     def body(self) -> Widget:
         """The popup's own content."""
         return self._body
+
+    def open(self, *args: object, **kwargs: object) -> None:
+        """Show the frame; one still fading out leaves the window first.
+
+        Kivy holds a view to be open until its fade-out has ended, and opens nothing
+        on one that is: a frame shown again in that tenth of a second (the speech
+        bubbles', one frame kept for every title) did not appear.
+        """
+        if self._closing:
+            Animation.cancel_all(self, "_anim_alpha")
+            self._anim_alpha = 0  # where its fade-out ends: Kivy takes it off the window
+            self._real_remove_widget()  # had it not yet begun to show, the 0 was no change
+        super().open(*args, **kwargs)
 
     def focus_button(self, idx: int | None) -> None:
         """Put the focus ring on the row's button `idx`, or take it off the row (None).
