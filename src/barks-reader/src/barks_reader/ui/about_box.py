@@ -9,8 +9,9 @@ from loguru import logger
 
 from barks_reader._version import COPYRIGHT_YEARS, VERSION
 from barks_reader.core import log_markers
+from barks_reader.core.about_text import licence_markup
 from barks_reader.core.popup_frame import PopupSize
-from barks_reader.core.reader_consts_and_types import APP_TITLE, FANTAGRAPHICS_BARKS_LIBRARY
+from barks_reader.core.reader_consts_and_types import APP_TITLE
 from barks_reader.core.reader_palette import theme
 
 from .font_manager import FontManager
@@ -115,31 +116,9 @@ def show_about_box(
         )
 
     # --- Copyright / Credits ---
-    source_code_font_size = round(text_font_size)
-    fan_font_size = round(text_font_size - 1)
-
-    source_licence_text = (
-        "Source code is open and available under the Apache 2.0 License."
-        " However, artwork, images, characters, and story data included within or"
-        " displayed by this application are the proprietary intellectual property"
-        " of their respective owners and are STRICTLY EXCLUDED from the open-source license."
-    )
-    fan_project_text = (
-        f'This project is a fan-made reader utility for the "{FANTAGRAPHICS_BARKS_LIBRARY}."'
-        " It is not affiliated with, endorsed by, or sponsored by The Walt Disney Company or"
-        " Fantagraphics Books. Donald Duck, Uncle Scrooge, and related characters are"
-        " trademarks of The Walt Disney Company."
-    )
-
-    licence_text = (
-        "[b]This software is licensed under the Apache License, Version 2.0.\n\n"
-        f"© {COPYRIGHT_YEARS} Greg Kay.\n\n\n"
-        f"[size={source_code_font_size}]{source_licence_text}[/size][/b]\n\n\n"
-        f"[size={fan_font_size}][i]{fan_project_text}[/i][/size]"
-    )
     licence_label = _fitted(
         Label(
-            text=licence_text,
+            text=licence_markup(COPYRIGHT_YEARS, text_font_size),
             color=other_text_color,
             markup=True,
             font_size=text_font_size,
