@@ -75,6 +75,21 @@ def use_user32() -> Iterator[Callable[[FakeUser32], FakeUser32]]:
         yield install
 
 
+class TestRect:
+    """A window rectangle read as a window state keeps one: position, size, edges."""
+
+    def test_its_position_size_and_edges(self) -> None:
+        rect = win32_window.RECT(150, 120, 850, 620)
+        assert rect.pos == (150, 120)
+        assert rect.size == (700, 500)
+        assert rect.edges == (150, 120, 850, 620)
+
+    def test_a_window_left_of_and_above_the_main_monitor(self) -> None:
+        rect = win32_window.RECT(-1920, -200, -1220, 300)
+        assert rect.pos == (-1920, -200)
+        assert rect.size == (700, 500)
+
+
 class TestFindHwndByEnumWindows:
     def test_the_visible_sdl_window_of_this_process_is_found(
         self, use_user32: Callable[[FakeUser32], FakeUser32]

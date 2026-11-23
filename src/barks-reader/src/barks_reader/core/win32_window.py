@@ -32,6 +32,21 @@ class RECT(ctypes.Structure):
         ("bottom", wintypes.LONG),
     )
 
+    @property
+    def pos(self) -> tuple[int, int]:
+        """The rectangle's left and top."""
+        return self.left, self.top
+
+    @property
+    def size(self) -> tuple[int, int]:
+        """The rectangle's width and height."""
+        return self.right - self.left, self.bottom - self.top
+
+    @property
+    def edges(self) -> tuple[int, int, int, int]:
+        """The rectangle as a window state's edges are given: left, top, right, bottom."""
+        return self.left, self.top, self.right, self.bottom
+
 
 _CLASS_NAME_LENGTH = 256
 

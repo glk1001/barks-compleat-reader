@@ -196,16 +196,12 @@ class Win32WindowBackend:
             self._get_window_rect(self._hwnd, window_rect)
             self._get_client_rect(self._hwnd, client_rect)
 
-            state.pos = (window_rect.left, window_rect.top)
-            state.size = (
-                window_rect.right - window_rect.left,
-                window_rect.bottom - window_rect.top,
-            )
+            state.pos = window_rect.pos
+            state.size = window_rect.size
 
             logger.debug(
-                f"Win32: Saved window rect size = ({window_rect.right - window_rect.left},"
-                f" {window_rect.bottom - window_rect.top}),"
-                f" pos = ({window_rect.left}, {window_rect.top}),"
+                f"Win32: Saved window rect size = {window_rect.size},"
+                f" pos = {window_rect.pos},"
                 f" client size = ({client_rect.right}, {client_rect.bottom})."
             )
         except Exception as e:  # noqa: BLE001
@@ -301,7 +297,7 @@ class Win32WindowBackend:
             except Exception as e:  # noqa: BLE001
                 logger.error(f"Win32 MoveWindow failed as fullscreen ended: {e}")
                 return
-            if (rect.left, rect.top, rect.right, rect.bottom) == wanted:
+            if rect.edges == wanted:
                 logger.debug(f"Win32: Window at {state.size}, {state.pos} after fullscreen exit.")
                 self._look_for_restore()
             elif attempts_left > 1:
@@ -388,7 +384,7 @@ class Win32WindowBackend:
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 GetWindowRect failed: {e}")
             return None
-        return (rect.left, rect.top, rect.right, rect.bottom)
+        return rect.edges
 
     def _move_and_read_back(self, x: int, y: int, width: int, height: int) -> tuple[Any, RECT]:
         """Call ``MoveWindow``, then ``GetWindowRect``: the move's result and where the window is.
@@ -423,8 +419,7 @@ class Win32WindowBackend:
         try:
             # Read back to verify the operation succeeded.
             result, actual_rect = self._move_and_read_back(x, y, width, height)
-            actual_w = actual_rect.right - actual_rect.left
-            actual_h = actual_rect.bottom - actual_rect.top
+            actual_w, actual_h = actual_rect.size
 
             # Only the size is compared: the no-op seen leaves the window at its
             # minimum size. The right size in the wrong place is logged below (as
@@ -474,9 +469,8 @@ class Win32WindowBackend:
                 return
             logger.info(
                 f"Win32 retry: Requested size = ({width}, {height}); "
-                f" Actual size = ({actual_rect.right - actual_rect.left},"
-                f" {actual_rect.bottom - actual_rect.top}); "
-                f" Actual pos = ({actual_rect.left}, {actual_rect.top})."
+                f" Actual size = {actual_rect.size}; "
+                f" Actual pos = {actual_rect.pos}."
             )
 
         Clock.schedule_once(retry, 0)
