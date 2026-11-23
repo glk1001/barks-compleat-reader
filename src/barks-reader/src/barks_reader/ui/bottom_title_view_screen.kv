@@ -98,9 +98,10 @@
             FloatLayout:
                 id: main_title_band
                 # On the spread the band is as tall as its lines plus one gap, so the
-                # picture starts the same distance under the last line of every title
-                # (a title without notes centres its picture, and brings its own
-                # margins); on a single page it stays 18% of the view.
+                # picture's room starts the same distance under the last line of every
+                # title, and a picture that fills its room is never nearer the heading
+                # (a title without notes brings its own margins); on a single page it
+                # stays 18% of the view.
                 size_hint: 1, (None if root.layout_mode == 'spread' else 0.18)
                 height:
                     (dp(root.MAIN_TITLE_TOP_OFFSET_SPREAD) + main_title_label.height \
@@ -202,10 +203,11 @@
             # up out of the view and over the tree's last rows on a single page.
             # A compact colophon (a title without notes) leaves it the rest of the page,
             # and wider: a landscape picture is bound by its width, not that height.
-            # With notes the picture hangs from the room's top, under the band's gap;
-            # without, it is centred between the heading and the info rows.
+            # The picture is centred in its room, between the heading and the info rows:
+            # a wide one is bound by the room's width and so is short, and hung from the
+            # room's top it sat close under the heading over a hole above the rows.
             AnchorLayout:
-                anchor_y: 'center' if root.compact_colophon else 'top'
+                anchor_y: 'center'
                 size_hint: ((0.92 if root.compact_colophon else 0.76) if root.layout_mode == 'spread' else 1), None
                 height:
                     max(0, bottom_view_box.height - main_title_band.height - colophon.height) \

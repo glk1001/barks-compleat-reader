@@ -139,7 +139,8 @@ class BottomTitleViewScreen(NavExitMixin, FloatLayout):
     MAIN_TITLE_TOP_OFFSET_SINGLE = 28
     MAIN_TITLE_TOP_OFFSET_SPREAD = 50
     # On the spread, the gap from the heading's last line (title, assigned name or
-    # footnote) down to the picture of a title with notes: the same for every title.
+    # footnote) down to the picture's room for a title with notes: the least there is
+    # over the picture, which is centred in that room.
     MAIN_TITLE_PICTURE_GAP = 40
     # On the spread, the least room over and under the picture of a title without
     # notes, which is centred between the heading and the info rows.
