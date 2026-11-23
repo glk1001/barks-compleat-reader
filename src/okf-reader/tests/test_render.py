@@ -453,6 +453,18 @@ class TestInlineMarkup:
         (block,) = _text_blocks(okf.render_page("a <span>b</span> c"))
         assert block.markup == "a b c"
 
+    def test_a_subscript_and_a_superscript_are_shown_as_such(self) -> None:
+        """A formula's figures are lowered and a power raised, at a footnote marker's size."""
+        (block,) = _text_blocks(okf.render_page("NH<sub>4</sub> and mc<SUP>2</SUP>"))
+        size = okf.FOOTNOTE_REF_SIZE
+        assert block.markup == (
+            f"NH[sub][size={size}]4[/size][/sub] and mc[sup][size={size}]2[/size][/sup]"
+        )
+
+    def test_a_subscript_takes_no_room_in_a_table_s_columns(self) -> None:
+        (block,) = _text_blocks(okf.render_page("CH<sub>2</sub>"))
+        assert okf.visible_len(block.markup) == len("CH2")
+
 
 class TestWrapMarkup:
     """Table cells wrap at visible spaces; their lines stay markup-balanced."""

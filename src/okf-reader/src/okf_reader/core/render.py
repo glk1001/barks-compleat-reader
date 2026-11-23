@@ -40,6 +40,15 @@ CODE_FONT_SIZE = 14
 # the line box, so the visible "raise" is line height minus marker height —
 # this size is the only knob for both marker size and how raised it looks.
 FOOTNOTE_REF_SIZE = 11
+# The two inline HTML tags the renderer shows, as Kivy's own: a formula's subscript
+# (NH<sub>4</sub>) and a superscript. Sized as a footnote marker is, for the same
+# reason. Every other inline tag shows nothing, its text kept.
+_RAISED_OR_LOWERED_MARKUP = {
+    "<sub>": f"[sub][size={FOOTNOTE_REF_SIZE}]",
+    "</sub>": "[/size][/sub]",
+    "<sup>": f"[sup][size={FOOTNOTE_REF_SIZE}]",
+    "</sup>": "[/size][/sup]",
+}
 # Footnote definitions are provenance metadata, not content, so they render
 # dimmed: body text in a quiet grey, inline code (mostly file paths there) in a
 # muted violet. Links keep LINK_COLOR — they are the section's working parts.
@@ -192,7 +201,7 @@ def _ref_quote(href: str) -> str:
 
 # Inline tokens whose markup never varies: the two line breaks, emphasis on and off,
 # and the end of a link. The rest (text, code, a link's start, a footnote marker, an
-# image) carry content and are rendered in `_inline` itself.
+# image, an HTML tag) carry content and are rendered in `_inline` itself.
 _INLINE_FIXED_MARKUP = {
     "softbreak": " ",
     "hardbreak": "\n",
@@ -231,6 +240,8 @@ def _inline(tokens: list[Token], code_color: str = CODE_COLOR, link_color: str =
                 f"[ref=fn:{label}][color={link_color}]"
                 f"[sup][size={FOOTNOTE_REF_SIZE}]{marker}[/size][/sup][/color][/ref]"
             )
+        elif tp == "html_inline":
+            out.append(_RAISED_OR_LOWERED_MARKUP.get(t.content.lower(), ""))
         elif tp == "image":
             alt = str(t.content or t.attrGet("src") or "image")
             out.append(f"[i]▨ image: {escape_markup(alt)}[/i]")
