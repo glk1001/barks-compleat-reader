@@ -1129,7 +1129,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         try:
             self._nav_coord.navigate_to_chrono_title(image_info)
         except TitleNotInFantaInfoError as e:
-            logger.error(e)
+            logger.warning(e)
             self._user_error_handler.handle_error(
                 ErrorTypes.ArchiveVolumeNotAvailable,
                 get_volume_not_available_error_info(image_info),

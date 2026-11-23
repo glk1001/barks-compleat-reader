@@ -302,7 +302,7 @@ class NavigationCoordinator:
         except TitleNotInFantaInfoError as e:
             # Search lists every Barks title, some in no Fantagraphics volume: a notice,
             # as the Main Index gives, not a crash.
-            logger.error(e)
+            logger.warning(e)
             self._user_error_handler.handle_error(
                 ErrorTypes.ArchiveVolumeNotAvailable,
                 get_volume_not_available_error_info(image_info),

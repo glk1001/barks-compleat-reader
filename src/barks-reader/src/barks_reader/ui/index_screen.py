@@ -1004,7 +1004,7 @@ class IndexScreen(NavExitMixin, FloatLayout):
         try:
             self.on_goto_title(image_info, page_to_goto, pages)
         except TitleNotInFantaInfoError as e:
-            logger.error(e)
+            logger.warning(e)  # no volume holds it: a fact of the data, not a fault
             assert self._user_error_handler is not None
             self._user_error_handler.handle_error(
                 ErrorTypes.ArchiveVolumeNotAvailable,
