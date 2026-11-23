@@ -23,7 +23,7 @@ in tests:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from comic_utils.timing import Timing
@@ -35,9 +35,13 @@ from loguru import logger
 from barks_reader.core import log_markers
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.core.scroll_reveal import (
+    LEAST_MOVE_PX,
     REVEAL_PADDING,
-    held_in_scroll_range,
-    reveal_distance,
+    HeightSettle,
+    first_shown_rows,
+    is_worth_a_move,
+    reveal_distance_with_owner_pinned,
+    scroll_y_after_reveal,
     scroll_y_keeping_row,
 )
 from barks_reader.core.tap_targets import settling_began, settling_ended
@@ -78,16 +82,11 @@ class _Settle:
     reveal_generation: int
     pin_generation: int
     serial: int
-    count: int = 0
-    last_h: float = -1.0
-    stable: int = 0
+    height: HeightSettle = field(default_factory=HeightSettle)
 
 
 class RowScrollPinner:
     """Pin an expanding or collapsing row's on-screen position."""
-
-    # ~3 seconds worst-case @ 60fps before giving up on stabilization.
-    _MAX_SETTLE_FRAMES = 180
 
     def __init__(
         self,
@@ -312,8 +311,7 @@ class RowScrollPinner:
             return
 
         def _resched() -> None:
-            checks.count += 1
-            if checks.count < self._MAX_SETTLE_FRAMES:
+            if checks.height.may_wait_another_frame():
                 self._schedule_once(
                     lambda dt: self._stabilize_after_layout(
                         dt, spec, scroll_view, target_offset_px, checks
@@ -327,23 +325,8 @@ class RowScrollPinner:
             _resched()
             return
 
-        cont = scroll_view.children[0]
-        viewport_h = scroll_view.height
-        cont_h = cont.height
-
-        # Require non-trivial content to avoid div-by-zero and false positives.
-        if (cont_h <= 1) or (viewport_h <= 1):
-            _resched()
-            return
-
-        # Check stabilization of container height
-        if abs(cont_h - checks.last_h) < 0.5:  # noqa: PLR2004
-            checks.stable += 1
-        else:
-            checks.stable = 0
-        checks.last_h = cont_h
-
-        if checks.stable < 2:  # noqa: PLR2004
+        # A list or view with no height yet, or a height still changing: wait.
+        if not checks.height.has_settled(scroll_view.children[0].height, scroll_view.height):
             _resched()
             return
 
@@ -381,7 +364,7 @@ class RowScrollPinner:
             return
 
         scrollable_px = cont_h - viewport_h
-        if abs(scroll_y - scroll_view.scroll_y) * scrollable_px >= 0.5:  # noqa: PLR2004
+        if is_worth_a_move(scroll_view.scroll_y, scroll_y, scrollable_px):
             # Apply in one shot: the drift is the layout's, not the reader's to see.
             scroll_view.scroll_y = scroll_y
 
@@ -393,7 +376,7 @@ class RowScrollPinner:
             if expanding and checks.reveal_generation == self._reveal_generation
             else 0.0
         )
-        if reveal_px < 0.5:  # noqa: PLR2004
+        if reveal_px < LEAST_MOVE_PX:
             self._settled(checks)
             return
 
@@ -405,7 +388,7 @@ class RowScrollPinner:
 
         self._glide(
             scroll_view,
-            held_in_scroll_range(scroll_view.scroll_y - reveal_px / scrollable_px),
+            scroll_y_after_reveal(scroll_view.scroll_y, reveal_px, scrollable_px),
             _revealed,
         )
 
@@ -426,18 +409,13 @@ class RowScrollPinner:
         """
         if not rows:
             return 0.0
-        view_bottom = scroll_view.to_window(0, scroll_view.y)[1]
-
-        def pinned_bottom(row: Widget) -> float:
-            return row.to_window(0, row.y)[1] - parent_top + pinned_parent_top
-
-        if pinned_bottom(rows[0]) >= view_bottom:
-            return 0.0
-        return reveal_distance(
-            view_bottom=view_bottom,
+        return reveal_distance_with_owner_pinned(
+            view_bottom=scroll_view.to_window(0, scroll_view.y)[1],
             view_top=sv_top,
-            items_bottom=pinned_bottom(rows[-1]),
-            owner_top=pinned_parent_top,
+            first_item_bottom=rows[0].to_window(0, rows[0].y)[1],
+            last_item_bottom=rows[-1].to_window(0, rows[-1].y)[1],
+            owner_top=parent_top,
+            pinned_owner_top=pinned_parent_top,
             padding=dp(REVEAL_PADDING),
         )
 
@@ -476,7 +454,7 @@ class TreeScrollPinner(RowScrollPinner):
             populate=populate,
             expanding=expanding,
             is_open=lambda: bool(node.is_open),
-            first_rows=lambda: _get_first_shown_rows(node, REVEAL_ROWS),
+            first_rows=lambda: first_shown_rows(node, REVEAL_ROWS),
             name=get_clean_text_without_extra(node.text),
             revealed_marker=log_markers.TREE_CHILDREN_REVEALED,
         )
@@ -504,19 +482,3 @@ def _stop_scroll_y_animations(scroll_view: ScrollView) -> None:
     Stopped, not cancelled: a glide of ours still completes, and settles its pin.
     """
     Animation.stop_all(scroll_view, "scroll_y")
-
-
-def _get_first_shown_rows(parent_node: ButtonTreeViewNode, count: int) -> list[Widget]:
-    """Return the first `count` rows under an open parent, in the order the tree shows them."""
-    rows: list[Widget] = []
-
-    def walk(node: Widget) -> None:
-        for child in node.nodes:
-            if len(rows) >= count:
-                return
-            rows.append(child)
-            if child.is_open:
-                walk(child)
-
-    walk(parent_node)
-    return rows

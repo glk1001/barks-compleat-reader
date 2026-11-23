@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 import pytest
 from barks_reader.core.scroll_reveal import (
+    LEAST_MOVE_PX,
+    MAX_SETTLE_FRAMES,
+    HeightSettle,
+    first_shown_rows,
     held_in_scroll_range,
+    is_worth_a_move,
     reveal_distance,
+    reveal_distance_with_owner_pinned,
     scroll_y_after_key,
+    scroll_y_after_reveal,
     scroll_y_keeping_row,
 )
 
@@ -102,3 +111,124 @@ class TestScrollYAfterKey:
             scroll_y=1.0, view_height=400, content_height=content_height, up=False
         )
         assert moved == 1.0
+
+
+class TestHeightSettle:
+    def test_a_height_that_holds_for_two_frames_after_the_first_has_settled(self) -> None:
+        watch = HeightSettle()
+        assert [watch.has_settled(500.0, 100.0) for _ in range(3)] == [False, False, True]
+
+    def test_a_change_of_height_starts_the_count_again(self) -> None:
+        watch = HeightSettle()
+        heights = [500.0, 500.0, 620.0, 620.0, 620.0]
+        settled = [watch.has_settled(h, 100.0) for h in heights]
+        assert settled == [False, False, False, False, True]
+
+    def test_under_half_a_pixel_is_no_change_and_half_a_pixel_is_one(self) -> None:
+        watch = HeightSettle()
+        assert [watch.has_settled(h, 100.0) for h in (500.0, 500.4, 500.0)] == [False, False, True]
+        watch = HeightSettle()
+        assert [watch.has_settled(h, 100.0) for h in (500.0, 500.5, 500.0)] == [False] * 3
+
+    @pytest.mark.parametrize(("content", "view"), [(1.0, 100.0), (0.0, 100.0), (500.0, 1.0)])
+    def test_a_list_or_view_with_no_height_is_waited_on_and_counts_for_nothing(
+        self, content: float, view: float
+    ) -> None:
+        watch = HeightSettle()
+        watch.has_settled(500.0, 100.0)
+        watch.has_settled(500.0, 100.0)  # one stable frame so far
+
+        assert watch.has_settled(content, view) is False
+        assert (watch.last_height, watch.stable_frames) == (500.0, 1)
+        assert watch.has_settled(500.0, 100.0) is True
+
+    def test_a_height_just_over_a_pixel_is_a_height(self) -> None:
+        watch = HeightSettle()
+        assert [watch.has_settled(1.5, 1.5) for _ in range(3)] == [False, False, True]
+
+    def test_the_watch_gives_up_after_its_frames(self) -> None:
+        watch = HeightSettle()
+        waits = [watch.may_wait_another_frame() for _ in range(MAX_SETTLE_FRAMES)]
+        assert waits == [True] * (MAX_SETTLE_FRAMES - 1) + [False]
+        assert watch.frames_waited == MAX_SETTLE_FRAMES
+
+
+class TestAMoveWorthMaking:
+    def test_half_a_pixel_is_and_less_is_not(self) -> None:
+        assert LEAST_MOVE_PX == 0.5  # noqa: PLR2004
+        assert is_worth_a_move(0.0, 0.125, 4.0) is True  # half a pixel of the 4 scrollable
+        assert is_worth_a_move(0.0, 0.1, 4.0) is False
+
+    def test_either_way(self) -> None:
+        assert is_worth_a_move(0.5, 0.25, 400.0) is True
+        assert is_worth_a_move(0.25, 0.5, 400.0) is True
+        assert is_worth_a_move(0.5, 0.5, 400.0) is False
+
+
+class TestAReveal:
+    def test_the_glide_ends_with_the_content_that_far_up(self) -> None:
+        assert scroll_y_after_reveal(0.5, 100.0, 400.0) == pytest.approx(0.25)
+
+    def test_it_stops_at_the_list_s_foot(self) -> None:
+        assert scroll_y_after_reveal(0.1, 100.0, 400.0) == 0.0
+
+    def _pinned(self, *, first: float, last: float, owner_top: float) -> float:
+        # A view from 0 up to 300; the row is pinned with its top at 100.
+        return reveal_distance_with_owner_pinned(
+            view_bottom=0.0,
+            view_top=300.0,
+            first_item_bottom=first,
+            last_item_bottom=last,
+            owner_top=owner_top,
+            pinned_owner_top=100.0,
+            padding=10.0,
+        )
+
+    def test_nothing_while_the_first_item_shows_whole(self) -> None:
+        assert self._pinned(first=40.0, last=-80.0, owner_top=100.0) == 0.0
+        assert self._pinned(first=0.0, last=-80.0, owner_top=100.0) == 0.0
+
+    def test_enough_to_show_the_last_item_and_the_padding(self) -> None:
+        assert self._pinned(first=-10.0, last=-70.0, owner_top=100.0) == 80.0  # noqa: PLR2004
+
+    def test_the_items_are_measured_with_the_row_back_at_its_pin(self) -> None:
+        """The layout moved the row and its items 60 up; pinned back, they are 60 lower."""
+        assert self._pinned(first=50.0, last=-10.0, owner_top=160.0) == 80.0  # noqa: PLR2004
+        # And a first item hidden only by the drift shows once the row is back.
+        assert self._pinned(first=-20.0, last=-40.0, owner_top=60.0) == 0.0
+
+    def test_never_so_far_that_the_row_leaves_the_view(self) -> None:
+        assert self._pinned(first=-10.0, last=-900.0, owner_top=100.0) == 200.0  # noqa: PLR2004
+
+
+@dataclass
+class _Row:
+    name: str
+    nodes: list[_Row] = field(default_factory=list)
+    is_open: bool = False
+
+
+class TestTheFirstRowsShown:
+    def test_they_are_the_row_s_own_in_their_order(self) -> None:
+        owner = _Row("owner", [_Row("a"), _Row("b"), _Row("c"), _Row("d")], is_open=True)
+        assert [row.name for row in first_shown_rows(owner, 3)] == ["a", "b", "c"]
+
+    def test_an_open_row_among_them_is_followed_by_its_own(self) -> None:
+        open_child = _Row("a", [_Row("a1", [_Row("a1x")], is_open=True), _Row("a2")], is_open=True)
+        owner = _Row("owner", [open_child, _Row("b")], is_open=True)
+        names = [row.name for row in first_shown_rows(owner, 5)]
+        assert names == ["a", "a1", "a1x", "a2", "b"]
+
+    def test_a_shut_row_s_own_are_not_shown(self) -> None:
+        owner = _Row("owner", [_Row("a", [_Row("a1")]), _Row("b")], is_open=True)
+        assert [row.name for row in first_shown_rows(owner, 3)] == ["a", "b"]
+
+    def test_the_count_stops_the_walk_inside_an_open_row(self) -> None:
+        open_child = _Row("a", [_Row("a1"), _Row("a2"), _Row("a3")], is_open=True)
+        owner = _Row("owner", [open_child, _Row("b")], is_open=True)
+        assert [row.name for row in first_shown_rows(owner, 2)] == ["a", "a1"]
+
+    def test_fewer_rows_than_asked_for_are_all_there_are_and_none_is_none(self) -> None:
+        assert [row.name for row in first_shown_rows(_Row("o", [_Row("a")]), 3)] == ["a"]
+        assert first_shown_rows(_Row("o"), 3) == []
+        assert first_shown_rows(_Row("o", [_Row("a")]), 0) == []

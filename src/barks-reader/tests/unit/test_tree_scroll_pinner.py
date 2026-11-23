@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import log_markers
-from barks_reader.core.scroll_reveal import REVEAL_PADDING
+from barks_reader.core.scroll_reveal import MAX_SETTLE_FRAMES, REVEAL_PADDING
 from barks_reader.core.tap_targets import layout_settling
 from barks_reader.core.testing import FakeClock
 from barks_reader.ui import tree_scroll_pinner
@@ -213,7 +213,7 @@ def test_a_container_that_goes_missing_is_waited_for_then_given_up_on() -> None:
     while clock.run_next():
         frames += 1
 
-    assert frames == TreeScrollPinner._MAX_SETTLE_FRAMES  # noqa: SLF001
+    assert frames == MAX_SETTLE_FRAMES
     on_settled.assert_called_once()
     assert not layout_settling()
 
@@ -550,7 +550,7 @@ def test_a_tree_that_fits_the_view_settles_at_once() -> None:
     on_settled, frames = _collapse(_make_parent_node(), scroll_view)
 
     on_settled.assert_called_once()
-    assert frames < TreeScrollPinner._MAX_SETTLE_FRAMES  # noqa: SLF001
+    assert frames < MAX_SETTLE_FRAMES
     assert not layout_settling()
 
 
@@ -860,4 +860,4 @@ def test_a_tree_or_view_with_no_height_is_waited_on_and_not_scrolled(
 
     assert scroll_view.scroll_y == pytest.approx(0.5)
     on_settled.assert_called_once()
-    assert frames == TreeScrollPinner._MAX_SETTLE_FRAMES  # noqa: SLF001
+    assert frames == MAX_SETTLE_FRAMES
