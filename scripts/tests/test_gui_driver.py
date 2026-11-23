@@ -504,6 +504,14 @@ class TestWindowGeometry:
             stub_driver.window_geometry()
 
 
+class TestResizeWindow:
+    def test_asks_the_probe_for_the_size(self, stub_driver: Driver) -> None:
+        with patch.object(Driver, "_run", return_value="") as run:
+            stub_driver.resize_window(900, 1100)
+
+        run.assert_called_once_with(["resize", "900", "1100"])
+
+
 class TestBootFromConfigDir:
     def test_exports_the_dir_and_uses_its_json(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

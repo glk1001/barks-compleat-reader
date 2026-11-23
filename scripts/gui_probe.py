@@ -15,6 +15,7 @@ to some other window. Do not use the machine while a run is going.
 
 Usage (the same as gui-probe.sh; see there):
   python scripts/gui_probe.py doctor | start | stop | stop-xserver | geometry
+  python scripts/gui_probe.py resize W H
   python scripts/gui_probe.py shot OUT.png | click X Y | key NAME... | type TEXT
   python scripts/gui_probe.py tap X Y | tap-targets ID | memory-census ID | frame-capture ID
   python scripts/gui_probe.py wait REGEX [SECS] | settle [QUIET_MS [MAX_SECS]]
@@ -121,6 +122,15 @@ class Backend(Protocol):
 
     def client_geometry(self, window: int) -> tuple[int, int, int, int]:
         """Return the window's drawable area as (width, height, x, y) in screen pixels."""
+        ...
+
+    def resize_client(self, window: int, width: int, height: int) -> None:
+        """Give the window's drawable area this size, its top left corner where it was.
+
+        Raises:
+            NotImplementedError: If this platform's backend cannot resize a window.
+
+        """
         ...
 
     def bring_to_front(self, window: int) -> bool:
@@ -577,6 +587,12 @@ class Probe:
         width, height, x, y = self._backend.client_geometry(self._window())
         return f"{width}x{height}+{x}+{y}"
 
+    def resize(self, width: int, height: int) -> None:
+        try:
+            self._backend.resize_client(self._window(), width, height)
+        except NotImplementedError as exc:
+            raise ProbeError(str(exc)) from exc
+
     def shot(self, out: Path) -> None:
         window = self._window()
         # Settle first: a still-growing log means a half-painted frame.
@@ -755,6 +771,8 @@ def run_backend_command(probe: Probe, command: str, args: list[str]) -> int:
             probe.stop_xserver()
         case "geometry":
             print(probe.geometry())  # noqa: T201
+        case "resize":
+            probe.resize(int(args[0]), int(args[1]))
         case "shot":
             probe.shot(Path(args[0]))
             print(args[0])  # noqa: T201

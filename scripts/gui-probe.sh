@@ -21,6 +21,8 @@
 #   BARKS_PROBE_HEADLESS=1 scripts/gui-probe.sh start   # same, on an invisible Xvfb
 #   scripts/gui-probe.sh shot out.png     # fresh full-screen capture
 #   scripts/gui-probe.sh geometry         # app window WxH+X+Y on the nested display
+#   scripts/gui-probe.sh resize 900 1100  # resize the app window from outside, as a
+#                                         # drag of its corner would
 #   scripts/gui-probe.sh click 840 74     # click at screenshot coordinates
 #   scripts/gui-probe.sh tap 120 300      # tap at app WINDOW pixel X,Y: a click, or
 #                                         # with BARKS_PROBE_TOUCH=1 a real touch too
@@ -663,6 +665,35 @@ cmd_geometry() {
     echo "$geom"
 }
 
+# Resize the app window to W x H from outside the app, as a drag of its corner
+# does. The nested display has no window manager, so the request goes straight to
+# the X server; libX11 through ctypes, as xdotool is not on every machine.
+cmd_resize() {
+    require_running
+    [[ $# -eq 2 ]] || die "usage: resize W H"
+    local id
+    id="$(DISPLAY="$DPY" xwininfo -root -children |
+        grep -F "$WINDOW_NAME" | grep -oP '^\s*\K0x[0-9a-f]+' | head -1 || true)"
+    [[ -n "$id" ]] || die "app window ($WINDOW_NAME) not found on $DPY"
+    python3 - "$DPY" "$id" "$1" "$2" <<'PY' || die "could not resize the app window"
+import ctypes
+import sys
+
+display_name, window, width, height = sys.argv[1], int(sys.argv[2], 16), *map(int, sys.argv[3:5])
+x11 = ctypes.CDLL("libX11.so.6")
+x11.XOpenDisplay.restype = ctypes.c_void_p
+x11.XResizeWindow.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_uint, ctypes.c_uint]
+x11.XFlush.argtypes = [ctypes.c_void_p]
+x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+display = x11.XOpenDisplay(display_name.encode())
+if not display:
+    sys.exit(f"cannot open display {display_name}")
+x11.XResizeWindow(display, window, width, height)
+x11.XFlush(display)
+x11.XCloseDisplay(display)
+PY
+}
+
 cmd_shot() {
     require_running
     local out="${1:?usage: gui-probe.sh shot <out.png>}"
@@ -810,6 +841,7 @@ stop-xserver) shift && cmd_stop_xserver "$@" ;;
 cleanup) shift && cmd_cleanup "$@" ;;
 shot) shift && cmd_shot "$@" ;;
 geometry) shift && cmd_geometry "$@" ;;
+resize) shift && cmd_resize "$@" ;;
 click) shift && cmd_click "$@" ;;
 tap) shift && cmd_tap "$@" ;;
 tap-targets) shift && cmd_tap_targets "$@" ;;

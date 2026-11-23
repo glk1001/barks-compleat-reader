@@ -48,6 +48,9 @@ _MOUSEEVENTF_LEFTUP = 0x0004
 _MAPVK_VK_TO_VSC = 0
 _VK_SHIFT = 0x10
 _SW_RESTORE = 9
+# SetWindowPos's flags for no move, no change of z-order and no activation: the size
+# alone changes.
+_SWP_RESIZE_ONLY = 0x0002 | 0x0004 | 0x0010
 _DESKTOP_SWITCHDESKTOP = 0x0100
 _SM_REMOTESESSION = 0x1000
 _SYNCHRONIZE = 0x00100000
@@ -181,6 +184,16 @@ def _declare() -> None:
     u.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     u.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(_RECT)]
     u.ClientToScreen.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.POINT)]
+    u.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(_RECT)]
+    u.SetWindowPos.argtypes = [
+        wintypes.HWND,
+        wintypes.HWND,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.UINT,
+    ]
     u.GetForegroundWindow.restype = wintypes.HWND
     u.SetForegroundWindow.argtypes = [wintypes.HWND]
     u.IsIconic.argtypes = [wintypes.HWND]
@@ -456,6 +469,23 @@ class Win32Backend:
         origin = wintypes.POINT(0, 0)
         _user32.ClientToScreen(window, ctypes.byref(origin))
         return rect.right - rect.left, rect.bottom - rect.top, origin.x, origin.y
+
+    def resize_client(self, window: int, width: int, height: int) -> None:
+        # SetWindowPos takes the whole window's size, so the frame's share is added
+        # back: what the window measures over what it draws in.
+        client, outer = _RECT(), _RECT()
+        if not _user32.GetClientRect(window, ctypes.byref(client)) or not _user32.GetWindowRect(
+            window, ctypes.byref(outer)
+        ):
+            msg = "GetWindowRect failed: the app window has gone"
+            raise RuntimeError(msg)
+        frame_width = (outer.right - outer.left) - (client.right - client.left)
+        frame_height = (outer.bottom - outer.top) - (client.bottom - client.top)
+        if not _user32.SetWindowPos(
+            window, None, 0, 0, width + frame_width, height + frame_height, _SWP_RESIZE_ONLY
+        ):
+            msg = f"SetWindowPos failed: the app window was not resized to {width}x{height}"
+            raise RuntimeError(msg)
 
     def bring_to_front(self, window: int) -> bool:
         if _user32.GetForegroundWindow() == window:

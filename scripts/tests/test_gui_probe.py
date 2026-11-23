@@ -564,6 +564,21 @@ class TestTheCommandLine:
         assert capsys.readouterr().out == "800x600+100+50\n"
         backend.client_geometry.assert_called_once_with(7)
 
+    def test_resize_gives_the_window_s_drawable_area_the_size_asked(
+        self, backend: MagicMock
+    ) -> None:
+        assert gui_probe.main(["resize", "900", "1100"]) == 0
+
+        backend.resize_client.assert_called_once_with(7, 900, 1100)
+
+    def test_a_backend_that_cannot_resize_says_so_and_fails(
+        self, backend: MagicMock, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        backend.resize_client.side_effect = NotImplementedError("resize is not written here")
+
+        assert gui_probe.main(["resize", "900", "1100"]) == 1
+        assert "gui-probe: resize is not written here" in capsys.readouterr().err
+
     def test_a_shot_waits_for_the_app_to_stop_drawing_then_captures_the_window(
         self, backend: MagicMock, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

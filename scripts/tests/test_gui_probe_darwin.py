@@ -218,6 +218,10 @@ class TestFullscreenChange:
             assert backend.find_window(APP_TITLE) == 5
             assert backend.client_geometry(5) == new.bounds
 
+    def test_a_resize_is_refused_until_it_is_written(self) -> None:
+        with pytest.raises(NotImplementedError, match="not written for macOS"):
+            _backend().resize_client(5, 900, 1100)
+
     def test_with_nothing_of_the_apps_on_screen_the_lookup_answers_at_once(self) -> None:
         """As before a start: no stand-in, so no wait."""
         with patch.object(gui_probe_darwin, "window_list", return_value=[]) as listing:

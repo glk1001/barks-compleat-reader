@@ -506,6 +506,12 @@ class DarwinBackend:
         # area, and matches the geometry the app logs.
         return self._info(window).bounds
 
+    def resize_client(self, window: int, width: int, height: int) -> None:
+        # Another process's window is resized through the Accessibility API here
+        # (its AXSize attribute), which this backend does not yet call.
+        msg = "resize is not written for macOS yet"
+        raise NotImplementedError(msg)
+
     def bring_to_front(self, window: int) -> bool:
         info = self._info(window)
         owner = info.owner_pid

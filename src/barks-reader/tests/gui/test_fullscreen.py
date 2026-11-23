@@ -7,10 +7,12 @@ back to.
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
+import pytest
 from barks_gui import harness, nodes
-from barks_gui.logs import last_field
+from barks_gui.logs import last_field, last_size
 from barks_gui.steps import (
     FULLSCREEN_TIMEOUT,
     MAIN_FROM_DOCUMENT,
@@ -157,3 +159,53 @@ def test_closing_from_a_window_falls_out_at_the_full_screen_size(boot: AppBoot) 
     with d.expect(pattern(markers.ENTERED_WINDOWED, screen=MAIN), FULLSCREEN_TIMEOUT):
         d.main_menu_button("fullscreen")
     d.settle()
+
+
+# How much shorter the test makes the window, in pixels: no more than half the way to
+# its minimum height, and with less room than the least, the test has nothing to show.
+RESIZE_SHORTER = 120
+LEAST_RESIZE_SHORTER = 20
+RESIZE_TOO_WIDE = (260, 90, 180)  # one after another, as a drag sends them
+# A corrected size may be a pixel or two off where a display scales the window's units.
+RESIZE_TOLERANCE = 2
+
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="the macOS probe cannot resize a window yet")
+def test_a_window_resized_out_of_shape_takes_its_layout_s_shape_again(boot: AppBoot) -> None:
+    """Resized from outside, as by a corner, the window keeps the height and fits the width.
+
+    Shorter and too wide, it must come back narrower, at the height it was given; and
+    given its first height again, at its first width. A correction that grew the
+    window (Windows' frame, 2026-11-17) or doubled it (a Retina Mac's points,
+    2026-10-14) fails one or the other.
+    """
+    d = boot(nodes.GHOST_OF_THE_GROTTO)
+    width, height = d.window_geometry()[:2]
+    room = (height - last_size(d, markers.WINDOW_MINIMUM_SET)[1]) // 2
+    if room < LEAST_RESIZE_SHORTER:
+        pytest.skip(f"a window {height} high is at its minimum height on this screen")
+    shorter = height - min(RESIZE_SHORTER, room)
+
+    with d.expect(pattern(markers.WINDOW_ASPECT_CORRECTED)):
+        for extra in RESIZE_TOO_WIDE:
+            d.resize_window(width + extra, shorter)
+    d.settle()
+    fitted_width, fitted_height = d.window_geometry()[:2]
+    assert abs(fitted_height - shorter) <= RESIZE_TOLERANCE, (
+        f"resized to a height of {shorter}, the window settled {fitted_width}x{fitted_height}"
+    )
+    assert fitted_width < width, (
+        f"a {width}x{height} window made {height - shorter} shorter"
+        f" settled {fitted_width} wide, no narrower"
+    )
+
+    with d.expect(pattern(markers.WINDOW_ASPECT_CORRECTED)):
+        d.resize_window(fitted_width + RESIZE_TOO_WIDE[0], height)
+    d.settle()
+    back = d.window_geometry()[:2]
+    assert all(
+        abs(now - was) <= RESIZE_TOLERANCE for now, was in zip(back, (width, height), strict=True)
+    ), (
+        f"given its height of {height} again, the {width}x{height} window"
+        f" settled {back[0]}x{back[1]}"
+    )

@@ -323,6 +323,22 @@ class Driver:
         width, height, pos_x, pos_y = (int(g) for g in found.groups())
         return width, height, pos_x, pos_y
 
+    def resize_window(self, width: int, height: int) -> None:
+        """Resize the app window from outside the app, as a drag of its corner does.
+
+        The app answers as it would a user: it keeps the height and sets the width
+        its layout has at that height, so the size asked for is not the size kept.
+
+        Args:
+            width: The drawable area's new width, in screen pixels.
+            height: The drawable area's new height, in screen pixels.
+
+        Raises:
+            DriverError: If the probe cannot resize the window on this platform.
+
+        """
+        self._run(["resize", str(width), str(height)])
+
     def settle(self) -> None:
         """Block until the app has stopped writing to its log, i.e. stopped drawing."""
         self._run(["settle", str(self._settle_quiet_ms)])

@@ -214,11 +214,16 @@ def test_an_aspect_ratio_correction_names_the_event_and_the_size_it_applies(
 
     width, content_h = get_win_dimensions(2000 - CHROME, 2560)
     assert fake_window.size == (width, content_h + CHROME)
-    corrected = f"-> Window.size = ({width}, {content_h + CHROME})"
-    assert any(
-        "Aspect-ratio correction: resize event 1500,2000 " in line and corrected in line
-        for line in loguru_sink
+    corrected = re.compile(
+        pattern(
+            log_markers.WINDOW_ASPECT_CORRECTED,
+            width=1500,
+            height=2000,
+            to_width=width,
+            to_height=content_h + CHROME,
+        )
     )
+    assert any(corrected.search(line) for line in loguru_sink)
 
 
 # --- Gating conditions in on_window_resize ---

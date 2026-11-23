@@ -176,6 +176,12 @@ EXITING_FULLSCREEN: Final = "{screen}: Exiting fullscreen mode."
 # one a test leaves against the first, since a shrink after a reader close or a
 # fullscreen round trip is a defect whatever the test asserted.
 WINDOW_RESIZED: Final = "Main window resize event: width, height = {width},{height}."
+# A resize that left the window out of its layout's shape (a corner dragged), put right
+# once the resizing has stopped: the size the event gave, and the size the window is set.
+WINDOW_ASPECT_CORRECTED: Final = (
+    "Aspect-ratio correction: resize event {width},{height}"
+    " -> Window.size = ({to_width}, {to_height})."
+)
 MAIN_WINDOW_SHOWN: Final = "Main window shown."  # the first moment a key can reach it
 # A label holding its text to the lines that fit (the title panel's notes), once its
 # layout has come to rest, and when that leaves some of the text out.

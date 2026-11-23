@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ctypes
 import sys
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import gui_probe_win32
@@ -85,6 +86,51 @@ class TestWin32Keys:
         # SendInput refuses every event when cbSize is not sizeof(INPUT): 40 on 64-bit, 28 on 32.
         expected = 40 if ctypes.sizeof(ctypes.c_void_p) == 8 else 28
         assert ctypes.sizeof(gui_probe_win32._INPUT) == expected  # noqa: SLF001
+
+
+def _rect_filler(left: int, top: int, right: int, bottom: int) -> object:
+    """Stand in for a call that fills in the rectangle it is passed by reference."""
+
+    def fill(_window: int, by_ref: Any) -> bool:  # noqa: ANN401 (a ctypes reference)
+        rect = by_ref._obj  # noqa: SLF001 (the structure ctypes.byref wraps)
+        rect.left, rect.top, rect.right, rect.bottom = left, top, right, bottom
+        return True
+
+    return fill
+
+
+class TestWin32Resize:
+    def test_the_frame_is_added_to_the_size_asked_for_the_drawable_area(self) -> None:
+        """SetWindowPos sizes the whole window: 16 and 39 here are its frame's share."""
+        user32 = MagicMock()
+        user32.GetClientRect.side_effect = _rect_filler(0, 0, 782, 1224)
+        user32.GetWindowRect.side_effect = _rect_filler(100, 50, 100 + 798, 50 + 1263)
+        with patch.object(gui_probe_win32, "_user32", user32):
+            _backend().resize_client(222, 900, 1100)
+
+        # The size alone (0x16): not moved, not raised, not made the active window.
+        user32.SetWindowPos.assert_called_once_with(222, None, 0, 0, 916, 1139, 0x16)
+
+    def test_a_window_that_has_gone_is_an_error(self) -> None:
+        user32 = MagicMock()
+        user32.GetClientRect.return_value = 0
+        with (
+            patch.object(gui_probe_win32, "_user32", user32),
+            pytest.raises(RuntimeError, match="the app window has gone"),
+        ):
+            _backend().resize_client(222, 900, 1100)
+        user32.SetWindowPos.assert_not_called()
+
+    def test_a_refused_resize_is_an_error(self) -> None:
+        user32 = MagicMock()
+        user32.GetClientRect.side_effect = _rect_filler(0, 0, 782, 1224)
+        user32.GetWindowRect.side_effect = _rect_filler(0, 0, 782, 1224)
+        user32.SetWindowPos.return_value = 0
+        with (
+            patch.object(gui_probe_win32, "_user32", user32),
+            pytest.raises(RuntimeError, match="not resized to 900x1100"),
+        ):
+            _backend().resize_client(222, 900, 1100)
 
 
 class TestWin32Close:

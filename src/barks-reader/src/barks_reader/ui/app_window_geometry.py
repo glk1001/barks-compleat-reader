@@ -568,10 +568,11 @@ class AppWindowGeometryHelper:
                         f" and the window is now {tuple(Window.size)}."
                     )
                     return
+                corrected = log_markers.WINDOW_ASPECT_CORRECTED.format(
+                    width=width, height=height, to_width=correct_width, to_height=correct_height
+                )
                 logger.info(
-                    f"Aspect-ratio correction: resize event {width},{height}"
-                    f" -> Window.size = ({correct_width}, {correct_height});"
-                    f" Window.left/top = ({Window.left}, {Window.top}),"
+                    f"{corrected} Window.left/top = ({Window.left}, {Window.top}),"
                     f" monitor width = {monitor_w}."
                 )
                 Window.size = (correct_width, correct_height)
