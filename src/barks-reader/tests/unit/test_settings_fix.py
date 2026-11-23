@@ -705,7 +705,11 @@ class TestTypingAPath:
         chooser._update_event = None
         with (
             patch.object(settings_fix, "Clock") as clock,
-            patch.object(settings_fix, "Path", side_effect=RuntimeError("no home")),
+            patch.object(
+                settings_fix,
+                "folder_and_selection_for_typed",
+                side_effect=RuntimeError("no home"),
+            ),
         ):
             SettingLongPathPopup.update_file_chooser_path(chooser, "~nobody/comics")
             run_last_scheduled(clock.schedule_once, 0.5)

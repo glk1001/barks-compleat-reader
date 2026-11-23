@@ -34,7 +34,15 @@ from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.folder_chooser import NEXT_DRIVE_HINT, drives, folders_left_of
+from barks_reader.core.folder_chooser import (
+    NEXT_DRIVE_HINT,
+    drives,
+    folder_and_selection_for_typed,
+    folders_left_of,
+    highlight_after,
+    is_parent_entry,
+    start_folder,
+)
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -586,9 +594,7 @@ class SettingLongPathPopup(PopupFrame):
         if not entries:
             return
         paths = [entry.path for entry in entries]
-        current = chooser.selection[0] if chooser.selection else None
-        idx = paths.index(current) + delta if current in paths else 0
-        idx = max(0, min(len(entries) - 1, idx))
+        idx = highlight_after(paths, chooser.selection[0] if chooser.selection else None, delta)
         chooser.selection = [paths[idx]]
         chooser.layout.ids.scrollview.scroll_to(entries[idx])
         logger.debug(log_markers.FOLDER_CHOOSER_AT.format(path=paths[idx]))
@@ -598,11 +604,11 @@ class SettingLongPathPopup(PopupFrame):
         chooser = self.ids.file_chooser
         if not chooser.selection:
             return
-        target = chooser.selection[0].rstrip("/\\")
-        if target.endswith(".."):
+        target = chooser.selection[0]
+        if is_parent_entry(target):
             self._open_folder(str(Path(chooser.path).parent))
         elif Path(target).is_dir():
-            self._open_folder(target)
+            self._open_folder(target.rstrip("/\\"))
 
     def _open_parent(self) -> None:
         """Open the parent folder; from the top of a drive, the next drive that lists."""
@@ -656,14 +662,11 @@ class SettingLongPathPopup(PopupFrame):
             try:
                 self._updating = True
                 self._showing_typed_path = True
-                path = Path(text).expanduser()
-                if path.is_dir():
-                    self.ids.file_chooser.set_path(str(path))
-                    self.ids.file_chooser.selection = [str(path)]
-                elif path.parent.is_dir():
-                    # If the typed path doesn't exist but parent does, navigate to parent.
-                    self.ids.file_chooser.set_path(str(path.parent))
-                    self.ids.file_chooser.selection = [str(path)]
+                shown = folder_and_selection_for_typed(text)
+                if shown is not None:
+                    folder, selection = shown
+                    self.ids.file_chooser.set_path(str(folder))
+                    self.ids.file_chooser.selection = [str(selection)]
             except Exception:  # noqa: BLE001
                 # Invalid path, just ignore.
                 logger.info(f'Invalid path in long path file chooser: "{text}"')
@@ -694,7 +697,7 @@ class SettingLongPathPopup(PopupFrame):
         if value:
             selected = value[0]
             # If "../" was selected, use the current path instead.
-            if selected.endswith(("../", "/..")):
+            if is_parent_entry(selected):
                 self.ids.path_input.text = self.ids.file_chooser.path
             else:
                 self.ids.path_input.text = selected
@@ -719,15 +722,8 @@ def open_folder_chooser_popup(title: str, value: str, setting_widget: object) ->
             (``update_setting_value``).
 
     """
-    selected_dir = Path(value)
-    # A full path only: the parent of an unset setting's marker, or of any other
-    # relative value, is ".", and the list opened on the folder the app started in.
-    setting_parent_dir = (
-        selected_dir.parent
-        if selected_dir.is_absolute() and selected_dir.parent.is_dir()
-        else Path("~").expanduser()
-    )
-    setting_dir = str(selected_dir)
+    setting_parent_dir = start_folder(value, Path("~").expanduser())
+    setting_dir = str(Path(value))
 
     popup = SettingLongPathPopup(title=title, setting_widget=setting_widget)
 
