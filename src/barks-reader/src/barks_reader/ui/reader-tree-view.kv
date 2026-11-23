@@ -27,6 +27,26 @@
     height: root.NODE_HEIGHT
     width: root.NODE_WIDTH
 
+<TickBoxTreeViewNode>:
+    padding: (root.TEXT_INDENT, 0, 0, 0)
+    canvas.after:
+        Color:
+            rgba: root.color
+        Line:
+            rectangle: (self.x, self.center_y - root.BOX_SIDE / 2, root.BOX_SIDE, root.BOX_SIDE)
+            width: dp(1)
+        # The tick: down to the foot of the box, then up past its top right corner.
+        Color:
+            rgba: root.color if root.ticked else (0, 0, 0, 0)
+        Line:
+            points:
+                (
+                self.x + root.BOX_SIDE * 0.2, self.center_y,
+                self.x + root.BOX_SIDE * 0.42, self.center_y - root.BOX_SIDE * 0.28,
+                self.x + root.BOX_SIDE * 0.85, self.center_y + root.BOX_SIDE * 0.32,
+                )
+            width: dp(1.5)
+
 <YearRangeTreeViewNode>:
     font_size: fm.tree_view_year_range_node_font_size
     markup: True

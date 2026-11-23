@@ -202,6 +202,21 @@ class StoryGroupTreeViewNode(ButtonTreeViewNode):
     NODE_HEIGHT = dp(30)
 
 
+class TickBoxTreeViewNode(StoryGroupTreeViewNode):
+    """A row with a box before its text that a press ticks or clears.
+
+    The box and its tick are drawn, not typed: the app's font has neither glyph.
+    The row has nothing under it, so a press opens nothing; what the tick means is
+    its press handler's business.
+    """
+
+    BOX_SIDE = dp(14)
+    # From the row's left edge to its text: the box and the gap after it.
+    TEXT_INDENT = BOX_SIDE + dp(10)
+
+    ticked = BooleanProperty(defaultvalue=False)
+
+
 class YearRangeTreeViewNode(ButtonTreeViewNode):
     """A node for a range of years."""
 

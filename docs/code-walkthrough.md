@@ -356,6 +356,11 @@ Three types carry the whole model:
   (`_random_titles_spec` / `_character_random_titles_spec` /
   `_category_random_titles_spec` in `tree_spec.py`); the scope on the
   destination exists so the pipeline can theme the backdrop to match (§5.3).
+  The family is headed by a tick row, "Only stories not yet read"
+  (`NodeKind.TICK_BOX`, `OnlyUnreadDestination`): ticked, every node's sample
+  is drawn from the unread stories alone. The tick is the
+  `choose_only_unread` setting, kept out of the settings panel
+  (`FieldSpec.in_panel`), and each node asks it as it opens.
 - **`ViewStates`** (`view_states.py`) — a plain `IntEnum` naming every
   top-level view (`INITIAL`, `ON_TITLE_NODE`, `ON_SERIES_*`, `ON_TAG_NODE`,
   the search/index/appendix states, …). It's the single vocabulary the whole

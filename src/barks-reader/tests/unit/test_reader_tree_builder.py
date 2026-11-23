@@ -13,6 +13,7 @@ from barks_reader.core.navigation import (
     NodeKind,
     NodeRegistration,
     NodeSpec,
+    OnlyUnreadDestination,
     PressAction,
     TagDestination,
     TagYearRangeDestination,
@@ -26,6 +27,7 @@ from barks_reader.ui.tree_view_nodes import (
     IntroTextTreeViewNode,
     MainTreeViewNode,
     StoryGroupTreeViewNode,
+    TickBoxTreeViewNode,
     TitleTreeViewNode,
     YearRangeTreeViewNode,
 )
@@ -108,6 +110,61 @@ class TestWalking:
         assert node.source_text == intro_text
         assert node.no_selection
         assert node.destination is None
+
+    @pytest.mark.parametrize("ticked", [True, False])
+    def test_a_tick_box_spec_builds_a_row_ticked_as_the_spec_says(
+        self,
+        tree_builder: ReaderTreeBuilder,
+        mock_dependencies: dict[str, MagicMock],
+        ticked: bool,
+    ) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.TICK_BOX,
+            text="Only stories not yet read",
+            destination=OnlyUnreadDestination(),
+            ticked=lambda: ticked,
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+        assert isinstance(node, TickBoxTreeViewNode)
+        assert node.text == "Only stories not yet read"
+        assert node.destination == OnlyUnreadDestination()
+        assert node.ticked is ticked
+        assert not node.has_rows_to_show()
+
+    @pytest.mark.parametrize("was_ticked", [True, False])
+    def test_a_press_on_the_only_unread_row_turns_the_tick_and_the_setting_over(
+        self,
+        tree_builder: ReaderTreeBuilder,
+        mock_dependencies: dict[str, MagicMock],
+        loguru_sink: list[str],
+        was_ticked: bool,
+    ) -> None:
+        settings = mock_dependencies["reader_settings"]
+        settings.choose_only_unread = was_ticked
+        spec = NodeSpec(
+            kind=NodeKind.TICK_BOX,
+            text="Only stories not yet read",
+            destination=OnlyUnreadDestination(),
+            press_action=PressAction.TICK_ONLY_UNREAD,
+            ticked=lambda: settings.choose_only_unread,
+        )
+        _build_with_spec(tree_builder, spec)
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+
+        node.dispatch("on_press")
+
+        assert settings.choose_only_unread is not was_ticked
+        assert node.ticked is not was_ticked
+        wanted = re.compile(pattern(log_markers.CHOOSE_ONLY_UNREAD_SET, value=not was_ticked))
+        assert any(wanted.search(line) for line in loguru_sink)
+
+        node.dispatch("on_press")  # and back again: each press is one turn
+
+        assert settings.choose_only_unread is was_ticked
+        assert node.ticked is was_ticked
 
     def test_press_action_binds_manager_handler(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]

@@ -76,10 +76,10 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_HOW_TO_TEXT,
     INTRO_ILLUSTRATED_HISTORY_TEXT,
     INTRO_NODE_TEXT,
-    NOT_YET_READ_NODE_TEXT,
     NOTHING_TO_CONTINUE_TEXT,
     NOTHING_UNREAD_TEXT,
     ONE_PAGER_YEAR_RANGES,
+    ONLY_NOT_YET_READ_NODE_TEXT,
     PLAYLISTS_NODE_TEXT,
     RANDOM_TITLE_YEAR_RANGES,
     READING_NODE_TEXT,
@@ -135,6 +135,7 @@ from .destinations import (
     LocationsIndexDestination,
     MainIndexDestination,
     NamesIndexDestination,
+    OnlyUnreadDestination,
     PlaylistDestination,
     PlaylistsDestination,
     RandomTitlesDestination,
@@ -171,7 +172,8 @@ class NodeKind(Enum):
     """Which tree-view widget class the walker instantiates.
 
     `INTRO_TEXT` is a non-selectable prose row (a playlist's introduction); its
-    already-hyphenated paragraph is carried in `NodeSpec.text`.
+    already-hyphenated paragraph is carried in `NodeSpec.text`. `TICK_BOX` is a row
+    with a box that a press ticks or clears; `NodeSpec.ticked` says which it starts as.
     """
 
     MAIN = auto()
@@ -179,6 +181,7 @@ class NodeKind(Enum):
     YEAR_RANGE = auto()
     TITLE_ROW = auto()
     INTRO_TEXT = auto()
+    TICK_BOX = auto()
 
 
 class PressAction(Enum):
@@ -196,6 +199,7 @@ class PressAction(Enum):
     OPEN_WIKI_INDEX = auto()
     OPEN_CORPUS_STATS = auto()
     OPEN_DOCUMENT = auto()
+    TICK_ONLY_UNREAD = auto()
 
 
 class NodeRegistration(Enum):
@@ -228,6 +232,8 @@ class NodeSpec:
     children: tuple[NodeSpec, ...] = field(default=())
     lazy_children: Callable[[], tuple[NodeSpec, ...]] | None = None
     repopulate_on_expand: bool = False
+    # A tick-box row's: asked when the row is made, for whether it starts ticked.
+    ticked: Callable[[], bool] | None = None
 
 
 def build_reader_tree_spec(
@@ -241,13 +247,14 @@ def build_reader_tree_spec(
     """Compose the full reader navigation tree as `NodeSpec`s.
 
     Args:
-        reader_settings: Source of the favourite-titles path and wiki bundle dir.
+        reader_settings: Source of the favourite-titles path, the wiki bundle dir and
+            whether 'Choose for me' picks only from the stories not yet started.
         title_lists: Filtered title lists keyed as by `FilteredTitleLists`
             (series names, chrono years, and CS/US year keys).
         include_one_pagers_in_chrono: Whether `title_lists`' chrono year lists
             include one-pagers (checked against the expected title counts).
         read_states: Returns which stories are finished and which were left mid-way,
-            asked each time 'Continue reading' or 'From not yet read' opens. Without it
+            asked each time 'Continue reading' or a 'Choose for me' node opens. Without it
             every story is unread.
         today: The date '<Month> in Barks' is named and filled for: today's, unless
             given. An app left running into the next month keeps the old one.
@@ -299,29 +306,29 @@ _CHARACTER_RANDOM_NODES: tuple[tuple[str, Tags], ...] = (
 )
 
 
-def _random_title_rows(title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec, ...]:
-    """Make title rows for a fresh random sample, displayed chronologically."""
+def _random_title_rows(
+    title_infos: list[FantaComicBookInfo],
+    read_states: Callable[[], ReadStates],
+    only_unread: Callable[[], bool],
+) -> tuple[NodeSpec, ...]:
+    """Make title rows for a fresh random sample, displayed chronologically.
+
+    With `only_unread`, the sample is of the unread stories alone, however few are
+    left, and a row saying so stands in when none is. A story left mid-way is not
+    among them: 'Continue reading' has it.
+    """
+    if only_unread():
+        states = read_states()
+        title_infos = [
+            info
+            for info in title_infos
+            if states.state_of(info.comic_book_info.get_title_str()) is ReadState.UNREAD
+        ]
+        if not title_infos:
+            return (NodeSpec(kind=NodeKind.INTRO_TEXT, text=NOTHING_UNREAD_TEXT),)
     sample = random.sample(title_infos, min(len(title_infos), NUM_RANDOM_TITLES))
     sample.sort(key=lambda info: info.fanta_chronological_number)
     return _title_rows(sample)
-
-
-def _unread_random_title_rows(
-    title_infos: list[FantaComicBookInfo], read_states: Callable[[], ReadStates]
-) -> tuple[NodeSpec, ...]:
-    """Make title rows for a fresh random sample of the unread stories.
-
-    A story left mid-way is not among them: 'Continue reading' has it.
-    """
-    states = read_states()
-    unread = [
-        info
-        for info in title_infos
-        if states.state_of(info.comic_book_info.get_title_str()) is ReadState.UNREAD
-    ]
-    if not unread:
-        return (NodeSpec(kind=NodeKind.INTRO_TEXT, text=NOTHING_UNREAD_TEXT),)
-    return _random_title_rows(unread)
 
 
 def _continue_reading_rows(read_states: Callable[[], ReadStates]) -> tuple[NodeSpec, ...]:
@@ -646,8 +653,14 @@ class _SpecBuilder:
                     text=CHOOSE_FOR_ME_NODE_TEXT,
                     destination=ChooseForMeDestination(),
                     children=(
+                        NodeSpec(
+                            kind=NodeKind.TICK_BOX,
+                            text=ONLY_NOT_YET_READ_NODE_TEXT,
+                            destination=OnlyUnreadDestination(),
+                            press_action=PressAction.TICK_ONLY_UNREAD,
+                            ticked=self._only_unread,
+                        ),
                         self._random_titles_spec(SURPRISE_ME_NODE_TEXT, None),
-                        self._not_yet_read_spec(),
                         self._random_titles_spec(
                             FROM_THE_1940S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[0]
                         ),
@@ -743,20 +756,18 @@ class _SpecBuilder:
             kind=NodeKind.STORY_GROUP,
             text=text,
             destination=RandomTitlesDestination(year_range=year_range),
-            lazy_children=partial(_random_title_rows, title_list),
+            lazy_children=self._random_rows_of(title_list),
             repopulate_on_expand=True,
         )
 
-    def _not_yet_read_spec(self) -> NodeSpec:
-        all_years = (CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1])
-        title_list = self._year_range_titles(all_years, str)
-        return NodeSpec(
-            kind=NodeKind.STORY_GROUP,
-            text=NOT_YET_READ_NODE_TEXT,
-            destination=RandomTitlesDestination(unread_only=True),
-            lazy_children=partial(_unread_random_title_rows, title_list, self._read_states),
-            repopulate_on_expand=True,
-        )
+    def _only_unread(self) -> bool:
+        """Whether the tick that heads 'Choose for me' is on, asked at each sample."""
+        return self._reader_settings.choose_only_unread
+
+    def _random_rows_of(
+        self, title_list: list[FantaComicBookInfo]
+    ) -> Callable[[], tuple[NodeSpec, ...]]:
+        return partial(_random_title_rows, title_list, self._read_states, self._only_unread)
 
     def _character_random_titles_spec(self, text: str, tag: Tags) -> NodeSpec:
         title_list = _fanta_infos(get_sorted_tagged_titles(tag))
@@ -768,7 +779,7 @@ class _SpecBuilder:
             kind=NodeKind.STORY_GROUP,
             text=text,
             destination=RandomTitlesDestination(tag=tag),
-            lazy_children=partial(_random_title_rows, title_list),
+            lazy_children=self._random_rows_of(title_list),
             repopulate_on_expand=True,
         )
 
@@ -784,7 +795,7 @@ class _SpecBuilder:
             kind=NodeKind.STORY_GROUP,
             text=text,
             destination=RandomTitlesDestination(category=category),
-            lazy_children=partial(_random_title_rows, title_list),
+            lazy_children=self._random_rows_of(title_list),
             repopulate_on_expand=True,
         )
 

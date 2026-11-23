@@ -48,6 +48,7 @@ from .destinations import (
     LocationsIndexDestination,
     MainIndexDestination,
     NamesIndexDestination,
+    OnlyUnreadDestination,
     PlaylistDestination,
     PlaylistsDestination,
     RandomTitlesDestination,
@@ -108,6 +109,8 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
     # A list of title rows and nothing else: it keeps the view of the node it is under.
     ContinueReadingDestination: ViewStates.ON_READING_NODE,
     ChooseForMeDestination: ViewStates.ON_CHOOSE_FOR_ME_NODE,
+    # A tick and nothing else: it keeps the view of the node it is under.
+    OnlyUnreadDestination: ViewStates.ON_CHOOSE_FOR_ME_NODE,
     PlaylistsDestination: ViewStates.ON_PLAYLISTS_NODE,
     CorpusStatsDestination: ViewStates.ON_INTRO_BY_THE_NUMBERS_NODE,
     IllustratedHistoryDestination: ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,

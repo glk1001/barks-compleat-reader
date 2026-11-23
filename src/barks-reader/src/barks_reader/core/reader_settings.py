@@ -62,6 +62,7 @@ MAIN_WINDOW_HEIGHT = "main_window_height"
 MAIN_WINDOW_LEFT = "main_window_left"
 MAIN_WINDOW_TOP = "main_window_top"
 ALT_ESCAPE_KEY = "alt_escape_key"
+CHOOSE_ONLY_UNREAD = "choose_only_unread"
 ALT_ESCAPE_KEY_UNSET = 0
 
 LOG_LEVEL_OPTIONS = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -95,6 +96,8 @@ class FieldSpec:
     config_default: Any = None
     expand_vars: bool = False
     validator: Callable[..., bool] | None = None
+    # False for a setting the app has its own control for, kept out of the panel.
+    in_panel: bool = True
 
 
 def _resolve_default(spec: FieldSpec) -> Any:  # noqa: ANN401
@@ -406,6 +409,22 @@ class ReaderSettings:
         logger.info(f"Setting alt_escape_key = {keycode}.")
         assert self._config
         self._config.set(BARKS_READER_SECTION, ALT_ESCAPE_KEY, int(keycode))
+        self._save_settings()
+
+    @property
+    def choose_only_unread(self) -> bool:
+        """Whether 'Choose for me' picks only from the stories not yet started.
+
+        Set by the tick row that heads 'Choose for me', not in the settings panel;
+        setting it saves the settings.
+        """
+        return self._read(CHOOSE_ONLY_UNREAD)
+
+    @choose_only_unread.setter
+    def choose_only_unread(self, value: bool) -> None:
+        logger.info(f"Setting choose_only_unread = {value}.")
+        assert self._config
+        self._config.set(BARKS_READER_SECTION, CHOOSE_ONLY_UNREAD, 1 if value else 0)
         self._save_settings()
 
     @property
@@ -751,6 +770,16 @@ _FIELDS: tuple[FieldSpec, ...] = (
         expand_vars=True,
         validator=ReaderSettings._is_valid_wiki_bundle_dir,  # noqa: SLF001
     ),
+    # -- Not in the panel --
+    FieldSpec(
+        key=CHOOSE_ONLY_UNREAD,
+        title="Choose Only From Stories Not Yet Read",
+        desc="Whether 'Choose for me' picks only from the stories not yet started."
+        " Set by the tick row that heads 'Choose for me'.",
+        kind=FieldKind.BOOL,
+        config_default=0,
+        in_panel=False,
+    ),
 )
 
 _FIELDS_BY_KEY: dict[str, FieldSpec] = {f.key: f for f in _FIELDS}
@@ -759,6 +788,8 @@ _FIELDS_BY_KEY: dict[str, FieldSpec] = {f.key: f for f in _FIELDS}
 def _get_reader_settings_json() -> str:
     items: list[dict[str, Any]] = []
     for spec in _FIELDS:
+        if not spec.in_panel:
+            continue
         if spec.section_header:
             items.append({"type": "title", "title": spec.section_header})
         entry: dict[str, Any] = {

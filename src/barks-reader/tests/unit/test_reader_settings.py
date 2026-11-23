@@ -135,6 +135,24 @@ class TestReaderSettings:
             expected_path, BarksPanelsExtType.JPG
         )
 
+    def test_choose_only_unread_is_read_from_the_config_and_saved_when_set(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock
+    ) -> None:
+        """The tick that heads 'Choose for me' is kept for the next run."""
+        mock_config.getboolean.return_value = True
+        assert reader_settings.choose_only_unread is True
+        mock_config.getboolean.assert_called_with(BARKS_READER_SECTION, "choose_only_unread")
+
+        with patch.object(reader_settings, ReaderSettings._save_settings.__name__) as mock_save:
+            reader_settings.choose_only_unread = True
+            mock_config.set.assert_called_with(BARKS_READER_SECTION, "choose_only_unread", 1)
+            mock_save.assert_called_once()
+
+            mock_save.reset_mock()
+            reader_settings.choose_only_unread = False
+            mock_config.set.assert_called_with(BARKS_READER_SECTION, "choose_only_unread", 0)
+            mock_save.assert_called_once()
+
     def test_is_first_use_of_reader_setter(
         self, reader_settings: ReaderSettings, mock_config: MagicMock
     ) -> None:
@@ -445,12 +463,25 @@ class TestSettingsPanelSchema:
     def schema(self) -> list[dict[str, object]]:
         return json.loads(reader_settings_module._get_reader_settings_json())
 
+    @staticmethod
+    def _panel_fields() -> list[reader_settings_module.FieldSpec]:
+        return [spec for spec in reader_settings_module._FIELDS if spec.in_panel]
+
+    def test_a_setting_with_its_own_control_is_kept_out_of_the_panel(
+        self, schema: list[dict[str, object]]
+    ) -> None:
+        """'Choose for me' has a tick row for it: a second control would only disagree."""
+        assert reader_settings_module.CHOOSE_ONLY_UNREAD not in {item.get("key") for item in schema}
+        assert reader_settings_module.CHOOSE_ONLY_UNREAD in {
+            spec.key for spec in reader_settings_module._FIELDS
+        }
+
     def test_entries_appear_in_field_order_with_their_section_titles(
         self, schema: list[dict[str, object]]
     ) -> None:
         """A spec with a `section_header` emits a title separator *before* its entry."""
         expected: list[tuple[str, str]] = []
-        for spec in reader_settings_module._FIELDS:
+        for spec in self._panel_fields():
             if spec.section_header:
                 expected.append(("title", spec.section_header))
             expected.append((spec.kind.value, spec.key))
@@ -466,8 +497,8 @@ class TestSettingsPanelSchema:
     ) -> None:
         by_key = {item["key"]: item for item in schema if item["type"] != "title"}
 
-        assert set(by_key) == {spec.key for spec in reader_settings_module._FIELDS}
-        for spec in reader_settings_module._FIELDS:
+        assert set(by_key) == {spec.key for spec in self._panel_fields()}
+        for spec in self._panel_fields():
             entry = by_key[spec.key]
             assert entry["title"] == spec.title
             assert entry["desc"] == spec.desc
@@ -479,7 +510,7 @@ class TestSettingsPanelSchema:
     ) -> None:
         by_key = {item["key"]: item for item in schema if item["type"] != "title"}
 
-        for spec in reader_settings_module._FIELDS:
+        for spec in self._panel_fields():
             entry = by_key[spec.key]
             if spec.options is None:
                 assert "options" not in entry

@@ -124,9 +124,12 @@ The tree on the left is the primary way to find stories. Its top-level sections 
   - *Continue reading* — the stories you left part-way through, the most recent first. Open
     one and its title view offers the page you stopped on.
   - *Choose for me* — a fresh random handful of stories, re-rolled each time you open the node:
-    *Surprise me*, *From not yet read* (only stories with no dot), a decade
+    *Surprise me*, a decade
     (*From the 1940s/50s/60s*), *From favourites*, or *With Scrooge*, *Gladstone*, *Gyro*,
-    *Daisy*, *the Beagle Boys* or *Grandma Duck*.
+    *Daisy*, *the Beagle Boys* or *Grandma Duck*. The first row, *Only stories not yet
+    read*, is a tick box: press it and every one of these picks only from stories with no
+    dot, until you press it again. A node left with fewer than five such stories shows
+    those it has.
   - *November in Barks* (named for the current month) — the stories tied to this month in
     any year: those Barks *submitted* in it and those *on sale* in it, by the month on the
     issue's cover. A story submitted on today's date is named at the top of its list.
@@ -152,7 +155,7 @@ A dot after a story's title says how far you have got with it:
 - **No dot** — one you have not read.
 
 A one-page gag or a cover counts as read once you have opened it. A visit of under a minute counts for nothing: it is taken as a look, not a read. The
-dots, *Continue reading*, *From not yet read* and the count on *By the Numbers* all come from the
+dots, *Continue reading*, the *Only stories not yet read* tick and the count on *By the Numbers* all come from the
 reading history, so they stop changing while *Record Reading History* is off, and deleting a
 story from the *History* view makes it unread again.
 

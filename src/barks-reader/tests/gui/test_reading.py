@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 import pytest
-from barks_gui import nodes
+from barks_gui import harness, nodes
 from barks_gui.steps import ANY_NODE_SELECTED
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -20,6 +20,9 @@ RANDOM_PICKS = 5
 CANNED_LEFT_MID_WAY = 3
 PLAYLIST = "The Bravery Stories"
 PLAYLIST_INTRO_NODE = "<playlist-intro>"
+ONLY_UNREAD_ROW = "Only stories not yet read"
+# The tick row heads 'Choose for me': from any node under it, fewer Ups than this.
+MAX_UPS_TO_THE_TICK = 12
 
 
 def _repopulated(name: str) -> str:
@@ -73,26 +76,52 @@ def test_continue_reading_lists_the_stories_left_mid_way_newest_first(boot: AppB
     assert d.current_node() == nodes.GHOST_OF_THE_GROTTO[0], "the newest read comes first"
 
 
-def test_not_yet_read_redraws_on_every_expand(boot: AppBoot) -> None:
+def _only_unread_picks(name: str) -> str:
+    """Return the read-marks line of a node whose rows are made with no dot among them."""
+    return pattern(
+        markers.POPULATED_READ_MARKS,
+        name=name,
+        finished=0,
+        part_read=0,
+        unread=RANDOM_PICKS,
+    )
+
+
+def _only_unread_setting(boot: AppBoot) -> str:
+    return harness.read_ini_value(boot.scratch / "barks-reader.ini", "choose_only_unread").strip()
+
+
+def test_the_only_unread_tick_keeps_a_node_s_picks_to_stories_not_yet_read(
+    boot: AppBoot,
+) -> None:
+    """Return on the tick row turns it on, and off again; a node opened between has no dots."""
     d = boot(nodes.READING)
     d.open_branch("Choose for me")
-    with (
-        d.expect(_repopulated("From not yet read")),
-        # No row it offers has a dot: neither a finished story nor one left mid-way.
-        d.expect(
-            pattern(
-                markers.POPULATED_READ_MARKS,
-                name="From not yet read",
-                finished=0,
-                part_read=0,
-                unread=RANDOM_PICKS,
-            )
-        ),
-    ):
-        d.open_branch("From not yet read")
-    d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="From not yet read"), "Left")
-    with d.expect(_repopulated("From not yet read")):
-        d.key("Return")
+    d.select_node(ONLY_UNREAD_ROW)
+    d.key_then_wait(pattern(markers.CHOOSE_ONLY_UNREAD_SET, value=True), "Return")
+    assert _only_unread_setting(boot) == "1"
+
+    # A decade's node, not only 'Surprise me': the tick is every node's.
+    with d.expect(_repopulated("From the 1950s")), d.expect(_only_unread_picks("From the 1950s")):
+        d.open_branch("From the 1950s")
+    d.key_then_wait(pattern(markers.NODE_COLLAPSED, name="From the 1950s"), "Left")
+
+    for _ in range(MAX_UPS_TO_THE_TICK):
+        d.key_then_wait(ANY_NODE_SELECTED, "Up")
+        if d.current_node() == ONLY_UNREAD_ROW:
+            break
+    else:
+        pytest.fail(f"{MAX_UPS_TO_THE_TICK} Ups did not reach the tick row: {d.current_node()}")
+    d.key_then_wait(pattern(markers.CHOOSE_ONLY_UNREAD_SET, value=False), "Return")
+    assert _only_unread_setting(boot) == "0"
+
+
+def test_the_only_unread_tick_is_kept_from_the_last_run(boot: AppBoot) -> None:
+    """Booted with the tick on, the nodes keep to the unread before the row is touched."""
+    d = boot(nodes.READING, ini={"choose_only_unread": "1"})
+    d.open_branch("Choose for me")
+    with d.expect(_repopulated("Surprise me")), d.expect(_only_unread_picks("Surprise me")):
+        d.open_branch("Surprise me")
 
 
 def test_a_playlist_lists_its_stories_after_an_intro(boot: AppBoot) -> None:

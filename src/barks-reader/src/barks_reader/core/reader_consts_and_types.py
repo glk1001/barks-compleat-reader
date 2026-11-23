@@ -50,9 +50,12 @@ NOTHING_TO_CONTINUE_TEXT = "No story is waiting part-way through."
 CHOOSE_FOR_ME_NODE_TEXT = "Choose for me"
 SURPRISE_ME_NODE_TEXT = "Surprise me"
 # '<Month> in Barks' is named for the month: `this_month.get_month_node_text`.
-NOT_YET_READ_NODE_TEXT = "From not yet read"
-# The row under 'From not yet read' when every story has been finished or is part-read.
-NOTHING_UNREAD_TEXT = "Every story has been read."
+# The tick row that heads 'Choose for me': ticked, every node under it picks only
+# from the stories not yet started.
+ONLY_NOT_YET_READ_NODE_TEXT = "Only stories not yet read"
+# The row under a 'Choose for me' node, the tick on, when every story it picks from
+# has been finished or is part-read.
+NOTHING_UNREAD_TEXT = "Every story here has been read."
 FROM_THE_1940S_NODE_TEXT = "From the 1940s"
 FROM_THE_1950S_NODE_TEXT = "From the 1950s"
 FROM_THE_1960S_NODE_TEXT = "From the 1960s"

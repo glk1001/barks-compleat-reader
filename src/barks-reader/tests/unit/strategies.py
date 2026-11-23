@@ -56,6 +56,7 @@ from barks_reader.core.navigation.destinations import (
     LocationsIndexDestination,
     MainIndexDestination,
     NamesIndexDestination,
+    OnlyUnreadDestination,
     PlaylistDestination,
     PlaylistsDestination,
     RandomTitlesDestination,
@@ -129,6 +130,7 @@ NO_PAYLOAD_DESTINATION_TYPES: tuple[type[Destination], ...] = (
     ContinueReadingDestination,
     HistoryDestination,
     ChooseForMeDestination,
+    OnlyUnreadDestination,
     PlaylistsDestination,
     AppendixDestination,
     StatisticsDestination,
@@ -242,7 +244,6 @@ def random_titles_destinations() -> st.SearchStrategy[RandomTitlesDestination]:
         year_range=st.none() | year_ranges(),
         tag=st.none() | tags(),
         category=st.none() | tag_categories(),
-        unread_only=st.booleans(),
     )
 
 

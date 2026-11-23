@@ -126,6 +126,11 @@ class ChooseForMeDestination(Destination):
 
 
 @dataclass(frozen=True, slots=True)
+class OnlyUnreadDestination(Destination):
+    """The tick row that heads 'Choose for me': pick only from the stories not yet started."""
+
+
+@dataclass(frozen=True, slots=True)
 class PlaylistsDestination(Destination):
     """The 'Playlists' container under Reading (parent of every curated playlist)."""
 
@@ -252,14 +257,13 @@ class RandomTitlesDestination(Destination):
     The sample is scoped by `year_range` (inclusive submitted-year range, the
     decade nodes), `tag` (the 'With <character>' nodes), or `category` (the
     'From favourites' node, aggregating every tag in the category). All None
-    means all titles ('Surprise me'). `unread_only` keeps to the stories neither
-    finished nor left mid-way ('From not yet read'); it changes the sample, not the node's view.
+    means all titles ('Surprise me'). The tick row that heads 'Choose for me'
+    (`OnlyUnreadDestination`) narrows every node's sample, not its view.
     """
 
     year_range: tuple[int, int] | None = None
     tag: Tags | None = None
     category: TagCategories | None = None
-    unread_only: bool = False
 
 
 @dataclass(frozen=True, slots=True)

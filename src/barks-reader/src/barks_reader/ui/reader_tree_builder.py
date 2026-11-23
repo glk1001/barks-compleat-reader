@@ -32,6 +32,7 @@ from .tree_view_nodes import (
     IntroTextTreeViewNode,
     MainTreeViewNode,
     StoryGroupTreeViewNode,
+    TickBoxTreeViewNode,
     TitleTreeViewNode,
     YearRangeTreeViewNode,
 )
@@ -99,6 +100,7 @@ class ReaderTreeBuilder:
             PressAction.OPEN_WIKI_INDEX: tree_view_manager.on_wiki_index_node_pressed,
             PressAction.OPEN_CORPUS_STATS: tree_view_manager.on_corpus_stats_node_pressed,
             PressAction.OPEN_DOCUMENT: tree_view_manager.on_document_node_pressed,
+            PressAction.TICK_ONLY_UNREAD: self._on_only_unread_pressed,
         }
         assert set(self._press_handlers) == set(PressAction), (
             "every PressAction needs a press-handler entry (TOGGLE_ONLY maps to None)"
@@ -171,6 +173,17 @@ class ReaderTreeBuilder:
                 node, spec.lazy_children, repopulate_on_expand=spec.repopulate_on_expand
             )
 
+    def _on_only_unread_pressed(self, node: TickBoxTreeViewNode) -> None:
+        """Tick or clear 'Only stories not yet read', and keep it for the next run.
+
+        The 'Choose for me' nodes ask the setting each time one opens, and the press
+        that ticks this row shuts any that was open, so none shows an old sample.
+        """
+        ticked = not self._reader_settings.choose_only_unread
+        self._reader_settings.choose_only_unread = ticked
+        node.ticked = ticked
+        logger.info(log_markers.CHOOSE_ONLY_UNREAD_SET.format(value=ticked))
+
     def _log_read_marks(self, name: str, specs: tuple[NodeSpec, ...]) -> None:
         """Log how many of a node's new title rows were made with each read mark."""
         if self._read_states is None:
@@ -198,6 +211,12 @@ class ReaderTreeBuilder:
                 text=spec.text,
                 destination=spec.destination,
                 NODE_WIDTH=_YEAR_RANGE_KIND_TO_WIDTH[spec.destination.kind],
+            )
+
+        if spec.kind is NodeKind.TICK_BOX:
+            assert spec.ticked is not None
+            return TickBoxTreeViewNode(
+                text=spec.text, destination=spec.destination, ticked=spec.ticked()
             )
 
         return _NODE_CLASSES[spec.kind](text=spec.text, destination=spec.destination)

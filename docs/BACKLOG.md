@@ -361,8 +361,8 @@ Left over from the read marks and *November in Barks*:
 - [ ] **The read mark on the two-page spread** — the dot sits at the tree's right edge,
       inside the scrollbar (9a8acce0); seen only on the single page. Look at it on the
       spread and at 4K.
-- [ ] **A list that is open goes stale** — a story read from *Continue reading* or *From
-      not yet read* keeps its row, with its new dot, until the node is closed and reopened.
+- [ ] **A list that is open goes stale** — a story read from *Continue reading* or a
+      *Choose for me* node keeps its row, with its new dot, until the node is closed and reopened.
       Left on purpose: rebuilding the list would move or re-roll the rows just looked at.
       Revisit if it reads as a fault on the TV.
 - [ ] **The month node over a month's end** — it is named and filled when the tree is
@@ -370,7 +370,8 @@ Left over from the read marks and *November in Barks*:
 - [ ] **The in-app How To pages** — `docs/how-to-use.md` gained passages on the read
       marks, *Continue reading*, *From not yet read*, the one-minute rule and the month
       node. Regenerate the pages as under "Pictures and pages that show the old title
-      view" above.
+      view" above. Since 2026-11-23 *From not yet read* is the *Only stories not yet
+      read* tick row that heads *Choose for me*, and the passage says so.
 - [ ] **The website** — `website/app.html` mentions none of these.
 
 ## Architecture / testability

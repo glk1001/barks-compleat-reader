@@ -38,6 +38,9 @@ TREE_CHILDREN_REVEALED: Final = "Tree scrolled to show the children of '{name}'.
 NODE_COLLAPSED_NO_STATE_CHANGE: Final = "Node collapsed but not allowing state change: '{name}'."
 GOING_BACK_TO_NODE: Final = 'Going back to previous node "{name}".'
 REPOPULATED_NODE: Final = "Repopulated '{name}' with {count} children."
+# The tick row that heads 'Choose for me', pressed: whether its nodes now pick only
+# from the stories not yet started.
+CHOOSE_ONLY_UNREAD_SET: Final = "Choose for me: only stories not yet read = {value}."
 # A lazy node's children made, once for each node (each expansion for a random-title node).
 POPULATED_NODE: Final = "Populated '{name}' with {count} children."
 # The read marks those children were made with, logged after the line above.

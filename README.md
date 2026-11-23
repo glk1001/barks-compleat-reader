@@ -40,7 +40,8 @@ navigation and a visually engaging interface.
 - **This Month in Barks**: Under *Reading*, a node named for the current month lists the stories Barks submitted in
   that month and those on sale in it, across all his working years.
 - **Read Marks**: A dot beside each story shows whether you have finished it or left it part-way through. *Continue
-  reading* lists the stories left part-way, *From not yet read* picks only from stories you have not started, and
+  reading* lists the stories left part-way, the *Only stories not yet read* tick under *Choose for me* keeps its
+  picks to stories you have not started, and
   *By the Numbers* counts how many of the stories you have read.
 
 ## Screenshots
