@@ -9,7 +9,7 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.properties import (  # ty: ignore[import-not-found]
     BooleanProperty,
     NumericProperty,
@@ -20,6 +20,7 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView, FileSystemLocal
+from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.settings import (
     ContentPanel,
@@ -33,6 +34,7 @@ from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.folder_chooser import NEXT_DRIVE_HINT, drives, folders_left_of
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -491,6 +493,21 @@ def install_settings_theme_kv() -> None:
     _settings_kv_installed = True
 
 
+def _next_drive_hint() -> Label:
+    """Return the line under the folders that says how the keys reach another drive."""
+    hint = Label(
+        text=NEXT_DRIVE_HINT,
+        size_hint_y=None,
+        height=dp(24),
+        font_size=sp(13),
+        color=list(theme().text_secondary),
+        halign="left",
+        valign="middle",
+    )
+    hint.bind(size=lambda label, size: setattr(label, "text_size", size))
+    return hint
+
+
 class FolderChooserBody(BoxLayout):
     """The directory chooser's body: the path box over the folders (laid out in KV)."""
 
@@ -520,6 +537,8 @@ class SettingLongPathPopup(PopupFrame):
             ),
         )
         body.popup = self
+        if len(drives()) > 1:
+            body.add_widget(_next_drive_hint())
         # The body's kv ids, where the chooser's code and its tests reach them.
         self.ids.update(body.ids)
         self.setting_widget = setting_widget
@@ -541,7 +560,8 @@ class SettingLongPathPopup(PopupFrame):
         """Take the remote's browsing keys: the arrows, and Return to keep the box's path.
 
         Up/Down move the highlight through the listed entries (the box follows it),
-        Right opens the highlighted folder and Left the parent one. What is not taken
+        Right opens the highlighted folder and Left the parent one, or from the top of
+        a drive the next drive (``core.folder_chooser``). What is not taken
         here (Escape, and every key while the box is typed in) is the frame's.
         """
         if is_escape_key(key) or self.ids.path_input.focus:
@@ -553,7 +573,7 @@ class SettingLongPathPopup(PopupFrame):
         elif key == KEY_RIGHT:
             self._open_highlighted()
         elif key == KEY_LEFT:
-            self._open_folder(str(Path(self.ids.file_chooser.path).parent))
+            self._open_parent()
         else:
             return False
         return True
@@ -583,23 +603,35 @@ class SettingLongPathPopup(PopupFrame):
         elif Path(target).is_dir():
             self._open_folder(target)
 
-    def _open_folder(self, folder: str) -> None:
+    def _open_parent(self) -> None:
+        """Open the parent folder; from the top of a drive, the next drive that lists."""
+        here = Path(self.ids.file_chooser.path)
+        for folder in folders_left_of(here, drives()):
+            if self._open_folder(str(folder)):
+                return
+
+    def _open_folder(self, folder: str) -> bool:
         """Show `folder`'s entries, nothing highlighted, and put it in the box.
 
         A folder the reader may not list stays shut, the chooser where it was: Kivy
         would show it empty and log the refusal as an error.
+
+        Returns:
+            Whether the folder was opened.
+
         """
         try:
             with os.scandir(folder):
                 pass
         except OSError:
             logger.debug(log_markers.FOLDER_CHOOSER_NOT_LISTED.format(path=folder))
-            return
+            return False
         chooser = self.ids.file_chooser
         chooser.set_path(folder)
         chooser.selection = []
         self.ids.path_input.text = folder
         logger.debug(log_markers.FOLDER_CHOOSER_IN.format(path=folder))
+        return True
 
     def select_path(self, path: str) -> None:
         """Call the 'Select' button when pressed."""

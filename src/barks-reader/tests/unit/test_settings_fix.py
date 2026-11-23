@@ -10,9 +10,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
+from barks_reader.core.folder_chooser import NEXT_DRIVE_HINT
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.core.popup_frame import PopupSize
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
@@ -89,7 +90,7 @@ class TestFolderChooserKeys:
         _press(chooser, KEY_RIGHT)
         chooser._open_highlighted.assert_called_once()
         _press(chooser, KEY_LEFT)
-        chooser._open_folder.assert_called_once_with(str(Path("/books")))
+        chooser._open_parent.assert_called_once_with()
 
     def test_while_the_box_types_nothing_is_taken(self) -> None:
         chooser = _chooser(box_focused=True)
@@ -142,6 +143,26 @@ class TestFolderChooserOnTheFrame:
         chooser.dispatch("on_open")
         assert 'Folder chooser opened for "Fantagraphics Directory".' in loguru_sink
 
+    def _hints(self, drives: list[Path]) -> list[str]:
+        Builder.load_string(settings_fix._themed_settings_kv(), filename=self.KV_FILE)
+        try:
+            with (
+                patch.object(popup_frame, "Window") as window,
+                patch.object(settings_fix, "drives", return_value=drives),
+            ):
+                window.width, window.height = 1760, 1300
+                popup = SettingLongPathPopup(title="Fantagraphics Directory")
+        finally:
+            Builder.unload_file(self.KV_FILE)
+        return [w.text for w in popup.body.children if isinstance(w, Label)]
+
+    def test_with_more_than_one_drive_it_says_how_the_keys_reach_another(self) -> None:
+        assert self._hints([Path("C:/"), Path("D:/")]) == [NEXT_DRIVE_HINT]
+
+    @pytest.mark.parametrize("drives", [[], [Path("C:/")]])
+    def test_with_one_drive_or_none_it_has_nothing_to_say(self, drives: list[Path]) -> None:
+        assert self._hints(drives) == []
+
 
 def _browsing(tmp_path: Path, selected: str | None) -> MagicMock:
     """Stand in for a chooser listing '../', alpha/, beta/ and a file in `tmp_path`."""
@@ -182,11 +203,30 @@ class TestFolderChooserBrowsing:
         SettingLongPathPopup._open_highlighted(chooser)
         chooser._open_folder.assert_not_called()
 
+    def test_left_opens_the_parent_folder(self, tmp_path: Path) -> None:
+        chooser = MagicMock()
+        chooser.ids.file_chooser.path = str(tmp_path / "beta")
+        with patch.object(settings_fix, "drives", return_value=[]):
+            SettingLongPathPopup._open_parent(chooser)
+        chooser._open_folder.assert_called_once_with(str(tmp_path))
+
+    def test_left_at_the_top_of_a_drive_opens_the_next_drive_that_lists(self) -> None:
+        """The remote could not leave the drive: its top has no parent, and no "../"."""
+        top, empty, comics = Path("/"), Path("/no-disc"), Path("/comics")
+        chooser = MagicMock()
+        chooser.ids.file_chooser.path = str(top)
+        chooser._open_folder.side_effect = [False, True]  # no disc in the first
+        with (
+            patch.object(settings_fix, "drives", return_value=[top, empty, comics, Path("/z")]),
+        ):
+            SettingLongPathPopup._open_parent(chooser)
+        assert chooser._open_folder.mock_calls == [call(str(empty)), call(str(comics))]
+
     def test_opening_a_folder_shows_it_in_the_box(
         self, tmp_path: Path, loguru_sink: list[str]
     ) -> None:
         chooser = _browsing(tmp_path, "alpha")
-        SettingLongPathPopup._open_folder(chooser, str(tmp_path / "alpha"))
+        assert SettingLongPathPopup._open_folder(chooser, str(tmp_path / "alpha")) is True
         chooser.ids.file_chooser.set_path.assert_called_once_with(str(tmp_path / "alpha"))
         assert chooser.ids.file_chooser.selection == []
         assert chooser.ids.path_input.text == str(tmp_path / "alpha")
@@ -199,7 +239,8 @@ class TestFolderChooserBrowsing:
         chooser = _browsing(tmp_path, "alpha")
         chooser.ids.path_input.text = str(tmp_path)
         with patch.object(settings_fix.os, "scandir", side_effect=PermissionError("denied")):
-            SettingLongPathPopup._open_folder(chooser, str(tmp_path / "alpha"))
+            opened = SettingLongPathPopup._open_folder(chooser, str(tmp_path / "alpha"))
+        assert opened is False
         chooser.ids.file_chooser.set_path.assert_not_called()
         assert chooser.ids.path_input.text == str(tmp_path)
         assert f'Folder chooser: cannot list "{tmp_path / "alpha"}".' in loguru_sink

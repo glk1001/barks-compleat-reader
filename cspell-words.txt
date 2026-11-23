@@ -129,6 +129,7 @@ libx
 libyaml
 licence
 linkify
+listdrives
 lita
 llm
 llvmpipe
