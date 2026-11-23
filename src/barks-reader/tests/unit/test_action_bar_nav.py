@@ -27,6 +27,8 @@ from barks_reader.ui.reader_keyboard_nav import (
     draw_focus_highlight,
     open_dropdown,
 )
+from kivy.uix.behaviors import button as behaviors_button
+from kivy.uix.button import Button
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -424,6 +426,29 @@ class TestDropdownPageKeys:
         with patch.object(screen, "_dismiss_dropdown") as dismiss:
             assert screen._handle_menu_key(KEY_ESCAPE) is True
         dismiss.assert_called_once_with()
+
+    def test_return_twice_before_the_release_chooses_the_row_once(self) -> None:
+        """Kivy releases a keyed press a tenth of a second on: a bouncing Return chose twice."""
+        screen = _PagedDropdownScreen(2)
+        screen._items = [Button(), Button()]
+        chosen = MagicMock()
+        screen._items[1].bind(on_release=chosen)
+        with (
+            patch.object(nav_module, "draw_focus_highlight"),
+            patch.object(nav_module, "clear_focus_highlight"),
+            patch.object(behaviors_button, "Clock") as clock,
+        ):
+            screen._enter_dropdown_nav(initial_idx=1)
+            assert screen._handle_menu_key(KEY_ENTER) is True
+            assert screen._handle_menu_key(KEY_ENTER) is True
+            for release in [c.args[0] for c in clock.schedule_once.call_args_list]:
+                release(0)
+
+            assert chosen.call_count == 1
+            # Released, it can be chosen again: a list that stays open is not stuck.
+            screen._handle_menu_key(KEY_ENTER)
+            clock.schedule_once.call_args.args[0](0)
+        assert chosen.call_count == 2  # noqa: PLR2004
 
     def test_page_keys_are_not_consumed_without_a_page_step(self) -> None:
         screen = _StubDropdownScreen()

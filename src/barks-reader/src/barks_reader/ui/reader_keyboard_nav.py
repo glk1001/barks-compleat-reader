@@ -470,7 +470,16 @@ class DropdownNavMixin:
         return True
 
     def _activate_dropdown_item(self) -> None:
-        self._dropdown_buttons_cache[self._dropdown_focused_idx].trigger_action()
+        """Press the ringed row, unless it is pressed already.
+
+        Kivy's `trigger_action` presses now and releases a tenth of a second on, and
+        the list is open till then: a second Return in that time (a bouncing key)
+        chose the row twice.
+        """
+        row = self._dropdown_buttons_cache[self._dropdown_focused_idx]
+        if row.state == "down":
+            return
+        row.trigger_action()
 
     # --- Focus management (O(1) per keypress) ---
 
