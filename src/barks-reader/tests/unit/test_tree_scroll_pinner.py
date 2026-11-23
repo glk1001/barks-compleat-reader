@@ -656,6 +656,50 @@ def test_a_row_gone_from_the_tree_is_not_held() -> None:
     assert scroll_view.scroll_y == pytest.approx(0.75)
 
 
+def _row_moved(row: MagicMock) -> Callable[[object, float], None]:
+    """Return what the hold bound to the row's place in the list."""
+    (name, on_row_moved), _ = row.fbind.call_args
+    assert name == "y"
+    return on_row_moved
+
+
+def test_rows_gone_from_above_the_row_are_held_for_with_the_list_no_shorter() -> None:
+    """An index's shorter column: its row moved up the list, the list as tall as it was."""
+    scroll_view, _tree = _holding_view()
+    parent = _row_40_below_the_view_top()
+    _holding_pinner(scroll_view).pin_while_populating(parent, populate=None)
+
+    parent.top = 420.0  # 80 down the list: 60 of rows gone from above it
+    _row_moved(parent)(parent, 400.0)
+
+    # Scrolled 40 down, of 400, to keep it 40 below the view's top.
+    assert scroll_view.scroll_y == pytest.approx(0.9)
+
+
+def test_a_row_moved_off_the_list_is_not_held() -> None:
+    scroll_view, _tree = _holding_view()
+    parent = _row_40_below_the_view_top()
+    _holding_pinner(scroll_view).pin_while_populating(parent, populate=None)
+
+    parent.parent = None
+    parent.top = 420.0
+    _row_moved(parent)(parent, 400.0)
+
+    assert scroll_view.scroll_y == pytest.approx(0.75)
+
+
+def test_a_settled_pin_lets_go_of_its_row() -> None:
+    clock = FakeClock()
+    scroll_view, _tree = _holding_view()
+    parent = _row_40_below_the_view_top()
+    _holding_pinner(scroll_view, clock).pin_while_populating(parent, populate=None)
+    parent.unbind_uid.assert_not_called()
+    while clock.run_next():
+        pass
+
+    parent.unbind_uid.assert_called_once_with("y", parent.fbind.return_value)
+
+
 def test_a_settled_pin_lets_go_of_the_tree() -> None:
     clock = FakeClock()
     scroll_view, tree = _holding_view()

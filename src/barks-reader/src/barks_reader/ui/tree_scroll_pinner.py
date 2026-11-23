@@ -108,8 +108,9 @@ class RowScrollPinner:
         self._pin_generation = 0
         # Counts the pins: only the latest one's settling has `on_settled` to say.
         self._pin_serial = 0
-        # The latest pin's hold on the tree's height: the container and the binding's uid.
-        self._hold: tuple[Widget, int] | None = None
+        # The latest pin's hold: each binding's widget, property and uid (the list's
+        # height, and the row's place in it).
+        self._hold: tuple[tuple[Widget, str, int], ...] | None = None
 
     def cancel_pending_reveals(self) -> None:
         """Keep the pins under way from scrolling their children into view.
@@ -246,32 +247,47 @@ class RowScrollPinner:
         Moved in the tree's height change instead, ``scroll_y`` reaches the screen with
         the layout that changed it: the tree lays its rows out, then sets its height, and
         the scroll view places it after, all before the frame is drawn.
+
+        The row's own move is held for too. An index's columns stand side by side, the
+        list as tall as the tallest: rows taken from above the row in a shorter column
+        move it up with no change in the list's height, and it jumped for the frames
+        until the settle's correction.
         """
         self._release_hold()
         cont = scroll_view.children[0]
         last_height = cont.height
 
-        def on_height(_cont: Widget, height: float) -> None:
-            nonlocal last_height
-            old_height, last_height = last_height, height
+        def keep_row(content_top: float) -> None:
             if row.parent is None:  # gone from the list, repopulated
                 return
-            # The rows were just laid out down from the list's old top.
             scroll_y = scroll_y_keeping_row(
-                row_from_content_top=cont.y + old_height - row.top,
+                row_from_content_top=content_top - row.top,
                 row_from_view_top=row_from_view_top,
-                content_height=height,
+                content_height=cont.height,
                 view_height=scroll_view.height,
             )
             if scroll_y is not None:
                 scroll_view.scroll_y = scroll_y
 
-        self._hold = (cont, cont.fbind("height", on_height))
+        def on_height(_cont: Widget, height: float) -> None:
+            nonlocal last_height
+            old_height, last_height = last_height, height
+            # The rows were just laid out down from the list's old top.
+            keep_row(cont.y + old_height)
+
+        def on_row_moved(_row: Widget, _y: float) -> None:
+            # Laid out down from the list's top as it is now.
+            keep_row(cont.y + cont.height)
+
+        self._hold = (
+            (cont, "height", cont.fbind("height", on_height)),
+            (row, "y", row.fbind("y", on_row_moved)),
+        )
 
     def _release_hold(self) -> None:
         if self._hold is not None:
-            cont, uid = self._hold
-            cont.unbind_uid("height", uid)
+            for widget, name, uid in self._hold:
+                widget.unbind_uid(name, uid)
             self._hold = None
 
     def _stabilize_after_layout(
