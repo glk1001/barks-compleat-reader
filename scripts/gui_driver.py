@@ -324,7 +324,7 @@ class Driver:
         return width, height, pos_x, pos_y
 
     def resize_window(self, width: int, height: int) -> None:
-        """Resize the app window from outside the app, as a drag of its corner does.
+        """Resize the app window from outside the app, as the desktop can.
 
         The app answers as it would a user: it keeps the height and sets the width
         its layout has at that height, so the size asked for is not the size kept.

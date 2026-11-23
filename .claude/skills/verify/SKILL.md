@@ -75,7 +75,7 @@ scripts/gui-probe.sh type "pirate gold"
 scripts/gui-probe.sh wait 'Goto title' 10   # block on a log regex; non-zero on timeout
 scripts/gui-probe.sh settle                 # block until rendering has stopped
 scripts/gui-probe.sh geometry               # app window WxH+X+Y on the nested display
-scripts/gui-probe.sh resize 900 1100        # resize the app window from outside, as a corner drag
+scripts/gui-probe.sh resize 900 1100        # resize the app window from outside the app
 scripts/gui-probe.sh tap 120 300            # tap at app-window pixels (click, or a touch too)
 scripts/gui-probe.sh tail 30                # last N app log lines
 scripts/gui-probe.sh log                    # print the log path for your own grep

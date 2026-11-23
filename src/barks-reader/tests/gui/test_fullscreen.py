@@ -172,7 +172,10 @@ RESIZE_TOLERANCE = 2
 
 @pytest.mark.skipif(sys.platform == "darwin", reason="the macOS probe cannot resize a window yet")
 def test_a_window_resized_out_of_shape_takes_its_layout_s_shape_again(boot: AppBoot) -> None:
-    """Resized from outside, as by a corner, the window keeps the height and fits the width.
+    """Resized from outside the app, the window keeps the height and fits the width.
+
+    Not by the mouse: dragging an edge is turned off (``custom_titlebar_border`` in
+    ``main.py``). The desktop and the app's own sizing still resize the window.
 
     Shorter and too wide, it must come back narrower, at the height it was given; and
     given its first height again, at its first width. A correction that grew the

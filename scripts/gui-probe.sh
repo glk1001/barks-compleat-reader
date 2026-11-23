@@ -21,8 +21,8 @@
 #   BARKS_PROBE_HEADLESS=1 scripts/gui-probe.sh start   # same, on an invisible Xvfb
 #   scripts/gui-probe.sh shot out.png     # fresh full-screen capture
 #   scripts/gui-probe.sh geometry         # app window WxH+X+Y on the nested display
-#   scripts/gui-probe.sh resize 900 1100  # resize the app window from outside, as a
-#                                         # drag of its corner would
+#   scripts/gui-probe.sh resize 900 1100  # resize the app window from outside the app,
+#                                         # as the desktop can
 #   scripts/gui-probe.sh click 840 74     # click at screenshot coordinates
 #   scripts/gui-probe.sh tap 120 300      # tap at app WINDOW pixel X,Y: a click, or
 #                                         # with BARKS_PROBE_TOUCH=1 a real touch too
@@ -665,8 +665,8 @@ cmd_geometry() {
     echo "$geom"
 }
 
-# Resize the app window to W x H from outside the app, as a drag of its corner
-# does. The nested display has no window manager, so the request goes straight to
+# Resize the app window to W x H from outside the app, as the desktop
+# can. The nested display has no window manager, so the request goes straight to
 # the X server; libX11 through ctypes, as xdotool is not on every machine.
 cmd_resize() {
     require_running

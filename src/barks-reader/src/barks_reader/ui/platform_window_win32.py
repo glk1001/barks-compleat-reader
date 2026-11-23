@@ -312,7 +312,7 @@ class Win32WindowBackend:
         as that client rectangle plus the frame the window style declares. With the
         custom titlebar the client area fills the whole window (see `move_now`), so
         the window came back a frame bigger than asked (16x39 at 100% scaling). The
-        aspect-ratio correction after a corner resize then never held: each one was
+        aspect-ratio correction after a resize from outside then never held: each one was
         out of shape again, and the window grew to the screen's height and went on
         being corrected there (the resize GUI test, 2026-11-24).
 

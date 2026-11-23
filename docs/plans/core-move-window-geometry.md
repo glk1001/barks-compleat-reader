@@ -110,8 +110,10 @@ The unit and GUI suites on this PC cover X11 only. After commits 3 and 4:
 
 - the overnight round's Windows and macOS machines run the GUI suite and the soak,
   where both regressions were first seen; read their results before going on
-- by hand on this PC: resize by a corner, toggle fullscreen in each layout, move to
-  the other monitor. Since 2026-11-23 the corner resize is also a GUI test
+- by hand on this PC: toggle fullscreen in each layout, move to the other monitor.
+  A resize by a corner was listed here too, but dragging an edge is turned off
+  (`custom_titlebar_border` in `main.py`), so it was never a check to make by hand.
+  Since 2026-11-23 a resize from outside the app is a GUI test
   (`test_a_window_resized_out_of_shape_takes_its_layout_s_shape_again` in
   `tests/gui/test_fullscreen.py`, on Linux and Windows), and fullscreen in each
   layout was one already; the move to the other monitor stays by hand.

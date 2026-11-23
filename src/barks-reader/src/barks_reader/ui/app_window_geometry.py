@@ -562,7 +562,7 @@ class AppWindowGeometryHelper:
             logger.debug(f"Window size for height {unit_size[1]} raised to the minimum {minimum}.")
 
         if correction.kind is AspectCorrectionKind.RESIZE:
-            # User resize: debounce so only one correction fires after the drag settles.
+            # A resize from outside: debounce so only one correction fires once it settles.
             if self._correction_event:
                 self._correction_event.cancel()
 
