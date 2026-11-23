@@ -144,6 +144,27 @@ def test_settle_adjusts_scroll_y_to_cancel_drift() -> None:
     assert clock.pending == []
 
 
+def test_a_row_gone_from_the_list_settles_with_no_correction() -> None:
+    """Off the list it is where it last was: a correction from there moved the new list."""
+    clock = FakeClock()
+    on_settled = MagicMock()
+    scroll_view, parent = _drifted_view_and_row()
+    pinner = TreeScrollPinner(
+        get_scroll_view=lambda: scroll_view,
+        on_settled=on_settled,
+        schedule_once=clock.schedule_once,
+    )
+
+    pinner.pin_while_populating(parent, populate=None)
+    parent.parent = None  # the list was repopulated before it settled
+    for _ in range(3):  # the frames a correction takes
+        clock.run_next()
+
+    assert scroll_view.scroll_y == pytest.approx(0.5)
+    on_settled.assert_called_once_with()
+    assert clock.pending == []
+
+
 def test_tap_target_answers_wait_until_the_pin_settles() -> None:
     """Between an expand and its scroll correction the tree is not where it will be."""
     clock = FakeClock()

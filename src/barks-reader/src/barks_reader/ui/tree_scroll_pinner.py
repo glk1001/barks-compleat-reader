@@ -283,8 +283,14 @@ class RowScrollPinner:
         checks: _Settle,
     ) -> None:
         expanding = checks.expanding
-        # Let go (the list is being placed otherwise), or toggled back: stop.
-        if checks.pin_generation != self._pin_generation or spec.is_open() != expanding:
+        # Let go (the list is being placed otherwise), toggled back, or gone from the
+        # list (repopulated, as the hold allows for): stop. A row off the list is
+        # where it last was, and a correction from it would move the new list.
+        if (
+            checks.pin_generation != self._pin_generation
+            or spec.is_open() != expanding
+            or spec.row.parent is None
+        ):
             self._settled(checks)
             return
 
