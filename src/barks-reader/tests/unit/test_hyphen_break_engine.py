@@ -15,6 +15,7 @@ from barks_reader.core.hyphen_break_engine import (
     build_markup,
     compute_breaks,
     parse_marked_text,
+    without_soft_hyphens,
 )
 
 SHY = SOFT_HYPHEN
@@ -32,6 +33,11 @@ def boxes_on_line(line: int, count: int = 1) -> list[Box]:
         (float(i * 10), float(line * 20), float(i * 10 + 9), float(line * 20 + 19))
         for i in range(count)
     ]
+
+
+def test_text_without_its_soft_hyphens_reads_unbroken() -> None:
+    assert without_soft_hyphens(f"hy{SHY}phen{SHY}ation of it") == "hyphenation of it"
+    assert without_soft_hyphens("plain") == "plain"
 
 
 class TestParseMarkedText:

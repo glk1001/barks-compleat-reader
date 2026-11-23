@@ -17,7 +17,11 @@ from kivy.uix.label import Label
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN, BreakRefinement, RefinementStatus
+from barks_reader.core.hyphen_break_engine import (
+    BreakRefinement,
+    RefinementStatus,
+    without_soft_hyphens,
+)
 from barks_reader.core.justified_lines import JustifiedWord, repair_justified_lines
 
 if TYPE_CHECKING:
@@ -148,7 +152,7 @@ class HyphenatingLabel(Label):
                 log_markers.TEXT_CUT_SHORT.format(
                     lines=self._line_count,
                     shown=shown,
-                    snippet=self.source_text.replace(SOFT_HYPHEN, "")[:_LOG_SNIPPET_LEN],
+                    snippet=without_soft_hyphens(self.source_text)[:_LOG_SNIPPET_LEN],
                 )
             )
 
@@ -166,14 +170,14 @@ class HyphenatingLabel(Label):
             self.max_lines = 0  # every line renders, so every fragment has a ref to read
             if not self.source_text or self.width < _MIN_USABLE_WIDTH:
                 # No usable layout width yet: show the text unhyphenated for now.
-                self.text = self.source_text.replace(SOFT_HYPHEN, "")
+                self.text = without_soft_hyphens(self.source_text)
                 self._applied_key = None
                 return
             try:
                 self._run_refinement(key)
             except Exception:  # noqa: BLE001 - text layout must never take down the UI
                 logger.exception("Hyphen refinement error; showing text without break points.")
-                self.text = self.source_text.replace(SOFT_HYPHEN, "")
+                self.text = without_soft_hyphens(self.source_text)
                 self._applied_key = key
             self._count_lines()
         finally:
@@ -207,7 +211,7 @@ class HyphenatingLabel(Label):
         self.text = refinement.fallback_markup()
         self.texture_update()
 
-        snippet = self.source_text.replace(SOFT_HYPHEN, "")[:_LOG_SNIPPET_LEN]
+        snippet = without_soft_hyphens(self.source_text)[:_LOG_SNIPPET_LEN]
         broken = refinement.fallback_broken_words(self.refs)
         if broken is None:
             logger.error(

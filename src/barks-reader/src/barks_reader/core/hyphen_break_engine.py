@@ -49,6 +49,11 @@ _SAME_LINE_Y_TOLERANCE = 0.5
 type Box = tuple[float, float, float, float]
 
 
+def without_soft_hyphens(text: str) -> str:
+    """Return `text` with its hyphenation points taken out: as it reads, unbroken."""
+    return text.replace(SOFT_HYPHEN, "")
+
+
 @dataclass(frozen=True, slots=True)
 class Token:
     """One space-delimited token: its hyphenation fragments and global fragment ids."""
@@ -93,7 +98,7 @@ def parse_marked_text(text: str) -> ParsedText:
     for raw_token in text.split(" "):
         fragments = tuple(f for f in raw_token.split(SOFT_HYPHEN) if f)
         if len(fragments) < 2 or any(c in raw_token for c in NO_BREAK_CHARS):  # noqa: PLR2004
-            fragments = (raw_token.replace(SOFT_HYPHEN, ""),)
+            fragments = (without_soft_hyphens(raw_token),)
 
         tokens.append(Token(fragments=fragments, first_fragment_id=next_id))
         gaps.update(range(next_id, next_id + len(fragments) - 1))
