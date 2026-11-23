@@ -80,15 +80,15 @@ class TestStartFolder:
     ) -> None:
         assert start_folder(str(tmp_path / "gone"), Path("/home/reader")) == tmp_path
 
-    @pytest.mark.parametrize(
-        "value", ["<Fantagraphics Volumes Not Set>", "", "library", "comics/library"]
-    )
-    def test_a_value_that_is_no_full_path_opens_on_home(
-        self, value: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Not on the folder the app was started from: the parent of such a value is "."."""
-        (tmp_path / "comics").mkdir()
-        monkeypatch.chdir(tmp_path)
+    @pytest.mark.parametrize("value", ["<Fantagraphics Volumes Not Set>", "", "library"])
+    def test_a_value_that_is_no_full_path_opens_on_home(self, value: str) -> None:
+        """Not on the folder the app was started from: the parent of such a value is ".".
+
+        "." is a folder wherever the test runs, so nothing changes the working folder:
+        mutmut finds its sources from there, and a test that moved it stopped the whole
+        mutation run (2026-11-24).
+        """
+        assert Path(value).parent.is_dir()
         assert start_folder(value, Path("/home/reader")) == Path("/home/reader")
 
     def test_a_full_path_whose_parent_is_gone_opens_on_home(self, tmp_path: Path) -> None:
