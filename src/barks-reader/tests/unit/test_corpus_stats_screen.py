@@ -228,6 +228,23 @@ class TestBuildOnOpen:
         _open(screen)
         assert screen.size == size
 
+    def test_each_section_s_lines_add_up_to_the_height_of_its_box(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        """The box is core's sum and each line its own height: a footnote was a literal 2."""
+        _open(screen)
+        columns = (screen.ids["stats_left"], screen.ids["stats_right"])
+        sections = [
+            box
+            for column in columns
+            for box in column.children
+            # Not a gap, and not the words' slot, which waits with a spare filling it.
+            if isinstance(box, BoxLayout) and all(line.size_hint_y is None for line in box.children)
+        ]
+        assert len(sections) == len(_STATS.sections)
+        for box in sections:
+            assert sum(line.height for line in box.children) == pytest.approx(box.height)
+
     def test_without_the_reading_history_the_page_shows_the_statistics_as_computed(
         self, screen: CorpusStatsScreen
     ) -> None:

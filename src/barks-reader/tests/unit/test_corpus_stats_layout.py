@@ -160,6 +160,27 @@ class TestSectionHeights:
         assert grew == pytest.approx(2 * layout.DESIGN.footnote_line_height)
         assert layout.FOOTNOTE_LINES == 2  # noqa: PLR2004
 
+    def test_a_section_is_its_heading_its_rows_and_its_footnote(self) -> None:
+        """The widgets are sized by the same three figures, so they add up to the box."""
+        rows = (StatRow("a", "1"), StatRow("b", "A name", prose=True), StatRow("c", "2"))
+        section = StatSection(heading="H", rows=rows, footnote="x")
+        assert layout.section_height(section) == pytest.approx(
+            layout.DESIGN.heading_height
+            + sum(layout.row_height(row) for row in rows)
+            + layout.footnote_height()
+        )
+
+    def test_a_row_is_one_row_high_and_a_prose_row_three(self) -> None:
+        assert layout.row_height(StatRow("a", "1")) == layout.DESIGN.row_height
+        assert layout.row_height(StatRow("a", "A name", prose=True)) == pytest.approx(
+            3 * layout.DESIGN.row_height
+        )
+
+    def test_a_footnote_is_its_budgeted_lines_high(self) -> None:
+        assert layout.footnote_height() == pytest.approx(
+            layout.FOOTNOTE_LINES * layout.DESIGN.footnote_line_height
+        )
+
     def test_the_dialogue_footnote_is_budgeted_as_the_page_budgets_every_footnote(self) -> None:
         # The reserved slot reads the shape's lines and the arrived section the page's,
         # so the two must be one number or the page reflows when the scan lands.
@@ -266,3 +287,19 @@ class TestTextSectionShape:
 
     def test_shape_is_a_plain_declaration(self) -> None:
         assert SectionShape(num_rows=6, footnote_lines=2) == TEXT_SECTION_SHAPE
+
+
+class TestThePagePadding:
+    def test_each_is_its_fraction_of_the_page_s_width(self) -> None:
+        assert layout.side_padding(1000.0) == pytest.approx(45.0)
+        assert layout.vertical_padding(1000.0) == pytest.approx(25.0)
+        assert layout.column_gutter(1000.0) == pytest.approx(30.0)
+
+    def test_two_columns_their_gutter_and_the_sides_make_the_page(self) -> None:
+        width = 1234.0
+        made = (
+            2 * layout.column_width(width)
+            + layout.column_gutter(width)
+            + 2 * layout.side_padding(width)
+        )
+        assert made == pytest.approx(width)

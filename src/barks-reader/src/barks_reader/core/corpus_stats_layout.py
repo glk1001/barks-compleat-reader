@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from .corpus_stats import SectionShape, StatSection
+    from .corpus_stats import SectionShape, StatRow, StatSection
 
 # The page box width this design was measured at, in pixels. The app window is
 # locked to the comic-page aspect ratio, so the page box width is effectively the
@@ -123,6 +123,21 @@ def scale_for(page_width: float) -> float:
     return max(MIN_SCALE, page_width / REFERENCE_PAGE_WIDTH)
 
 
+def side_padding(page_width: float) -> float:
+    """Return the space at each side of a page `page_width` wide, in pixels."""
+    return PAGE_SIDE_PADDING_FRACTION * page_width
+
+
+def vertical_padding(page_width: float) -> float:
+    """Return the space over and under the content of a page `page_width` wide, in pixels."""
+    return PAGE_VERTICAL_PADDING_FRACTION * page_width
+
+
+def column_gutter(page_width: float) -> float:
+    """Return the space between the two columns of a page `page_width` wide, in pixels."""
+    return COLUMN_GUTTER_FRACTION * page_width
+
+
 def column_width(page_width: float) -> float:
     """Return the width of one of the two columns, in pixels.
 
@@ -133,9 +148,7 @@ def column_width(page_width: float) -> float:
         The usable width of a single column, after page padding and the gutter.
 
     """
-    padding = 2.0 * PAGE_SIDE_PADDING_FRACTION * page_width
-    gutter = COLUMN_GUTTER_FRACTION * page_width
-    return (page_width - padding - gutter) / 2.0
+    return (page_width - 2.0 * side_padding(page_width) - column_gutter(page_width)) / 2.0
 
 
 # The left column takes the first three sections and the right the rest, which keeps
@@ -166,6 +179,16 @@ def opening_height() -> float:
     )
 
 
+def row_height(row: StatRow) -> float:
+    """Return the design height of one statistics row: a prose row is the taller."""
+    return DESIGN.row_height * (PROSE_ROW_HEIGHT_UNITS if row.prose else 1.0)
+
+
+def footnote_height() -> float:
+    """Return the design height a footnote is given, whatever its length."""
+    return FOOTNOTE_LINES * DESIGN.footnote_line_height
+
+
 def section_height(section: StatSection) -> float:
     """Return the design height of one rendered section.
 
@@ -176,11 +199,9 @@ def section_height(section: StatSection) -> float:
         Its height in design pixels, counting a footnote as ``FOOTNOTE_LINES`` lines.
 
     """
-    height = DESIGN.heading_height
-    for row in section.rows:
-        height += DESIGN.row_height * (PROSE_ROW_HEIGHT_UNITS if row.prose else 1.0)
+    height = DESIGN.heading_height + sum(row_height(row) for row in section.rows)
     if section.footnote:
-        height += FOOTNOTE_LINES * DESIGN.footnote_line_height
+        height += footnote_height()
     return height
 
 
@@ -236,5 +257,4 @@ def content_height(
 
     """
     columns = max(column_height(left), column_height(right, reserved))
-    padding = 2.0 * PAGE_VERTICAL_PADDING_FRACTION * REFERENCE_PAGE_WIDTH
-    return opening_height() + columns + padding
+    return opening_height() + columns + 2.0 * vertical_padding(REFERENCE_PAGE_WIDTH)

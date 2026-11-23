@@ -252,8 +252,8 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
 
         page = self.ids.stats_page
         scale = layout.scale_for(page.width)
-        side_pad = layout.PAGE_SIDE_PADDING_FRACTION * page.width
-        vertical_pad = layout.PAGE_VERTICAL_PADDING_FRACTION * page.width
+        side_pad = layout.side_padding(page.width)
+        vertical_pad = layout.vertical_padding(page.width)
 
         self.ids.stats_body.padding = [
             side_pad,
@@ -261,7 +261,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
             side_pad,
             vertical_pad,
         ]
-        self.ids.stats_columns.spacing = layout.COLUMN_GUTTER_FRACTION * page.width
+        self.ids.stats_columns.spacing = layout.column_gutter(page.width)
 
         self._build_opening(self._shown_stats.opening, scale)
 
@@ -375,7 +375,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         row = BoxLayout(
             orientation="horizontal",
             size_hint_y=None,
-            height=layout.DESIGN.row_height * scale,
+            height=layout.row_height(stat_row) * scale,
             spacing=layout.DESIGN.label_value_gap * scale,
         )
         if stat_row.share is not None:
@@ -418,7 +418,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         box = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
-            height=layout.DESIGN.row_height * layout.PROSE_ROW_HEIGHT_UNITS * scale,
+            height=layout.row_height(stat_row) * scale,
         )
         label = self._cell(
             stat_row.label,
@@ -472,7 +472,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
             color=theme().text_secondary,
             font_name=_FONT_NAME,
             font_size=layout.DESIGN.footnote * scale,
-            height=2.0 * layout.DESIGN.footnote_line_height * scale,
+            height=layout.footnote_height() * scale,
             valign="middle",
             italic=True,
         )
