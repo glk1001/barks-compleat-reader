@@ -42,15 +42,15 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
 from barks_reader.core.font_sizes import font_sizes_for_height
-from barks_reader.core.keys import (
-    KEY_ENTER,
-    KEY_LEFT,
-    KEY_NUMPAD_ENTER,
-    KEY_RIGHT,
-    is_escape_key,
-    is_escape_key_for_text_input,
+from barks_reader.core.popup_frame import (
+    FrameButton,
+    FrameKeyAction,
+    PopupSize,
+    cancel_button,
+    focus_after_step,
+    frame_key_action,
+    popup_size,
 )
-from barks_reader.core.popup_frame import FrameButton, PopupSize, closes_popup, popup_size
 from barks_reader.core.reader_palette import theme
 
 from .reader_keyboard_nav import (
@@ -437,9 +437,9 @@ class PopupFrame(ModalView):
         return any(box.focus for box in self._text_boxes)
 
     def _press_cancel(self) -> None:
-        closing = [b for b in self._frame_buttons if b.closes]
-        if closing:
-            self._press(closing[-1])
+        cancel = cancel_button(self._frame_buttons)
+        if cancel is not None:
+            self._press(cancel)
         else:
             self.dismiss()
 
@@ -498,35 +498,32 @@ class PopupFrame(ModalView):
     ) -> bool:
         if self.key_handler is not None and self.key_handler(key):
             return True
-        if self._typing() and not is_escape_key_for_text_input(key, codepoint):
-            return False  # the text box's key; Escape is still the frame's, to cancel
-        if not self._frame_buttons:
-            self._on_key_down_with_no_buttons(key)
-        elif key in (KEY_RIGHT, KEY_LEFT):
-            self._move_focus(1 if key == KEY_RIGHT else -1)
-        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+        action = frame_key_action(
+            key,
+            codepoint,
+            typing=self._typing(),
+            has_buttons=bool(self._frame_buttons),
+            closable=self._closable,
+        )
+        if action is FrameKeyAction.LEFT_TO_THE_TEXT_BOX:
+            return False  # Escape is still the frame's, to cancel
+        if action in (FrameKeyAction.FOCUS_LEFT, FrameKeyAction.FOCUS_RIGHT):
+            self._move_focus(1 if action is FrameKeyAction.FOCUS_RIGHT else -1)
+        elif action is FrameKeyAction.PRESS_FOCUSED:
             if self._focused_idx is not None:
                 self._press(self._frame_buttons[self._focused_idx])
-        elif is_escape_key(key):
+        elif action is FrameKeyAction.CANCEL:
             self._press_cancel()
+        elif action is FrameKeyAction.TOGGLE_CLOSE_FOCUS:
+            self._toggle_close_focus()  # Escape to the X, as everywhere; again, away
+        elif action is FrameKeyAction.CLOSE:
+            self.dismiss()
         return True  # the frame is modal: no key reaches the screen beneath it
 
-    def _on_key_down_with_no_buttons(self, key: int) -> None:
-        if not self._closable:
-            return  # no key closes it: what opened it does
-        if is_escape_key(key):
-            self._toggle_close_focus()  # Escape to the X, as everywhere; again, away
-        elif closes_popup(key):
-            self.dismiss()
-
     def _move_focus(self, step: int) -> None:
-        count = len(self._frame_buttons)
-        if self._focused_idx is None:  # onto the row from outside it, at its near end
-            self._focused_idx = 0 if step > 0 else count - 1
-        elif self._wrap_focus:
-            self._focused_idx = (self._focused_idx + step) % count
-        else:
-            self._focused_idx = min(max(self._focused_idx + step, 0), count - 1)
+        self._focused_idx = focus_after_step(
+            self._focused_idx, step, len(self._frame_buttons), wrap=self._wrap_focus
+        )
         self._show_focus()
 
 
