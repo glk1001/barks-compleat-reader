@@ -197,13 +197,26 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
                 log_markers.CORPUS_STATS_STORIES_READ.format(read=count_stories_read(finished))
             )
         self._set_background()
+        self._take_the_managers_size()
         self._rebuild()
+        self._rebuild_trigger.cancel()  # built for the size just taken: no second build
         self._start_text_scan()
 
         # Unbind first: re-opening without a close in between would double-bind.
         Window.unbind(on_key_down=self._on_key_down)
         Window.bind(on_key_down=self._on_key_down)
         logger.info(log_markers.CORPUS_STATS_OPENED)
+
+    def _take_the_managers_size(self) -> None:
+        """Be the size the screen will be shown at, before the page is built for it.
+
+        Kivy sizes a screen when it shows it, a frame after `open`: one never shown is
+        100 pixels square, and one shown before is the size the window was then. The
+        page was built for that width, and stood so through the first frames of the
+        switch, until the resize's pause had passed and it was built again.
+        """
+        if self.manager is not None:
+            self.size = self.manager.size
 
     def close(self) -> None:
         """Hand the window back to the main screen."""

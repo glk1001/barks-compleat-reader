@@ -201,6 +201,33 @@ class TestBuildOnOpen:
         assert screen.ids["stats_left"].children
         assert screen.ids["stats_right"].children
 
+    def test_it_takes_the_size_it_will_be_shown_at_before_the_page_is_built(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        """Kivy sizes a screen a frame after `open`: the page was built 100 pixels wide."""
+        screen.manager = MagicMock(size=[1000, 800])
+        built_at = []
+
+        with patch.object(screen, "_rebuild", side_effect=lambda: built_at.append(screen.size)):
+            _open(screen)
+
+        assert built_at == [[1000, 800]]
+
+    def test_the_page_just_built_is_not_built_again_for_the_size_it_took(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        screen._rebuild_trigger = waiting = MagicMock()
+
+        with patch.object(screen, "_rebuild", side_effect=waiting.cancel.assert_not_called):
+            _open(screen)
+
+        waiting.cancel.assert_called_once_with()
+
+    def test_a_screen_in_no_manager_keeps_its_size(self, screen: CorpusStatsScreen) -> None:
+        size = list(screen.size)
+        _open(screen)
+        assert screen.size == size
+
     def test_without_the_reading_history_the_page_shows_the_statistics_as_computed(
         self, screen: CorpusStatsScreen
     ) -> None:
