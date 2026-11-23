@@ -305,6 +305,52 @@ class Win32WindowBackend:
 
         attempt(_MOVE_NOW_ATTEMPTS)
 
+    def set_size(self, width: int, height: int) -> None:
+        """Give the window's drawable area exactly this size, where it stands.
+
+        A ``Window.size =`` goes through ``SDL_SetWindowSize``, which sizes the window
+        as that client rectangle plus the frame the window style declares. With the
+        custom titlebar the client area fills the whole window (see `move_now`), so
+        the window came back a frame bigger than asked (16x39 at 100% scaling). The
+        aspect-ratio correction after a corner resize then never held: each one was
+        out of shape again, and the window grew to the screen's height and went on
+        being corrected there (the resize GUI test, 2026-11-24).
+
+        So the window is moved here by its outer rectangle: the size asked for plus
+        whatever frame the window really has, which is none under the custom
+        titlebar and the whole of it when the desktop's titlebar survived.
+
+        A failed or lost move falls back to ``Window.size``, a frame out but sized.
+
+        Args:
+            width: The width to give the drawable area.
+            height: The height to give it.
+
+        """
+        if not self._hwnd:
+            Window.size = (width, height)
+            return
+        try:
+            window_rect = RECT()
+            client_rect = RECT()
+            self._get_window_rect(self._hwnd, window_rect)
+            self._get_client_rect(self._hwnd, client_rect)
+            outer_w, outer_h = window_rect.size
+            outer = (width + outer_w - client_rect.right, height + outer_h - client_rect.bottom)
+            result, actual_rect = self._move_and_read_back(*window_rect.pos, *outer)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Win32 set size failed, falling back to Kivy: {e}")
+            Window.size = (width, height)
+            return
+        if actual_rect.size != outer:
+            logger.warning(
+                f"Win32: the window was sized {actual_rect.size}, not the {outer} asked for"
+                f" (result = {result}); falling back to Window.size = ({width}, {height})."
+            )
+            Window.size = (width, height)
+            return
+        logger.debug(f"Win32: sized the window {outer} for a drawable area of {width}x{height}.")
+
     def schedule_restore(
         self,
         state: WindowState,

@@ -167,6 +167,69 @@ def helper(
     return h
 
 
+# --- Every size goes through the window manager's exact sizing, when it is given ---
+
+
+@pytest.fixture
+def sized(helper: AppWindowGeometryHelper) -> MagicMock:
+    """Stand in for `WindowManager.set_window_size`, and return it."""
+    set_window_size = MagicMock()
+    helper.set_main_screen_callbacks(MagicMock(), set_window_size=set_window_size)
+    return set_window_size
+
+
+def test_a_correction_sizes_the_window_exactly(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    sized: MagicMock,
+) -> None:
+    """On Windows a ``Window.size =`` came back the frame bigger, and was corrected again."""
+    height = 2000
+    expected_width, _ = get_win_dimensions(height - CHROME, 2560)
+    fake_window.size = (expected_width + 200, height)
+    helper._enforce_aspect_ratio(expected_width + 200, height)  # noqa: SLF001
+
+    fake_clock.fire_last()
+
+    sized.assert_called_once_with(expected_width, height)
+    assert fake_window.size == (expected_width + 200, height)  # not through Kivy as well
+
+
+def test_a_resize_guard_sizes_the_window_exactly(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, sized: MagicMock
+) -> None:
+    helper._resize_event = MagicMock()  # noqa: SLF001
+    helper._resize_requested_size = (1200, 1800)  # noqa: SLF001
+
+    helper.on_window_resize(fake_window, 1000, 1500)
+
+    sized.assert_called_once_with(1200, 1800)
+
+
+def test_a_guarded_resize_sizes_the_window_exactly(
+    helper: AppWindowGeometryHelper, fake_clock: FakeClock, sized: MagicMock
+) -> None:
+    helper._schedule_guarded_resize(1200, 1800)  # noqa: SLF001
+    resize = fake_clock.calls[0][0]
+
+    resize(0.0)
+
+    sized.assert_called_once_with(1200, 1800)
+
+
+def test_a_window_raised_to_the_minimum_is_sized_exactly(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, sized: MagicMock
+) -> None:
+    """Only the short side goes up: the aspect correction then settles the shape."""
+    fake_window.size = (1000, 800)
+    minimum = helper._minimum_size()  # noqa: SLF001
+
+    helper._raise_to_minimum(*minimum)  # noqa: SLF001
+
+    sized.assert_called_once_with(1000, minimum[1])
+
+
 # --- Degenerate-size guard ---
 
 

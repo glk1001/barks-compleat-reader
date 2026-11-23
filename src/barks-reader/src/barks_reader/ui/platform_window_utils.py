@@ -72,6 +72,14 @@ class WindowBackend(Protocol):
         """
         ...
 
+    def set_size(self, width: int, height: int) -> None:
+        """Give the window's drawable area exactly this size, where it stands.
+
+        In ``Window.system_size`` units. What a ``Window.size =`` is meant to do, and
+        does not on Windows under the custom titlebar (`Win32WindowBackend.set_size`).
+        """
+        ...
+
     def schedule_restore(
         self,
         state: WindowState,
@@ -121,6 +129,17 @@ class KivyWindowBackend:
     @staticmethod
     def move_now(state: WindowState) -> None:
         """Do nothing: the fullscreen exit leaves no wrong rectangle to replace here."""
+
+    @staticmethod
+    def set_size(width: int, height: int) -> None:
+        """Set the window's size through Kivy, which is exact here.
+
+        Args:
+            width: The width to give the window.
+            height: The height to give the window.
+
+        """
+        Window.size = (width, height)
 
     @staticmethod
     def schedule_restore(
@@ -273,6 +292,16 @@ class WindowManager:
             f"Saved window state: size = {self._saved_window_state.size}, "
             f"pos = {self._saved_window_state.pos}"
         )
+
+    def set_window_size(self, width: int, height: int) -> None:
+        """Give the window's drawable area exactly this size, where it stands.
+
+        Args:
+            width: The width to give the window, in ``Window.system_size`` units.
+            height: The height to give it.
+
+        """
+        self._backend.set_size(width, height)
 
     def reshape_saved_window(self, reshape: RectReshape) -> bool:
         """Give the windowed rectangle saved for the return from fullscreen a new shape.

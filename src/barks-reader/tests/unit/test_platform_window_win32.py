@@ -18,7 +18,7 @@ from barks_reader.ui.platform_window_win32 import Win32WindowBackend
 from unit_helpers import run_last_scheduled
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from barks_reader.core.win32_window import RECT
 
@@ -76,6 +76,17 @@ def _window_at(left: int, top: int, width: int, height: int) -> MagicMock:
         return True
 
     return MagicMock(side_effect=fill)
+
+
+def _rect_filler(rectangles: Iterator[tuple[int, int, int, int]]) -> Callable[[int, RECT], bool]:
+    """Return a GetWindowRect stand-in reporting each rectangle (left, top, size) in turn."""
+
+    def fill(_hwnd: int, rect: RECT) -> bool:
+        left, top, width, height = next(rectangles)
+        rect.left, rect.top, rect.right, rect.bottom = left, top, left + width, top + height
+        return True
+
+    return fill
 
 
 def test_a_move_now_that_holds_tries_no_more() -> None:
@@ -301,6 +312,69 @@ def test_a_window_handle_given_is_the_one_bound_and_the_lookup_is_not_run() -> N
     assert backend._move_window is window.move_window
     assert backend._get_window_rect is window.get_window_rect
     assert backend._get_client_rect is window.get_client_rect
+
+
+# --- Setting the window's size exactly ---
+
+
+def test_under_the_custom_titlebar_the_window_is_sized_as_its_drawable_area() -> None:
+    """The client area fills the window: a size plus the style's frame came back too big."""
+    move_window = MagicMock()
+    rectangles = iter([(150, 120, 1058, 1130), (150, 120, 719, 1130)])
+    backend = _backend(move_window, MagicMock(side_effect=_rect_filler(rectangles)))
+    backend._get_client_rect = _window_at(0, 0, 1058, 1130)
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.set_size(719, 1130)
+
+    move_window.assert_called_once_with(_HWND, 150, 120, 719, 1130, True)  # noqa: FBT003
+    assert window.size != (719, 1130)  # not through Kivy as well
+
+
+def test_a_window_with_the_desktops_frame_is_sized_to_hold_the_drawable_area() -> None:
+    move_window = MagicMock()
+    rectangles = iter([(150, 120, 716, 539), (150, 120, 816, 639)])
+    backend = _backend(move_window, MagicMock(side_effect=_rect_filler(rectangles)))
+    backend._get_client_rect = _window_at(0, 0, 700, 500)  # a frame of 16x39
+
+    with patch.object(win32_module, "Window", MagicMock()):
+        backend.set_size(800, 600)
+
+    move_window.assert_called_once_with(_HWND, 150, 120, 816, 639, True)  # noqa: FBT003
+
+
+def test_a_size_the_window_did_not_take_is_set_through_kivy(loguru_sink: list[str]) -> None:
+    backend = _backend(MagicMock(), _window_at(150, 120, 1058, 1130))  # left as it was
+    backend._get_client_rect = _window_at(0, 0, 1058, 1130)
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.set_size(719, 1130)
+
+    assert window.size == (719, 1130)
+    assert any("not the (719, 1130) asked for" in line for line in loguru_sink)
+
+
+def test_a_sizing_that_raises_is_logged_and_set_through_kivy(loguru_sink: list[str]) -> None:
+    """Raised from a Clock callback, it would stop the app."""
+    backend = _backend(MagicMock(), MagicMock(side_effect=OSError("access violation")))
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.set_size(719, 1130)
+
+    assert window.size == (719, 1130)
+    assert any("access violation" in line for line in loguru_sink)
+
+
+def test_with_no_window_handle_the_size_is_set_through_kivy() -> None:
+    move_window = MagicMock()
+    backend = _backend(move_window, MagicMock())
+    backend._hwnd = None
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.set_size(719, 1130)
+
+    assert window.size == (719, 1130)
+    move_window.assert_not_called()
 
 
 # --- Saving the window's rectangle ---

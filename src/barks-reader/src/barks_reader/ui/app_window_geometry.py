@@ -107,12 +107,14 @@ class AppWindowGeometryHelper:
         self._rotation_poll_event: Any = None
 
         self._update_fonts: Callable[[int], None] | None = None
+        self._set_window_size: Callable[[int, int], None] = _set_kivy_window_size
 
     def set_main_screen_callbacks(
         self,
         update_fonts: Callable[[int], None],
         layout_mode_changed: Callable[[MainLayoutMode], None] | None = None,
         reshape_saved_window: Callable[[RectReshape], bool] | None = None,
+        set_window_size: Callable[[int, int], None] | None = None,
     ) -> None:
         """Set callbacks that require the main screen to be built first.
 
@@ -122,11 +124,16 @@ class AppWindowGeometryHelper:
             reshape_saved_window: Gives the windowed rectangle saved for the return
                 from fullscreen a new shape, through the function it is passed; False
                 when there is none to reshape (`WindowManager.reshape_saved_window`).
+            set_window_size: Gives the window exactly a size (`WindowManager.set_window_size`):
+                on Windows a ``Window.size =`` comes back the window's frame bigger. Left
+                out, the size is set through Kivy.
 
         """
         self._update_fonts = update_fonts
         self._layout_mode_changed = layout_mode_changed
         self._reshape_saved_window = reshape_saved_window
+        if set_window_size is not None:
+            self._set_window_size = set_window_size
 
     def set_window_ready(self) -> None:
         """Mark the window as ready to accept resize corrections, and set its minimum size."""
@@ -344,7 +351,7 @@ class AppWindowGeometryHelper:
         if raised == system_size:
             return
         position = self._on_monitor_position(*raised)
-        Window.size = raised
+        self._set_window_size(*raised)
         if position is not None:
             Clock.schedule_once(lambda _dt: _move_window(position), RESIZE_CORRECTION_DELAY)
 
@@ -438,8 +445,11 @@ class AppWindowGeometryHelper:
         if self._resize_event:
             if self._in_size_units(width, height) != self._resize_requested_size:
                 assert self._resize_requested_size != (0, 0)
-                Window.size = self._resize_requested_size
-                logger.debug(f"Forced reset main window size after resize event: {Window.size}.")
+                self._set_window_size(*self._resize_requested_size)
+                logger.debug(
+                    f"Forced reset main window size after resize event:"
+                    f" {self._resize_requested_size}."
+                )
             assert self._update_fonts is not None
             self._update_fonts(Window.height)
             return
@@ -575,7 +585,7 @@ class AppWindowGeometryHelper:
                     f"{corrected} Window.left/top = ({Window.left}, {Window.top}),"
                     f" monitor width = {monitor_w}."
                 )
-                Window.size = (correct_width, correct_height)
+                self._set_window_size(correct_width, correct_height)
 
             self._correction_event = Clock.schedule_once(apply_correction, RESIZE_CORRECTION_DELAY)
             return
@@ -682,7 +692,7 @@ class AppWindowGeometryHelper:
 
         def do_resize(_dt: float) -> None:
             logger.debug(f"Executing guarded resize to ({new_width}, {new_height}).")
-            Window.size = (new_width, new_height)
+            self._set_window_size(new_width, new_height)
 
         def do_reposition(_dt: float) -> None:
             if reposition is not None:
@@ -710,6 +720,10 @@ class AppWindowGeometryHelper:
                 step.cancel()
             self._resize_steps = None
         self._resize_requested_size = 0, 0
+
+
+def _set_kivy_window_size(width: int, height: int) -> None:
+    Window.size = (width, height)
 
 
 def _move_window(position: tuple[int, int]) -> None:

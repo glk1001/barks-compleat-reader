@@ -54,6 +54,7 @@ class _FakeBackend:
 
     def __init__(self) -> None:
         self.saved_states: list[WindowState] = []
+        self.sizes_set: list[tuple[int, int]] = []
         self.restore_calls: list[WindowState] = []
         self.cancel_calls = 0
         self.move_calls: list[WindowState] = []
@@ -84,6 +85,9 @@ class _FakeBackend:
     def quiet_frame_for_fullscreen(self) -> None:
         if self.window is not None:
             self.fullscreen_at_quiet.append(self.window.fullscreen)
+
+    def set_size(self, width: int, height: int) -> None:
+        self.sizes_set.append((width, height))
 
     def move_now(self, state: WindowState) -> None:
         self.move_calls.append(replace(state))
@@ -170,6 +174,25 @@ def manager(
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
+
+def test_a_size_is_set_by_the_backend(manager: ManagerFixture, backend: _FakeBackend) -> None:
+    """Not by a ``Window.size =``, which on Windows comes back the frame bigger."""
+    wm = manager[0]
+
+    wm.set_window_size(719, 1130)
+
+    assert backend.sizes_set == [(719, 1130)]
+
+
+def test_the_kivy_backend_sets_a_size_through_kivy(
+    monkeypatch: pytest.MonkeyPatch, fake_window: MagicMock
+) -> None:
+    monkeypatch.setattr(window_utils_module, "Window", fake_window)
+
+    KivyWindowBackend.set_size(719, 1130)
+
+    assert fake_window.size == (719, 1130)
 
 
 class TestSaveState:
