@@ -43,6 +43,7 @@ from barks_reader.core.keys import (
     KEY_RIGHT,
     KEY_UP,
     is_escape_key,
+    keycode_from_setting,
 )
 from barks_reader.core.popup_frame import FrameButton, PopupSize
 from barks_reader.core.reader_palette import Color, theme
@@ -1025,10 +1026,7 @@ class SettingAltEscapeKey(SettingItem):
 
     def _current_keycode(self) -> int:
         """Return the key set as a keycode: 0 (none) for no value or one not a number."""
-        try:
-            return int(self.value) if self.value else 0
-        except (TypeError, ValueError):
-            return 0
+        return keycode_from_setting(self.value)
 
     def _refresh_display_text(self) -> None:
         self.display_text = keycode_to_name(self._current_keycode())

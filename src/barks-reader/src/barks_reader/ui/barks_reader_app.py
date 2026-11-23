@@ -23,7 +23,11 @@ from barks_reader.core import log_markers
 from barks_reader.core.boot_splash import close_boot_splash
 from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
-from barks_reader.core.keys import get_alt_escape_key, set_alt_escape_key
+from barks_reader.core.keys import (
+    get_alt_escape_key,
+    keycode_from_setting,
+    set_alt_escape_key,
+)
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
 from barks_reader.core.main_layout import MATCH_THE_SCREEN, MainLayoutMode
 from barks_reader.core.platform_info import PLATFORM, Platform
@@ -249,10 +253,7 @@ class BarksReaderApp(App):
             section == BARKS_READER_SECTION
         ):
             if key == ALT_ESCAPE_KEY:
-                try:
-                    set_alt_escape_key(int(value))
-                except (TypeError, ValueError):
-                    set_alt_escape_key(0)
+                set_alt_escape_key(keycode_from_setting(value))
             elif key == MAIN_SCREEN_LAYOUT:
                 self._window_geometry.set_layout_setting(str(value))
             elif key == USE_VIRTUAL_KEYBOARD:

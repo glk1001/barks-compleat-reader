@@ -32,6 +32,17 @@ def set_alt_escape_key(key: int) -> None:
     _alt_escape_key = int(key) if key else 0
 
 
+def keycode_from_setting(value: str | int | None) -> int:
+    """Return the keycode a stored setting names: 0, no key, for none or one not a number.
+
+    The config file is the reader's to edit, so the value may be anything.
+    """
+    try:
+        return int(value) if value else 0
+    except (TypeError, ValueError):
+        return 0
+
+
 def get_alt_escape_key() -> int:
     """Return the current alternate Escape keycode (0 = unset)."""
     return _alt_escape_key

@@ -8,6 +8,7 @@ from barks_reader.core.keys import (
     get_alt_escape_key,
     is_escape_key,
     is_escape_key_for_text_input,
+    keycode_from_setting,
     set_alt_escape_key,
 )
 
@@ -54,6 +55,14 @@ def test_clearing_alt_escape_key() -> None:
 def test_alt_escape_accepts_non_int_truthy() -> None:
     set_alt_escape_key(42)
     assert is_escape_key(42) is True
+
+
+@pytest.mark.parametrize(
+    ("value", "keycode"),
+    [("96", 96), (96, 96), ("", 0), (None, 0), (0, 0), ("0", 0), ("not a key", 0), ("9.5", 0)],
+)
+def test_a_stored_setting_is_a_keycode_or_no_key(value: str | int | None, keycode: int) -> None:
+    assert keycode_from_setting(value) == keycode
 
 
 class TestEscapeForTextInput:
