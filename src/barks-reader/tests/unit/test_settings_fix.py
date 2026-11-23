@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from barks_reader.core import log_markers
 from barks_reader.core.folder_chooser import NEXT_DRIVE_HINT
 from barks_reader.core.keys import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 from barks_reader.core.popup_frame import PopupSize
@@ -156,12 +157,18 @@ class TestFolderChooserOnTheFrame:
             Builder.unload_file(self.KV_FILE)
         return [w.text for w in popup.body.children if isinstance(w, Label)]
 
-    def test_with_more_than_one_drive_it_says_how_the_keys_reach_another(self) -> None:
+    def test_with_more_than_one_drive_it_says_how_the_keys_reach_another(
+        self, loguru_sink: list[str]
+    ) -> None:
         assert self._hints([Path("C:/"), Path("D:/")]) == [NEXT_DRIVE_HINT]
+        assert log_markers.FOLDER_CHOOSER_NEXT_DRIVE_HINT in loguru_sink
 
     @pytest.mark.parametrize("drives", [[], [Path("C:/")]])
-    def test_with_one_drive_or_none_it_has_nothing_to_say(self, drives: list[Path]) -> None:
+    def test_with_one_drive_or_none_it_has_nothing_to_say(
+        self, drives: list[Path], loguru_sink: list[str]
+    ) -> None:
         assert self._hints(drives) == []
+        assert log_markers.FOLDER_CHOOSER_NEXT_DRIVE_HINT not in loguru_sink
 
 
 def _browsing(tmp_path: Path, selected: str | None) -> MagicMock:

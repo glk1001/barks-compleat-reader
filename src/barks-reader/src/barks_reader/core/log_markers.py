@@ -131,6 +131,9 @@ FOLDER_CHOOSER_CLOSED: Final = "Folder chooser closed."
 FOLDER_CHOOSER_AT: Final = 'Folder chooser: at "{path}".'  # Up/Down moved the highlight
 FOLDER_CHOOSER_IN: Final = 'Folder chooser: in "{path}".'  # Right/Left opened a folder
 # Right/Left on a folder the reader may not list: the chooser stays where it was.
+# The chooser built with its line on how the keys reach another drive: only where
+# there is more than one (Windows).
+FOLDER_CHOOSER_NEXT_DRIVE_HINT: Final = "Folder chooser: says how to reach the next drive."
 FOLDER_CHOOSER_NOT_LISTED: Final = 'Folder chooser: cannot list "{path}".'
 # An options setting's value picked from its list (written straight to the ini, so
 # no CONFIG_CHANGE line follows).

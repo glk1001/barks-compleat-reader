@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import time
 from contextlib import nullcontext
+from pathlib import PureWindowsPath
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,12 +22,14 @@ from barks_gui.steps import (
     open_dots_menu,
 )
 from barks_reader.core import log_markers as markers
+from barks_reader.core.folder_chooser import drives
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import MATCH_THE_SCREEN, SINGLE_PAGE, TWO_PAGE_SPREAD
 from barks_reader.core.reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
 from barks_reader.core.screen_transition import SCREEN_TRANSITION_ENV_VAR
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from barks_gui.harness import AppBoot
@@ -575,3 +580,71 @@ def test_a_folder_chooser_is_browsed_by_remote(boot: AppBoot, tmp_path: Path) ->
     assert harness.read_ini_value(boot.scratch / "barks-reader.ini", "fanta_dir").strip() == str(
         library
     )
+
+
+# More folders than any library is deep, and more drives than Windows has letters.
+MAX_FOLDERS_UP = 30
+MAX_DRIVES = 26
+# From the far end, Z back to P, where a letter is seldom taken.
+SPARE_DRIVE_LETTERS = tuple(chr(code) for code in range(ord("Z"), ord("O"), -1))
+
+
+@pytest.fixture
+def mapped_drive(tmp_path: Path) -> Iterator[PureWindowsPath]:
+    """Give Windows one drive more for the test: a spare letter mapped to a folder.
+
+    ``subst`` needs no rights, and so the test does not depend on how many drives
+    the machine has. The mapping is taken away again afterwards.
+    """
+    taken = {str(drive)[0].upper() for drive in drives()}
+    letter = next((c for c in SPARE_DRIVE_LETTERS if c not in taken), None)
+    if letter is None:
+        pytest.skip("no spare drive letter to map")
+    (tmp_path / "a folder").mkdir()
+    subprocess.run(["subst", f"{letter}:", str(tmp_path)], check=True)  # noqa: S603, S607
+    try:
+        yield PureWindowsPath(f"{letter}:\\")
+    finally:
+        subprocess.run(["subst", f"{letter}:", "/D"], check=False)  # noqa: S603, S607
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="only Windows has drives to step between")
+def test_left_at_the_top_of_a_drive_opens_the_next_drive(
+    boot: AppBoot, mapped_drive: PureWindowsPath
+) -> None:
+    """Left goes up to the top of the drive, then round the drives and back to the first.
+
+    The top of a drive lists no "../", so without this the remote's keys could not
+    leave the drive the chooser opened on. With more than one drive the chooser says so.
+    """
+    d = boot(nodes.THE_STORIES)
+    open_dots_menu(d, downs=0)
+    _pick(d, markers.DISPLAY_SETTINGS)
+    with d.expect(pattern(markers.FOLDER_CHOOSER_NEXT_DRIVE_HINT)):
+        d.key_then_wait(pattern(markers.FOLDER_CHOOSER_OPENED), "Return")
+    d.settle()
+
+    def left() -> PureWindowsPath:
+        d.key_then_wait(pattern(markers.FOLDER_CHOOSER_IN), "Left")
+        return PureWindowsPath(last_field(d, markers.FOLDER_CHOOSER_IN, "path"))
+
+    for _ in range(MAX_FOLDERS_UP):
+        first_drive = left()
+        if first_drive.parent == first_drive:
+            break
+    else:
+        pytest.fail(f"{MAX_FOLDERS_UP} Lefts did not reach the top of a drive: {first_drive}")
+
+    others: list[PureWindowsPath] = []
+    for _ in range(MAX_DRIVES):
+        here = left()
+        assert here.parent == here, f"Left at the top of a drive opened {here}, not a drive"
+        if here == first_drive:
+            break
+        others.append(here)
+    else:
+        pytest.fail(f"Left never came round to {first_drive} again: {others}")
+    assert mapped_drive in others, f"Left went round {others} and passed over {mapped_drive}"
+
+    d.key_then_wait(FOLDER_CHOOSER_CLOSED, "Escape")
+    _close_settings(d)

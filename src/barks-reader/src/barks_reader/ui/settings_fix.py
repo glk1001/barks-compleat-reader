@@ -549,6 +549,7 @@ class SettingLongPathPopup(PopupFrame):
         body.popup = self
         if len(drives()) > 1:
             body.add_widget(_next_drive_hint())
+            logger.debug(log_markers.FOLDER_CHOOSER_NEXT_DRIVE_HINT)
         # The body's kv ids, where the chooser's code and its tests reach them.
         self.ids.update(body.ids)
         self.setting_widget = setting_widget
