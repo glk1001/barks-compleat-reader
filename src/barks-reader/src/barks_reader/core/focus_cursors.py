@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .keys import KEY_DOWN, KEY_PAGE_DOWN, KEY_PAGE_UP, KEY_UP
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
@@ -32,6 +34,47 @@ def next_index_toward(count: int, selected: int | None, delta: int) -> int:
     if selected is None:
         return 0 if delta > 0 else max(0, count - 1)
     return clamped(selected + delta, count)
+
+
+def list_index_after_key(
+    key: int, index: int, count: int, *, wraps: bool, page_step: int = 0
+) -> int | None:
+    """Return the row of an open list a key moves the focus to; None for a key that moves none.
+
+    Args:
+        key: The key's code.
+        index: The row focused.
+        count: How many rows the list has, at least one.
+        wraps: Whether Up from the first row goes to the last, and Down from the last
+            to the first, rather than stopping there.
+        page_step: How many rows Page Up and Page Down jump, stopping at the ends; 0
+            for a list they do not move.
+
+    Returns:
+        The row, which may be the one focused (a stop at an end), or None when the key
+        is not one of the list's moves.
+
+    """
+    if key in (KEY_UP, KEY_DOWN):
+        step = -1 if key == KEY_UP else 1
+        return wrapped(index, step, count) if wraps else clamped(index + step, count)
+    if page_step and key in (KEY_PAGE_UP, KEY_PAGE_DOWN):
+        return clamped(index + (-page_step if key == KEY_PAGE_UP else page_step), count)
+    return None
+
+
+def choice_over_a_button_after(choice: int | None, count: int, *, up: bool) -> int | None:
+    """Return the focus after Up or Down in a column of `count` choices over one button.
+
+    The button (a Cancel) is the column's bottom, and None stands for it. Down from the
+    last choice lands on it, and Down from it stays; Up from it lands on the last
+    choice, or stays where there are none; Up from the first choice stays.
+    """
+    if choice is None:
+        return count - 1 if up and count else None
+    if up:
+        return max(0, choice - 1)
+    return None if choice == count - 1 else choice + 1
 
 
 def deal_into_columns[T](items: list[T], num_columns: int) -> list[list[T]]:

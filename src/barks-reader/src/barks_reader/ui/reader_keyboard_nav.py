@@ -6,14 +6,11 @@ from kivy.graphics import Color, Line
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.focus_cursors import clamped, wrapped
+from barks_reader.core.focus_cursors import clamped, list_index_after_key, wrapped
 from barks_reader.core.keys import (
-    KEY_DOWN,
     KEY_ENTER,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
     KEY_RIGHT,
     KEY_UP,
     is_escape_key,
@@ -450,20 +447,17 @@ class DropdownNavMixin:
         buttons = self._dropdown_buttons_cache
         if not buttons:
             return False
-        n = len(buttons)
-        idx = self._dropdown_focused_idx
-        if key == KEY_UP:
-            idx = (idx - 1) % n if self._dropdown_wraps else max(0, idx - 1)
-        elif key == KEY_DOWN:
-            idx = (idx + 1) % n if self._dropdown_wraps else min(n - 1, idx + 1)
-        elif self._dropdown_page_step and key == KEY_PAGE_UP:
-            idx = max(0, idx - self._dropdown_page_step)
-        elif self._dropdown_page_step and key == KEY_PAGE_DOWN:
-            idx = min(n - 1, idx + self._dropdown_page_step)
-        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._activate_dropdown_item()
             return True
-        else:
+        idx = list_index_after_key(
+            key,
+            self._dropdown_focused_idx,
+            len(buttons),
+            wraps=self._dropdown_wraps,
+            page_step=self._dropdown_page_step,
+        )
+        if idx is None:
             return False
         if idx != self._dropdown_focused_idx:
             self._dropdown_focused_idx = idx

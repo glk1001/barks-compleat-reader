@@ -34,6 +34,7 @@ from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.focus_cursors import choice_over_a_button_after
 from barks_reader.core.folder_chooser import (
     NEXT_DRIVE_HINT,
     drives,
@@ -883,18 +884,15 @@ class SettingOptionsPopup(PopupFrame):
 
     def _handle_key(self, key: int) -> bool:
         """Take the list's keys; Escape, and Return on Cancel, are the frame's."""
-        last = len(self.choices) - 1
+        if key in (KEY_UP, KEY_DOWN):
+            if self.choice_idx is None and key == KEY_UP and not self.choices:
+                return False  # on Cancel with nothing over it: not the list's key
+            self._focus_choice(
+                choice_over_a_button_after(self.choice_idx, len(self.choices), up=key == KEY_UP)
+            )
+            return True
         if self.choice_idx is None:  # on Cancel, the bottom
-            if key == KEY_UP and self.choices:
-                self._focus_choice(last)
-                return True
-            return key == KEY_DOWN
-        if key == KEY_UP:
-            self._focus_choice(max(0, self.choice_idx - 1))
-            return True
-        if key == KEY_DOWN:
-            self._focus_choice(None if self.choice_idx == last else self.choice_idx + 1)
-            return True
+            return False
         if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._pick(self._options[self.choice_idx])
             return True
