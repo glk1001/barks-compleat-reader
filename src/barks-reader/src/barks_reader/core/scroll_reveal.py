@@ -16,6 +16,11 @@ REVEAL_PADDING = 10
 KEY_SCROLL_SHARE = 0.25
 
 
+def held_in_scroll_range(scroll_y: float) -> float:
+    """Return `scroll_y` held within a scroll view's range: 0, its foot, to 1, its top."""
+    return min(1.0, max(0.0, scroll_y))
+
+
 def scroll_y_after_key(
     *, scroll_y: float, view_height: float, content_height: float, up: bool
 ) -> float:
@@ -35,7 +40,7 @@ def scroll_y_after_key(
     if hidden <= 0:
         return scroll_y
     step = KEY_SCROLL_SHARE * view_height / hidden
-    return min(1.0, max(0.0, scroll_y + (step if up else -step)))
+    return held_in_scroll_range(scroll_y + (step if up else -step))
 
 
 def reveal_distance(
@@ -89,4 +94,4 @@ def scroll_y_keeping_row(
     if scrollable <= 0:
         return None
     scrolled = row_from_content_top - row_from_view_top
-    return min(1.0, max(0.0, 1.0 - scrolled / scrollable))
+    return held_in_scroll_range(1.0 - scrolled / scrollable)

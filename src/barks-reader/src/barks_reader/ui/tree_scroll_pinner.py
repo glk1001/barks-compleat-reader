@@ -36,6 +36,7 @@ from barks_reader.core import log_markers
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.core.scroll_reveal import (
     REVEAL_PADDING,
+    held_in_scroll_range,
     reveal_distance,
     scroll_y_keeping_row,
 )
@@ -404,7 +405,7 @@ class RowScrollPinner:
 
         self._glide(
             scroll_view,
-            self._clamp01(scroll_view.scroll_y - reveal_px / scrollable_px),
+            held_in_scroll_range(scroll_view.scroll_y - reveal_px / scrollable_px),
             _revealed,
         )
 
@@ -447,10 +448,6 @@ class RowScrollPinner:
         if checks.serial == self._pin_serial:
             self._release_hold()
             self._on_settled()
-
-    @staticmethod
-    def _clamp01(v: float) -> float:
-        return 0.0 if v < 0.0 else (min(v, 1.0))
 
 
 class TreeScrollPinner(RowScrollPinner):

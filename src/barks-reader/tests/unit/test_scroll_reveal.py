@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from barks_reader.core.scroll_reveal import (
+    held_in_scroll_range,
     reveal_distance,
     scroll_y_after_key,
     scroll_y_keeping_row,
@@ -58,6 +59,15 @@ def test_a_reveal_brings_the_padding_under_the_items_into_view() -> None:
         view_bottom=0.0, view_top=500.0, items_bottom=-50.0, owner_top=100.0, padding=10.0
     )
     assert distance == pytest.approx(60.0)
+
+
+@pytest.mark.parametrize(
+    ("scroll_y", "held"), [(-0.25, 0.0), (0.0, 0.0), (0.4, 0.4), (1.0, 1.0), (1.25, 1.0)]
+)
+def test_a_scroll_position_is_held_between_the_foot_and_the_top(
+    scroll_y: float, held: float
+) -> None:
+    assert held_in_scroll_range(scroll_y) == held
 
 
 class TestScrollYAfterKey:

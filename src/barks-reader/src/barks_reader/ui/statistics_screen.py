@@ -19,6 +19,7 @@ from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.focus_cursors import wrapped
 from barks_reader.core.keys import KEY_ENTER, KEY_LEFT, KEY_NUMPAD_ENTER, KEY_RIGHT, is_escape_key
 from barks_reader.core.statistics_series import CHART_ITEMS, MOST_FREQUENT_ITEM, wordcloud_items
 
@@ -245,7 +246,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         return True
 
     def _move_tab_focus(self, delta: int) -> None:
-        self._nav_focused_idx = (self._nav_focused_idx + delta) % len(self._stat_buttons)
+        self._nav_focused_idx = wrapped(self._nav_focused_idx, delta, len(self._stat_buttons))
         update_focus_in_list(self._stat_buttons, self._nav_focused_idx, MENU_FOCUS_HIGHLIGHT_GROUP)
 
     def _activate_focused_tab(self) -> None:

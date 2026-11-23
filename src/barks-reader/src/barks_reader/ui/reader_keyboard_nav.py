@@ -6,6 +6,7 @@ from kivy.graphics import Color, Line
 from loguru import logger
 
 from barks_reader.core import log_markers
+from barks_reader.core.focus_cursors import clamped, wrapped
 from barks_reader.core.keys import (
     KEY_DOWN,
     KEY_ENTER,
@@ -296,7 +297,7 @@ class ActionBarNavMixin:
     # --- Focus management ---
 
     def _move_menu_focus(self, delta: int) -> None:
-        self._focused_btn_idx = (self._focused_btn_idx + delta) % len(self._menu_buttons)
+        self._focused_btn_idx = wrapped(self._focused_btn_idx, delta, len(self._menu_buttons))
         self._update_menu_focus()
 
     def _update_menu_focus(self) -> None:
@@ -410,7 +411,7 @@ class DropdownNavMixin:
         buttons = self._get_dropdown_buttons()
         self._dropdown_buttons_cache = buttons
         # A start worked out before the list was rebuilt can be past its end: the last row.
-        idx = min(max(initial_idx, 0), len(buttons) - 1) if buttons else 0
+        idx = clamped(initial_idx, len(buttons))
         self._dropdown_focused_idx = idx
         self._dropdown_prev_focused_idx = idx
         if buttons:  # an empty list has no row to ring

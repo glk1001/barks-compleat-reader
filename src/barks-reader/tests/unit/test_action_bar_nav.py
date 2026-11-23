@@ -339,6 +339,13 @@ class TestPageTurnHooks:
             screen._handle_reader_key(KEY_LEFT)
 
 
+def test_a_bar_with_no_buttons_has_nowhere_to_move_the_focus_and_says_nothing() -> None:
+    """The step round the bar divided by its count of buttons."""
+    screen = _StubScreen([])
+    screen._move_menu_focus(1)
+    assert screen._focused_btn_idx == 0
+
+
 class _BareDropdownScreen(DropdownNavMixin, ActionBarNavMixin):
     """Overrides none of the dropdown hooks."""
 
