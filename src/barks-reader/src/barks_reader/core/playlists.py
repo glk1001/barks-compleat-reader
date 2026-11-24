@@ -44,6 +44,7 @@ BRAVERY_PLAYLIST_ID = "bravery"
 BRITTLE_MASTERY_PLAYLIST_ID = "brittle_mastery"
 PERSISTENCE_PLAYLIST_ID = "persistence"
 PARENTING_PLAYLIST_ID = "parenting"
+PETS_PLAYLIST_ID = "pets"
 
 PLAYLISTS: tuple[Playlist, ...] = (
     Playlist(
@@ -112,6 +113,33 @@ PLAYLISTS: tuple[Playlist, ...] = (
             Titles.SPOIL_THE_ROD,
             Titles.HOUSEBOAT_HOLIDAY,
             Titles.CAMPING_CONFUSION,
+        ),
+    ),
+    Playlist(
+        playlist_id=PETS_PLAYLIST_ID,
+        heading="The Pets Stories",
+        intro=("[i]Stories where pets are involved. Usually with a happy ending![/i]"),
+        titles=(
+            Titles.TOO_MANY_PETS,
+            Titles.FARRAGUT_THE_FALCON,
+            Titles.SINGAPORE_JOE,
+            Titles.SMUGSNORKLE_SQUATTIE_THE,
+            Titles.TURKEY_RAFFLE,
+            Titles.CANTANKEROUS_CAT_THE,
+            Titles.GREAT_DUCKBURG_FROG_JUMPING_CONTEST_THE,
+            Titles.PLENTY_OF_PETS,
+            Titles.PIXILATED_PARROT_THE,
+            Titles.OPERATION_ST_BERNARD,
+            Titles.TALKING_DOG_THE,
+            Titles.HAMMY_CAMEL_THE,
+            Titles.CHELTENHAMS_CHOICE,
+            Titles.DONALDS_PET_SERVICE,
+            Titles.CODE_OF_DUCKBURG_THE,
+            Titles.OLD_FROGGIE_CATAPULT,
+            Titles.LITTLEST_CHICKEN_THIEF_THE,
+            Titles.DOG_SITTER_THE,
+            Titles.FRAIDY_FALCON_THE,
+            # Titles.DUCKBURG_PET_PARADE_THE,
         ),
     ),
 )
