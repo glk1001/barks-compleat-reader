@@ -476,6 +476,18 @@ class TestSettingsPanelSchema:
             spec.key for spec in reader_settings_module._FIELDS
         }
 
+    def test_a_setting_kept_out_hides_none_after_it(self) -> None:
+        """Today the one kept out is the table's last; one put earlier must not end the panel."""
+        kind = reader_settings_module.FieldKind.BOOL
+        fields = (
+            reader_settings_module.FieldSpec("kept_out", "Out", "", kind, in_panel=False),
+            reader_settings_module.FieldSpec("shown", "In", "", kind),
+        )
+        with patch.object(reader_settings_module, "_FIELDS", fields):
+            schema = json.loads(reader_settings_module._get_reader_settings_json())
+
+        assert [item["key"] for item in schema] == ["shown"]
+
     def test_entries_appear_in_field_order_with_their_section_titles(
         self, schema: list[dict[str, object]]
     ) -> None:

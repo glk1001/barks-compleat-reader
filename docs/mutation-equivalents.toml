@@ -2882,3 +2882,12 @@ change = """
 + offer_page: bool = False,
 """
 reason = "The default is never used: its one caller, navigate_to_chrono_title, always passes offer_page."
+
+[[equivalent]]
+module = "barks_reader.core.popup_frame"
+function = "focus_after_step"
+change = """
+- return 0 if step > 0 else count - 1
++ return 0 if step >= 0 else count - 1
+"""
+reason = "The two differ only for a step of 0, and its one caller, PopupFrame._move_focus, passes only 1 (Right) or -1 (Left)."

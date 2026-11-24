@@ -19,6 +19,7 @@ from barks_reader.core.popup_frame import (
     FrameButton,
     FrameKeyAction,
     cancel_button,
+    closes_popup,
     focus_after_step,
     frame_key_action,
 )
@@ -97,6 +98,21 @@ class TestAFrameWithNoButtons:
     @pytest.mark.parametrize("key", [KEY_ESCAPE, KEY_ENTER, KEY_NUMPAD_ENTER, KEY_LEFT])
     def test_one_that_cannot_be_closed_takes_every_key_and_does_nothing(self, key: int) -> None:
         assert _action(key, has_buttons=False, closable=False) is FrameKeyAction.NOTHING
+
+
+class TestWhatClosesAStandalonePopup:
+    """`closes_popup` on its own: the frame asks it only once Escape is dealt with."""
+
+    @pytest.mark.parametrize("key", [KEY_ESCAPE, KEY_ENTER, KEY_NUMPAD_ENTER])
+    def test_escape_and_return_close_it(self, key: int) -> None:
+        assert closes_popup(key)
+
+    def test_the_alternate_escape_closes_it_too(self, alt_escape: int) -> None:
+        assert closes_popup(alt_escape)
+
+    @pytest.mark.parametrize("key", [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, ord("a")])
+    def test_no_other_key_does(self, key: int) -> None:
+        assert not closes_popup(key)
 
 
 class TestWhileATextBoxHasTheKeyboard:
