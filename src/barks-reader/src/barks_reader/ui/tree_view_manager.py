@@ -95,6 +95,8 @@ class TreeViewManager:
         # under the images it was left with, as a collapse does (2026-10-30).
         self._keep_images_for_caller = False
         self._search_node: MainTreeViewNode | None = None
+        # The search last gone to this session: Search opens on it (None: Titles).
+        self._last_search_kind: type[Destination] | None = None
 
         self._tree_view_screen.setup_collapse_overlay(self._on_collapse_overlay_pressed)
 
@@ -317,6 +319,8 @@ class TreeViewManager:
             msg = f"Node has no destination: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
         keep_images = keep_images or self._keep_images_for_caller
+        if (search_kind := self._nav_model.search_kind_of(node.destination)) is not None:
+            self._last_search_kind = search_kind
         logger.info(f"Rendering view for node '{node.get_name()}'.")
         if keep_images:
             logger.info(log_markers.NODE_IMAGES_KEPT.format(name=node.get_name()))
@@ -416,7 +420,7 @@ class TreeViewManager:
         """Return the child the navigation model says `node` opens on, if it has one."""
         if node.destination is None:
             return None
-        child_type = self._nav_model.child_to_open_on(node.destination)
+        child_type = self._nav_model.child_to_open_on(node.destination, self._last_search_kind)
         if child_type is None:
             return None
         return next(
@@ -561,3 +565,23 @@ class TreeViewManager:
     def search_node(self) -> MainTreeViewNode | None:
         """The Search node, once the tree has built it."""
         return self._search_node
+
+    def open_search(self) -> None:
+        """Close every open node, then open Search on the search last used (the bar's Search).
+
+        The tree closes without showing the first view on the way, so the search is
+        what shows next, not a flash of the view before it.
+
+        Raises:
+            RuntimeError: The tree has not built its Search node yet.
+
+        """
+        if self._search_node is None:
+            msg = "The tree has no Search node to open."
+            raise RuntimeError(msg)
+        # noinspection PyArgumentList
+        with self.suppress_view_state_changes():
+            self._tree_view_screen.deselect_and_close_open_nodes()
+        self._collapse_overlay.clear_tracking()
+        # Opening the node shows the search it opens on (on_node_expanded).
+        self._tree_view_screen.open_node(self._search_node)

@@ -194,6 +194,43 @@ class TestMainMenuButton:
             "Return",
         ]
 
+    @staticmethod
+    def _search_on_bar(driver: Driver, shown: tuple[bool, ...]) -> None:
+        """Log the app's word on Search, once per value in `shown`, oldest first."""
+        lines = (log_markers.SEARCH_BUTTON_ON_BAR.format(shown=s) for s in shown)
+        driver.log_path.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+
+    def test_search_is_on_the_bar_only_while_the_app_last_said_so(
+        self, stub_driver: Driver
+    ) -> None:
+        assert "search" not in stub_driver.main_menu_buttons()
+        self._search_on_bar(stub_driver, (False, True))
+        buttons = stub_driver.main_menu_buttons()
+        assert buttons[buttons.index("collapse") + 1] == "search"
+        self._search_on_bar(stub_driver, (True, False))
+        assert "search" not in stub_driver.main_menu_buttons()
+
+    def test_on_the_spread_search_shifts_the_buttons_after_it(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        """Change Pics is three Rights from go_back with Search on the bar, not two."""
+        self._search_on_bar(stub_driver, (True,))
+        assert self._presses(stub_driver, "change_pics", keys_pressed) == [
+            "Escape",
+            "Right",
+            "Right",
+            "Right",
+            "Return",
+        ]
+
+    def test_a_focus_on_search_falls_back_to_go_back_when_it_leaves(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        self._search_on_bar(stub_driver, (True,))
+        self._presses(stub_driver, "search", keys_pressed)
+        self._search_on_bar(stub_driver, (True, False))
+        assert self._presses(stub_driver, "go_back", keys_pressed) == ["Escape", "Return"]
+
     def test_go_back_uses_it(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "main_menu_button") as press,
@@ -811,6 +848,8 @@ class TestDriverMarkersMatchTheApp:
                 log_markers.MAIN_SCREEN_ACTIVE.format(origin=log_markers.FROM_COMIC_READER),
             ),
             (Driver.EXITED_BOTTOM_FOCUS, log_markers.EXITED_BOTTOM_FOCUS),
+            (Driver.SEARCH_ON_BAR, log_markers.SEARCH_BUTTON_ON_BAR.format(shown=True)),
+            (Driver.SEARCH_ON_BAR, log_markers.SEARCH_BUTTON_ON_BAR.format(shown=False)),
             (Driver.GOTO_PAGE_DROPDOWN_OPENED, log_markers.GOTO_PAGE_DROPDOWN_OPENED),
             (
                 Driver.WIKI_FOCUS_MOVED,

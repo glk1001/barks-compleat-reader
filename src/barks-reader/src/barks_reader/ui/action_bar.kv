@@ -27,6 +27,27 @@
     icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
     important: True
 
+# The main screen's Search (on the spread only). The data pack has no search icon,
+# and every pack icon is a required file, so the magnifying glass is drawn: a lens
+# and a handle, in the chrome's icon tint, filling the square the other bar icons
+# fill (about 78% of it, strokes about a tenth of it). No text: an ActionButton
+# without an icon shows its text, and an empty one keeps the icons' 48dp width.
+<ChromeSearchBarButton@BarButton>:
+    text: ""
+    important: True
+    # The glyph's square is min(self.size) - dp(8), written out in each line: a
+    # property made here is None when the canvas is first built.
+    canvas.after:
+        Color:
+            rgba: reader_palette.theme().icon_tint
+        Line:
+            circle: self.center_x - 0.094 * (min(self.size) - dp(8)), self.center_y + 0.094 * (min(self.size) - dp(8)), 0.234 * (min(self.size) - dp(8))
+            width: 0.05 * (min(self.size) - dp(8))
+        Line:
+            points: self.center_x + 0.072 * (min(self.size) - dp(8)), self.center_y - 0.072 * (min(self.size) - dp(8)), self.center_x + 0.33 * (min(self.size) - dp(8)), self.center_y - 0.33 * (min(self.size) - dp(8))
+            width: 0.06 * (min(self.size) - dp(8))
+            cap: "round"
+
 # A 1dp vertical line centered in a configurable-width slot.
 <BarSeparator@Widget>:
     slot_width: dp(1)

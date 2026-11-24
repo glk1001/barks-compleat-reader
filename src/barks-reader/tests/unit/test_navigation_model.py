@@ -343,6 +343,43 @@ def test_search_opens_on_its_title_search(model: NavigationModel) -> None:
     assert model.child_to_open_on(SearchDestination()) is TitleSearchDestination
 
 
+@pytest.mark.parametrize(
+    "last_search", [TitleSearchDestination, TagSearchDestination, WordSearchDestination]
+)
+def test_search_opens_on_the_search_last_used(
+    model: NavigationModel, last_search: type[Destination]
+) -> None:
+    assert model.child_to_open_on(SearchDestination(), last_search) is last_search
+
+
+def test_a_last_search_that_is_no_search_opens_search_on_titles(model: NavigationModel) -> None:
+    assert model.child_to_open_on(SearchDestination(), ReadingDestination) is TitleSearchDestination
+
+
+def test_the_last_search_does_not_reach_other_nodes(model: NavigationModel) -> None:
+    assert model.child_to_open_on(SpeechIndexDestination(), WordSearchDestination) is (
+        SpeechWordsDestination
+    )
+    assert model.child_to_open_on(ReadingDestination(), WordSearchDestination) is None
+
+
+@pytest.mark.parametrize(
+    ("dest", "kind"),
+    [
+        (TitleSearchDestination(), TitleSearchDestination),
+        (TagSearchDestination(), TagSearchDestination),
+        (WordSearchDestination(), WordSearchDestination),
+        (SearchDestination(), None),
+        (ReadingDestination(), None),
+        (None, None),
+    ],
+)
+def test_search_kind_of(
+    model: NavigationModel, dest: Destination | None, kind: type[Destination] | None
+) -> None:
+    assert model.search_kind_of(dest) is kind
+
+
 def test_the_speech_index_opens_on_its_words(model: NavigationModel) -> None:
     assert model.child_to_open_on(SpeechIndexDestination()) is SpeechWordsDestination
 

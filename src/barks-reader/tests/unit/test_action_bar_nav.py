@@ -636,3 +636,54 @@ class TestNavExit:
     def test_a_screen_must_clear_its_own_focus(self) -> None:
         with pytest.raises(NotImplementedError):
             NavExitMixin().exit_nav_focus()
+
+
+class TestSetMenuButtons:
+    """A bar whose buttons change with the layout keeps each index on its button."""
+
+    @staticmethod
+    def _screen() -> tuple[_StubScreen, list[MagicMock]]:
+        icon, back, collapse, pics, quit_ = (MagicMock() for _ in range(5))
+        buttons = [icon, back, collapse, pics, quit_]
+        return _StubScreen(buttons, default_focus_idx=1), buttons
+
+    def test_an_added_button_shifts_the_indexes_after_it(self) -> None:
+        screen, (icon, back, collapse, pics, quit_) = self._screen()
+        search = MagicMock()
+        screen._last_used_btn_idx = 3  # pics
+        screen._set_menu_buttons([icon, back, collapse, search, pics, quit_])
+        assert screen._menu_buttons[screen._default_btn_idx] is back
+        assert screen._menu_buttons[screen._last_used_btn_idx] is pics
+
+    def test_an_index_on_a_removed_button_falls_back_to_the_default(self) -> None:
+        screen, (icon, back, collapse, pics, quit_) = self._screen()
+        search = MagicMock()
+        screen._set_menu_buttons([icon, back, collapse, search, pics, quit_])
+        screen._last_used_btn_idx = screen._focused_btn_idx = 3  # search
+        screen._set_menu_buttons([icon, back, collapse, pics, quit_])
+        assert screen._last_used_btn_idx == screen._focused_btn_idx == 1  # back
+
+    def test_in_the_menu_the_ring_is_redrawn_on_its_button(self) -> None:
+        screen, (icon, back, collapse, pics, quit_) = self._screen()
+        search = MagicMock()
+        with (
+            patch.object(nav_module, "update_focus_in_list") as update,
+            patch.object(nav_module, "clear_focus_in_list") as clear,
+        ):
+            screen._enter_menu_mode()
+            screen._focused_btn_idx = 3  # pics
+            update.reset_mock()
+            new_buttons = [icon, back, collapse, search, pics, quit_]
+            screen._set_menu_buttons(new_buttons)
+        clear.assert_called_once()
+        update.assert_called_once_with(new_buttons, 4, nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
+
+    def test_out_of_the_menu_no_ring_is_drawn(self) -> None:
+        screen, buttons = self._screen()
+        with (
+            patch.object(nav_module, "update_focus_in_list") as update,
+            patch.object(nav_module, "clear_focus_in_list") as clear,
+        ):
+            screen._set_menu_buttons([*buttons, MagicMock()])
+        update.assert_not_called()
+        clear.assert_not_called()

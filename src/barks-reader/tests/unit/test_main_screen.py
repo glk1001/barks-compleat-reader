@@ -93,12 +93,20 @@ def main_screen(
             # Initialize Widget base to set up children list, properties, etc.
             Widget.__init__(self, **kwargs)
 
+            # Collapse and Search are real widgets in a real buttons box: Search
+            # comes and goes with the layout, placed just after Collapse.
+            buttons_box = Widget()
+            collapse_button = Widget()
+            search_button = Widget()
+            buttons_box.add_widget(collapse_button)
+            buttons_box.add_widget(search_button)
             self.ids = {
                 "main_layout": MagicMock(),
                 "book": MagicMock(),
-                "action_bar": MagicMock(),
+                "action_bar": MagicMock(button_container=buttons_box),
                 "fullscreen_button": MagicMock(),
-                "collapse_button": MagicMock(),
+                "collapse_button": collapse_button,
+                "search_button": search_button,
                 "quit_button": MagicMock(),
                 "go_back_button": MagicMock(),
                 "change_pics_button": MagicMock(),
@@ -1428,6 +1436,60 @@ class TestAboutBoxFocus:
             main_screen._activate_focused_button()
         open_dots.assert_called_once_with()
         assert main_screen._menu_action_by_keyboard is True
+
+
+class TestTheSearchButton:
+    """Search is on the bar on the spread only, just after Collapse, and opens a search."""
+
+    @staticmethod
+    def _on_bar(main_screen: MainScreen) -> bool:
+        return main_screen._search_button.parent is not None
+
+    def test_a_single_page_starts_without_it(self, main_screen: MainScreen) -> None:
+        assert not self._on_bar(main_screen)
+        assert main_screen._search_button not in main_screen._menu_buttons
+
+    def test_the_spread_puts_it_just_after_collapse(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen.set_layout_mode(MainLayoutMode.SPREAD)
+
+        box = main_screen.ids.action_bar.button_container
+        assert self._on_bar(main_screen)
+        # Kivy keeps children last-first: just after Collapse is just before it here.
+        assert box.children.index(main_screen._search_button) + 1 == box.children.index(
+            main_screen.ids.collapse_button
+        )
+        buttons = main_screen._menu_buttons
+        assert buttons[buttons.index(main_screen.ids.collapse_button) + 1] is (
+            main_screen._search_button
+        )
+        assert main_screen._menu_buttons[main_screen._default_btn_idx] is (
+            main_screen.ids.go_back_button
+        )
+        assert log_markers.SEARCH_BUTTON_ON_BAR.format(shown=True) in "".join(loguru_sink)
+
+    def test_a_single_page_takes_it_off_again(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen.set_layout_mode(MainLayoutMode.SPREAD)
+        main_screen.set_layout_mode(MainLayoutMode.SINGLE)
+
+        assert not self._on_bar(main_screen)
+        assert main_screen._search_button not in main_screen._menu_buttons
+        assert log_markers.SEARCH_BUTTON_ON_BAR.format(shown=False) in "".join(loguru_sink)
+
+    def test_a_press_opens_search_then_gives_its_box_the_keys(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        with patch.object(barks_reader.ui.main_screen.Clock, "schedule_once") as mock_schedule:
+            main_screen.on_action_bar_search()
+            main_screen._tree_view_manager.open_search.assert_called_once_with()
+            main_screen._nav.enter_bottom_focus.assert_not_called()  # not before the frame
+            mock_schedule.call_args.args[0](0)
+
+        main_screen._nav.enter_bottom_focus.assert_called_once_with()
+        assert log_markers.SEARCH_SELECTED in "".join(loguru_sink)
 
 
 class TestTheBooksLayout:

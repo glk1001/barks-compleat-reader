@@ -207,6 +207,36 @@ class ActionBarNavMixin:
         # keyboard from mouse. Set on keyboard activation, cleared on any pointer press.
         self._menu_action_by_keyboard: bool = False
 
+    def _set_menu_buttons(self, menu_buttons: list[Button]) -> None:
+        """Change the bar's buttons, keeping the default, last-used and ringed ones on theirs.
+
+        For a bar whose buttons change with the layout. Each index follows its button
+        into the new list; one whose button has gone falls back to the default's.
+
+        Args:
+            menu_buttons: The bar's buttons in visual left-to-right order. The default
+                button must be among them.
+
+        """
+        old_buttons = self._menu_buttons
+        default_button = old_buttons[self._default_btn_idx]
+        in_menu = self._menu_mode
+        if in_menu:
+            self._clear_menu_focus()
+
+        def new_index(old_idx: int) -> int:
+            button = old_buttons[old_idx]
+            if button in menu_buttons:
+                return menu_buttons.index(button)
+            return menu_buttons.index(default_button)
+
+        self._default_btn_idx = menu_buttons.index(default_button)
+        self._last_used_btn_idx = new_index(self._last_used_btn_idx)
+        self._focused_btn_idx = new_index(self._focused_btn_idx)
+        self._menu_buttons = menu_buttons
+        if in_menu:
+            self._update_menu_focus()
+
     # --- Hook overrides ---
 
     def _is_action_bar_hidden(self) -> bool:

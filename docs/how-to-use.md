@@ -94,6 +94,9 @@ The bar across the top of the main screen contains:
   — returns to the previously selected navigation node.
 - <img src="icon-collapse-black.png" alt="[b]Collapse[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — collapses all expanded nodes in the navigation tree.
+- <img src="icon-search-black.png" alt="[b]Search[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — on the two-page spread only: collapses the tree and opens **Search** on the search you
+  used last (*Titles* until you use another), ready to type.
 - <img src="icon-refresh-arrow-orig.png" alt="[b]Refresh[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — randomly refreshes the background and panel images.
 - <img src="icon-menu-dots-too-big-black.png" alt="[b]Menu[/b]" style="position: relative; top: 3px;" width="15" height="15">
@@ -268,7 +271,9 @@ away again. In windowed mode the bar is always shown. It contains:
 ## Searching
 
 The three searches sit under **Search** in the tree. Type in the box at the top left; what matches
-is listed under it, and the stories on the right.
+is listed under it, and the stories on the right. Opening **Search** goes straight to the search you
+used last (*Titles* at first); on the two-page spread, the bar's Search button does the same from
+anywhere in the tree.
 
 ### Word search
 

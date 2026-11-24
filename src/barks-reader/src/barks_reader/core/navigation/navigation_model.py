@@ -128,6 +128,14 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
 }
 
 
+# The three searches under the Search node, the kinds Search can open on.
+_SEARCH_KINDS: tuple[type[Destination], ...] = (
+    TitleSearchDestination,
+    TagSearchDestination,
+    WordSearchDestination,
+)
+
+
 class BottomScreen(Enum):
     """A bottom screen with keys of its own, that Enter on its tree node moves them into."""
 
@@ -293,15 +301,28 @@ class NavigationModel:
         return None
 
     @staticmethod
-    def child_to_open_on(parent: Destination) -> type[Destination] | None:
+    def search_kind_of(dest: Destination | None) -> type[Destination] | None:
+        """Return which of the three searches `dest` is, or None if it is not one."""
+        return type(dest) if isinstance(dest, _SEARCH_KINDS) else None
+
+    @staticmethod
+    def child_to_open_on(
+        parent: Destination, last_search: type[Destination] | None = None
+    ) -> type[Destination] | None:
         """Return the kind of child a parent goes straight to when the user opens it.
 
-        Search opens on its title search, the one most used: its own view is only a
-        backdrop, and the tag and word searches are one key down from it. The Speech
-        Bubble Index opens on Words, the index its own view already shows.
+        Search opens on the search last used, and on its title search, the one most
+        used, before any is: its own view is only a backdrop, and the other searches
+        are a key or two down from it. The Speech Bubble Index opens on Words, the
+        index its own view already shows.
+
+        Args:
+            parent: The node being opened.
+            last_search: The search the user last went to this session, if any.
+
         """
         if isinstance(parent, SearchDestination):
-            return TitleSearchDestination
+            return last_search if last_search in _SEARCH_KINDS else TitleSearchDestination
         if isinstance(parent, SpeechIndexDestination):
             return SpeechWordsDestination
         return None

@@ -30,6 +30,7 @@ from barks_reader.core.navigation import (
     TitleDestination,
     TitleSearchDestination,
     WikiIndexDestination,
+    WordSearchDestination,
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.testing import fake_fanta_info
@@ -1241,7 +1242,82 @@ class TestWhatOnlyTheGuiTestsRan:
             tree_view_manager._nav_model, "child_to_open_on", return_value=None
         ) as child_to_open_on:
             assert tree_view_manager._child_to_open_on(node) is None
-        child_to_open_on.assert_called_once_with(node.destination)
+        child_to_open_on.assert_called_once_with(node.destination, None)
+
+    @staticmethod
+    def _search_node() -> MagicMock:
+        """Return a Search node with its three searches under it."""
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = SearchDestination()
+        node.nodes = []
+        for destination in (
+            TitleSearchDestination(),
+            TagSearchDestination(),
+            WordSearchDestination(),
+        ):
+            child = MagicMock(spec=ButtonTreeViewNode)
+            child.destination = destination
+            node.nodes.append(child)
+        return node
+
+    @staticmethod
+    def _shown(tree_view_manager: TreeViewManager, destination: Destination) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = destination
+        tree_view_manager.set_view_state_for_node(node)
+
+    def test_search_opens_on_titles_before_any_search_is_used(
+        self, tree_view_manager: TreeViewManager
+    ) -> None:
+        search = self._search_node()
+        assert tree_view_manager._child_to_open_on(search) is search.nodes[0]
+
+    def test_search_opens_on_the_search_last_shown(
+        self, tree_view_manager: TreeViewManager
+    ) -> None:
+        search = self._search_node()
+        self._shown(tree_view_manager, WordSearchDestination())
+        assert tree_view_manager._child_to_open_on(search) is search.nodes[2]
+        self._shown(tree_view_manager, TagSearchDestination())
+        assert tree_view_manager._child_to_open_on(search) is search.nodes[1]
+
+    def test_a_view_that_is_no_search_leaves_the_last_search_as_it_was(
+        self, tree_view_manager: TreeViewManager
+    ) -> None:
+        search = self._search_node()
+        self._shown(tree_view_manager, WordSearchDestination())
+        self._shown(tree_view_manager, SearchDestination())
+        self._shown(tree_view_manager, StoriesDestination())
+        assert tree_view_manager._child_to_open_on(search) is search.nodes[2]
+
+    def test_open_search_closes_the_tree_quietly_then_opens_search(
+        self,
+        tree_view_manager: TreeViewManager,
+        tree_view_manager_deps: dict[str, Any],
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        """No first view on the way: the search the node opens on is what shows next."""
+        search = self._search_node()
+        tree_view_manager.on_search_node_created(search)
+        tree_screen = screen_mocks["tree_view"]
+        allowed_while_closing: list[bool] = []
+        tree_screen.deselect_and_close_open_nodes.side_effect = lambda: (
+            allowed_while_closing.append(tree_view_manager._allow_view_state_change) or 3
+        )
+
+        tree_view_manager.open_search()
+
+        assert allowed_while_closing == [False]
+        tree_screen.ids.collapse_parent_overlay.clear_tracking.assert_called_once_with()
+        tree_screen.open_node.assert_called_once_with(search)
+        assert tree_view_manager._allow_view_state_change is True
+        tree_view_manager_deps["renderer"].render_state.assert_not_called()
+
+    def test_open_search_before_the_tree_has_its_search_node_raises(
+        self, tree_view_manager: TreeViewManager
+    ) -> None:
+        with pytest.raises(RuntimeError, match="no Search node"):
+            tree_view_manager.open_search()
 
     def test_a_node_with_no_destination_opens_on_no_child_and_selects_no_title(
         self, tree_view_manager: TreeViewManager

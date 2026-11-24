@@ -99,6 +99,9 @@ TEXT_INPUT_CLICKED: Final = "Text input clicked by mouse: {widget}, using the sy
 
 # --------------------------------------------- the main screen and its bar --
 GO_BACK_SELECTED: Final = "'Go back' menu item selected."
+SEARCH_SELECTED: Final = "'Search' menu item selected."
+# The bar's Search is on the spread only: True when the layout puts it on the bar.
+SEARCH_BUTTON_ON_BAR: Final = "Bar Search button on the bar: {shown}."
 MENU_ENTERED: Final = "Entered menu mode."
 MENU_EXITED: Final = "Exited menu mode."
 NAV_FOCUS_PREFIX: Final = "Nav focus on"

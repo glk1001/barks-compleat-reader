@@ -170,6 +170,9 @@ class Driver:
         "quit",
     )
     _MAIN_MENU_DEFAULT = "go_back"
+    # The main bar's Search, just after collapse, is on the bar on the spread only;
+    # the app logs each time the layout puts it on or takes it off.
+    SEARCH_ON_BAR = r"Bar Search button on the bar: (True|False)\."
     # The document reader's bar, in the order document_reader.py passes to
     # _setup_action_bar_nav; its menu opens on Close (default_focus_idx=2).
     _DOCUMENT_MENU_BUTTONS = ("fullscreen", "goto_story", "close")
@@ -732,6 +735,32 @@ class Driver:
         """
         return self.match_count(self.MENU_ENTERED) > self.match_count(self.MENU_EXITED)
 
+    def main_menu_buttons(self) -> tuple[str, ...]:
+        """Return the main screen's bar buttons as they are now, in the keys' order.
+
+        Search is among them, after collapse, only while the app's last word on it
+        says it is on the bar (the two-page spread).
+        """
+        found = re.search(self.SEARCH_ON_BAR, self.last_line(self.SEARCH_ON_BAR))
+        if found is None or found.group(1) != "True":
+            return self._MAIN_MENU_BUTTONS
+        after_collapse = self._MAIN_MENU_BUTTONS.index("collapse") + 1
+        return (
+            *self._MAIN_MENU_BUTTONS[:after_collapse],
+            "search",
+            *self._MAIN_MENU_BUTTONS[after_collapse:],
+        )
+
+    def _main_menu_here(self) -> str:
+        """Return the bar button the main menu will open on.
+
+        Sticky, as the app's is; when that button has left the bar (Search, on a
+        layout change), the app falls back to go_back, and so does this.
+        """
+        if self._main_menu_focus not in self.main_menu_buttons():
+            self._main_menu_focus = self._MAIN_MENU_DEFAULT
+        return self._main_menu_focus
+
     def main_menu_button(self, name: str) -> None:
         """Open the main screen's action-bar menu and activate one button by name.
 
@@ -740,13 +769,13 @@ class Driver:
         step.
 
         Args:
-            name: One of `_MAIN_MENU_BUTTONS`.
+            name: One of `main_menu_buttons()`.
 
         Raises:
             DriverError: If `name` is not a main-screen button.
 
         """
-        self._walk_bar_to(self._MAIN_MENU_BUTTONS, self._main_menu_focus, name)
+        self._walk_bar_to(self.main_menu_buttons(), self._main_menu_here(), name)
         self._main_menu_focus = name
         self.key("Return")
 
@@ -758,7 +787,7 @@ class Driver:
         step of the walk landed it on a bar button. Counting from after the walk
         keeps the wait on the press.
         """
-        self._walk_bar_to(self._MAIN_MENU_BUTTONS, self._main_menu_focus, name)
+        self._walk_bar_to(self.main_menu_buttons(), self._main_menu_here(), name)
         self._main_menu_focus = name
         with self.expect(pattern, timeout):
             self.key("Return")

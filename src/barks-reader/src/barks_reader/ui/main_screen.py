@@ -353,22 +353,14 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
 
-        # Buttons in visual left-to-right order: the app icon leads and the X
-        # trails (just after the three-dots menu), matching the on-screen layout.
+        # Search is on the bar on the spread only, so it comes and goes with the
+        # layout: held here, as ids keeps only a weak reference to it.
+        search_proxy = self.ids.search_button
+        self._search_button: Button = getattr(search_proxy, "__self__", search_proxy)
         # Default focus is go-back, not the X, so Escape+Enter can never quit the
         # app.
-        self._setup_action_bar_nav(
-            [
-                self.ids.action_bar.icon_hitbox,
-                self.ids.fullscreen_button,
-                self.ids.go_back_button,
-                self.ids.collapse_button,
-                self.ids.change_pics_button,
-                self.ids.menu_button,
-                self.ids.quit_button,
-            ],
-            default_focus_idx=2,
-        )
+        self._setup_action_bar_nav(self._bar_buttons(), default_focus_idx=2)
+        self._place_search_button()
         Window.bind(on_key_down=self._on_key_down)
         _install_keyboard_request_hook(Window, self._put_key_handler_first)
 
@@ -411,12 +403,55 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return
         logger.debug(f"Main screen layout: {self.layout_mode} -> {mode.value}.")
         self.layout_mode = mode.value
+        self._place_search_button()
         self._tree_view_screen.layout_mode = mode.value
         self._bottom_title_view_screen.layout_mode = mode.value
         self._fun_image_view_screen.layout_mode = mode.value
         self._search_screen.layout_mode = mode.value
         # Windowed, the window's own refit resizes the book; fullscreen, the box is ours.
         self._window_helper.refit_fullscreen()
+
+    def _search_button_wanted(self) -> bool:
+        return self.layout_mode == MainLayoutMode.SPREAD.value
+
+    def _bar_buttons(self) -> list[Button]:
+        """Return the bar's buttons in visual left-to-right order, as the keys go through them.
+
+        The app icon leads and the X trails (just after the three-dots menu), matching
+        the on-screen layout. Search, after Collapse, is there on the spread only.
+        """
+        search = [self._search_button] if self._search_button_wanted() else []
+        return [
+            self.ids.action_bar.icon_hitbox,
+            self.ids.fullscreen_button,
+            self.ids.go_back_button,
+            self.ids.collapse_button,
+            *search,
+            self.ids.change_pics_button,
+            self.ids.menu_button,
+            self.ids.quit_button,
+        ]
+
+    def _place_search_button(self) -> None:
+        """Put Search on the bar for the spread, and take it off for a single page.
+
+        Taken off, not hidden: a hidden button would still take its width on the bar,
+        and its place in the keys' way along it.
+        """
+        wanted = self._search_button_wanted()
+        button = self._search_button
+        if wanted == (button.parent is not None):
+            return
+        if wanted:
+            buttons_box = self.ids.action_bar.button_container
+            # Kivy keeps children last-first: Collapse's index puts Search just after it.
+            buttons_box.add_widget(
+                button, index=buttons_box.children.index(self.ids.collapse_button)
+            )
+        else:
+            button.parent.remove_widget(button)
+        self._set_menu_buttons(self._bar_buttons())
+        logger.debug(log_markers.SEARCH_BUTTON_ON_BAR.format(shown=wanted))
 
     def content_aspect_ratio(self) -> float:
         """Return the shape (height over width) of the screen's content in its layout."""
@@ -946,6 +981,17 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def on_action_bar_collapse(self) -> None:
         """Close every open node of the tree (the action bar's Collapse)."""
         self._tree_view_manager.deselect_and_close_open_nodes(from_collapse_all=True)
+
+    def on_action_bar_search(self) -> None:
+        """Close the tree, open Search on the search last used, and give its box the keys.
+
+        The action bar's Search, on the spread only. The keys go to the box whether
+        the button was pressed by mouse or by keys: the button is there to start typing.
+        """
+        logger.info(log_markers.SEARCH_SELECTED)
+        self._tree_view_manager.open_search()
+        # The search shows once its node's expansion has settled; then the keys go in.
+        Clock.schedule_once(lambda _dt: self._nav.enter_bottom_focus(), 0)
 
     def on_action_bar_change_view_images(self) -> None:
         """Pick new images for the app icon, the views and any background on show."""

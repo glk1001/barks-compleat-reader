@@ -310,6 +310,35 @@ def test_opening_search_lands_in_the_title_search_box(boot: AppBoot) -> None:
     search.type_into_box(d, CLEAR_QUERY)
 
 
+ON_THE_SPREAD = {"main_screen_layout": "Two-page spread"}
+
+
+def test_on_the_spread_the_bar_search_opens_the_search_last_used_ready_to_type(
+    boot: AppBoot,
+) -> None:
+    """The bar's Search closes the tree and opens Search on the search last used, keys in its box.
+
+    Words is used, the tree is closed, and Search comes back to Words, not Titles.
+    """
+    d = boot(nodes.TAG_SEARCH, ini=ON_THE_SPREAD)
+    assert last_field(d, markers.SEARCH_BUTTON_ON_BAR, "shown") == "True"
+    assert "search" in d.main_menu_buttons()
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Words"), "Down")
+    with d.expect(pattern(markers.SEARCH_MODE_SET, mode="Word")):  # Return opens it
+        d.key_then_wait(search.SEARCH_BOX_FOCUSED, "Return")
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # from the box to the tree
+    d.main_menu_button_then_wait("collapse", pattern(markers.NODE_COLLAPSED_NO_STATE_CHANGE))
+
+    with (
+        d.expect(markers.SEARCH_SELECTED),
+        d.expect(pattern(markers.NODE_OPENED_ON_CHILD, name="Search", child="Words")),
+        d.expect(pattern(markers.SEARCH_MODE_SET, mode="Word")),
+    ):
+        d.main_menu_button_then_wait("search", search.SEARCH_BOX_FOCUSED)
+    assert d.current_node() == "Words"
+    search.type_into_box(d, WORD_QUERY)
+
+
 RANGE_QUERY = "some"
 RANGE_RESULT = "SOMETHIN_FISHY_HERE"
 RANGE_RESULT_NAME = "Somethin' Fishy Here"

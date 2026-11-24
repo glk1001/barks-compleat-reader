@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes
+from barks_gui.logs import last_field
 from barks_gui.steps import ANY_NODE_SELECTED, CHANGE_PICS_TRIES
 from barks_reader.core import log_markers as markers
 from barks_reader.core.log_markers import pattern
@@ -94,6 +95,13 @@ def test_collapse_button_shuts_the_whole_tree(boot: AppBoot) -> None:
     )
     with d.expect(collapsed):
         d.main_menu_button("collapse")
+
+
+def test_on_a_single_page_the_bar_has_no_search(boot: AppBoot) -> None:
+    """The bar's Search is the spread's: a single page has no room for it on the bar."""
+    d = boot(nodes.THE_STORIES, ini={"main_screen_layout": "Single page"})
+    assert last_field(d, markers.SEARCH_BUTTON_ON_BAR, "shown") == "False"
+    assert "search" not in d.main_menu_buttons()
 
 
 # Up on the first node logs one line or the other, depending on the top image.
