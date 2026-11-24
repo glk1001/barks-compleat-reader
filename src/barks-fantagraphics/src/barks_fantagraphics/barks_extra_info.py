@@ -222,8 +222,8 @@ BARKS_EXTRA_INFO = {
     Titles.LAND_OF_THE_TOTEM_POLES: 'In a 1960 letter to Larry Ivie, Barks wrote: [i]"The stories I'
     " consider best of the long-lengths were 'Lost in the Andes' (the one about the square eggs),"
     " 'Land of the Totem Poles,' 'In Old California.'\"[/i]"
-    "\n\nBarks reworked this plot eight years later as the Uncle Scrooge story City of Golden"
-    " Roofs.",
+    '\n\nBarks reworked this plot eight years later as the Uncle Scrooge story "City of'
+    ' Golden Roofs."',
     Titles.IN_ANCIENT_PERSIA: "This is one of Barks' bleakest tales, so it's no surprise that it"
     " was banned in several countries and not published in Denmark until 1987."
     '\n\nFrom a June 9, 1966 letter to Michael Barrier: [i]"About my'
@@ -234,17 +234,17 @@ BARKS_EXTRA_INFO = {
     " material,"
     ' naturally."[/i]',
     Titles.VACATION_TIME: "In the [i]Duck Man[/i] 1975 interview, Barks said this about"
-    " [i]Vacation Time:[/i]"
+    ' "Vacation Time":'
     " [i]\"I couldn't create suspense without having them in real danger, and real danger means"
     " the fear of death. So all of the times these ducks got in bad situations they did have that"
     " opportunity of dying, in case they got clobbered. It made it more true to life to have them"
     " up against these impossible situations in which they could lose their lives if they didn't"
     " win. And in the forest fire sequence, you bet they were in danger. It made the story"
     ' memorable."[/i]',
-    Titles.APRIL_FOOLERS_THE: "A copy of Hitler's Mein Kampf appears as refuse in the city dump on"
-    " page 2, panel 1.",
+    Titles.APRIL_FOOLERS_THE: "A copy of Hitler's [i]Mein Kampf[/i] appears as refuse in the city"
+    " dump on page 2, panel 1.",
     Titles.IN_OLD_CALIFORNIA: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
-    " [i]In Old California:[/i]"
+    ' "In Old California":'
     ' [i]"I was able to present a little love story in that, and also'
     ' got in a great deal of nostalgia and a little history, and a little bit of villainy."[/i]'
     "\n\n"
@@ -252,12 +252,12 @@ BARKS_EXTRA_INFO = {
     Titles.MAGIC_HOURGLASS_THE: "Peter Schilling says Scrooge's line,"
     " [i]\"I can't go on like this—losing a billion dollars a minute! I'll be broke in 600"
     ' years!"[/i], is a joke stolen from'
-    " Citizen Kane, where Kane says that losing a million dollars a year will close his"
+    " [i]Citizen Kane[/i], where Kane says that losing a million dollars a year will close his"
     " newspaper in sixty years."
     "\n\nAt that rate, Scrooge's fortune comes to about 315 quadrillion dollars (a quadrillion is"
     " a thousand trillion).",
     Titles.DANGEROUS_DISGUISE: "In the [i]Duck Man[/i] 1975 interview Barks said this about"
-    " his use of humans in [i]Dangerous Disguise:[/i]"
+    ' his use of humans in "Dangerous Disguise":'
     " [i]\"Well, that was a situation which I somehow couldn't visualize all these"
     " master spies from all the different nations as being dog-faces or pig-faces;"
     " I visualized them as looking like they do in the movies: these suave-looking"
@@ -397,7 +397,7 @@ BARKS_EXTRA_INFO = {
     ' all but one of a whole issue."[/i]'
     "\n\nAnd on page 15 is the first mention of the [b][i]Junior Woodchucks' Book of"
     " Knowledge[/i][/b], the precursor of the Guidebook.",
-    Titles.FORBIDDEN_VALLEY: 'This is a new version of [b][i]"Darkest Africa".[/i][/b]\n'
+    Titles.FORBIDDEN_VALLEY: 'This is a new version of "Darkest Africa."\n'
     '\nBarks wrote this is in a letter to John Spicer in 1960: [i]"If in the future you notice a'
     " dropping off in quality of my stories, don't be surprised. The mind is not a bottomless"
     " well of new ideas, and mine is about pumped dry. Recently I have re-vitaminized some of my"
@@ -422,8 +422,7 @@ BARKS_EXTRA_INFO = {
     Titles.ROCKET_RACE_AROUND_THE_WORLD: "This is a new version of [b][i]WDCS #93.[/i][/b]",
     Titles.MILKMAN_THE: "This story was rejected by Western, Barks says,"
     ' [i]"because Donald was too mean to the villain."[/i]',
-    Titles.TERRIBLE_TOURIST: "This is a new version of the 1945 censored story "
-    '[b][i]"Silent Night."[/i][/b]',
+    Titles.TERRIBLE_TOURIST: 'This is a new version of the 1945 censored story "Silent Night."',
     Titles.STRANGER_THAN_FICTION: "In this story Donald explodes at the nephews reading a science"
     ' fiction story, "Ten Seconds to Mars," by "Spicer Willits" — a nod to John and Bill Spicer and'
     " Malcolm Willits, among the very first comics fans to track Barks down and write to him."
@@ -504,7 +503,7 @@ BARKS_EXTRA_INFO = {
     Titles.ODDBALL_ODYSSEY: "This story was published without panel borders of any kind, a strange"
     " experiment by Western that, for Uncle Scrooge, was abandoned after this issue.",
     Titles.MADCAP_MARINER_THE: '[i]"Heinous butchery"[/i] said Barks in a letter to Joe Cowles'
-    ', commenting on Dell removing a whole page from [i]The Madcap Mariner[/i]. [i]"That ad Dell'
+    ', commenting on Dell removing a whole page from "The Madcap Mariner." [i]"That ad Dell'
     " is rerunning in the middle of the book caused the editors to take one page from my story of"
     " Gyro's fish hatchery for Donald, the best gag page, of course. I think the shortened story"
     ' falls flat on its face."[/i] In fact, going from page 8 to 9 is a jump cut, roughly joined'
