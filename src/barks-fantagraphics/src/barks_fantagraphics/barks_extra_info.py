@@ -503,6 +503,12 @@ BARKS_EXTRA_INFO = {
     ' a story."[/i]',
     Titles.ODDBALL_ODYSSEY: "This story was published without panel borders of any kind, a strange"
     " experiment by Western that, for Uncle Scrooge, was abandoned after this issue.",
+    Titles.MADCAP_MARINER_THE: '[i]"Heinous butchery"[/i] said Barks in a letter to Joe Cowles'
+    ', commenting on Dell removing a whole page from [i]The Madcap Mariner[/i]. [i]"That ad Dell'
+    " is rerunning in the middle of the book caused the editors to take one page from my story of"
+    " Gyro's fish hatchery for Donald, the best gag page, of course. I think the shortened story"
+    ' falls flat on its face."[/i] In fact, going from page 8 to 9 is a jump cut, roughly joined'
+    ' by a terse "LATER..." narration box in the first panel of page 9.',
     Titles.MICRO_DUCKS_FROM_OUTER_SPACE: 'Barks commented: [i]"I liked that story! I felt'
     " that I had touched on something that was a little different than just about any other"
     " space-type story that's come around. Creatures from outer space are villainous"
