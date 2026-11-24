@@ -54,6 +54,7 @@ _EXPECTED_PATHS: tuple[tuple[str, str], ...] = (
         "get_barks_reader_collapse_icon_file",
         "Reader Icons/ActionBar Icons/icon-collapse.png",
     ),
+    ("get_barks_reader_search_icon_file", "Reader Icons/ActionBar Icons/icon-search.png"),
     (
         "get_barks_reader_refresh_arrow_icon_file",
         "Reader Icons/ActionBar Icons/icon-refresh-arrow.png",

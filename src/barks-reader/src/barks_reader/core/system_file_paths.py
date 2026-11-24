@@ -54,6 +54,7 @@ class _Asset(Enum):
     COLLAPSE_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-collapse.png", _Need.REQUIRED_FILE
     )
+    SEARCH_ICON_PATH = _Where("Reader Icons/ActionBar Icons/icon-search.png", _Need.REQUIRED_FILE)
     REFRESH_ARROW_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-refresh-arrow.png",
         _Need.REQUIRED_FILE,
@@ -244,6 +245,10 @@ class SystemFilePaths:
     def get_barks_reader_collapse_icon_file(self) -> Path:
         """Return the collapse icon of the main action bar and the tree's collapse bar."""
         return self._path(_Asset.COLLAPSE_ICON_PATH)
+
+    def get_barks_reader_search_icon_file(self) -> Path:
+        """Return the magnifying glass of the spread's Search button."""
+        return self._path(_Asset.SEARCH_ICON_PATH)
 
     def get_barks_reader_refresh_arrow_icon_file(self) -> Path:
         """Return the refresh-arrow icon of the main action bar's Change Pics button."""

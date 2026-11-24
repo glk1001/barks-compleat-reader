@@ -118,8 +118,10 @@
 
                 # On the spread only: MainScreen._place_search_button takes it off the
                 # bar for a single page.
-                ChromeSearchBarButton:
+                ChromeBarButton:
                     id: search_button
+                    icon: str(sys_paths.get_barks_reader_search_icon_file())
+                    important: True
                     on_release: root.on_action_bar_search()
 
                 ChromeBarButton:
