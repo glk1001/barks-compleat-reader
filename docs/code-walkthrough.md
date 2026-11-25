@@ -822,7 +822,13 @@ place. The main screen's buttons
 left, unless made inside `ReaderTreeView.stepping`, as the arrows' moves are; Enter on
 a node also remembers the story the arrows walked from; an empty stack collapses the
 tree. Rules and reasons: `docs/plans/back-history.md`), Collapse
-(close all open tree nodes), Change Pics (new random images + `renderer.refresh()`),
+(close all open tree nodes), Search (on the two-page spread only:
+`MainScreen._place_search_button` takes the button off the bar for a single page, not
+hides it, so it leaves no gap and the keys' walk along the bar skips it, and logs
+`log_markers.SEARCH_BUTTON_ON_BAR` for the GUI driver; `on_action_bar_search` →
+`TreeViewManager.open_search`, which closes the tree, reports a jump to the history so
+Go Back returns to the node it was pressed on, and opens the Search node on the search
+last used, with the keys in its box), Change Pics (new random images + `renderer.refresh()`),
 Menu (a dropdown of four: Settings, How To, Update Data — the data-pack check
 of §2.2 step 12, run on demand — and About), and Quit (fenced off by a separator so an
 overshoot can't hit it).
