@@ -52,18 +52,18 @@ on the Mac's own desktop, not over ssh, from an app holding the probe's Accessib
 Screen Recording permissions (`docs/plans/macos-gui-tests.md`). macOS grants them to the app
 that started the process: Terminal for a run typed in Terminal, but for one Claude Code starts,
 `~/.local/share/claude/ClaudeCode.app` (`com.anthropic.claude-code`), which Claude Code runs
-through since 2.1 as a background process that outlives `/exit`. Check first with
+through as a background process that outlives `/exit`. Check first with
 `uv run python scripts/gui_probe.py doctor`: with either permission missing every GUI stage is
 "not run". To grant them, add the app under System Preferences, Security & Privacy, Privacy,
 Accessibility and Screen Recording (`+`, then Cmd-Shift-G and the path: dragging the app in
-from its hidden folder did not take). On the guest on 2026-10-02, a process in a Claude Code
-shell asking for them (`AXIsProcessTrustedWithOptions` with its prompt option, then a screen
-capture) was what got ClaudeCode.app both, with no restart. Screen Recording can need the
+from its hidden folder did not take). A process in a Claude Code shell that asks for them
+(`AXIsProcessTrustedWithOptions` with its prompt option, then a screen capture) gets
+ClaudeCode.app both, with no restart. Screen Recording can need the
 app restarted, which for ClaudeCode.app means quitting every Claude Code session.
 Pull before starting it (`git pull --ff-only; uv run python scripts/run_overnight_desktop.py`):
 its `update` stage pulls too, but the runner is loaded by then, so a pull that changes the
-runner itself takes effect only on the next run (on 2026-10-01 a run started that way lacked
-the new coverage stage). The nightly task `register-overnight-task.ps1` registers does
+runner itself takes effect only on the next run. The nightly task
+`register-overnight-task.ps1` registers does
 not pull first; the one in `docs/overnight-schedule.md` does.
 `uv run python scripts/coverage_all_platforms.py LINUX_HOST WINDOWS_HOST [MACOS_HOST]`
 combines the machines' coverage of the newest commit all ran overnight (`--commit`), or of
