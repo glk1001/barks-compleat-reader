@@ -50,7 +50,7 @@ cannot.
 A new class, `BackHistory`, in `core/navigation/`, with no Kivy in it:
 
 - It holds the current location and a stack of locations. A location is the tuple of
-  node names from the root; nowhere (the collapsed tree) is `None`.
+  a node's name and its ancestors', as `get_tree_view_node_path` gives them; nowhere (the collapsed tree) is `None`.
 - `visit(location, kind)` takes a step or a jump. A jump pushes the current location
   when there is one and it differs from the new one; a step only replaces it.
 - `back()` pops the top location and makes it the current one, pushing nothing.

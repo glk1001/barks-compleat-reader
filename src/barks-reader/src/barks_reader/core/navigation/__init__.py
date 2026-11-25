@@ -5,6 +5,7 @@ policy questions ("what view state for this destination?", "does it auto-select 
 descendant?") independently of the Kivy tree-view widget.
 """
 
+from .back_history import BackHistory, TreeLocation, VisitKind
 from .destinations import (
     AllSeriesDestination,
     AppendixDestination,
@@ -65,6 +66,7 @@ __all__ = [
     "AllSeriesDestination",
     "AppendixDestination",
     "ArticleDestination",
+    "BackHistory",
     "BottomScreen",
     "CategoriesDestination",
     "CategoryDestination",
@@ -110,6 +112,8 @@ __all__ = [
     "TitleDestination",
     "TitleSearchDestination",
     "TitleTarget",
+    "TreeLocation",
+    "VisitKind",
     "WikiIndexDestination",
     "WordSearchDestination",
     "YearRangeDestination",
