@@ -13,6 +13,7 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import log_markers
 from barks_reader.core.navigation import (
     ArticleDestination,
+    BackHistory,
     ChronologicalDestination,
     CorpusStatsDestination,
     DocumentDestination,
@@ -29,6 +30,8 @@ from barks_reader.core.navigation import (
     TagSearchDestination,
     TitleDestination,
     TitleSearchDestination,
+    TreeLocation,
+    VisitKind,
     WikiIndexDestination,
     WordSearchDestination,
 )
@@ -48,6 +51,25 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from barks_reader.core.navigation import Destination
+
+_ELSEWHERE: TreeLocation = ("Elsewhere", "root")
+
+
+def _location(node: MagicMock) -> TreeLocation:
+    return (node.get_name.return_value, "root")
+
+
+def _remember(mock_tree: MagicMock, *nodes: MagicMock) -> BackHistory:
+    """Give `mock_tree` a history of jumps through `nodes`, top-level rows, then elsewhere."""
+    history = BackHistory()
+    for number, node in enumerate(nodes):
+        if not isinstance(node.get_name.return_value, str):
+            node.get_name.return_value = f"Node {number}"
+        history.visit(_location(node), VisitKind.JUMP)
+    history.visit(_ELSEWHERE, VisitKind.JUMP)
+    mock_tree.back_history = history
+    mock_tree.root.nodes = list(nodes)
+    return history
 
 
 class TestTreeViewManager:
@@ -151,15 +173,16 @@ class TestTreeViewManager:
         mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
         screen_mocks["tree_view"].deselect_and_close_open_nodes.return_value = 0
 
-        # Case 1: No previous node
-        mock_tree.previous_selected_node = None
+        # Case 1: Nothing to go back to: the tree is collapsed.
+        mock_tree.back_history = BackHistory()
         tree_view_manager.go_back_to_previous_node()
         screen_mocks["tree_view"].deselect_and_close_open_nodes.assert_called()
+        mock_tree.collapsed_by_user.assert_called_once_with()
 
         # Case 2: Ordinary previous node -> re-select it, don't touch the wiki.
         prev_node = MagicMock(spec=ButtonTreeViewNode)
         prev_node.destination = IntroDestination()
-        mock_tree.previous_selected_node = prev_node
+        _remember(mock_tree, prev_node)
 
         # We need to mock setup_and_select_node to avoid recursion/complexity
         with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
@@ -256,7 +279,7 @@ class TestTreeViewManager:
         mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
         wiki_node = MagicMock(spec=ButtonTreeViewNode)
         wiki_node.destination = WikiIndexDestination()
-        mock_tree.previous_selected_node = wiki_node
+        _remember(mock_tree, wiki_node)
 
         with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
             tree_view_manager.go_back_to_previous_node()
@@ -274,7 +297,7 @@ class TestTreeViewManager:
         mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
         stats_node = MagicMock(spec=ButtonTreeViewNode)
         stats_node.destination = CorpusStatsDestination()
-        mock_tree.previous_selected_node = stats_node
+        _remember(mock_tree, stats_node)
 
         with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
             tree_view_manager.go_back_to_previous_node()
@@ -301,7 +324,7 @@ class TestTreeViewManager:
             doc_dir=Path("/docs/illustrated-history/04-becoming-himself"),
             title="Becoming Himself",
         )
-        mock_tree.previous_selected_node = chapter_node
+        _remember(mock_tree, chapter_node)
 
         with (
             patch.object(tree_view_manager, "setup_and_select_node") as mock_setup,
@@ -358,18 +381,173 @@ class TestTreeViewManager:
 
         pin.assert_not_called()
 
-    def test_the_selected_node_and_the_back_node_are_the_tree_screens(
+    def test_go_back_walks_the_places_newest_first_and_then_collapses(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
     ) -> None:
-        """What the navigation coordinator asks of the tree, it asks of the manager."""
-        tree_screen = screen_mocks["tree_view"]
-        selected = MagicMock()
-        tree_screen.get_selected_node.return_value = selected
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        screen_mocks["tree_view"].deselect_and_close_open_nodes.return_value = 0
+        first, second = (MagicMock(spec=ButtonTreeViewNode) for _ in range(2))
+        first.destination = second.destination = IntroDestination()
+        _remember(mock_tree, first, second)
 
-        assert tree_view_manager.get_selected_node() is selected
-        tree_view_manager.set_back_node(selected)
+        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+            tree_view_manager.go_back_to_previous_node()
+            tree_view_manager.go_back_to_previous_node()
+            mock_tree.collapsed_by_user.assert_not_called()
+            tree_view_manager.go_back_to_previous_node()
 
-        tree_screen.ids.reader_tree_view.set_back_node.assert_called_once_with(selected)
+        assert [c.args[0] for c in mock_setup.call_args_list] == [second, first]
+        mock_tree.collapsed_by_user.assert_called_once_with()
+
+    def test_go_back_selects_inside_stepping_so_it_remembers_nothing(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        prev_node = MagicMock(spec=ButtonTreeViewNode)
+        prev_node.destination = IntroDestination()
+        _remember(mock_tree, prev_node)
+        calls = MagicMock()
+        calls.attach_mock(mock_tree.stepping.return_value.__enter__, "enter")
+        calls.attach_mock(mock_tree.stepping.return_value.__exit__, "exit")
+
+        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+            calls.attach_mock(mock_setup, "setup")
+            tree_view_manager.go_back_to_previous_node()
+
+        assert [c[0] for c in calls.mock_calls] == ["enter", "setup", "exit"]
+
+    def test_go_back_to_a_row_made_lazily_makes_the_rows_on_the_way(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        title = MagicMock(spec=TitleTreeViewNode)
+        title.get_name.return_value = "LOST_IN_THE_ANDES"
+        title.destination = TitleDestination(fanta_info=fake_fanta_info())
+        group = MagicMock(spec=ButtonTreeViewNode)
+        group.get_name.return_value = "1942"
+        group.nodes = []
+        group.ensure_populated.side_effect = lambda: group.nodes.append(title)
+        history = BackHistory()
+        history.visit(("LOST_IN_THE_ANDES", "1942", "root"), VisitKind.JUMP)
+        history.visit(_ELSEWHERE, VisitKind.JUMP)
+        mock_tree.back_history = history
+        mock_tree.root.nodes = [group]
+
+        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+            tree_view_manager.go_back_to_previous_node()
+
+        mock_setup.assert_called_once_with(title, keep_images=True)
+        group.ensure_populated.assert_called_once_with()
+        mock_tree.toggle_node.assert_not_called()
+
+    def test_go_back_to_a_row_gone_from_the_tree_goes_to_its_ancestor(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        group = MagicMock(spec=ButtonTreeViewNode)
+        group.get_name.return_value = "Choose for me"
+        group.destination = IntroDestination()
+        group.nodes = []
+        history = BackHistory()
+        history.visit(("A_TITLE_SINCE_REPLACED", "Choose for me", "root"), VisitKind.JUMP)
+        history.visit(_ELSEWHERE, VisitKind.JUMP)
+        mock_tree.back_history = history
+        mock_tree.root.nodes = [group]
+
+        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+            tree_view_manager.go_back_to_previous_node()
+
+        mock_setup.assert_called_once_with(group, keep_images=True)
+        gone = log_markers.BACK_NODE_ANCESTOR
+        assert gone.format(name="A_TITLE_SINCE_REPLACED", ancestor="Choose for me") in loguru_sink
+
+    def test_go_back_passes_over_a_place_wholly_gone_from_the_tree(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        still_there = MagicMock(spec=ButtonTreeViewNode)
+        still_there.destination = IntroDestination()
+        history = _remember(mock_tree, still_there)
+        history.visit(("A Playlist Since Deleted", "root"), VisitKind.STEP)
+        history.visit(_ELSEWHERE, VisitKind.JUMP)
+
+        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+            tree_view_manager.go_back_to_previous_node()
+
+        mock_setup.assert_called_once_with(still_there, keep_images=True)
+        assert log_markers.BACK_NODE_GONE.format(name="A Playlist Since Deleted") in loguru_sink
+
+    def test_go_back_with_every_place_gone_collapses_the_tree(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        screen_mocks["tree_view"].deselect_and_close_open_nodes.return_value = 0
+        history = BackHistory()
+        history.visit(("Gone", "root"), VisitKind.JUMP)
+        history.visit(_ELSEWHERE, VisitKind.JUMP)
+        mock_tree.back_history = history
+        mock_tree.root.nodes = []
+
+        tree_view_manager.go_back_to_previous_node()
+
+        mock_tree.collapsed_by_user.assert_called_once_with()
+        assert log_markers.GOING_BACK_TO_NOWHERE in loguru_sink
+
+    def test_go_back_ends_on_a_history_that_never_says_it_is_empty(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        """A loop that waited for None ran until the machine had no memory (2026-11-25)."""
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        screen_mocks["tree_view"].deselect_and_close_open_nodes.return_value = 0
+        places = 3
+        mock_tree.back_history.depth = places
+        mock_tree.back_history.back.return_value = ("Gone", "root")
+        mock_tree.root.nodes = []
+
+        tree_view_manager.go_back_to_previous_node()
+
+        assert mock_tree.back_history.back.call_count == places
+
+    def test_enter_on_a_node_tells_the_history_before_the_press(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        node = MagicMock(spec=ButtonTreeViewNode)
+
+        tree_view_manager.activate_node(node, by_enter=True)
+
+        mock_tree.opened_by_enter.assert_called_once_with(node)
+        node.trigger_action.assert_called_once()
+
+    def test_a_press_that_is_not_enter_tells_the_history_nothing(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+
+        tree_view_manager.activate_node(MagicMock(spec=ButtonTreeViewNode))
+
+        mock_tree.opened_by_enter.assert_not_called()
+
+    def test_only_the_users_collapse_is_a_jump_to_nowhere(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        screen_mocks["tree_view"].deselect_and_close_open_nodes.return_value = 0
+
+        tree_view_manager.deselect_and_close_open_nodes()
+        mock_tree.collapsed_by_user.assert_not_called()
+
+        tree_view_manager.deselect_and_close_open_nodes(from_collapse_all=True)
+        mock_tree.collapsed_by_user.assert_called_once_with()
 
     def test_a_title_row_collapsed_or_expanded_changes_no_view(
         self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
@@ -531,7 +709,6 @@ class TestTreeViewManager:
         for child in old_children:
             child.destination = TitleDestination(fanta_info=fake_fanta_info())
         mock_tree.selected_node = None
-        mock_tree.previous_selected_node = None
 
         node = MagicMock(spec=ButtonTreeViewNode)
         node.populate_callback = MagicMock()
@@ -554,26 +731,23 @@ class TestTreeViewManager:
         node.populate_callback.assert_called_once()
         assert any(m.startswith("Repopulated '") for m in loguru_sink)
 
-    def test_clear_and_repopulate_detaches_selection_tracking(
+    def test_clear_and_repopulate_deselects_a_row_about_to_go(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
     ) -> None:
-        # If a stale child is the selected or go-back node, tracking must be
-        # moved off the soon-to-be-removed widget before removal.
+        # The selection is moved off the soon-to-be-removed widget before removal.
+        # The back history holds paths and no widgets, so it has nothing to move.
         mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
         selected_child = MagicMock(spec=TitleTreeViewNode)
-        previous_child = MagicMock(spec=TitleTreeViewNode)
+        other_child = MagicMock(spec=TitleTreeViewNode)
         mock_tree.selected_node = selected_child
-        mock_tree.previous_selected_node = previous_child
 
         node = MagicMock(spec=ButtonTreeViewNode)
         node.populate_callback = MagicMock()
-        node.nodes = [selected_child, previous_child]
+        node.nodes = [selected_child, other_child]
 
         tree_view_manager._clear_and_repopulate(node)
 
         mock_tree.deselect_node.assert_called_once()
-        assert mock_tree.previous_selected_node is node
-        mock_tree.set_back_node.assert_called_once_with(node)
         assert mock_tree.remove_node.call_count == len(node.nodes)
         node.populate_callback.assert_called_once()
 
@@ -1313,33 +1487,22 @@ class TestWhatOnlyTheGuiTestsRan:
         assert tree_view_manager._allow_view_state_change is True
         tree_view_manager_deps["renderer"].render_state.assert_not_called()
 
-    def test_open_search_leaves_go_back_the_node_it_came_from(
+    def test_open_search_is_a_jump_told_before_the_search_opens_on_its_child(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
     ) -> None:
-        """Set after the close, which forgets every selection, and before the search is selected."""
-        tree_view_manager.on_search_node_created(self._search_node())
+        """The node is opened and never selected, and its child is selected as a step."""
+        search = self._search_node()
+        tree_view_manager.on_search_node_created(search)
         tree_screen = screen_mocks["tree_view"]
-        came_from = MagicMock(spec=ButtonTreeViewNode)
-        tree_screen.get_selected_node.return_value = came_from
         calls = MagicMock()
         calls.attach_mock(tree_screen.deselect_and_close_open_nodes, "close")
-        calls.attach_mock(tree_screen.ids.reader_tree_view.set_back_node, "set_back")
+        calls.attach_mock(tree_screen.ids.reader_tree_view.jumped_to, "jumped_to")
         calls.attach_mock(tree_screen.open_node, "open")
 
         tree_view_manager.open_search()
 
-        assert [c[0] for c in calls.mock_calls] == ["close", "set_back", "open"]
-        tree_screen.ids.reader_tree_view.set_back_node.assert_called_once_with(came_from)
-
-    def test_open_search_from_a_closed_tree_leaves_go_back_nowhere(
-        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
-    ) -> None:
-        tree_view_manager.on_search_node_created(self._search_node())
-        screen_mocks["tree_view"].get_selected_node.return_value = None
-
-        tree_view_manager.open_search()
-
-        screen_mocks["tree_view"].ids.reader_tree_view.set_back_node.assert_not_called()
+        assert [c[0] for c in calls.mock_calls] == ["close", "jumped_to", "open"]
+        tree_screen.ids.reader_tree_view.jumped_to.assert_called_once_with(search)
 
     def test_open_search_before_the_tree_has_its_search_node_raises(
         self, tree_view_manager: TreeViewManager

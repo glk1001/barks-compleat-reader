@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_nodes
@@ -22,47 +22,142 @@ from barks_reader.ui.tree_view_nodes import (
     ReaderTreeView,
     ReadStateDot,
     TitleTreeViewNode,
+    tree_location,
 )
 from kivy.lang.parser import Parser
 
 
+class _Row:
+    """A tree row as the back history reads it: a name, a parent, a destination."""
+
+    def __init__(self, name: str, parent: _Row | None = None, *, is_title: bool = False) -> None:
+        self._name = name
+        self.parent_node = parent if parent is not None else _ROOT
+        self.level = self.parent_node.level + 1
+        self.destination = TitleDestination(fanta_info=MagicMock()) if is_title else None
+
+    def get_name(self) -> str:
+        return self._name
+
+
+_ROOT: Any = SimpleNamespace(level=0, parent_node=None, get_name=lambda: "root")
+
+
 class TestReaderTreeView:
-    def test_selection_tracking(self) -> None:
+    """The tree tells the back history of each selection: a jump, or a step inside `stepping`."""
+
+    def test_a_node_is_placed_by_its_name_and_its_ancestors(self) -> None:
+        group = _Row("1942", _Row("Chronological"))
+
+        location = tree_location(cast("BaseTreeViewNode", _Row("LOST_IN_THE_ANDES", group)))
+
+        assert location == ("LOST_IN_THE_ANDES", "1942", "Chronological", "root")
+
+    def test_a_selection_is_a_jump_that_go_back_returns_from(self) -> None:
         tree = ReaderTreeView()
-        node1 = MagicMock()
-        node1.get_name.return_value = "Node1"
-        node2 = MagicMock()
-        node2.get_name.return_value = "Node2"
 
-        # Initial state
-        assert tree.previous_selected_node is None
-        assert tree._current_selection_tracker is None
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("First")))
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("Second")))
 
-        # Select Node 1
-        tree.on_selected_node(tree, node1)
-        assert tree.previous_selected_node is None
-        assert tree._current_selection_tracker == node1
+        assert tree.back_history.current == ("Second", "root")
+        assert tree.back_history.back() == ("First", "root")
 
-        # Select Node 2
-        tree.on_selected_node(tree, node2)
-        assert tree.previous_selected_node == node1
-        assert tree._current_selection_tracker == node2
-
-        # Reset
-        tree.reset_selection_tracking()
-        assert tree.previous_selected_node is None
-        assert tree._current_selection_tracker is None
-
-    def test_go_back_returns_to_the_node_it_was_given(self) -> None:
+    def test_a_selection_inside_stepping_is_a_step(self) -> None:
         tree = ReaderTreeView()
-        back_node, next_node = MagicMock(), MagicMock()
-        back_node.get_name.return_value = "Back"
-        next_node.get_name.return_value = "Next"
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("First")))
 
-        tree.set_back_node(back_node)
-        tree.on_selected_node(tree, next_node)
+        with tree.stepping():
+            tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("Second")))
 
-        assert tree.previous_selected_node == back_node
+        assert tree.back_history.current == ("Second", "root")
+        assert tree.back_history.depth == 0
+
+    def test_stepping_ends_with_its_outermost_block_and_on_an_error(self) -> None:
+        tree = ReaderTreeView()
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("First")))
+
+        with tree.stepping():
+            with pytest.raises(RuntimeError), tree.stepping():
+                raise RuntimeError
+            tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("Second")))
+        assert tree.back_history.depth == 0
+
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("Third")))
+        assert tree.back_history.depth == 1
+
+    def test_a_cleared_selection_is_not_a_place(self, loguru_sink: list[str]) -> None:
+        """The tree clears its selection on the way to the next one."""
+        tree = ReaderTreeView()
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("First")))
+
+        tree.on_selected_node(tree, None)
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("Second")))
+
+        assert tree.back_history.back() == ("First", "root")
+        assert log_markers.NEW_SELECTED_NODE.format(name="None", previous="First") in loguru_sink
+
+    def test_a_selection_logs_the_node_the_place_left_and_the_depth(
+        self, loguru_sink: list[str]
+    ) -> None:
+        tree = ReaderTreeView()
+
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("First")))
+        with tree.stepping():
+            tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("Second")))
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("Third")))
+
+        selected = log_markers.NEW_SELECTED_NODE
+        depth = log_markers.BACK_HISTORY_DEPTH
+        assert selected.format(name="First", previous="None") in loguru_sink
+        assert selected.format(name="Third", previous="Second") in loguru_sink
+        assert depth.format(kind="step", depth=0) in loguru_sink
+        assert depth.format(kind="jump", depth=1) in loguru_sink
+
+    def test_the_users_collapse_is_a_jump_to_nowhere(self) -> None:
+        tree = ReaderTreeView()
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("First")))
+
+        tree.collapsed_by_user()
+
+        assert tree.back_history.current is None
+        assert tree.back_history.back() == ("First", "root")
+
+    def test_a_jump_to_a_node_never_selected_is_told_by_hand(self) -> None:
+        """The bar's Search opens its node and selects only the child it opens on."""
+        tree = ReaderTreeView()
+        search = _Row("Search")
+        tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("First")))
+
+        tree.jumped_to(cast("BaseTreeViewNode", search))
+        with tree.stepping():
+            tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("Titles", search)))
+
+        assert tree.back_history.current == ("Titles", "Search", "root")
+        assert tree.back_history.depth == 1
+        assert tree.back_history.back() == ("First", "root")
+
+    def test_enter_on_a_node_remembers_the_title_the_arrows_walked_from(self) -> None:
+        tree = ReaderTreeView()
+        search = cast("BaseTreeViewNode", _Row("Search"))
+        title = _Row("LOST_IN_THE_ANDES", _Row("1942"), is_title=True)
+        with tree.stepping():
+            tree.on_selected_node(tree, cast("BaseTreeViewNode", title))
+            tree.on_selected_node(tree, search)
+
+        tree.opened_by_enter(search)
+
+        assert tree.back_history.back() == ("LOST_IN_THE_ANDES", "1942", "root")
+
+    def test_enter_after_walking_from_a_node_that_is_no_title_remembers_nothing(self) -> None:
+        tree = ReaderTreeView()
+        search = cast("BaseTreeViewNode", _Row("Search"))
+        with tree.stepping():
+            tree.on_selected_node(tree, cast("BaseTreeViewNode", _Row("1942")))
+            tree.on_selected_node(tree, search)
+
+        tree.opened_by_enter(search)
+
+        assert tree.back_history.depth == 0
 
 
 class TestReaderTreeBuilderEventDispatcher:

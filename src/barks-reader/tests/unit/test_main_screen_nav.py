@@ -641,7 +641,7 @@ class TestTreeNavActivate:
         with patch.object(nav_module, "Clock") as mock_clock:
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_once_with(selected)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.activate_node.assert_called_once_with(selected, by_enter=True)  # ty: ignore[missing-attribute]
         mock_clock.schedule_once.assert_called_once()
         assert not nav.is_in_bottom_focus
 
@@ -656,7 +656,7 @@ class TestTreeNavActivate:
         with patch.object(nav_module, "Clock") as mock_clock:
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.activate_node.assert_called_with(selected, by_enter=True)  # ty: ignore[missing-attribute]
         nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[missing-attribute]
         mock_clock.schedule_once.assert_not_called()
 
@@ -668,7 +668,63 @@ class TestTreeNavActivate:
         with patch.object(nav_module, "Clock"):
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_once_with(selected)  # ty: ignore[missing-attribute]
+        nav._tree_view_manager.activate_node.assert_called_once_with(selected, by_enter=True)  # ty: ignore[missing-attribute]
+
+
+class TestTreeNavStepsAreNotGoneBackTo:
+    """The arrows walk the tree in steps, which the back history does not remember."""
+
+    @staticmethod
+    def _order_of(nav: MainScreenNavigation) -> MagicMock:
+        calls = MagicMock()
+        tree_screen = cast("MagicMock", nav._tree_view_screen)
+        stepping = tree_screen.stepping.return_value
+        calls.attach_mock(stepping.__enter__, "enter")
+        calls.attach_mock(stepping.__exit__, "exit")
+        calls.attach_mock(tree_screen.select_node, "select")
+        calls.attach_mock(cast("MagicMock", nav._tree_view_manager).activate_node, "activate")
+        return calls
+
+    def test_a_move_along_the_tree_selects_inside_stepping(self, nav: MainScreenNavigation) -> None:
+        nodes = [MagicMock(), MagicMock()]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[missing-attribute]
+        calls = self._order_of(nav)
+
+        nav._tree_nav_move(1)
+
+        assert [c[0] for c in calls.mock_calls] == ["enter", "select", "exit"]
+
+    def test_left_onto_a_closed_parent_selects_inside_stepping(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        parent = MagicMock(spec=ButtonTreeViewNode)
+        parent.is_open = False
+        selected = MagicMock()
+        selected.parent_node = parent
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
+        calls = self._order_of(nav)
+
+        nav._tree_nav_collapse_to_parent()
+
+        assert [c[0] for c in calls.mock_calls] == ["enter", "select", "exit"]
+
+    def test_left_collapsing_an_open_parent_selects_it_inside_stepping(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        parent = MagicMock(spec=ButtonTreeViewNode)
+        parent.is_open = True
+        selected = MagicMock()
+        selected.parent_node = parent
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[missing-attribute]
+        nav._tree_view_screen.is_node_shown.return_value = True  # ty: ignore[missing-attribute]
+        calls = self._order_of(nav)
+
+        nav._tree_nav_collapse_to_parent()
+
+        assert [c[0] for c in calls.mock_calls] == ["enter", "activate", "exit"]
+        # Left is a step up, not Enter: the title rested on is still within reach.
+        nav._tree_view_manager.activate_node.assert_called_once_with(parent)  # ty: ignore[missing-attribute]
 
 
 class TestTreeNavCollapseToParent:

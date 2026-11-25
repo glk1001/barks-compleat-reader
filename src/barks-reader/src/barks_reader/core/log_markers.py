@@ -37,6 +37,13 @@ COLLAPSE_OVERLAY_HIDDEN: Final = "Collapse overlay hidden."
 TREE_CHILDREN_REVEALED: Final = "Tree scrolled to show the children of '{name}'."
 NODE_COLLAPSED_NO_STATE_CHANGE: Final = "Node collapsed but not allowing state change: '{name}'."
 GOING_BACK_TO_NODE: Final = 'Going back to previous node "{name}".'
+# Go Back with nowhere left to go: the tree is collapsed.
+GOING_BACK_TO_NOWHERE: Final = "Going back with nothing to go back to: collapsing the tree."
+# After each selection: whether it was a step or a jump, and how far back Go Back can go.
+BACK_HISTORY_DEPTH: Final = "Back history after a {kind}: {depth} to go back to."
+# A place gone back to whose row is no longer in the tree (a playlist deleted, say).
+BACK_NODE_GONE: Final = 'Going back: "{name}" is gone from the tree.'
+BACK_NODE_ANCESTOR: Final = 'Going back: "{name}" is gone, so to its ancestor "{ancestor}".'
 REPOPULATED_NODE: Final = "Repopulated '{name}' with {count} children."
 # The tick row that heads 'Choose for me', pressed: whether its nodes now pick only
 # from the stories not yet started.

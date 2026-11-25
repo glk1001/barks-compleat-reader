@@ -22,6 +22,7 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_HOW_TO_TEXT,
 )
+from barks_reader.core.reader_tree_view_utils import ancestor_paths
 
 from .tree_scroll_pinner import TreeScrollPinner
 from .tree_view_nodes import (
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from kivy.uix.button import Button
 
-    from barks_reader.core.navigation import Destination, NavigationCoordinator
+    from barks_reader.core.navigation import Destination, NavigationCoordinator, TreeLocation
     from barks_reader.core.system_file_paths import SystemFilePaths
 
     from .collapse_parent_overlay import CollapseParentOverlay
@@ -106,11 +107,24 @@ class TreeViewManager:
         )
 
     @property
+    def _tree(self) -> ReaderTreeView:
+        return self._tree_view_screen.ids.reader_tree_view
+
+    @property
     def _collapse_overlay(self) -> CollapseParentOverlay:
         return self._tree_view_screen.ids.collapse_parent_overlay
 
-    def activate_node(self, node: BaseTreeViewNode) -> None:
-        """Activate a node as if pressed, without collapsing the rest of the tree."""
+    def activate_node(self, node: BaseTreeViewNode, *, by_enter: bool = False) -> None:
+        """Activate a node as if pressed, without collapsing the rest of the tree.
+
+        Args:
+            node: The node to press.
+            by_enter: Whether Enter did it, on a node the arrows had walked to: the
+                title last rested on is then one to go back to (`BackHistory.opened`).
+
+        """
+        if by_enter:
+            self._tree.opened_by_enter(node)
         self._tree_view_screen.select_node(node)
         if isinstance(node, TitleTreeViewNode):
             self._handle_title_node_selection(node)
@@ -195,22 +209,16 @@ class TreeViewManager:
 
         if from_collapse_all:
             self._collapse_overlay.clear_tracking()
+            self._tree.collapsed_by_user()
 
     def _on_collapse_overlay_pressed(self, node: ButtonTreeViewNode) -> None:
         """Handle a tap on the collapse-parent overlay bar."""
         if node.is_open:
-            self._tree_view_screen.ids.reader_tree_view.toggle_node(node)
-        self._tree_view_screen.select_node(node)
+            self._tree.toggle_node(node)
+        with self._tree.stepping():
+            self._tree_view_screen.select_node(node)
         # The node is scrolled off the top: it is brought back, not pinned there.
         self.scroll_to_node(node)
-
-    def get_selected_node(self) -> BaseTreeViewNode | None:
-        """Return the tree's selected node, or None."""
-        return self._tree_view_screen.get_selected_node()
-
-    def set_back_node(self, node: BaseTreeViewNode) -> None:
-        """Set the node Go Back returns to."""
-        self._tree_view_screen.ids.reader_tree_view.set_back_node(node)
 
     def open_node_and_parent_nodes(self, node: ButtonTreeViewNode) -> None:
         """Open `node` and its parents without showing any of their views."""
@@ -220,14 +228,60 @@ class TreeViewManager:
         self._scroll_pinner.cancel_pending_reveals()
 
     def go_back_to_previous_node(self) -> None:
-        """Go back to the node selected before this one, or collapse the tree when there is none."""
-        prev_node = self._tree_view_screen.ids.reader_tree_view.previous_selected_node
-        if not prev_node:
+        """Go back to the last place a jump left, or collapse the tree when there is none.
+
+        A place whose row has gone from the tree gives way to its nearest ancestor
+        still there, and failing that to the place before it.
+        """
+        prev_node = self._pop_back_node()
+        if prev_node is None:
+            logger.info(log_markers.GOING_BACK_TO_NOWHERE)
             self.deselect_and_close_open_nodes(from_collapse_all=True)
             return
 
         logger.info(log_markers.GOING_BACK_TO_NODE.format(name=prev_node.get_name()))
+        # Every selection made on the way back is a step: Go Back remembers nothing.
+        with self._tree.stepping():
+            self._show_node_gone_back_to(prev_node)
 
+    def _pop_back_node(self) -> BaseTreeViewNode | None:
+        """Pop places off the back history until one has a node still in the tree."""
+        history = self._tree.back_history
+        # One pop for each place remembered and no more: a loop that waited for the
+        # history to say it was empty never ended on a history that did not.
+        for _ in range(history.depth):
+            location = history.back()
+            if location is None:
+                break
+            if (node := self._node_at(location)) is not None:
+                return node
+            for ancestor_path in ancestor_paths(list(location)):
+                if (ancestor := self._node_at(tuple(ancestor_path))) is not None:
+                    gone = log_markers.BACK_NODE_ANCESTOR
+                    logger.info(gone.format(name=location[0], ancestor=ancestor.get_name()))
+                    return ancestor
+            logger.info(log_markers.BACK_NODE_GONE.format(name=location[0]))
+        return None
+
+    def _node_at(self, location: TreeLocation) -> BaseTreeViewNode | None:
+        """Return the node at `location`, making the rows on the way but opening nothing."""
+        nodes = self._tree.root.nodes
+        node: BaseTreeViewNode | None = None
+        # The path runs leaf to root, and its last name is the root's.
+        for name in reversed(location[:-1]):
+            if node is not None:
+                if isinstance(node, ButtonTreeViewNode):
+                    node.ensure_populated()
+                nodes = node.nodes
+            node = next(
+                (n for n in nodes if isinstance(n, BaseTreeViewNode) and n.get_name() == name),
+                None,
+            )
+            if node is None:
+                return None
+        return node
+
+    def _show_node_gone_back_to(self, prev_node: BaseTreeViewNode) -> None:
         # These nodes' static views exist only so a saved-node restore at startup
         # doesn't auto-launch a full-window screen. When Back returns to one
         # in-session, the user means "take me back in": select the node (mirrors a
@@ -376,7 +430,8 @@ class TreeViewManager:
         elif not self._opening_for_caller and (child := self._child_to_open_on(node)) is not None:
             opened_on = log_markers.NODE_OPENED_ON_CHILD
             logger.info(opened_on.format(name=node.get_name(), child=child.get_name()))
-            self._tree_view_screen.select_node(child)
+            with self._tree.stepping():
+                self._tree_view_screen.select_node(child)
             self.set_view_state_for_node(child)
         else:
             self.set_view_state_for_node(node, keep_images=self._keep_images_for_caller)
@@ -385,14 +440,10 @@ class TreeViewManager:
 
     def _clear_and_repopulate(self, node: ButtonTreeViewNode) -> None:
         """Remove stale lazily-created children and build a fresh set."""
-        tree = self._tree_view_screen.ids.reader_tree_view
+        tree = self._tree
         for child in list(node.nodes):
             if tree.selected_node is child:
                 tree.deselect_node()
-            if tree.previous_selected_node is child:
-                # Keep 'go back' off a soon-to-be-detached widget.
-                tree.previous_selected_node = node
-                tree.set_back_node(node)
         for child in list(node.nodes):
             tree.remove_node(child)
         assert node.populate_callback is not None
@@ -440,7 +491,8 @@ class TreeViewManager:
         Skips the intermediate tag view state and goes directly to the title,
         preserving the top background image.
         """
-        self._tree_view_screen.select_node(only_child)
+        with self._tree.stepping():
+            self._tree_view_screen.select_node(only_child)
         self._select_title(only_child, node.destination, preserve_top_view=True)
         # Don't call scroll_to_node here — the parent is already being pinned in view
         # by the scroll pinner (pin_while_populating) and the child is right below it.
@@ -579,13 +631,12 @@ class TreeViewManager:
         if self._search_node is None:
             msg = "The tree has no Search node to open."
             raise RuntimeError(msg)
-        came_from = self._tree_view_screen.get_selected_node()
         # noinspection PyArgumentList
         with self.suppress_view_state_changes():
             self._tree_view_screen.deselect_and_close_open_nodes()
         self._collapse_overlay.clear_tracking()
-        if came_from is not None:
-            # Closing the tree forgot it: Go Back from the search returns to it.
-            self.set_back_node(came_from)
+        # A jump, though the node is opened and never selected: Go Back from the
+        # search returns to the node the bar's Search was pressed on.
+        self._tree.jumped_to(self._search_node)
         # Opening the node shows the search it opens on (on_node_expanded).
         self._tree_view_screen.open_node(self._search_node)

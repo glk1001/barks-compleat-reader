@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
@@ -19,13 +20,14 @@ from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.navigation import TitleDestination
+from barks_reader.core.navigation import BackHistory, TitleDestination, TreeLocation, VisitKind
 from barks_reader.core.read_state import ReadState
 from barks_reader.core.reader_formatter import (
     ReaderFormatter,
     get_clean_text_without_extra,
 )
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
+from barks_reader.core.reader_tree_view_utils import get_tree_view_node_path
 from barks_reader.core.reader_utils import title_needs_footnote
 
 # HyphenatingLabel must be imported (Factory-registered) before reader-tree-view.kv's
@@ -33,7 +35,7 @@ from barks_reader.core.reader_utils import title_needs_footnote
 from .hyphen_label import HyphenatingLabel  # noqa: F401
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -50,22 +52,39 @@ TREE_VIEW_NODE_BACKGROUND_COLOR = (0.0, 0.0, 0.0, 0.0)
 
 
 class ReaderTreeView(TreeView):
-    """The reader's tree, which also keeps the node selected before the current one."""
+    """The reader's tree, which also tells the back history of every selection made in it.
+
+    A selection is a jump, and Go Back returns to the place it left, unless it is made
+    inside `stepping` (`BackHistory`, `docs/plans/back-history.md`).
+    """
 
     TREE_VIEW_INDENT_LEVEL = dp(30)
 
-    previous_selected_node = ObjectProperty(None, allownone=True)
-    # Internal variable to track the state
-    _current_selection_tracker: BaseTreeViewNode | None = None
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self.back_history = BackHistory()
+        self._stepping_depth = 0
 
-    def reset_selection_tracking(self) -> None:
-        """Forget the current and the previous selection: "go back" has nowhere to go."""
-        self._current_selection_tracker = None
-        self.previous_selected_node = None
+    @contextmanager
+    def stepping(self) -> Generator[None]:
+        """Count the selections made inside the block as steps: none is gone back to."""
+        self._stepping_depth += 1
+        try:
+            yield
+        finally:
+            self._stepping_depth -= 1
 
-    def set_back_node(self, node: BaseTreeViewNode | None) -> None:
-        """Set the node that 'go back' will return to."""
-        self._current_selection_tracker = node
+    def jumped_to(self, node: BaseTreeViewNode) -> None:
+        """Tell the history of a jump to `node` that selects one of its rows, not it."""
+        self.back_history.visit(tree_location(node), VisitKind.JUMP, is_title=_is_title_row(node))
+
+    def opened_by_enter(self, node: BaseTreeViewNode) -> None:
+        """Tell the history that Enter was pressed on `node`, already selected."""
+        self.back_history.opened(tree_location(node))
+
+    def collapsed_by_user(self) -> None:
+        """Tell the history of a Collapse: a jump to nowhere, which Go Back undoes."""
+        self.back_history.visit(None, VisitKind.JUMP)
 
     def show_read_states(self, read_states: ReadStates) -> None:
         """Give every title row made so far its read mark.
@@ -88,20 +107,39 @@ class ReaderTreeView(TreeView):
             )
         )
 
-    def on_selected_node(self, _instance: ReaderTreeView, new_node: BaseTreeViewNode) -> None:
-        """Triggered automatically when 'selected_node' changes."""
-        # 1. Assign the OLD current node to previous_node
-        self.previous_selected_node = self._current_selection_tracker
+    def on_selected_node(
+        self, _instance: ReaderTreeView, new_node: BaseTreeViewNode | None
+    ) -> None:
+        """Tell the back history of the node now selected (called as `selected_node` changes).
 
-        # 2. Update the tracker to the NEW node for next time
-        self._current_selection_tracker = new_node
+        A selection cleared is not a place: the tree clears it on the way to the next
+        one, and only the user's Collapse goes nowhere (`collapsed_by_user`).
+        """
+        left = self.back_history.current
+        prev_name = left[0] if left else "None"
+        if new_node is None:
+            logger.info(log_markers.NEW_SELECTED_NODE.format(name="None", previous=prev_name))
+            return
 
-        # --- Debug Print ---
-        prev_name = (
-            self.previous_selected_node.get_name() if self.previous_selected_node else "None"
+        kind = VisitKind.STEP if self._stepping_depth > 0 else VisitKind.JUMP
+        self.back_history.visit(tree_location(new_node), kind, is_title=_is_title_row(new_node))
+        logger.info(
+            log_markers.NEW_SELECTED_NODE.format(name=new_node.get_name(), previous=prev_name)
         )
-        curr_name = new_node.get_name() if new_node else "None"
-        logger.info(log_markers.NEW_SELECTED_NODE.format(name=curr_name, previous=prev_name))
+        logger.debug(
+            log_markers.BACK_HISTORY_DEPTH.format(
+                kind=kind.name.lower(), depth=self.back_history.depth
+            )
+        )
+
+
+def tree_location(node: BaseTreeViewNode) -> TreeLocation:
+    """Return where `node` is in the tree, as the back history names it."""
+    return tuple(get_tree_view_node_path(node))
+
+
+def _is_title_row(node: BaseTreeViewNode) -> bool:
+    return isinstance(node.destination, TitleDestination)
 
 
 class ReaderTreeBuilderEventDispatcher(EventDispatcher):

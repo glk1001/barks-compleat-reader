@@ -1,7 +1,8 @@
 # Plan: a full history behind Go Back
 
-> Status: **design agreed 2026-11-25, not yet built.** The three decisions at the end
-> were the maintainer's, taken that day.
+> Status: **built 2026-11-25**, in the two commits below. The four decisions at the end
+> were the maintainer's, taken that day; the fourth, and three smaller changes made while
+> building, are under "What building it changed".
 
 ## Context
 
@@ -68,12 +69,32 @@ A new class, `BackHistory`, in `core/navigation/`, with no Kivy in it:
 - The user's Collapse (`TreeViewManager.deselect_and_close_open_nodes` with
   `from_collapse_all`) reports a jump to nowhere. The closes made on the way to
   somewhere else report nothing.
-- `TreeViewManager.go_back_to_previous_node` pops a path, finds its node with
-  `find_node_by_path`, and then does what it does now: `NavigationModel.reopens_on_back`
-  for the wiki, By the Numbers and the chapters, `keep_images=True` for the rest.
+- `TreeViewManager.go_back_to_previous_node` pops a path, finds its node (making the
+  lazily made rows on the way, opening nothing), and then does what it did:
+  `NavigationModel.reopens_on_back` for the wiki, By the Numbers and the chapters,
+  `keep_images=True` for the rest. It all runs inside `stepping`.
 - A path that no longer finds a node (a deleted playlist, a random list made again)
-  is skipped with a log line and the next is tried.
+  gives way to its nearest ancestor, or is passed over with a log line for the next.
 - An empty stack collapses the tree, as now.
+
+## What building it changed
+
+- **Enter on a node is not a jump** (decision 4). The arrows have already moved the
+  selection, so Enter leaves no place: a walk along the tree by arrows and Enter is
+  all steps, and the story it started from would be lost. So the history also keeps
+  the title last rested on (`BackHistory.opened`): it is remembered when Enter opens a
+  node it does not sit under, and before the place any jump leaves, unless that place
+  is the title or a node over it.
+- **Go Back always moves.** A place that is where the tree already is gets passed
+  over: the bar's Search pressed on Search left one.
+- **A row gone from the tree gives way to its nearest ancestor still there** (as the
+  saved-node restore does at boot), and only then to the place before it. The one slot
+  did this for a random list made again; the stack keeps it.
+- **The bar's Search tells the history by hand** (`ReaderTreeView.jumped_to`): it opens
+  the Search node and never selects it, and the child it opens on is a step.
+- **The pops are counted**, one for each place remembered. A loop that waited for the
+  history to say it was empty never ended on a mock history that did not, and a unit
+  test run took the machine's memory with it (2026-11-25).
 
 ## What goes
 
@@ -115,3 +136,5 @@ again.
 2. **Back undoes a Collapse.** Today a Collapse wipes the slot.
 3. **The swap goes.** Back twice no longer returns to where you began; it goes two
    places back.
+4. **Enter remembers the story walked from.** The other way, the drafted one, left a
+   remote user's walk along the tree with nothing to go back to.

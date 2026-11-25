@@ -83,15 +83,7 @@ class GroupNodePort(Protocol):
 
 
 class TreePort(Protocol):
-    """The tree: its selection, its Go Back node, and going to a node."""
-
-    def get_selected_node(self) -> TreeNode | None:
-        """Return the selected node, or None."""
-        ...
-
-    def set_back_node(self, node: TreeNode) -> None:
-        """Set the node Go Back returns to."""
-        ...
+    """The tree: closing it, opening a node, and going to one."""
 
     def deselect_and_close_open_nodes(self) -> None:
         """Close every open node and clear the selection."""

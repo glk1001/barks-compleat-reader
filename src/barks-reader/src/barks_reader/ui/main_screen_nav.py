@@ -406,7 +406,9 @@ class MainScreenNavigation:
         rapid = self._tree_key_repeat.is_rapid()
 
         node = visible[idx]
-        self._tree_view_screen.select_node(node)
+        # A step: Go Back does not return to a row the arrows walked over.
+        with self._tree_view_screen.stepping():
+            self._tree_view_screen.select_node(node)
         self._tree_view_manager.scroll_to_node(node)
         if not self._has_view_of_its_own(node):
             return  # a closed node passed on the way changes nothing
@@ -467,7 +469,7 @@ class MainScreenNavigation:
         if screen.is_visible:
             self.enter_bottom_focus()
         else:
-            self._tree_view_manager.activate_node(node)
+            self._tree_view_manager.activate_node(node, by_enter=True)
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
 
     def _tree_nav_activate(self) -> None:
@@ -502,7 +504,7 @@ class MainScreenNavigation:
 
         # Same toggle-in-place behavior as a mouse click: selection stays on the
         # node; Down then reaches the first child of a newly opened parent.
-        self._tree_view_manager.activate_node(selected)
+        self._tree_view_manager.activate_node(selected, by_enter=True)
         if self._search_screen.is_visible:
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
 
@@ -611,12 +613,14 @@ class MainScreenNavigation:
         parent = selected.parent_node
         if not isinstance(parent, ButtonTreeViewNode):
             return
-        if parent.is_open:
-            self._tree_view_manager.activate_node(parent)  # selects + collapses
-            if self._tree_view_screen.is_node_shown(parent):
-                return  # The collapse is pinned: the row stays where it is.
-        else:
-            self._tree_view_screen.select_node(parent)
+        # A step up, like the steps along: nothing for Go Back to return to.
+        with self._tree_view_screen.stepping():
+            if parent.is_open:
+                self._tree_view_manager.activate_node(parent)  # selects + collapses
+                if self._tree_view_screen.is_node_shown(parent):
+                    return  # The collapse is pinned: the row stays where it is.
+            else:
+                self._tree_view_screen.select_node(parent)
         self._tree_view_manager.scroll_to_node(parent)
 
     def enter_bottom_focus_if_index_visible(self, keyboard_initiated: bool = True) -> None:

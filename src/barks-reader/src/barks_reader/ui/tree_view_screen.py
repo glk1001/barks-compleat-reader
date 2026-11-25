@@ -28,6 +28,7 @@ from .tree_view_nodes import BaseTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from contextlib import AbstractContextManager
 
     from barks_fantagraphics.barks_titles import Titles
 
@@ -134,6 +135,10 @@ class TreeViewScreen(BoxLayout):
         """Select `node` in the tree."""
         self.ids.reader_tree_view.select_node(node)
 
+    def stepping(self) -> AbstractContextManager[None]:
+        """Count the selections made inside the block as steps, which Go Back passes over."""
+        return self.ids.reader_tree_view.stepping()
+
     def open_node(self, node: BaseTreeViewNode) -> None:
         """Open `node` if it is closed."""
         if not node.is_open:
@@ -181,11 +186,7 @@ class TreeViewScreen(BoxLayout):
         if selected_node:
             self.ids.reader_tree_view.deselect_node(selected_node)
 
-        num_opened_nodes = self._close_open_nodes(self.ids.reader_tree_view.root)
-
-        self.ids.reader_tree_view.reset_selection_tracking()
-
-        return num_opened_nodes
+        return self._close_open_nodes(self.ids.reader_tree_view.root)
 
     def _close_open_nodes(self, start_node: BaseTreeViewNode) -> int:
         count = 0

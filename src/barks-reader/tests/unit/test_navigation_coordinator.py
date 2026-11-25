@@ -238,7 +238,7 @@ class TestNavigationCoordinator:
 
         tree_manager.open_node_and_parent_nodes.assert_called_once_with(mock_year_node)
 
-    def test_navigate_to_chrono_title_preserves_back_node(
+    def test_navigate_to_chrono_title_closes_the_tree_then_goes_to_the_row(
         self, nav_coord: NavigationCoordinator
     ) -> None:
         image_info = ImageInfo(filename=Path("img.png"), from_title=Titles.ADVENTURE_DOWN_UNDER)
@@ -251,9 +251,10 @@ class TestNavigationCoordinator:
         mock_year_node.nodes = []
         nav_coord.set_year_range_nodes({(YearRangeKind.CHRONO, (1942, 1946)): mock_year_node})
 
-        mock_search_node = MagicMock()
+        # Go Back is the tree's own: its history remembers the node left when the
+        # title's row is selected, so the coordinator saves and restores nothing.
         tree = MagicMock()
-        tree.get_selected_node.return_value = mock_search_node
+        title_node = MagicMock()
         nav_coord.set_tree_view_manager(tree)
 
         with (
@@ -265,12 +266,17 @@ class TestNavigationCoordinator:
             patch.object(
                 coordinator_module,
                 "find_tree_view_title_node",
-                return_value=MagicMock(),
+                return_value=title_node,
             ),
         ):
             nav_coord.navigate_to_chrono_title(image_info)
 
-            tree.set_back_node.assert_called_once_with(mock_search_node)
+        assert [c[0] for c in tree.method_calls] == [
+            "deselect_and_close_open_nodes",
+            "open_node_and_parent_nodes",
+            "goto_node",
+        ]
+        tree.goto_node.assert_called_once_with(title_node, scroll_to=True)
 
     def test_read_comic_calls_comic_reader(
         self, nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]

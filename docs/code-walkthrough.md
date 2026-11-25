@@ -815,8 +815,13 @@ main bar's on the way out (`_hand_window_drag_back`); the wiki hands over its
 viewer's bar once it is built, and a screen with no bar leaves the main bar's in
 place. The main screen's buttons
 (`main_screen.kv`): fullscreen toggle, **Go Back** (which is
-*tree-navigation* back to the previous node — `on_action_bar_go_back` →
-`tree_view_manager.go_back_to_previous_node()`, **not** a screen pop), Collapse
+*tree-navigation* back through the places left — `on_action_bar_go_back` →
+`tree_view_manager.go_back_to_previous_node()`, **not** a screen pop; the places are
+`BackHistory`'s, `core/navigation/back_history.py`, a capped stack of tree paths that
+`ReaderTreeView.on_selected_node` feeds: a selection is a jump and remembers the place
+left, unless made inside `ReaderTreeView.stepping`, as the arrows' moves are; Enter on
+a node also remembers the story the arrows walked from; an empty stack collapses the
+tree. Rules and reasons: `docs/plans/back-history.md`), Collapse
 (close all open tree nodes), Change Pics (new random images + `renderer.refresh()`),
 Menu (a dropdown of four: Settings, How To, Update Data — the data-pack check
 of §2.2 step 12, run on demand — and About), and Quit (fenced off by a separator so an

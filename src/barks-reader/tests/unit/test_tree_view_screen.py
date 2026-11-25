@@ -255,9 +255,6 @@ class TestTreeViewScreen:
         tree_view_screen.ids.reader_tree_view.toggle_node.assert_any_call(grandchild1)
         tree_view_screen.ids.reader_tree_view.toggle_node.assert_any_call(child1)
 
-        # Verify reset tracking
-        tree_view_screen.ids.reader_tree_view.reset_selection_tracking.assert_called_once()
-
     def test_get_visible_nodes_walks_open_nodes_in_display_order(
         self, tree_view_screen: TreeViewScreen
     ) -> None:

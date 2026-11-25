@@ -23,6 +23,11 @@ ANY_TOP_IMAGE = pattern(markers.TOP_VIEW_IMAGE_PICKED)
 ANY_FUN_IMAGE = pattern(markers.FUN_VIEW_IMAGE_PICKED)
 # Long enough for a collapse's render, which picks images at once if at all, to be logged.
 NO_NEW_IMAGE_SECS = 1.0
+# The whole tree closing, from a story under The Stories: its top node shuts.
+THE_STORIES_SHUT = "|".join(
+    pattern(marker, name="The Stories")
+    for marker in (markers.NODE_COLLAPSED, markers.NODE_COLLAPSED_NO_STATE_CHANGE)
+)
 
 
 def test_collapse_and_expand_a_top_level_node(boot: AppBoot) -> None:
@@ -71,29 +76,62 @@ def test_menu_mode_wraps_both_ways(boot: AppBoot) -> None:
     d.key_then_wait(markers.GO_BACK_SELECTED, "Return")
 
 
-def test_go_back_returns_to_the_previous_node(boot: AppBoot) -> None:
-    """Escape then Return is Go Back, which selects the node before this one again."""
+def test_go_back_does_not_return_to_a_row_the_arrows_walked_from(boot: AppBoot) -> None:
+    """An arrow's move is a step, undone by the arrows: Go Back has nowhere to go."""
     d = boot(nodes.GHOST_OF_THE_GROTTO)
     d.key_then_wait(ANY_NODE_SELECTED, "Down")
     assert d.current_node() != nodes.GHOST_OF_THE_GROTTO[0]
-    # Both waits are NEW lines: the node's selection line is already in the log
-    # from boot, so a plain wait_for would pass even if Go Back never re-selected it.
-    with (
-        d.expect(pattern(markers.GOING_BACK_TO_NODE, name=nodes.GHOST_OF_THE_GROTTO[0])),
-        d.expect(pattern(markers.NEW_SELECTED_NODE, name=nodes.GHOST_OF_THE_GROTTO[0])),
-    ):
-        d.go_back()
-    assert d.current_node() == nodes.GHOST_OF_THE_GROTTO[0]
+    with d.expect(THE_STORIES_SHUT):
+        d.go_back_then_wait(pattern(markers.GOING_BACK_TO_NOWHERE))
+    assert d.match_count(pattern(markers.GOING_BACK_TO_NODE)) == 0
+
+
+def test_go_back_undoes_a_collapse_and_then_the_one_before(boot: AppBoot) -> None:
+    """Each Collapse is a jump: Go Back returns to the places left, newest first."""
+    ghost = nodes.GHOST_OF_THE_GROTTO[0]
+    d = boot(nodes.GHOST_OF_THE_GROTTO)
+    with d.expect(THE_STORIES_SHUT):
+        d.main_menu_button("collapse")
+    # From the closed tree, Down lands on its first node: a step from nowhere.
+    d.key_then_wait(ANY_NODE_SELECTED, "Down")
+    first_node = d.current_node()
+    assert first_node != ghost
+    d.key_then_wait(pattern(markers.NODE_EXPANDED, name=first_node), "Return")
+    with d.expect(pattern(markers.NODE_COLLAPSED_NO_STATE_CHANGE, name=first_node)):
+        d.main_menu_button("collapse")
+
+    # Both waits are NEW lines: each node's selection line is already in the log.
+    with d.expect(pattern(markers.GOING_BACK_TO_NODE, name=first_node)):
+        d.go_back_then_wait(pattern(markers.NEW_SELECTED_NODE, name=first_node))
+    with d.expect(pattern(markers.GOING_BACK_TO_NODE, name=ghost)):
+        d.go_back_then_wait(pattern(markers.NEW_SELECTED_NODE, name=ghost))
+    assert d.current_node() == ghost
+    # Go Back remembered nothing on the way: there is no third place.
+    d.go_back_then_wait(pattern(markers.GOING_BACK_TO_NOWHERE))
+
+
+def test_enter_on_another_node_lets_go_back_return_to_the_story_walked_from(
+    boot: AppBoot,
+) -> None:
+    """The arrows walk off a story in steps; Enter on a node elsewhere remembers it."""
+    ghost = nodes.GHOST_OF_THE_GROTTO[0]
+    d = boot(nodes.GHOST_OF_THE_GROTTO)
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.CHRONO_RANGE[0]), "Left")
+    d.key_then_wait(pattern(markers.NEW_SELECTED_NODE, name=nodes.YEAR_RANGE_NODE), "Down")
+    next_range = d.current_node()
+    assert next_range != nodes.CHRONO_RANGE[0]
+    d.key_then_wait(pattern(markers.NODE_EXPANDED, name=next_range), "Return")
+
+    with d.expect(pattern(markers.GOING_BACK_TO_NODE, name=ghost)):
+        d.go_back_then_wait(pattern(markers.NEW_SELECTED_NODE, name=ghost))
+    assert d.current_node() == ghost
+    d.go_back_then_wait(pattern(markers.GOING_BACK_TO_NOWHERE))
 
 
 def test_collapse_button_shuts_the_whole_tree(boot: AppBoot) -> None:
     """The Collapse button on the action bar closes every open node."""
     d = boot(nodes.GHOST_OF_THE_GROTTO)
-    collapsed = "|".join(
-        pattern(marker, name="The Stories")
-        for marker in (markers.NODE_COLLAPSED, markers.NODE_COLLAPSED_NO_STATE_CHANGE)
-    )
-    with d.expect(collapsed):
+    with d.expect(THE_STORIES_SHUT):
         d.main_menu_button("collapse")
 
 

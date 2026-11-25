@@ -207,14 +207,9 @@ class NavigationCoordinator:
 
         assert self._tree is not None
 
-        # Save the currently selected node so Back can return to it.
-        back_node = self._tree.get_selected_node()
-
+        # Go Back returns to the node left: the tree's history remembers it when the
+        # title's row is selected, and closing the tree on the way forgets nothing.
         self._tree.deselect_and_close_open_nodes()
-
-        # Restore the back node after deselect_and_close_open_nodes resets selection tracking.
-        if back_node is not None:
-            self._tree.set_back_node(back_node)
 
         self._tree.open_node_and_parent_nodes(parent_node)
         self._tree.goto_node(title_node, scroll_to=True)
