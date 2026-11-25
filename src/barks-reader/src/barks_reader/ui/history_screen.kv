@@ -77,6 +77,21 @@
             font_size: fm.history_bar_button_font_size
             on_press: root.on_clear_pressed()
 
+    # A dark card behind the rows, the search screen's (SearchPanel): the dates
+    # and the grey times read the same whatever picture is behind them. It is a
+    # widget of its own, under the scroll view, so the rows' layout is untouched.
+    Widget:
+        size_hint: 1, None
+        height: root.height - dp(42)
+        pos_hint: {'x': 0, 'y': 0}
+        canvas:
+            Color:
+                rgba: 0.04, 0.04, 0.04, 0.6
+            RoundedRectangle:
+                pos: self.x + dp(6), self.y + dp(6)
+                size: self.width - dp(12), self.height - dp(8)
+                radius: [dp(10)]
+
     # Scrolling history rows fill the space below the action bar
     ReaderScrollView:
         id: history_scroll
