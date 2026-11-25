@@ -339,6 +339,19 @@ def test_on_the_spread_the_bar_search_opens_the_search_last_used_ready_to_type(
     search.type_into_box(d, WORD_QUERY)
 
 
+def test_go_back_from_the_bar_s_search_returns_to_the_node_it_was_pressed_on(
+    boot: AppBoot,
+) -> None:
+    """The bar's Search closes the tree on the way; Go Back still knows where it came from."""
+    d = boot(nodes.SERIES, ini=ON_THE_SPREAD)
+    d.main_menu_button_then_wait("search", search.SEARCH_BOX_FOCUSED)
+    d.key_then_wait(markers.EXITED_BOTTOM_FOCUS, "Escape")  # from the box to the tree
+
+    with d.expect(pattern(markers.GOING_BACK_TO_NODE, name="Series")):
+        d.go_back_then_wait(pattern(markers.NEW_SELECTED_NODE, name="Series"))
+    assert d.current_node() == "Series"
+
+
 RANGE_QUERY = "some"
 RANGE_RESULT = "SOMETHIN_FISHY_HERE"
 RANGE_RESULT_NAME = "Somethin' Fishy Here"

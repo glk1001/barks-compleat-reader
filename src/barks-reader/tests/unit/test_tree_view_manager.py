@@ -1313,6 +1313,34 @@ class TestWhatOnlyTheGuiTestsRan:
         assert tree_view_manager._allow_view_state_change is True
         tree_view_manager_deps["renderer"].render_state.assert_not_called()
 
+    def test_open_search_leaves_go_back_the_node_it_came_from(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        """Set after the close, which forgets every selection, and before the search is selected."""
+        tree_view_manager.on_search_node_created(self._search_node())
+        tree_screen = screen_mocks["tree_view"]
+        came_from = MagicMock(spec=ButtonTreeViewNode)
+        tree_screen.get_selected_node.return_value = came_from
+        calls = MagicMock()
+        calls.attach_mock(tree_screen.deselect_and_close_open_nodes, "close")
+        calls.attach_mock(tree_screen.ids.reader_tree_view.set_back_node, "set_back")
+        calls.attach_mock(tree_screen.open_node, "open")
+
+        tree_view_manager.open_search()
+
+        assert [c[0] for c in calls.mock_calls] == ["close", "set_back", "open"]
+        tree_screen.ids.reader_tree_view.set_back_node.assert_called_once_with(came_from)
+
+    def test_open_search_from_a_closed_tree_leaves_go_back_nowhere(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        tree_view_manager.on_search_node_created(self._search_node())
+        screen_mocks["tree_view"].get_selected_node.return_value = None
+
+        tree_view_manager.open_search()
+
+        screen_mocks["tree_view"].ids.reader_tree_view.set_back_node.assert_not_called()
+
     def test_open_search_before_the_tree_has_its_search_node_raises(
         self, tree_view_manager: TreeViewManager
     ) -> None:

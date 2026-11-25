@@ -579,9 +579,13 @@ class TreeViewManager:
         if self._search_node is None:
             msg = "The tree has no Search node to open."
             raise RuntimeError(msg)
+        came_from = self._tree_view_screen.get_selected_node()
         # noinspection PyArgumentList
         with self.suppress_view_state_changes():
             self._tree_view_screen.deselect_and_close_open_nodes()
         self._collapse_overlay.clear_tracking()
+        if came_from is not None:
+            # Closing the tree forgot it: Go Back from the search returns to it.
+            self.set_back_node(came_from)
         # Opening the node shows the search it opens on (on_node_expanded).
         self._tree_view_screen.open_node(self._search_node)
