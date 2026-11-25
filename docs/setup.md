@@ -99,6 +99,11 @@ that are only LFS's (`git lfs <hook> "$@"` after a `command -v git-lfs` guard; a
 bytes) to `<name>.lfs-removed`; where another tool's hook follows the LFS lines in one,
 delete just those two lines.
 
+A clone whose hooks pre-commit installed (before 2026-09-29) moves over with
+`uv run pre-commit uninstall && uv run prek install`, run before syncing past that date: the
+uninstall puts the LFS hook back, and prek chains it again. Once pre-commit has left the venv,
+`uvx pre-commit uninstall` does the first half. Until then its hooks fail and block commits.
+
 The secrets hook (gitleaks) is the one hook not from `.venv`: prek builds its pinned
 release on a machine's first commit, fetching Go itself (about 30 seconds), so there is
 nothing to install for it.

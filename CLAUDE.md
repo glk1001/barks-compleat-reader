@@ -31,12 +31,8 @@ staged), the one hook not from the uv venv: prek builds its pinned release once 
 hook types. Without it, only `.git/hooks/pre-commit` is written and the pre-push (full-suite
 pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green commit and
 a red CI. To verify, `.git/hooks/pre-push` should name `--hook-type=pre-push`. A clone made
-while the repo used git-lfs (before 2026-10-03) has LFS hooks to retire: `docs/setup.md`, step 4.
-
-A clone whose hooks pre-commit installed (before 2026-09-29) moves over with
-`uv run pre-commit uninstall && uv run prek install`, run before syncing past that date: the
-uninstall puts the LFS hook back, and prek chains it again. Once pre-commit has left the venv,
-`uvx pre-commit uninstall` does the first half. Until then its hooks fail and block commits.
+while the repo used git-lfs (before 2026-10-03), or whose hooks pre-commit installed (before
+2026-09-29), has old hooks to retire: `docs/setup.md`, step 4.
 
 Then generate the two gitignored modules every workspace boot imports:
 ```bash
@@ -60,8 +56,7 @@ desktop runner, the nightly schedule, macOS permissions and cross-platform cover
 bash scripts/run_overnight.sh
 ```
 
-**Run every GUI test overnight** (the suite on each comic and panel source, the settings
-matrix, a 1080p screen, touch, the soak; `--list`, `--only`, `--skip`, `--app PATH`):
+**Run every GUI test overnight** (stages and options: the `overnight-runs` skill):
 ```bash
 bash scripts/run_gui_overnight.sh
 ```
@@ -69,11 +64,8 @@ Ctrl-C or `kill` of any GUI runner stops everything it started. After a `kill -9
 the next run clears the leftovers, or `bash scripts/gui-probe.sh cleanup` does (`--all`
 also stops a display started by hand).
 
-**Look over every popup** (the popup gallery: each popup the app owns, opened by the function
-its screen calls; PNGs and one contact sheet per screen size in `build/popup-gallery/<stamp>/`,
-booted headless through `scripts/gui-probe.sh` from a scratch copy of the profile; `--live` steps
-through them with Page Up/Down in the real app; `--list`, `--only`, `--sizes`; the plan they
-serve is `docs/plans/popup-consistency.md`):
+**Look over every popup** (PNGs and contact sheets in `build/popup-gallery/<stamp>/`; `--live`
+steps through them in the real app; plan: `docs/plans/popup-consistency.md`):
 ```bash
 uv run scripts/popup_gallery.py
 ```
@@ -85,10 +77,8 @@ bash scripts/run_gui_tests.sh
 ```
 
 **Type-check (pyrefly):**
-A second type checker gated alongside `ty` (CI, pre-commit, `full-lint.sh`) — faster and stricter on
-nullability. Config + rationale in `pyrefly.toml`. Structural Kivy noise is suppressed via config; the
-remaining residual is grandfathered in `pyrefly-baseline.json`, so the gate passes at **0 new** and
-only regressions fail it. Refresh the baseline after intentionally changing that set.
+A second type checker gated alongside `ty`. Findings in `pyrefly-baseline.json` are
+grandfathered, so only new ones fail; refresh it after an intended change (rationale: `pyrefly.toml`).
 ```bash
 bash scripts/pyrefly.sh                    # or: uv run pyrefly check
 bash scripts/pyrefly.sh --update-baseline  # refresh grandfathered findings
@@ -113,7 +103,7 @@ variables; no line numbers in the evergreen docs; `--only RULE`, `--quiet`):
 uv run scripts/check_docs_refs.py
 ```
 
-**Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, deptry, vulture, relative imports, .kv imports, the GUI-key check, cspell, benchmark compare; `uv audit`, the wiki story-order check and the docs-refs check warn only; add `--with-gui-test` to also run the GUI path tests headless, quietly):**
+**Run every lint/static gate plus benchmarks** (a few checks only warn; `--with-gui-test` adds the GUI path tests, headless):
 ```bash
 bash scripts/full-lint.sh
 bash scripts/full-lint.sh --with-gui-test
@@ -164,9 +154,7 @@ plain canonical title; parentheses are presentation). Before doing either, read
 
 ### Source Packages
 
-All code under `src/` is a **uv workspace**; each package installs editable into the shared `.venv` — no `PYTHONPATH` setup needed for development or tooling.
-
-Entry point: `main.py` (root). Run `uv sync` after cloning to install all workspace packages. The standalone build needs no special workspace handling: Nuitka compiles `main.py` from the synced workspace `.venv`, with each app package and its data pulled in explicitly via the `--include-package`/`--include-package-data`/`--include-data-dir` flags in `scripts/build.sh` (a new package or data dir must be added there).
+The standalone build needs no special workspace handling: Nuitka compiles `main.py` from the synced workspace `.venv`, with each app package and its data pulled in explicitly via the `--include-package`/`--include-package-data`/`--include-data-dir` flags in `scripts/build.sh` (a new package or data dir must be added there).
 
 ### Import Layering
 
@@ -187,10 +175,9 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
 
 ### Testing
 
-- Unit tests are in each package's `tests/` (`src/barks-reader/tests/unit/`,
-  `src/barks-fantagraphics/tests/`, `src/barks-build-comic-images/tests/`, `src/okf-reader/tests/`,
-  `src/comic-utils/tests/`) and the scripts' in `scripts/tests/`; see `testpaths` in `pyproject.toml`.
-  Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
+- Unit tests are in each package's `tests/` and in `scripts/tests/` (`testpaths` in
+  `pyproject.toml`); the benchmarks in `src/barks-reader/tests/benchmarks/` are left out of the
+  default run.
   CI's `diff-coverage` job holds the lines a push changes to 80% coverage (`diff-cover`) and
   each package to its own floor (`scripts/package_coverage.py`, a point below what it
   reached); `scripts/diff-cover.sh` runs both locally.
