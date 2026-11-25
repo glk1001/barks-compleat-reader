@@ -169,6 +169,7 @@ PLAYLISTS: tuple[Playlist, ...] = (
             Titles.THINK_BOX_BOLLIX_THE,
             Titles.TALKING_DOG_THE,
             Titles.GYROS_IMAGINATION_INVENTION,
+            Titles.STRANGER_THAN_FICTION,
             Titles.CAT_BOX_THE,
             Titles.FORECASTING_FOLLIES,
             Titles.ROCKS_TO_RICHES,
