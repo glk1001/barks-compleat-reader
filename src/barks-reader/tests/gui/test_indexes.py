@@ -322,7 +322,9 @@ def test_a_cross_reference_to_another_page_opens_its_target_in_view(
     d.move_focus("Right")  # alphabet panel -> items
     _down_to_item(d, see_row)
     # The focus goes to the target as its page shows, then to its first title as it opens.
-    with d.expect(d.FOCUS_MOVED):
+    # That second move is logged after the sub-items line, so it is the one to wait for:
+    # any focus line is met by the first, and the focus read then is still the heading.
+    with d.expect(f"{d.FOCUS_MOVED} IndexTitleItemButton"):
         d.key_then_wait(pattern(markers.INDEX_SUB_ITEMS_ADDED), "Return")
     first_title = _focused(d)
     assert first_title != heading, "the focus is still on the target's heading"
