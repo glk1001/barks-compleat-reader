@@ -27,24 +27,24 @@
     "beat": "search_story",
     "title": "Find a story by name",
     "start": 102.63,
-    "end": 129.17
+    "end": 129.67
   },
   {
     "beat": "search_words",
     "title": "Search every word the characters speak",
-    "start": 129.17,
-    "end": 166.2
+    "start": 129.67,
+    "end": 166.7
   },
   {
     "beat": "censored_stories",
     "title": "By category - censored stories, restored",
-    "start": 166.2,
-    "end": 232.27
+    "start": 166.7,
+    "end": 232.77
   },
   {
     "beat": "wiki_jump",
     "title": "Every story linked to the Carl Barks Wiki",
-    "start": 232.27,
+    "start": 232.77,
     "end": 267.8
   },
   {
@@ -57,6 +57,6 @@
     "beat": "reading",
     "title": "Choose for me, playlists, and your history",
     "start": 280.83,
-    "end": 327.87
+    "end": 330.4
   }
 ]
