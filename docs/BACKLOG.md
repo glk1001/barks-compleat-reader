@@ -302,6 +302,10 @@ in the OCR repo, which is read-only from here:
 
 ## Tree view
 
+- [ ] **A full history behind Go Back** — Go Back keeps one node and so swaps between the
+      last two. Design agreed 2026-11-25: a capped stack of tree paths that records jumps and
+      not arrow steps, and undoes a Collapse. Plan: `docs/plans/back-history.md`.
+
 - [ ] **Revisit: should a closed sibling forget its open sub-branches?** — from a talk on
       2026-11-05; the user is to judge this from using the app on the TV. Opening a node
       collapses its open siblings and nothing else (`TreeViewManager._close_siblings`), which
