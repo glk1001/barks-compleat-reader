@@ -146,6 +146,13 @@ class TestBackHistory:
         with pytest.raises(ValueError, match="at least one entry"):
             BackHistory(max_entries)
 
+    def test_a_cap_of_one_remembers_the_last_place_only(self) -> None:
+        history = _jumped(A, B, C, max_entries=1)
+
+        assert history.depth == 1
+        assert history.back() == B
+        assert history.back() is None
+
 
 class TestBackHistoryPassesOverWhereTheTreeIs:
     def test_back_passes_over_the_place_the_tree_is_at(self) -> None:
