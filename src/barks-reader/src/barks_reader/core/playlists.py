@@ -45,6 +45,9 @@ BRITTLE_MASTERY_PLAYLIST_ID = "brittle_mastery"
 PERSISTENCE_PLAYLIST_ID = "persistence"
 PARENTING_PLAYLIST_ID = "parenting"
 PETS_PLAYLIST_ID = "pets"
+TECHNOLOGY_PLAYLIST_ID = "technology"
+WESTERNS_PLAYLIST_ID = "westerns"
+CAMPING_PLAYLIST_ID = "camping and hiking"
 
 PLAYLISTS: tuple[Playlist, ...] = (
     Playlist(
@@ -140,6 +143,81 @@ PLAYLISTS: tuple[Playlist, ...] = (
             Titles.DOG_SITTER_THE,
             Titles.FRAIDY_FALCON_THE,
             # Titles.DUCKBURG_PET_PARADE_THE,
+        ),
+    ),
+    Playlist(
+        playlist_id=TECHNOLOGY_PLAYLIST_ID,
+        heading="The Technology Stories",
+        intro=(
+            "[i]Stories where technology drives the plot. Chemistry, physics,"
+            " electronics, engineering, and some (but not all) of Gyro's inventions.[/i]"
+        ),
+        titles=(
+            Titles.MAD_CHEMIST_THE,
+            Titles.EYES_IN_THE_DARK,
+            Titles.JET_RESCUE,
+            Titles.GOLD_FINDER_THE,
+            Titles.DONALD_DUCKS_ATOM_BOMB,
+            Titles.ROCKET_RACE_TO_THE_MOON,
+            Titles.SUNKEN_YACHT_THE,
+            Titles.SUPER_SNOOPER,
+            Titles.HYPNO_GUN_THE,
+            Titles.CAMPING_CONFUSION,
+            Titles.DESCENT_INTERVAL_A,
+            Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY,
+            Titles.THINK_BOX_BOLLIX_THE,
+            Titles.TALKING_DOG_THE,
+            Titles.GYROS_IMAGINATION_INVENTION,
+            Titles.CAT_BOX_THE,
+            Titles.FORECASTING_FOLLIES,
+            Titles.ROCKS_TO_RICHES,
+            Titles.SHERIFF_OF_BULLET_VALLEY,
+            Titles.IN_ANCIENT_PERSIA,
+            Titles.MYSTERIOUS_STONE_RAY_THE,
+            Titles.BILLIONS_IN_THE_HOLE,
+            Titles.UNSAFE_SAFE_THE,
+            Titles.TWENTY_FOUR_CARAT_MOON_THE,
+            Titles.TITANIC_ANTS_THE,
+            Titles.PAUL_BUNYAN_MACHINE_THE,
+            Titles.THRIFTY_SPENDTHRIFT_THE,
+            # Titles.SWAMP_OF_NO_RETURN_THE,
+            # Titles.GIANT_ROBOT_ROBBERS_THE,
+        ),
+    ),
+    Playlist(
+        playlist_id=WESTERNS_PLAYLIST_ID,
+        heading="The Old West Stories",
+        intro=("[i]Stories with an western theme.[/i]"),
+        titles=(
+            Titles.SHERIFF_OF_BULLET_VALLEY,
+            Titles.LIMBER_W_GUEST_RANCH_THE,
+            Titles.WEBFOOTED_WRANGLER,
+            Titles.DAYS_AT_THE_LAZY_K,
+            Titles.PIZEN_SPRING_DUDE_RANCH,
+            Titles.IN_OLD_CALIFORNIA,
+            Titles.GHOST_SHERIFF_OF_LAST_GASP_THE,
+            Titles.LOST_PEG_LEG_MINE_THE,
+            Titles.RETURN_TO_PIZEN_BLUFF,
+            Titles.TENDERFOOT_TRAP_THE,
+            Titles.FABULOUS_TYCOON_THE,
+            Titles.RIDING_THE_PONY_EXPRESS,
+            # Titles.MYSTERY_OF_THE_GHOST_TOWN_RAILROAD,
+            # Titles.CATTLE_KING_THE,
+        ),
+    ),
+    Playlist(
+        playlist_id=CAMPING_PLAYLIST_ID,
+        heading="Camping, Hiking, or Woods Stories",
+        intro=("[i]Stories where Donald and the boys go camping, hiking, or out in the woods.[/i]"),
+        titles=(
+            Titles.VACATION_TIME,
+            Titles.GOLDILOCKS_GAMBIT_THE,
+            Titles.CAMP_COUNSELOR,
+            Titles.CAMPING_CONFUSION,
+            Titles.JET_RESCUE,
+            Titles.TEN_STAR_GENERALS,
+            Titles.BLACK_FOREST_RESCUE_THE,
+            Titles.DAY_THE_MOUNTAIN_SHOOK_THE,
         ),
     ),
 )
