@@ -48,6 +48,7 @@ PETS_PLAYLIST_ID = "pets"
 TECHNOLOGY_PLAYLIST_ID = "technology"
 WESTERNS_PLAYLIST_ID = "westerns"
 CAMPING_PLAYLIST_ID = "camping and hiking"
+DETECTIVE_PLAYLIST_ID = "detective"
 
 PLAYLISTS: tuple[Playlist, ...] = (
     Playlist(
@@ -218,6 +219,25 @@ PLAYLISTS: tuple[Playlist, ...] = (
             Titles.TEN_STAR_GENERALS,
             Titles.BLACK_FOREST_RESCUE_THE,
             Titles.DAY_THE_MOUNTAIN_SHOOK_THE,
+        ),
+    ),
+    Playlist(
+        playlist_id=DETECTIVE_PLAYLIST_ID,
+        heading="The Detective Stories",
+        intro=("[i]Stories where detecting is part of the plot.[/i]"),
+        titles=(
+            Titles.ICEBOX_ROBBER_THE,
+            Titles.THUG_BUSTERS,
+            Titles.GLADSTONES_TERRIBLE_SECRET,
+            Titles.TRAVELLING_TRUANTS,
+            Titles.SECRET_RESOLUTIONS,
+            Titles.MR_PRIVATE_EYE,
+            Titles.MISSILE_FIZZLE,
+            Titles.OLD_CASTLES_SECRET_THE,
+            Titles.NO_SUCH_VARMINT,
+            Titles.STRANGE_SHIPWRECKS_THE,
+            Titles.FOR_OLD_DIMES_SAKE,
+            Titles.INVISIBLE_INTRUDER_THE,
         ),
     ),
 )
