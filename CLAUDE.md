@@ -15,18 +15,15 @@ bundle on macOS.
 
 A clean machine's whole setup, in order (system packages, tools, sibling repos, hooks,
 secrets, data, the one-off calibrations and the checks that say what is missing), is in
-`docs/setup.md`; keep it current when a new tool or package becomes necessary.
+`docs/setup.md`; keep it current when a new tool or package becomes necessary. Every other
+script (benchmarks, the overnight and GUI runners, the popup gallery, the GUI path tests, the
+data-pack and docs-refs checks, the toolchain bump, the standalone build) is in
+`docs/commands.md`.
 
 **First-time setup (after cloning):**
 ```bash
 uv run prek install
 ```
-The hooks run on [prek](https://github.com/j178/prek), as in the two sibling repos; it comes from
-the `dev` dependency group (`uv sync`) and reads `.pre-commit-config.yaml`. The cspell hooks also
-need [bun](https://bun.sh) on the PATH (on Windows it also needs a `bunx.cmd`: `docs/setup.md`).
-The pre-commit stage also runs [gitleaks](https://github.com/gitleaks/gitleaks) (secrets in what is
-staged), the one hook not from the uv venv: prek builds its pinned release once per machine, about
-30 s on the first commit, fetching Go itself.
 `default_install_hook_types` in `.pre-commit-config.yaml` makes that one command write all three
 hook types. Without it, only `.git/hooks/pre-commit` is written and the pre-push (full-suite
 pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green commit and
@@ -43,64 +40,12 @@ Without them the app dies on an import at boot (so every GUI test fails at its b
 `run_gui_tests.sh` checks for both first), and ty, pyrefly and full-lint refuse to run. Running
 the app does not create either.
 
-**Run benchmarks** (excluded from the default test run; `--quiet` for just the tables):
-```bash
-bash scripts/run_benchmark.sh
-```
-
-**Run the whole repo overnight** (results in `build/overnight/<stamp>/summary.txt`; on Windows
-or macOS, `uv run python scripts/run_overnight_desktop.py`). Setting up another machine, the
-desktop runner, the nightly schedule, macOS permissions and cross-platform coverage: the
-`overnight-runs` skill (`.claude/skills/overnight-runs/SKILL.md`).
-```bash
-bash scripts/run_overnight.sh
-```
-
-**Run every GUI test overnight** (stages and options: the `overnight-runs` skill):
-```bash
-bash scripts/run_gui_overnight.sh
-```
-Ctrl-C or `kill` of any GUI runner stops everything it started. After a `kill -9`
-the next run clears the leftovers, or `bash scripts/gui-probe.sh cleanup` does (`--all`
-also stops a display started by hand).
-
-**Look over every popup** (PNGs and contact sheets in `build/popup-gallery/<stamp>/`; `--live`
-steps through them in the real app; plan: `docs/plans/popup-consistency.md`):
-```bash
-uv run scripts/popup_gallery.py
-```
-
-**Run the GUI path tests** (excluded from the default test run; boots the real app on
-the nested Xephyr display via `scripts/gui-probe.sh`, driven by `scripts/gui_driver.py`):
-```bash
-bash scripts/run_gui_tests.sh
-```
-
 **Type-check (pyrefly):**
 A second type checker gated alongside `ty`. Findings in `pyrefly-baseline.json` are
 grandfathered, so only new ones fail; refresh it after an intended change (rationale: `pyrefly.toml`).
 ```bash
 bash scripts/pyrefly.sh                    # or: uv run pyrefly check
 bash scripts/pyrefly.sh --update-baseline  # refresh grandfathered findings
-```
-
-**Spell-check (cspell):**
-```bash
-bunx cspell
-```
-
-**Check whether a new data pack is due** (this PC's Reader Files folders, but for the wiki
-copy, against the published pack's version file, `scripts/data-pack-manifest.json`; the overnight `data`
-stage asks the same on the main PC; `--write-pack-manifest` is how `build-data-zips.sh`
-stamps the packs):
-```bash
-uv run scripts/data_manifest.py --pack
-```
-
-**Check the docs name things that exist** (paths, modules, script flags, links, `BARKS_*`
-variables; no line numbers in the evergreen docs; `--only RULE`, `--quiet`):
-```bash
-uv run scripts/check_docs_refs.py
 ```
 
 **Run every lint/static gate plus benchmarks** (a few checks only warn; `--with-gui-test` adds the GUI path tests, headless):
@@ -115,20 +60,6 @@ bash scripts/git-ruff.sh
 bash scripts/git-ty.sh
 bash scripts/git-cspell.sh
 bash scripts/git-kv.sh
-```
-
-**Bump the pinned toolchain (monthly):**
-`ruff` and `ty` are `==`-pinned in `pyproject.toml` (a `select = ["ALL"]` ruff release
-changes our lint policy; ty is a 0.0.x beta that has shipped a flaky panic). This moves
-them forward on a branch, re-locks, and runs every gate — it never commits or pushes.
-Full rationale and triage steps in `docs/toolchain-bump.md`.
-```bash
-bash scripts/bump-toolchain.sh
-```
-
-**Build standalone executable:**
-```bash
-bash scripts/build.sh
 ```
 
 ## Architecture
