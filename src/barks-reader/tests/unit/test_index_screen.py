@@ -24,6 +24,7 @@ from barks_reader.ui.index_screen import (
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
     IndexItemButton,
     IndexMenuButton,
+    IndexNoItemsButton,
     IndexScreen,
     IndexTitleItemButton,
     PopupKeyboardNav,
@@ -61,12 +62,6 @@ class ConcreteIndexScreen(IndexScreen):
         # Return a mock instead of a real widget
         btn = MagicMock(spec=IndexItemButton)
         btn.text = str(item)
-        return btn
-
-    def _get_no_items_button(self, letter: str) -> IndexItemButton:
-        # Return a mock instead of a real widget
-        btn = MagicMock(spec=IndexItemButton)
-        btn.text = f"*** No index items for '{letter}' ***"
         return btn
 
     def _cancel_index_image_change_events(self) -> None:
@@ -121,7 +116,7 @@ def index_screen(mock_app: MagicMock) -> ConcreteIndexScreen:  # noqa: ARG001
 
         mock_menu_btn_cls.side_effect = create_menu_btn
 
-        # Configure mock item button (for _get_no_items_button)
+        # Configure mock item button
         def create_item_btn(text: str | None = None, **_kwargs: Any) -> MagicMock:  # noqa: ANN401
             btn = MagicMock(spec=IndexItemButton)
             btn.text = text
@@ -207,6 +202,8 @@ class TestIndexScreen:
         # Check text of added widget
         args, _ = index_screen.ids.left_column_layout.add_widget.call_args
         assert "*** No index items for 'Z' ***" in args[0].text
+        # The real row, of the kind the keys pass over: not a stand-in for any item row.
+        assert isinstance(args[0], IndexNoItemsButton)
 
     def test_on_is_visible_true(self, index_screen: ConcreteIndexScreen) -> None:
         index_screen._populate_alphabet_menu()

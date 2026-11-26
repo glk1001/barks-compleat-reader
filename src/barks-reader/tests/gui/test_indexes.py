@@ -270,6 +270,9 @@ def test_a_names_index_title_offers_every_page_its_row_lists(boot: AppBoot) -> N
     d.key_then_wait(second, "Right")
 
 
+# A window short enough that a letter page is taller than its view on any screen.
+SHORT_WINDOW_HEIGHT = "800"
+
 # A cross-reference on the D page whose target entry is on the M page.
 SEE_ROW = "De Spell. [i]See[/i] Magica De Spell"
 
@@ -310,10 +313,11 @@ def test_a_cross_reference_to_another_page_opens_its_target_in_view(
     """The target's heading and the first title under it, where the focus lands, both show.
 
     The target's page is taller than the view, and the target well down it: opened in
-    the frame the page was built, its heading and first titles ended above the view
-    (on a 1920x1080 screen, `--screen 1920x1080`; the default screen's taller view hid it).
+    the frame the page was built, its heading and first titles ended above the view.
+    The window is booted short, as a 1920x1080 screen's is: the default screen's
+    taller view hid it.
     """
-    d = boot(nodes.MAIN_INDEX)
+    d = boot(nodes.MAIN_INDEX, ini={"main_window_height": SHORT_WINDOW_HEIGHT})
     d.wait_for(_letter("A"))
     d.key_then_wait(markers.INDEX_ENTERED_NAV, "Return")
     for ch in string.ascii_uppercase[1 : string.ascii_uppercase.index(letter) + 1]:
