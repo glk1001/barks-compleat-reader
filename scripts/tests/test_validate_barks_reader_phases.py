@@ -9,6 +9,8 @@ report ever happens. Here each is run against a small broken one under
 from __future__ import annotations
 
 import io
+import os
+import time
 import zipfile
 from configparser import ConfigParser
 from pathlib import Path
@@ -316,6 +318,107 @@ class TestPhase3ReaderFilePaths:
         cfg_info = _cfg_info(tmp_path, **{PNG_BARKS_PANELS_DIR: tmp_path / "gone"})
 
         assert self._run(cfg_info, tmp_path).errors == []
+
+
+class TestThePanelsZipIsCurrent:
+    """A panel in the PNG folder newer than its copy in the zip: the zip is out of date."""
+
+    ZIPPED = (2026, 11, 25, 15, 52, 10)
+
+    def _sources(self, tmp_path: Path, members: list[str]) -> tuple[Path, Path]:
+        panels_zip = tmp_path / JPG_BARKS_PANELS_ZIP
+        with zipfile.ZipFile(panels_zip, "w") as panels:
+            for name in members:
+                panels.writestr(zipfile.ZipInfo(name, date_time=self.ZIPPED), b"jpg")
+        return panels_zip, tmp_path / "png"
+
+    def _panel(self, png: Path, name: str, seconds_after_the_zip: float) -> Path:
+        panel = png / name
+        panel.parent.mkdir(parents=True, exist_ok=True)
+        panel.write_bytes(b"png")
+        when = time.mktime((*self.ZIPPED, 0, 0, -1)) + seconds_after_the_zip
+        os.utime(panel, (when, when))
+        return panel
+
+    @staticmethod
+    def _run(panels_zip: Path, png: Path) -> core.PhaseResult:
+        phase = core.PhaseResult("Reader File Paths")
+        core._check_panels_zip_is_current(phase, panels_zip, png)
+        return phase
+
+    def test_a_panel_edited_after_the_zip_was_made_is_reported(self, tmp_path: Path) -> None:
+        panels_zip, png = self._sources(tmp_path, ["Splash/Lost in the Andes/042.jpg"])
+        self._panel(png, "Splash/Lost in the Andes/042.png", 3600)
+
+        (error,) = self._run(panels_zip, png).errors
+
+        assert "kind=zip_older_than_panel file=Splash/Lost in the Andes/042 " in error
+
+    @pytest.mark.parametrize("seconds", [-3600, 0, 2])
+    def test_a_panel_no_newer_than_the_zip_s_copy_passes(
+        self, tmp_path: Path, seconds: float
+    ) -> None:
+        """A zip keeps a time to two seconds, so that much newer is not newer."""
+        panels_zip, png = self._sources(tmp_path, ["Insets/Voodoo Hoodoo.jpg"])
+        self._panel(png, "Insets/Voodoo Hoodoo.png", seconds)
+
+        phase = self._run(panels_zip, png)
+
+        assert phase.errors == []
+        assert phase.items_checked == 1
+
+    def test_just_past_the_zip_s_two_seconds_is_newer(self, tmp_path: Path) -> None:
+        panels_zip, png = self._sources(tmp_path, ["Insets/Voodoo Hoodoo.jpg"])
+        self._panel(png, "Insets/Voodoo Hoodoo.png", 2.5)
+
+        assert len(self._run(panels_zip, png).errors) == 1
+
+    def test_a_title_with_a_dot_in_it_is_matched_whole(self, tmp_path: Path) -> None:
+        panels_zip, png = self._sources(tmp_path, ["Insets/Dr. Tutor.jpg"])
+        self._panel(png, "Insets/Dr. Tutor.png", 3600)
+
+        assert len(self._run(panels_zip, png).errors) == 1
+
+    def test_a_panel_the_zip_lacks_is_left_to_the_count(self, tmp_path: Path) -> None:
+        panels_zip, png = self._sources(tmp_path, [])
+        self._panel(png, "Insets/New One.png", 3600)
+
+        phase = self._run(panels_zip, png)
+
+        assert phase.errors == []
+        assert phase.items_checked == 0
+
+    def test_a_zip_that_is_no_zip_was_reported_already(self, tmp_path: Path) -> None:
+        panels_zip = tmp_path / JPG_BARKS_PANELS_ZIP
+        panels_zip.write_bytes(b"not a zip")
+        png = tmp_path / "png"
+        self._panel(png, "Insets/Voodoo Hoodoo.png", 3600)
+
+        assert self._run(panels_zip, png).errors == []
+
+    def test_the_phase_checks_it_when_both_sources_are_there(self, tmp_path: Path) -> None:
+        _panels_zip(tmp_path / JPG_BARKS_PANELS_ZIP, {"Insets/Voodoo Hoodoo.jpg": b"jpg"})
+        png = _panels_dir(tmp_path / "png")
+        (png / "Insets" / "Voodoo Hoodoo.png").write_bytes(b"png")
+        ahead = time.time() + 3600
+        os.utime(png / "Insets" / "Voodoo Hoodoo.png", (ahead, ahead))
+        collector = core.ErrorCollector()
+
+        core.phase3_reader_file_paths(
+            collector, _cfg_info(tmp_path, **{PNG_BARKS_PANELS_DIR: png}), tmp_path
+        )
+
+        (error,) = _only_phase(collector).errors
+        assert "kind=zip_older_than_panel file=Insets/Voodoo Hoodoo " in error
+
+    def test_the_zip_alone_is_not_compared_with_anything(self, tmp_path: Path) -> None:
+        _panels_zip(tmp_path / JPG_BARKS_PANELS_ZIP, {})
+        collector = core.ErrorCollector()
+
+        with patch.object(core, "_check_panels_zip_is_current") as check:
+            core.phase3_reader_file_paths(collector, _cfg_info(tmp_path), tmp_path)
+
+        check.assert_not_called()
 
 
 class TestBuildReaderFilePaths:

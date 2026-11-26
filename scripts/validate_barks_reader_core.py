@@ -128,6 +128,8 @@ from barks_reader.core.reader_settings import (  # noqa: E402
 )
 
 _PAGE_EXTS = (JPG_FILE_EXT, PNG_FILE_EXT)
+# A zip stores a time to two seconds: a file that much newer than its member is no newer.
+_ZIP_TIME_RESOLUTION = 2
 _CROSSCHECK_MIN_VARIANTS = 2
 
 # Titles whose inset is known to be missing (not made yet): counted, not failed.
@@ -447,7 +449,45 @@ def phase3_reader_file_paths(
 
         _enumerate_panel_dirs(phase, panels_source)
 
+    present = [source for source, _ in sources if source.exists()]
+    if len(present) > 1:
+        _check_panels_zip_is_current(phase, present[0], present[1])
+
     collector.finalize_phase(phase)
+
+
+def _check_panels_zip_is_current(phase: PhaseResult, panels_zip: Path, png_dir: Path) -> None:
+    """Report each panel in the PNG folder that changed after the zip was made.
+
+    The zip is made from the PNG folder, each panel a JPG under the same name, and
+    stamps a member with the time it was written. A panel in the folder newer than
+    its member was edited, added again or replaced since: the zip shows the old one.
+    Zip times are local, to two seconds, as a file's own time is read here. A panel
+    in one and not the other is the per-title count's to report (Phase 8a).
+    """
+    try:
+        with zipfile.ZipFile(panels_zip) as opened:
+            written = {
+                PurePath(info.filename).with_suffix("").as_posix(): info.date_time
+                for info in opened.infolist()
+                if not info.is_dir()
+            }
+    except (zipfile.BadZipFile, OSError):
+        return  # Already reported, when the zip was set as the panels source.
+
+    for panel in sorted(path for path in png_dir.rglob("*") if path.is_file()):
+        name = panel.relative_to(png_dir).with_suffix("").as_posix()
+        stamp = written.get(name)
+        if stamp is None:
+            continue
+        phase.items_checked += 1
+        zipped = time.mktime((*stamp, 0, 0, -1))
+        if panel.stat().st_mtime > zipped + _ZIP_TIME_RESOLUTION:
+            phase.add(
+                f"panels_zip: kind=zip_older_than_panel file={name}"
+                f" panel={get_timestamp_as_str(panel.stat().st_mtime)}"
+                f" zipped={get_timestamp_as_str(zipped)} (make the zip again)"
+            )
 
 
 def _resolve_panel_sources(
