@@ -322,13 +322,37 @@ def _check_statistics_dir(phase: PhaseResult, path: Path) -> None:
             )
 
 
+# The folders that hold nothing but files the app names, by their label among the
+# app's required folders. Their sub-folders are not looked into.
+NAMED_FILES_ONLY_DIRS = ("action_bar_icons_dir", "various_files_dir")
+
+
+def _check_no_unnamed_files(phase: PhaseResult, sys_paths: SystemFilePaths) -> None:
+    """Check the icon and Various folders hold no file the app does not name.
+
+    Both had gathered old versions, copies and image-editor files that the app never
+    read and the data packs shipped. Every file directly in either must be one of the
+    app's required files; what a desktop leaves behind (``.DS_Store``) is let be.
+    """
+    named = {path for _label, path in sys_paths.required_files()}
+    folders = dict(sys_paths.required_dirs())
+    for label in NAMED_FILES_ONLY_DIRS:
+        folder = folders[label]
+        if not folder.is_dir():
+            continue  # already reported as a missing directory
+        phase.items_checked += 1
+        for path in sorted(folder.iterdir()):
+            if path.is_file() and path not in named and not generated_files.is_desktop_litter(path):
+                phase.add(f"{label}: holds a file the app does not name: {path.name}")
+
+
 def _check_generated_files(phase: PhaseResult, sys_paths: SystemFilePaths) -> None:
     """Check the files made from sources elsewhere are the ones recorded, and current.
 
-    The how-to's pages, the introduction's page and the Statistics screen's word
-    table and clouds are each held to ``scripts/generated-files.json``: a source
-    edited since the set was made, or files that are not the ones recorded, is a
-    stale set (``scripts/generated_files.py``, which also records them).
+    The how-to's pages, the introduction's page, the app's icons and the Statistics
+    screen's word table and clouds are each held to ``scripts/generated-files.json``:
+    a source edited since the set was made, or files that are not the ones recorded,
+    is a stale set (``scripts/generated_files.py``, which also records them).
     """
     record = generated_files.load_record()
     phase.items_checked += len(generated_files.GENERATED_SETS)
@@ -412,6 +436,7 @@ def phase2_system_file_paths(
     )
     _check_statistics_dir(phase, sys_paths.get_statistics_dir())
     _check_generated_files(phase, sys_paths)
+    _check_no_unnamed_files(phase, sys_paths)
 
     collector.finalize_phase(phase)
 

@@ -122,6 +122,11 @@ def file_hash(path: Path) -> str:
     return digest.hexdigest()
 
 
+def is_desktop_litter(path: Path) -> bool:
+    """Say whether a file is one a desktop leaves behind (``.DS_Store`` and the like), not data."""
+    return path.name in _DESKTOP_LITTER or path.name.startswith("._")
+
+
 def folder_hash(root: Path) -> str:
     """Return one sha256 over every file under `root`: its relative path and content.
 
@@ -131,7 +136,7 @@ def folder_hash(root: Path) -> str:
     files = sorted(
         (path.relative_to(root).as_posix(), path)
         for path in root.rglob("*")
-        if path.is_file() and path.name not in _DESKTOP_LITTER and not path.name.startswith("._")
+        if path.is_file() and not is_desktop_litter(path)
     )
     for relative, path in files:
         digest.update(f"{relative}\0{file_hash(path)}\n".encode())

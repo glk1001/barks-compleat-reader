@@ -89,6 +89,56 @@ class TestPhase2SystemFilePaths:
         eye_icon = tmp_path / "Various" / "icon-eye-open.png"
         assert f"eye_open_icon_path: missing file {eye_icon}" in errors
 
+    def test_a_file_the_app_does_not_name_in_the_icon_or_various_folder_is_an_error(
+        self, tmp_path: Path
+    ) -> None:
+        sys_paths = SystemFilePaths()
+        sys_paths.set_barks_reader_files_dir(tmp_path, check_files=False)
+        for _label, path in sys_paths.required_files():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"")
+        icons = tmp_path / "Reader Icons" / "ActionBar Icons"
+        (icons / "icon-power-orig.png").write_bytes(b"")
+        (icons / ".DS_Store").write_bytes(b"")
+        (tmp_path / "Various" / "up-arrow.xcf").write_bytes(b"")
+        how_to = tmp_path / "Various" / "documents" / "how-to"
+        how_to.mkdir(parents=True)
+        (how_to / "page-1.jpg").write_bytes(b"")
+        (tmp_path / "Reader Icons" / "A Panel-1-1.png").write_bytes(b"")
+        phase = core.PhaseResult("System File Paths")
+
+        core._check_no_unnamed_files(phase, sys_paths)  # noqa: SLF001
+
+        assert phase.errors == [
+            "action_bar_icons_dir: holds a file the app does not name: icon-power-orig.png",
+            "various_files_dir: holds a file the app does not name: up-arrow.xcf",
+        ]
+        assert phase.items_checked == len(core.NAMED_FILES_ONLY_DIRS)
+
+    def test_a_folder_that_is_not_there_is_left_to_the_missing_directory_check(
+        self, tmp_path: Path
+    ) -> None:
+        sys_paths = SystemFilePaths()
+        sys_paths.set_barks_reader_files_dir(tmp_path, check_files=False)
+        phase = core.PhaseResult("System File Paths")
+
+        core._check_no_unnamed_files(phase, sys_paths)  # noqa: SLF001
+
+        assert phase.errors == []
+        assert phase.items_checked == 0
+
+    def test_the_unnamed_files_check_is_part_of_the_phase(self, tmp_path: Path) -> None:
+        sys_paths = SystemFilePaths()
+        sys_paths.set_barks_reader_files_dir(tmp_path, check_files=False)
+        (tmp_path / "Various").mkdir()
+        (tmp_path / "Various" / "white.jpg").write_bytes(b"")
+        collector = core.ErrorCollector()
+
+        core.phase2_system_file_paths(collector, sys_paths)
+
+        errors = _only_phase(collector).errors
+        assert "various_files_dir: holds a file the app does not name: white.jpg" in errors
+
     def test_a_stale_generated_set_is_an_error(self, tmp_path: Path) -> None:
         sys_paths = SystemFilePaths()
         sys_paths.set_barks_reader_files_dir(tmp_path, check_files=False)
