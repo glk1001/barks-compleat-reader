@@ -47,7 +47,7 @@
 <SearchBoxRow@BoxLayout>:
     orientation: 'horizontal'
     size_hint_y: None
-    height: dp(48)
+    height: dp(search_widgets.SEARCH_BOX_ROW_HEIGHT_DP)
     spacing: dp(2)
 
 # A row of chips that wraps (the era, the picked words or tags, the speaker, the
@@ -112,10 +112,9 @@
             id: title_search_content
             orientation: 'vertical' if root.layout_mode == 'spread' else 'horizontal'
 
-            BoxLayout:
+            SearchBoxColumn:
                 orientation: 'vertical'
-                size_hint: (1, None) if root.layout_mode == 'spread' else (0.35, 1)
-                height: dp(48)
+                stacked: root.layout_mode == 'spread'
                 spacing: dp(8)
 
                 SearchBoxRow:
@@ -134,7 +133,7 @@
                 Widget:
 
             SearchPanel:
-                size_hint: (1, 1) if root.layout_mode == 'spread' else (0.65, 1)
+                size_hint: (1, 1) if root.layout_mode == 'spread' else (1 - search_widgets.TITLE_BOX_WIDTH_BESIDE_RESULTS, 1)
 
                 SearchPanelBody:
 

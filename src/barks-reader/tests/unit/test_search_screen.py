@@ -25,6 +25,7 @@ from barks_reader.ui import reader_keyboard_nav, search_said_by, search_screen, 
 from barks_reader.ui.search_said_by import SaidByFilter
 from barks_reader.ui.search_screen import SearchScreen
 from barks_reader.ui.search_widgets import (
+    SearchBoxColumn,
     SearchModeContent,
     _NoticeLabel,
     _PlusButton,
@@ -220,6 +221,78 @@ def test_a_chip_stack_is_as_tall_as_its_rows_and_a_members_stack_sits_in() -> No
     assert stack.height == stack.minimum_height == dp(30) * 2 + dp(4) + dp(2) * 2
 
     assert search_widgets._chip_stack(indent=dp(22)).padding == [dp(24), dp(2), dp(2), dp(2)]
+
+
+class TestTheTitleBoxOnTheSpread:
+    """The title search's box column, through the layouts the window goes between."""
+
+    ROW = dp(search_widgets.SEARCH_BOX_ROW_HEIGHT_DP)
+
+    @staticmethod
+    def _mode(*, stacked: bool) -> tuple[BoxLayout, SearchBoxColumn, BoxLayout]:
+        """Build a mode as the kv rule does: the box column and the results panel."""
+        mode = BoxLayout(size=(800, 1000), pos=(0, 0), spacing=dp(12))
+        column = SearchBoxColumn(orientation="vertical", stacked=stacked)
+        panel = BoxLayout()
+        mode.add_widget(column)
+        mode.add_widget(panel)
+        TestTheTitleBoxOnTheSpread._lay_out(mode, column, panel, stacked=stacked)
+        return mode, column, panel
+
+    @staticmethod
+    def _lay_out(
+        mode: BoxLayout, column: SearchBoxColumn, panel: BoxLayout, *, stacked: bool
+    ) -> None:
+        """Switch the mode as the kv rules do on a change of layout, and lay it out."""
+        column.stacked = stacked
+        mode.orientation = "vertical" if stacked else "horizontal"
+        beside = 1 - search_widgets.TITLE_BOX_WIDTH_BESIDE_RESULTS
+        panel.size_hint = (1, 1) if stacked else (beside, 1)
+        mode.do_layout()
+
+    def test_stacked_from_the_start_it_is_a_row_high_at_the_top(self) -> None:
+        mode, column, panel = self._mode(stacked=True)
+
+        assert column.height == self.ROW
+        assert column.top == mode.top
+        assert column.width == mode.width
+        assert panel.height == mode.height - self.ROW - dp(12)
+
+    def test_beside_its_results_it_is_as_tall_as_they_are(self) -> None:
+        mode, column, panel = self._mode(stacked=False)
+
+        assert column.height == panel.height == mode.height
+        assert column.width < panel.width
+
+    def test_back_on_the_spread_it_is_a_row_high_again(self) -> None:
+        """The fault: the single page's height stayed, and the box was drawn off its slot."""
+        mode, column, panel = self._mode(stacked=False)
+        assert column.height == mode.height
+
+        self._lay_out(mode, column, panel, stacked=True)
+
+        assert column.height == self.ROW
+        assert column.top == mode.top
+        assert panel.height == mode.height - self.ROW - dp(12)
+
+    def test_a_height_left_by_a_hidden_single_page_does_not_stay(self) -> None:
+        """Hidden, the mode is sized (0, 0): the column was left no height at all."""
+        mode, column, panel = self._mode(stacked=False)
+        mode.size = (0, 0)
+        mode.do_layout()
+        assert column.height == 0
+
+        mode.size = (800, 1000)
+        self._lay_out(mode, column, panel, stacked=True)
+
+        assert column.height == self.ROW
+
+    def test_back_on_the_single_page_it_stretches_again(self) -> None:
+        mode, column, panel = self._mode(stacked=True)
+
+        self._lay_out(mode, column, panel, stacked=False)
+
+        assert column.height == panel.height == mode.height
 
 
 class TestAHiddenModeTakesNoPresses:

@@ -44,6 +44,11 @@ SEARCH_WIDGETS_KV_FILE = Path(__file__).with_suffix(".kv")
 # ``search_screen.kv`` import this module), so Python and kv cannot drift apart.
 # A result row's height, in dp: a row the kv rule sizes, and a row built in Python.
 RESULT_ROW_HEIGHT_DP = 28
+# A search box's row's height, in dp: the row's kv rule, and the title search's column,
+# which is exactly that tall when it is stacked over its results.
+SEARCH_BOX_ROW_HEIGHT_DP = 48
+# How much of a mode's width the title search's box takes beside its results.
+TITLE_BOX_WIDTH_BESIDE_RESULTS = 0.35
 # A clear button's fill while the keyboard is not on it: drawn by its kv rule, and put
 # back by the screen when the keyboard leaves it.
 CLEAR_BUTTON_COLOR: Color = (0.18, 0.18, 0.18, 0.9)
@@ -119,6 +124,32 @@ class SearchModeContent(BoxLayout):
         if not self.shown:
             return False
         return bool(super().on_touch_down(touch))
+
+
+class SearchBoxColumn(BoxLayout):
+    """The title search's box: a column beside its results, or a row's height over them.
+
+    Stacked, its height is held by the bounds of its size hint, which a layout pass
+    keeps to, and not by a height of its own: beside its results the mode's row
+    stretches it and writes that height over, and a height set once in kv was not set
+    again on going back to the spread, so the box was drawn over the action bar.
+    """
+
+    stacked = BooleanProperty(defaultvalue=False)
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._fit()
+
+    def on_stacked(self, _instance: Widget, _stacked: bool) -> None:
+        """Take the shape of the layout it is now in."""
+        self._fit()
+
+    def _fit(self) -> None:
+        row_height = dp(SEARCH_BOX_ROW_HEIGHT_DP) if self.stacked else None
+        self.size_hint = (1, 1) if self.stacked else (TITLE_BOX_WIDTH_BESIDE_RESULTS, 1)
+        self.size_hint_min_y = row_height
+        self.size_hint_max_y = row_height
 
 
 class SearchSyntaxHelp(BoxLayout):
