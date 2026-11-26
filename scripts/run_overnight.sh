@@ -34,6 +34,9 @@
 #                  the live-bundle setting hides from validate - a broken join
 #                  there fails; a copy older than a fresh export of the live
 #                  bundle (barks-wiki's own export, into a temp dir) is only a note
+#                  - and the illustrated history's copy, which fails when it
+#                  differs from barks-wiki's illustrated-history/reader folder
+#                  (checked only where that folder is: it is not in git)
 #   lint           full-lint.sh: every static check, and the benchmarks against
 #                  their baseline (a quiet machine is when those numbers mean most)
 #   audit          uv audit, the locked dependencies' known CVEs; warns only

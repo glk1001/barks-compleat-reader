@@ -59,7 +59,12 @@ class TestExitStatus:
 
     @staticmethod
     def _main(
-        tmp_path: Path, *args: str, stale: bool = False, exported: bool = True, broken: bool = False
+        tmp_path: Path,
+        *args: str,
+        stale: bool = False,
+        exported: bool = True,
+        broken: bool = False,
+        history_stale: bool = False,
     ) -> int:
         collector = SimpleNamespace(any_failed=broken)
         found = {"missing": [], "extra": [], "changed": ["a.md"] if stale else []}
@@ -70,6 +75,7 @@ class TestExitStatus:
             patch.object(check_wiki_copy, "phase11_wiki"),
             patch.object(check_wiki_copy, "fresh_export", return_value=exported),
             patch.object(check_wiki_copy, "differences", return_value=found),
+            patch.object(check_wiki_copy, "history_is_stale", return_value=history_stale),
         ):
             return check_wiki_copy.main(list(args))
 
@@ -100,6 +106,33 @@ class TestExitStatus:
         kwargs = {"stale": stale, "exported": exported, "broken": broken}
         assert self._main(tmp_path, "--strict", **kwargs) == status
 
+    @pytest.mark.parametrize("args", [(), ("--strict",)])
+    def test_a_stale_illustrated_history_fails_either_way(
+        self, tmp_path: Path, args: tuple[str, ...]
+    ) -> None:
+        assert self._main(tmp_path, *args, history_stale=True) == 1
+
+    def test_the_history_is_looked_for_in_the_reader_s_documents(self, tmp_path: Path) -> None:
+        with (
+            patch.object(
+                check_wiki_copy, "ErrorCollector", return_value=SimpleNamespace(any_failed=False)
+            ),
+            patch.object(
+                check_wiki_copy,
+                "phase1_config",
+                return_value=SimpleNamespace(app_data_dir=tmp_path),
+            ),
+            patch.object(check_wiki_copy, "phase11_wiki"),
+            patch.object(check_wiki_copy, "fresh_export", return_value=False),
+            patch.object(check_wiki_copy, "history_is_stale", return_value=False) as history,
+        ):
+            check_wiki_copy.main([])
+
+        (copy,) = history.call_args.args
+        assert (
+            copy.relative_to(tmp_path).as_posix().endswith("Various/documents/illustrated-history")
+        )
+
     def test_without_a_usable_configuration_it_fails_before_looking(self) -> None:
         with (
             patch.object(check_wiki_copy, "phase1_config", return_value=None),
@@ -111,6 +144,61 @@ class TestExitStatus:
 
     def test_strict_fails_a_stale_copy_with_its_own_status(self, tmp_path: Path) -> None:
         assert self._main(tmp_path, "--strict", stale=True) == check_wiki_copy.STALE_EXIT
+
+
+class TestHistoryIsStale:
+    CHAPTERS = {  # noqa: RUF012
+        "01-raw-talent/page-1.jpg": b"one",
+        "01-raw-talent/chapter.json": "{}",
+        "00-cover/page-1.jpg": b"cover",
+    }
+
+    def test_a_copy_of_all_but_the_pdfs_is_current(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        source = write_tree(tmp_path / "source", {**self.CHAPTERS, "01-raw-talent.pdf": b"pdf"})
+        copy = write_tree(tmp_path / "copy", self.CHAPTERS)
+
+        assert check_wiki_copy.history_is_stale(copy, source) is False
+        assert "illustrated history: current" in capsys.readouterr().out
+
+    def test_a_chapter_made_again_and_not_copied_is_stale(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        source = write_tree(
+            tmp_path / "source",
+            {**self.CHAPTERS, "01-raw-talent/page-1.jpg": b"again", "06-new/page-1.jpg": b"new"},
+        )
+        copy = write_tree(tmp_path / "copy", {**self.CHAPTERS, "old/page-1.jpg": b"old"})
+
+        assert check_wiki_copy.history_is_stale(copy, source) is True
+        out = capsys.readouterr().out
+        assert "STALE - 1 files changed, 1 missing, 1 no longer there" in out
+        assert "changed  01-raw-talent/page-1.jpg" in out
+        assert "missing  06-new/page-1.jpg" in out
+        assert "extra    old/page-1.jpg" in out
+
+    def test_no_copy_at_all_is_stale(self, tmp_path: Path) -> None:
+        source = write_tree(tmp_path / "source", self.CHAPTERS)
+
+        assert check_wiki_copy.history_is_stale(tmp_path / "gone", source) is True
+
+    def test_a_machine_without_the_source_folder_does_not_check(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        copy = write_tree(tmp_path / "copy", self.CHAPTERS)
+
+        assert check_wiki_copy.history_is_stale(copy, tmp_path / "gone") is False
+        assert "not checked" in capsys.readouterr().out
+
+    def test_a_long_list_is_cut_to_a_few_and_a_count(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        pages = {f"01/page-{number}.jpg": b"x" for number in range(14)}
+        source = write_tree(tmp_path / "source", pages)
+
+        assert check_wiki_copy.history_is_stale(tmp_path / "copy", source) is True
+        assert "missing  ... and 4 more" in capsys.readouterr().out
 
 
 class TestFreshExport:
