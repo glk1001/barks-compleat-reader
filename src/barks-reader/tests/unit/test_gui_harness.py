@@ -76,6 +76,30 @@ class TestArtifactName:
     def test_keeps_a_class_in_the_name(self) -> None:
         assert harness.artifact_name("t.py::TestK::test_a", "-tail.log") == "TestK_test_a-tail.log"
 
+    def test_keeps_a_stem_of_the_longest_length_whole(self) -> None:
+        name = "t" * harness.ARTIFACT_STEM_MAX
+        assert harness.artifact_name(f"t.py::{name}", ".png") == f"{name}.png"
+
+    def test_cuts_a_long_stem_to_the_longest_length(self) -> None:
+        # The case that made a 267-character path on Windows (2026-11-27).
+        nodeid = (
+            "src/barks-reader/tests/gui/test_indexes.py::"
+            "test_a_cross_reference_to_another_page_opens_its_target_in_view"
+            "[S-Scrooge. [i]See[/i] Uncle Scrooge: outside the Uncle Scrooge series"
+            "-Uncle Scrooge: outside the Uncle Scrooge series]"
+        )
+        name = harness.artifact_name(nodeid, "-tail.log")
+        assert len(name) == harness.ARTIFACT_STEM_MAX + len("-tail.log")
+        assert name.startswith("test_a_cross_reference_to_another_page")
+        assert name.endswith("-tail.log")
+
+    def test_long_stems_that_start_alike_stay_apart(self) -> None:
+        common = "t.py::test_" + "x" * harness.ARTIFACT_STEM_MAX
+        first = harness.artifact_name(f"{common}[a]", ".png")
+        second = harness.artifact_name(f"{common}[b]", ".png")
+        assert first != second
+        assert len(first) == len(second)
+
 
 class TestIniOverrides:
     @pytest.fixture

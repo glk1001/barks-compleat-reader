@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import configparser
 import contextlib
+import hashlib
 import os
 import re
 import shutil
@@ -442,9 +443,32 @@ def display_for_worker(worker_id: str, base_display: str) -> str:
     return f":{base}"
 
 
+# The longest stem an artifact's file name keeps. Windows refuses a path over 260
+# characters (MAX_PATH), and a checkout's artifacts folder there is about 85 characters
+# deep: one test's long parameters made a 267-character path, and its failure files were
+# not saved (FileNotFoundError, 2026-11-27).
+ARTIFACT_STEM_MAX = 100
+_ARTIFACT_HASH_LENGTH = 8
+
+
 def artifact_name(nodeid: str, suffix: str) -> str:
-    """Turn a pytest node id into a file name safe for the artifacts directory."""
+    """Turn a pytest node id into a file name safe for the artifacts directory.
+
+    A stem longer than `ARTIFACT_STEM_MAX` is cut, and ends in a short hash of the
+    whole node id, so that two tests whose names start alike still get files of their own.
+
+    Args:
+        nodeid: The test's pytest node id.
+        suffix: What follows the stem: an extension, or a dash, a kind and an extension.
+
+    Returns:
+        The file name, with no directory.
+
+    """
     stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", nodeid.split("::", 1)[-1])
+    if len(stem) > ARTIFACT_STEM_MAX:
+        digest = hashlib.sha256(nodeid.encode()).hexdigest()[:_ARTIFACT_HASH_LENGTH]
+        stem = f"{stem[: ARTIFACT_STEM_MAX - _ARTIFACT_HASH_LENGTH - 1]}_{digest}"
     return f"{stem}{suffix}"
 
 
