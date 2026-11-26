@@ -413,7 +413,7 @@ Left over from the read marks and *November in Barks*:
       keyboard is is one `SearchFocus` (`core/search_focus.py`) that a part of the
       screen can be handed; and the speaker filter is `SaidByFilter`
       (`ui/search_said_by.py`), which showed the pattern holds: a class the screen
-      owns, given the focus and four callbacks. `search_screen.py` is 2,300 lines,
+      owns, given the focus and four callbacks. `search_screen.py` is about 2,400 lines,
       from 2,695. Left, each to take its own key handling with it, or it gains
       nothing: the era and scope rows (with the panel-row keys); the word pane
       (list, basket, suggestions, results); the tag pane, last and hardest, where
