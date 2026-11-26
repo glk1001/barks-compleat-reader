@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
-    from kivy.core.image import Texture
 
     from barks_reader.core.image_selector import ImageInfo
     from barks_reader.core.navigation import NavigationModel
@@ -199,14 +198,7 @@ class ViewRenderer:
         self._pipeline.set_search_screen_image_for_title(title)
         search_image_info = self._pipeline.get_search_screen_image_info()
         if search_image_info.filename:
-
-            def show(texture: Texture) -> None:
-                # The caption and the goto target go with the picture: set before
-                # it loaded, they named the new story over the old one's image.
-                self._screens.search.set_background_image(search_image_info)
-                self._screens.search.image_texture = texture
-
-            self._applicator.load_search_texture(search_image_info, show)
+            self._applicator.show_search_background(search_image_info)
 
     # ------------------------------------------------------------------
     # Internal

@@ -159,13 +159,19 @@ class SnapshotApplicator:
         """Load a fun-view texture for the screen's own use (the spread's lower tier)."""
         self._load_texture(self._fun_view_lower_tier_texture_loader, image_info, apply_texture)
 
-    def load_search_texture(
-        self,
-        image_info: ImageInfo,
-        apply_texture: Callable[[Texture], None],
-    ) -> None:
-        """Load a search background texture via the search texture loader."""
-        self._load_texture(self._search_texture_loader, image_info, apply_texture)
+    def show_search_background(self, image_info: ImageInfo) -> None:
+        """Load `image_info` as the search background, its caption shown with it.
+
+        The caption and the goto target go with the picture: set before it loaded,
+        they named the new story over the old one's image, and for good when the
+        load failed.
+        """
+
+        def show(texture: Texture) -> None:
+            self._screens.search.set_background_image(image_info)
+            self._screens.search.image_texture = texture
+
+        self._load_texture(self._search_texture_loader, image_info, show)
 
     # ------------------------------------------------------------------
     # Title (bottom title info) view
@@ -218,15 +224,7 @@ class SnapshotApplicator:
 
         search_info = search.image_info
         if search_info and search_info.filename:
-
-            def apply_tex(tex: Texture) -> None:
-                # The caption and the goto target go with the picture: set before it
-                # loaded, they named the new story over the old one's image, and for
-                # good when the load failed.
-                self._screens.search.set_background_image(search_info)
-                self._screens.search.image_texture = tex
-
-            self._load_texture(self._search_texture_loader, search_info, apply_tex)
+            self.show_search_background(search_info)
 
     # ------------------------------------------------------------------
     # Texture loading helper
