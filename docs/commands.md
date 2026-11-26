@@ -65,6 +65,13 @@ each goes; then `--record icons` below and regenerate the how-to's pages):
 uv run scripts/render_reader_icons.py
 ```
 
+**Smooth the panel PNGs' jagged edges** (in place, with G'MIC; says what it would do unless
+given `--apply`, copies each original to `--backup-dir` first, and `--restore` puts them
+back; `--include` names top-level folders, `--exclude` takes globs such as `AI/*`):
+```bash
+uv run scripts/antialias_panels.py --root DIR --backup-dir DIR
+```
+
 **Check the generated files are current** (the how-to's pages, the introduction's page,
 the app's icons and the Statistics screen's word table and clouds, each held to the hashes of its sources
 and of its files in `scripts/generated-files.json`; `validate` runs the same check;

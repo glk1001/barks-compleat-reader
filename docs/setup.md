@@ -36,7 +36,9 @@ sudo apt install build-essential git rsync gh tmux \
 | `xdotool` | The smoke stage presses Escape in the built app with it. `gui-probe.sh doctor` calls it optional, since the GUI tests use `xte`, but the overnight smoke stage fails without it. |
 
 Only the machine the app's icons are redrawn on also needs `inkscape`, which
-`scripts/render_reader_icons.py` renders their SVG sources with.
+`scripts/render_reader_icons.py` renders their SVG sources with. Only the machine the
+panel PNGs are smoothed on needs `gmic`, which `scripts/antialias_panels.py` filters them
+with.
 
 A desktop install already has the OpenGL and input libraries Kivy loads. On a server or
 minimal image, add `libgl1 libmtdev1t64`, as CI does.
