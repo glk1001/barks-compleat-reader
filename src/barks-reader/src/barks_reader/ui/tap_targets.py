@@ -94,13 +94,19 @@ def _kv_id(widget: Widget) -> str:
 
 
 def _text(widget: Widget) -> str:
-    """Return what a test names `widget` by: a tree node's name, else its visible text."""
+    """Return what a test names `widget` by: a tree node's name, else its text.
+
+    A row that shows its text cut to its width (`full_text`) is named by the whole, as
+    its focus line in the log names it: what is shown changes with the window.
+    """
     get_name = getattr(widget, "get_name", None)
     if isinstance(widget, TreeViewNode) and callable(get_name):
         name = get_name()
         if isinstance(name, str) and name != "<unknown>":
             return name
-    text = getattr(widget, "text", None)
+    text = getattr(widget, "full_text", None)
+    if not isinstance(text, str) or not text.strip():
+        text = getattr(widget, "text", None)
     if not isinstance(text, str):
         title = getattr(widget, "title", None)  # a popup's
         return " ".join(title.split()) if isinstance(title, str) else ""

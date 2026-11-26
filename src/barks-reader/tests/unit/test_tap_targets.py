@@ -25,7 +25,10 @@ from barks_reader.core.tap_targets import (
 from barks_reader.ui import tap_targets as ui_tap_targets
 from barks_reader.ui.tap_targets import install_tap_targets_service, screen_changing, snapshot
 from kivy.clock import Clock
-from kivy.properties import BooleanProperty  # ty: ignore[import-not-found]
+from kivy.properties import (  # ty: ignore[import-not-found]
+    BooleanProperty,
+    StringProperty,
+)
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -301,6 +304,23 @@ def test_the_window_clips_too() -> None:
     [target] = snapshot(_Window(_root(_placed(Button(text="edge"), 350, 0, 100, 10))))
     assert target.width == WINDOW_W - 350
     assert not target.whole
+
+
+class _CutRow(Button):
+    """A row that shows its text cut to its width, the whole kept in `full_text`."""
+
+    full_text = StringProperty("")
+
+
+@pytest.mark.parametrize(
+    ("full_text", "named"),
+    [("Much Longer Title, 7", "Much Longer Title, 7"), ("", "Much Longer\u2026, 7")],
+)
+def test_a_row_cut_to_its_width_is_named_by_its_whole_text(full_text: str, named: str) -> None:
+    """As its focus line in the log names it: a test compares the two at any window size."""
+    row = _placed(_CutRow(text="Much Longer\u2026, 7", full_text=full_text), 0, 100, 50, 20)
+    [target] = snapshot(_Window(_root(row)))
+    assert target.text == named
 
 
 def _whole_by_text(*children: Widget) -> dict[str, bool]:
