@@ -1,4 +1,52 @@
 {
+  "how-to": {
+    "outputs": {
+      "page-1.jpg": "14c9ec090a40a9edb1006ceb7265276721690cb8f52bc86f864d603715a0b5e9",
+      "page-2.jpg": "86e93b328194b7337f317a5e5c18418da1b15483ec97ed3a8b5b52c0980facd5",
+      "page-3.jpg": "af088fabb74d69e3e6f63fe24f04fbcdabca81301931865cd67389294595b08b",
+      "page-4.jpg": "cdee839753957fc42b35f9a28b18536b7d4f6faecb56efc3a062c4721f9ec90f",
+      "page-5.jpg": "a54f3f434450fff383ad287ce9b5ce02f24c61629486dae7c50c17c2bab62927",
+      "page-6.jpg": "30f6bc71686199013cd9010e0764ef7b75fd9ff8953aab0fdd6ae1f1e30da12c",
+      "page-7.jpg": "00d7c0b613cabb712b671827d3adcd90c9d8ef2e4cb651fb5e6480032e404bea"
+    },
+    "sources": {
+      "Fantagraphics-fixes-and-additions/Carl Barks Vol. 7 - Donald Duck - Lost in the Andes (Digital-Empire)/images/242.jpg": "9a18cd7256a17883c7fc1a397febe6841a64cd3f7922ed16b60586d29ef8f7c7",
+      "Fantagraphics-fixes-and-additions/Carl Barks Vol. 7 - Donald Duck - Lost in the Andes (Digital-Empire)/images/243.jpg": "5a95374284ff65370566743736e0920ffc370ae0b4797e780c21ae8ea93085f7",
+      "Fantagraphics-fixes-and-additions/Carl Barks Vol. 7 - Donald Duck - Lost in the Andes (Digital-Empire)/images/244.jpg": "53caacfe0d98272c201078187326f9b66cd84e22813ffd30a3dee49b8f0a58c5",
+      "Fantagraphics-fixes-and-additions/Carl Barks Vol. 7 - Donald Duck - Lost in the Andes (Digital-Empire)/images/247.jpg": "30b77a887a82fc43288525811ca71846c892067404420dcb1518b832324ff8f3",
+      "Fantagraphics-fixes-and-additions/Carl Barks Vol. 8 - Donald Duck - Trail of the Unicorn (Digital-Empire)/images/224.jpg": "48db75ff187d4b4aa3cc08d7a0f74a7174e9a1280627812cfa41c42f6ad53f2b",
+      "Fantagraphics-fixes-and-additions/Carl Barks Vol. 9 - Donald Duck - The Pixilated Parrot (Digital-Empire)/images/216.jpg": "284c54398d018b90fbab91792f1fc4e7c0361df2680a4084b4a2a54d7e8e0e57",
+      "Fantagraphics-fixes-and-additions/Carl Barks Vol. 9 - Donald Duck - The Pixilated Parrot (Digital-Empire)/images/217.jpg": "a255b9db173fa2400d40e0d7f8590e5a7ee7d6144ca6064ed2b397e9eed4042c",
+      "docs/how-to-press-the-picture.jpg": "73157f88ee02c8b0a1c42eea94a3be525d3309e5e1c0572a59253c5c4f591634",
+      "docs/how-to-reader-bar-hidden.jpg": "6e8d60613f9c1c30f875310007ac9c90e7d693ea05b180db48fa9a0f2959a449",
+      "docs/how-to-reader-bar-shown.jpg": "0839f51f0bb0e67e52f83a3eed9c1823244d83e47a6594574af2eeada627e65b",
+      "docs/how-to-use.md": "8331869dca0455ad742be65009b3ee8571e051af158873542a623b2226e522cc",
+      "docs/icon-back-arrow-orig.png": "9cd112c43e593f7a0c08db0284943e6531020b7c38e4edf229165739096ddc97",
+      "docs/icon-close-orig.png": "7762b4265e6050c33745fd1fae5110f9f265564f0a85d9ac01efaa65029db59c",
+      "docs/icon-collapse-black.png": "9c80156777aab6a734fea71e5c700f9024d999e2177732759c23a58e1465c412",
+      "docs/icon-double-page-spread-black.png": "edc1aa86425d31b698f6d9ce9263672e943a1f6b3c21113037c14a1df4388892",
+      "docs/icon-eye-peek-black.png": "7a2b0b8e23cc040f1cd550a251deae6fec3e62b5c836b502b3c7991fda02f061",
+      "docs/icon-filter-button.png": "993442ad08503d1a154b7b84cb3c0e891d0c03e6d41b9980c50972af744818e2",
+      "docs/icon-fullscreen-orig.png": "50587569b9a233b612df8e1fecaf0a1229a8918df064646354a1d48f72641dfb",
+      "docs/icon-goto-end-orig.png": "b15709f6a73ec9989d7c533518fb2b686999517b01b40fcc759f4cb9f1284147",
+      "docs/icon-goto-orig-2.png": "5d298fc8e693f8f7234fba7c8b7ba94e7cd958ecc9f6859a0a0371d496bd854b",
+      "docs/icon-goto-start-orig.png": "ffd052435356cbeea1604df511dab8403b668e73154748b163d6750ad4dee055",
+      "docs/icon-goto-title-button.png": "af8ed7c82b650cdb2f268570be5dc924fad29e45597f5a86783f4e1967ef7cfc",
+      "docs/icon-menu-dots-too-big-black.png": "7bb023068429f7dcbcb0f3f98c4be07c74304bd275dcf9a44675c2f107ff6034",
+      "docs/icon-power-black.png": "e0541e0ffecf61ccbad96e2d00d1f84ffaab16bc3aa6f20757f14d99eab3d69a",
+      "docs/icon-read-dot-full.png": "3a8bdd2819bb065c544c27ac9a556392259cff18d3062404a33fd197f995f3e1",
+      "docs/icon-read-dot-half.png": "d9f05c18f81762eb35e7709a989b452044753c1792e679d14317354fc9caae08",
+      "docs/icon-refresh-arrow-orig.png": "cfac1c3865651dd0c7e6bb6725cbfbd3853f30ac41c273e9b4d86fa7964e38de",
+      "docs/icon-search-black.png": "a2e559f1d144b77fd76b721737288129bae5c45b83214056eb0bfca7ec6ec321",
+      "docs/icon-speech-bubble.png": "3c21d015d902d13ea4083a2e50cff9305a0bc1a49454999d217ac738b0b43e78",
+      "scripts/how-to-style.css": "1c8a3cad027cf64040812d3b7fd835def7600f900caac9c645e55f908ae3b43c",
+      "src/barks-fantagraphics/data/fonts/Carl Barks Script.ttf": "d77c56b44f8965d45aeff07717ab8d2d9218e25a602aba6c591ac23f9f24f930",
+      "src/barks-fantagraphics/data/fonts/SourceSerif4SmText-Bold.ttf": "072c77a0dbffbcb7e99dda31de16e096bd99d1345fd6037d3e153ea315547c25",
+      "src/barks-fantagraphics/data/fonts/SourceSerif4SmText-BoldIt.ttf": "0a0828eb760127b4ff1e6d01852465fdce05ceff99a1a5f5b01f4f1ef1633f0d",
+      "src/barks-fantagraphics/data/fonts/SourceSerif4SmText-It.ttf": "74963111a9dc458611e6eaa62a6bff8811855f67e015f91b728fb52567020c5e",
+      "src/barks-fantagraphics/data/fonts/SourceSerif4SmText-Regular.ttf": "54379656e8fa22bfbb7a783f8fe4269c9ae4eb966c1c3fcb17ee3b50cba95813"
+    }
+  },
   "introduction": {
     "outputs": {
       "page-1.jpg": "4177101e335f686dc74cea23c0547d5a559818b0c0dbab071a6dc9abe0837127"

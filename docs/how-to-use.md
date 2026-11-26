@@ -95,8 +95,8 @@ The bar across the top of the main screen contains:
 - <img src="icon-collapse-black.png" alt="[b]Collapse[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — collapses all expanded nodes in the navigation tree.
 - <img src="icon-search-black.png" alt="[b]Search[/b]" style="position: relative; top: 3px;" width="15" height="15">
-  — on the two-page spread only: collapses the tree and opens **Search** on the search you
-  used last (*Titles* until you use another), ready to type.
+  — on the two-page spread only: collapses the tree and opens <strong>Search</strong> on the search you
+  used last (<em>Titles</em> until you use another), ready to type.
 - <img src="icon-refresh-arrow-orig.png" alt="[b]Refresh[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — randomly refreshes the background and panel images.
 - <img src="icon-menu-dots-too-big-black.png" alt="[b]Menu[/b]" style="position: relative; top: 3px;" width="15" height="15">
