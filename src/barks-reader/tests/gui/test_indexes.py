@@ -270,7 +270,10 @@ def test_a_names_index_title_offers_every_page_its_row_lists(boot: AppBoot) -> N
     d.key_then_wait(second, "Right")
 
 
-# A window short enough that a letter page is taller than its view on any screen.
+# Below the minimum window, so the app raises the window to it: a 1080-tall screen's
+# window (`minimum_window_size`), or the screen's largest when that is shorter. That is
+# short enough that a letter page is taller than its view on any screen. On a 2560x1440
+# Windows screen the window comes up 1039 high, not 800, and is then corrected to its shape.
 SHORT_WINDOW_HEIGHT = "800"
 
 # A cross-reference on the D page whose target entry is on the M page.
@@ -314,8 +317,8 @@ def test_a_cross_reference_to_another_page_opens_its_target_in_view(
 
     The target's page is taller than the view, and the target well down it: opened in
     the frame the page was built, its heading and first titles ended above the view.
-    The window is booted short, as a 1920x1080 screen's is: the default screen's
-    taller view hid it.
+    The window is booted at the minimum, a 1920x1080 screen's window: the default
+    screen's taller view hid it.
     """
     d = boot(nodes.MAIN_INDEX, ini={"main_window_height": SHORT_WINDOW_HEIGHT})
     d.wait_for(_letter("A"))

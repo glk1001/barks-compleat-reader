@@ -576,6 +576,106 @@ def test_suppress_clears_pending_correction_event(
     assert helper._suppress_correction is True  # noqa: SLF001
 
 
+# --- Waiting for the window to settle (the boot size's log line) ---
+
+
+def _out_of_shape(helper: AppWindowGeometryHelper, fake_window: MagicMock) -> tuple[int, int]:
+    """Give the window a size its correction will change, and return that correction's size."""
+    height = 2000
+    right_width, _ = get_win_dimensions(height - CHROME, 2560)
+    fake_window.size = (right_width + 300, height)
+    helper.on_window_resize(fake_window, right_width + 300, height)
+    assert helper._correction_event is not None  # noqa: SLF001
+    return right_width, height
+
+
+def test_with_no_correction_pending_a_settled_callback_runs_now(
+    helper: AppWindowGeometryHelper,
+) -> None:
+    settled = MagicMock()
+    helper.when_settled(settled)
+    settled.assert_called_once_with()
+
+
+def test_a_settled_callback_waits_for_the_pending_correction(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    """At boot on Windows the size was logged 10 wide of where the correction put it."""
+    corrected = _out_of_shape(helper, fake_window)
+    settled = MagicMock(side_effect=lambda: sizes.append(tuple(fake_window.size)))
+    sizes: list[tuple[int, int]] = []
+    helper.when_settled(settled)
+    settled.assert_not_called()
+
+    fake_clock.fire_last()
+
+    assert sizes == [corrected]  # once, and at the corrected size
+
+
+def test_a_settled_callback_runs_when_the_correction_is_dropped(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    width, height = _out_of_shape(helper, fake_window)
+    settled = MagicMock()
+    helper.when_settled(settled)
+    fake_window.size = (width - 100, height - 200)  # the window moved on
+
+    fake_clock.fire_last()
+
+    settled.assert_called_once_with()
+
+
+def test_a_settled_callback_runs_when_a_resize_in_shape_cancels_the_correction(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock
+) -> None:
+    width, height = _out_of_shape(helper, fake_window)
+    settled = MagicMock()
+    helper.when_settled(settled)
+    fake_window.size = (width, height)
+
+    helper.on_window_resize(fake_window, width, height)
+
+    settled.assert_called_once_with()
+
+
+def test_a_settled_callback_runs_when_suppression_cancels_the_correction(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock
+) -> None:
+    _out_of_shape(helper, fake_window)
+    settled = MagicMock()
+    helper.when_settled(settled)
+
+    helper.suppress_aspect_ratio_correction(duration=1.0)
+
+    settled.assert_called_once_with()
+
+
+def test_a_settled_callback_waits_again_when_the_correction_brings_another(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    sized: MagicMock,
+) -> None:
+    """The resize answering a correction can come back out of shape, and be corrected too."""
+    width, height = _out_of_shape(helper, fake_window)
+
+    def frame_bigger(to_width: int, to_height: int) -> None:
+        fake_window.size = (to_width + 16, to_height)
+        helper.on_window_resize(fake_window, to_width + 16, to_height)
+
+    sized.side_effect = frame_bigger
+    settled = MagicMock()
+    helper.when_settled(settled)
+
+    fake_clock.fire_last()
+    settled.assert_not_called()  # a second correction is pending
+
+    sized.side_effect = None
+    fake_window.size = (width, height)
+    fake_clock.fire_last()
+    settled.assert_called_once_with()
+
+
 # --- Monitor-change handling (on_window_pos_change) ---
 
 

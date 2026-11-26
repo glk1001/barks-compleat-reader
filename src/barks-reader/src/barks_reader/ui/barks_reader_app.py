@@ -673,11 +673,18 @@ def _show_main_window(window: Any, window_geometry: AppWindowGeometryHelper) -> 
     Until the window is shown a key sent to it goes nowhere: the GUI probe's
     boot waits on this line, not on the build finishing, which under load came
     seconds earlier and lost the test's first key.
+
+    The window's boot size is logged once it has settled: a window raised to the
+    minimum is corrected to its shape after it is shown (`when_settled`).
     """
     window_geometry.set_window_ready()
     window.show()
     close_boot_splash()
     logger.info(log_markers.MAIN_WINDOW_SHOWN)
+    window_geometry.when_settled(_log_boot_geometry)
+
+
+def _log_boot_geometry() -> None:
     log_window_geometry("boot")
     _log_screen_settings()
 

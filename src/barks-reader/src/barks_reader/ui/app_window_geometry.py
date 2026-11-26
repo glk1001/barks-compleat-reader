@@ -101,6 +101,8 @@ class AppWindowGeometryHelper:
         self._resize_requested_size = 0, 0
         self._window_ready = False
         self._correction_event: Any = None
+        # Run once no correction is pending (`when_settled`).
+        self._on_settled: list[Callable[[], None]] = []
         self._suppress_correction = False
         self._correction_suppressed_a_resize = False
         self._suppress_correction_event: Any = None
@@ -143,6 +145,31 @@ class AppWindowGeometryHelper:
         # A size event before now was dropped, so the fonts may be for an earlier size.
         assert self._update_fonts is not None
         self._update_fonts(Window.height)
+
+    def when_settled(self, callback: Callable[[], None]) -> None:
+        """Run a callback once no aspect-ratio correction is pending: now, or after it.
+
+        For a line that says what size the window has settled at. At boot a window raised
+        to the minimum is still to be corrected to its shape when it is shown: on Windows
+        SDL's minimum gave it the frame's 16x39 more, and the boot size was logged 10
+        wide of the size the correction put it at a moment later (2026-11-27).
+
+        Args:
+            callback: What to run. A correction dropped or cancelled runs it too.
+
+        """
+        if self._correction_event is None:
+            callback()
+            return
+        self._on_settled.append(callback)
+
+    def _run_settled_callbacks(self) -> None:
+        """Run what waited for the window to settle, unless a correction is pending again."""
+        if self._correction_event is not None:
+            return
+        callbacks, self._on_settled = self._on_settled, []
+        for callback in callbacks:
+            callback()
 
     @property
     def current_monitor(self) -> ScreenInfo:
@@ -480,6 +507,7 @@ class AppWindowGeometryHelper:
         if self._correction_event is not None:
             self._correction_event.cancel()
             self._correction_event = None
+            self._run_settled_callbacks()
         self._suppress_correction = True
 
         def clear_suppress(_dt: float) -> None:
@@ -577,6 +605,7 @@ class AppWindowGeometryHelper:
                         f"Aspect-ratio correction dropped: it was for {width},{height},"
                         f" and the window is now {tuple(Window.size)}."
                     )
+                    self._run_settled_callbacks()
                     return
                 corrected = log_markers.WINDOW_ASPECT_CORRECTED.format(
                     width=width, height=height, to_width=correct_width, to_height=correct_height
@@ -586,6 +615,8 @@ class AppWindowGeometryHelper:
                     f" monitor width = {monitor_w}."
                 )
                 self._set_window_size(correct_width, correct_height)
+                # Not if the resize that answered it scheduled another correction.
+                self._run_settled_callbacks()
 
             self._correction_event = Clock.schedule_once(apply_correction, RESIZE_CORRECTION_DELAY)
             return
@@ -595,6 +626,7 @@ class AppWindowGeometryHelper:
         if self._correction_event:
             self._correction_event.cancel()
             self._correction_event = None
+            self._run_settled_callbacks()
         assert self._update_fonts is not None
         self._update_fonts(height)
 
