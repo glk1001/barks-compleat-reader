@@ -3240,8 +3240,11 @@ class TestBackgroundAndGoto:
         screen.on_search_results_title_changed.assert_called_once_with(Titles.LOST_IN_THE_ANDES)
         screen.on_search_results_title_changed.reset_mock()
 
+        assert screen.shows_listed_stories()  # so a render leaves the picture alone
+
         screen.set_mode("Title")  # nothing listed there: the rotation stops
         self._assert_stopped(screen, every.return_value)
+        assert not screen.shows_listed_stories()
 
     def test_the_rotation_goes_on_when_the_screen_is_shown_again(
         self, screen: SearchScreen

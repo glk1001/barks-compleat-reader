@@ -1689,6 +1689,10 @@ class SearchScreen(FloatLayout):
             lambda _dt: self._next_background_image(), SEARCH_IMAGE_CHANGE_SECONDS
         )
 
+    def shows_listed_stories(self) -> bool:
+        """Return whether the background is rotating through stories the search lists."""
+        return self._image_change_event is not None
+
     def _next_background_image(self) -> None:
         if not self._search_result_titles or not self.on_search_results_title_changed:
             return

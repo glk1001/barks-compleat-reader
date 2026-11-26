@@ -363,6 +363,18 @@ class TestWhatIsLeftAlone:
         search.set_mode.assert_not_called()
         search.set_background_image.assert_called_once()
 
+    def test_a_search_that_lists_stories_keeps_the_picture_it_asked_for(
+        self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        """The snapshot's picture, loaded after the story's on one loader, took its place."""
+        search = screen_mocks["search"]
+        search.shows_listed_stories.return_value = True
+
+        applicator.apply(_make_snapshot(search_visible=True, search_mode="Tag"))
+
+        search.set_mode.assert_called_once_with("Tag")
+        search.set_background_image.assert_not_called()
+
     def test_a_search_with_no_background_image_loads_none(
         self, applicator: SnapshotApplicator, screen_mocks: dict[str, MagicMock]
     ) -> None:

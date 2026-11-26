@@ -105,6 +105,7 @@ def screen_mocks() -> dict[str, MagicMock]:
     mocks = {screen.name: MagicMock() for screen in fields(ScreenBundle)}
     for mock in mocks.values():
         mock.has_list_open_without_the_keys.return_value = False  # no list open by mouse
+        mock.shows_listed_stories.return_value = False  # the search lists no story
     return mocks
 
 

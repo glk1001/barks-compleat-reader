@@ -211,6 +211,11 @@ class SnapshotApplicator:
         if search.mode:
             self._screens.search.set_mode(search.mode)
 
+        # A search that lists stories shows one of theirs (`set_mode` asks for it):
+        # the snapshot's picture, loaded after it on the same loader, took its place.
+        if self._screens.search.shows_listed_stories():
+            return
+
         search_info = search.image_info
         if search_info and search_info.filename:
 
