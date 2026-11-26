@@ -43,6 +43,8 @@ if TYPE_CHECKING:
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
+# How many frames a cross-reference's target waits for its page's layout before it opens.
+_SEE_TARGET_LAYOUT_FRAMES = 30
 
 
 class MainIndexScreen(IndexScreen):
@@ -241,7 +243,13 @@ class MainIndexScreen(IndexScreen):
             return
         self._on_index_item_press(target_button, target_item)
 
-    def _open_see_target(self, button: Button, item: IndexItem, grid_version: int) -> None:
+    def _open_see_target(
+        self,
+        button: Button,
+        item: IndexItem,
+        grid_version: int,
+        frames_left: int = _SEE_TARGET_LAYOUT_FRAMES,
+    ) -> None:
         """Open a cross-reference's target on the page just shown for it, in view.
 
         Opened in the frame its page was built, the target's row was not laid out yet:
@@ -249,16 +257,25 @@ class MainIndexScreen(IndexScreen):
         heading and its first titles ended above the view. So this waits for the layout,
         then brings the target into view before it is pressed, a page being taller than
         the view and the target anywhere down it.
+
+        The wait is `frames_left` frames at most: a layout that stays asked for (a
+        screen hidden meanwhile) had this called again every frame, with no end.
         """
         if self._grid_version != grid_version or button.parent is None:
             return  # another page was shown in the frames between
+        if self._is_open_owner(button):
+            # Opened by hand in the frames between: pressed again, it closed.
+            logger.debug(f'"{item.display_text}" is open already.')
+            return
         scroll_view = self.ids.index_scroll_view
         content = scroll_view.children[0]
-        if any(
+        if frames_left > 0 and any(
             layout._trigger_layout.is_triggered  # noqa: SLF001
             for layout in (content, *self._get_col_layouts())
         ):
-            Clock.schedule_once(lambda _dt: self._open_see_target(button, item, grid_version), 0)
+            Clock.schedule_once(
+                lambda _dt: self._open_see_target(button, item, grid_version, frames_left - 1), 0
+            )
             return
         if content.height > scroll_view.height:
             scroll_view.scroll_to(button, animate=False)

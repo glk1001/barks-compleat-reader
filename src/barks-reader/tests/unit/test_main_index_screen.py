@@ -584,6 +584,44 @@ class TestSeeReferences:
         scroll_view.scroll_to.assert_called_once_with(target[0], animate=False)
         press.assert_called_once_with(*target)
 
+    def test_a_target_opened_by_hand_meanwhile_is_not_pressed_shut(
+        self,
+        main_index_screen: MainIndexScreen,
+        target: tuple[MagicMock, IndexItem],
+        loguru_sink: list[str],
+    ) -> None:
+        """A tap on the target in the frames before this ran opened it: a press closes it."""
+        screen = main_index_screen
+        scroll_view = _lay_out_page(screen, content_height=900, view_height=400)
+        with (
+            patch.object(screen, "_open_tag_widgets", [MagicMock(owner_button=target[0])]),
+            patch.object(screen, "_on_index_item_press") as press,
+        ):
+            screen._open_see_target(*target, 3)
+        press.assert_not_called()
+        scroll_view.scroll_to.assert_not_called()
+        assert '"Black Pete" is open already.' in loguru_sink
+
+    def test_a_target_does_not_wait_for_ever_for_a_layout(
+        self, main_index_screen: MainIndexScreen, target: tuple[MagicMock, IndexItem]
+    ) -> None:
+        """A layout that stays asked for had the target tried again every frame, no end."""
+        screen = main_index_screen
+        scroll_view = _lay_out_page(screen, content_height=900, view_height=400)
+        scroll_view.children[0]._trigger_layout.is_triggered = True
+        with (
+            patch.object(screen, "_on_index_item_press") as press,
+            patch.object(Clock, "schedule_once") as schedule,
+        ):
+            screen._open_see_target(*target, 3)
+            frames = 0
+            while not press.called:
+                frames += 1
+                assert frames <= 1000, "still waiting for the layout"  # noqa: PLR2004
+                run_last_scheduled(schedule)
+        assert frames == barks_reader.ui.main_index_screen._SEE_TARGET_LAYOUT_FRAMES
+        press.assert_called_once_with(*target)
+
     def test_every_tag_row_on_a_page_is_remembered_but_no_cross_reference(
         self, main_index_screen: MainIndexScreen
     ) -> None:
