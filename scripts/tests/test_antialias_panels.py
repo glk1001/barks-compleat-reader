@@ -121,6 +121,16 @@ class TestMakePlan:
             ap.TRANSPARENT: [Path("Insets/clear.png")],
         }
 
+    def test_a_jpeg_named_as_a_png_is_not_a_png(self, tmp_path: Path) -> None:
+        root, backup = _tree(tmp_path)
+        (root / "Silhouettes").mkdir(parents=True)
+        Image.new("RGB", (8, 6), ORIGINAL).save(root / "Silhouettes" / "a.png", format="JPEG")
+
+        plan = ap.make_plan(root, backup, [], [])
+
+        assert plan.process == []
+        assert plan.skipped == {ap.NOT_PNG: [Path("Silhouettes/a.png")]}
+
     def test_only_the_included_folders_are_looked_in(self, tmp_path: Path) -> None:
         root, backup = _tree(tmp_path)
         _png(root / "Favourites" / "a.png")

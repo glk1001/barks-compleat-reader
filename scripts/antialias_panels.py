@@ -14,7 +14,8 @@ That copy is also the record that a file is done: a file with a backup is skippe
 second run never smooths a file twice. Delete the backup folder and that record goes
 with it. ``--restore`` puts every backed-up original back and removes its backup.
 
-Skipped, and said so: anything not a PNG (a JPEG would be compressed a second time), a
+Skipped, and said so: anything not a PNG, whatever its name says (a JPEG would be
+compressed a second time, and a few files named ``.png`` are JPEGs, which G'MIC refuses), a
 PNG with any transparent pixel (the filter softens the alpha edge and bleeds the hidden
 colour under it into the visible edge), a file an ``--exclude`` matches, and a file
 already done.
@@ -53,6 +54,7 @@ AMPLITUDE = 2.0
 EDGE_THRESHOLD = 10.0  # the GUI filter's default, per cent
 SMOOTHNESS = 0.8  # the GUI filter's default
 TEMP_SUFFIX = ".antialias-tmp"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 EXCLUDED = "excluded"
 NOT_PNG = "not a PNG"
@@ -99,6 +101,14 @@ def gmic_filter(amplitude: float) -> Filter:
             shutil.copyfile(plain_out, target)
 
     return run
+
+
+def is_png(path: Path) -> bool:
+    """Return whether the file is named as a PNG and is one: some here are JPEGs inside."""
+    if path.suffix.lower() != ".png":
+        return False
+    with path.open("rb") as file:
+        return file.read(len(PNG_SIGNATURE)) == PNG_SIGNATURE
 
 
 def has_transparency(png: Path) -> bool:
@@ -151,7 +161,7 @@ def make_plan(
             relative = path.relative_to(root)
             if any(fnmatchcase(relative.as_posix(), glob) for glob in excludes):
                 plan.skip(EXCLUDED, relative)
-            elif path.suffix.lower() != ".png":
+            elif not is_png(path):
                 plan.skip(NOT_PNG, relative)
             elif (backup_dir / relative).exists():
                 plan.skip(DONE, relative)
