@@ -210,7 +210,7 @@ def report(plan: Plan, *, verbose: bool) -> None:
         _say(f"skipped, {why}: {len(files)}")
         if verbose or why == TRANSPARENT:
             for relative in files:
-                _say(f"  {relative}")
+                _say(f"  {relative.as_posix()}")
 
 
 def apply(root: Path, backup_dir: Path, plan: Plan, run_filter: Filter) -> int:
@@ -221,7 +221,7 @@ def apply(root: Path, backup_dir: Path, plan: Plan, run_filter: Filter) -> int:
             smooth_one(root, backup_dir, relative, run_filter)
         except (OSError, ValueError, subprocess.CalledProcessError) as e:
             failed += 1
-            _say(f"FAILED {relative}: {e}")
+            _say(f"FAILED {relative.as_posix()}: {e}")
             continue
         if number % 100 == 0:
             _say(f"  {number} of {len(plan.process)}")
