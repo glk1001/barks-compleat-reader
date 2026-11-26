@@ -475,8 +475,8 @@ class TestTypedQuery:
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
         result = WordQueryResult(
-            title_dict=_found("Story A"),
-            hit_counts={"Story A": 2},
+            title_dict=_found(ENUM_TO_STR_TITLE[HELMET]),
+            hit_counts={ENUM_TO_STR_TITLE[HELMET]: 2},
             notices=('"the" is too common to search for; left out.',),
             suggestions=(Suggestion("scroge", "Scrooge"), Suggestion("scroge", "scrounge")),
         )
@@ -496,7 +496,7 @@ class TestTypedQuery:
         assert rows[1].text == '"the" is too common to search for; left out.'
         assert rows[2].text == 'Did you mean, for "scroge":'
         assert [r.suggestion.spelling for r in rows[3:]] == ["Scrooge", "scrounge"]
-        assert screen._word_search_results[0][2] == "Story A, 3 (2)"
+        assert screen._word_search_results[0][2] == f"{ENUM_TO_STR_TITLE[HELMET]}, 3 (2)"
         assert loguru_sink[-4:] == [
             log_markers.WORD_QUERY_NOTICE.format(
                 notice='"the" is too common to search for; left out.'
@@ -701,7 +701,8 @@ class TestWordBasket:
             rows=[_word_row("gold", 0), _word_row("golden", 1)],
         ) as bare:
             bare._search.run_word_query.return_value = WordQueryResult(
-                title_dict=_found("Story A"), hit_counts={"Story A": 1}
+                title_dict=_found(ENUM_TO_STR_TITLE[HELMET]),
+                hit_counts={ENUM_TO_STR_TITLE[HELMET]: 1},
             )
             bare.ids.word_chips_layout.children = list(reversed(bare.rows))  # Kivy: last first
             yield bare
@@ -764,7 +765,7 @@ class TestWordBasket:
     ) -> None:
         """The stories listed are that word's, not the basket's: they stay, with its filters."""
         screen._toggle_basket_word("gold")
-        screen._search.find_words.return_value = _found("Story B")
+        screen._search.find_words.return_value = _found(ENUM_TO_STR_TITLE[HELMET])
         screen._on_word_chip_selected("golden")
         screen.ids.word_results_layout.clear_widgets.reset_mock()
 
@@ -772,7 +773,7 @@ class TestWordBasket:
 
         assert screen._word_basket.words == []
         assert screen._selected_word == "golden"
-        assert [row.title_str for row in screen._word_search_results] == ["Story B"]
+        assert [row.title_str for row in screen._word_search_results] == [ENUM_TO_STR_TITLE[HELMET]]
         screen.ids.word_results_layout.clear_widgets.assert_not_called()
 
     def test_typing_keeps_the_baskets_results(self, screen: SearchScreen) -> None:
@@ -2033,7 +2034,9 @@ class TestSpeakerFilter:
     ) -> None:
         screen._said_by.speaker = "Gladstone"
         screen._search.run_word_query.side_effect = lambda _q, speaker, **_kw: WordQueryResult(
-            title_dict=_found() if speaker else _found("Story A", "Story B")
+            title_dict=_found()
+            if speaker
+            else _found(ENUM_TO_STR_TITLE[HELMET], ENUM_TO_STR_TITLE[PIRATE_GOLD])
         )
         with patch.object(screen, "_list_query_words"), patch.object(screen, "_list_word_stories"):
             screen._run_word_query("bumps-a-daisy AND hat")
@@ -2041,6 +2044,23 @@ class TestSpeakerFilter:
         assert log_markers.WORD_QUERY_RUN.format(text="bumps-a-daisy AND hat", count=2) in (
             loguru_sink
         )
+
+    def test_a_query_counts_the_stories_it_lists(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        """A story the app has no title for is not listed, so not counted either."""
+        helmet = ENUM_TO_STR_TITLE[HELMET]
+        screen._search.run_word_query.return_value = WordQueryResult(
+            title_dict=_found("A Title Since Renamed", helmet)
+        )
+        with (
+            patch.object(screen, "_list_query_words"),
+            patch.object(screen, "_list_word_stories") as listed,
+        ):
+            screen._run_word_query("gold")
+        assert list(listed.call_args.args[0]) == [helmet]
+        assert log_markers.WORD_QUERY_RUN.format(text="gold", count=1) in loguru_sink
+        assert loguru_sink.count('No title "A Title Since Renamed" for the search "gold".') == 1
 
     def test_a_new_query_nobody_says_keeps_the_speaker(
         self, screen: SearchScreen, loguru_sink: list[str]
@@ -3246,6 +3266,32 @@ class TestBackgroundAndGoto:
         self._assert_stopped(screen, every.return_value)
         assert not screen.shows_listed_stories()
 
+    def test_a_story_the_app_has_no_title_for_is_not_listed(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        """A search index older than a title's renaming: its row opened nothing, unsaid."""
+        helmet = ENUM_TO_STR_TITLE[HELMET]
+        with (
+            patch.object(screen, "_show_result_filters"),
+            patch.object(screen, "_populate_word_results_layout"),
+            patch.object(search_screen.Clock, "schedule_interval"),
+        ):
+            screen._list_word_stories(_found("A Title Since Renamed", helmet), "gold")
+        assert [row.title_str for row in screen._word_search_results] == [helmet]
+        assert screen._listed_titles[SearchScreenMode.WORD] == [HELMET]
+        assert 'No title "A Title Since Renamed" for the search "gold".' in loguru_sink
+
+    def test_only_stories_the_app_has_no_title_for_is_no_results(
+        self, screen: SearchScreen
+    ) -> None:
+        with (
+            patch.object(screen, "_show_result_filters"),
+            patch.object(screen, "_populate_word_results_layout"),
+            patch.object(search_screen, "_SearchResultButton") as button,
+        ):
+            screen._list_word_stories(_found("A Title Since Renamed"), "gold")
+        button.assert_called_once_with(text='No results for "gold"', disabled=True)
+
     def test_the_rotation_goes_on_when_the_screen_is_shown_again(
         self, screen: SearchScreen
     ) -> None:
@@ -3339,9 +3385,12 @@ class TestBackgroundAndGoto:
         screen.on_goto_title_with_page = None
         screen._goto_title_with_page(ENUM_TO_STR_TITLE[HELMET], "3")  # nothing to call
 
-    def test_a_title_no_story_has_goes_nowhere(self, screen: SearchScreen) -> None:
+    def test_a_title_no_story_has_goes_nowhere(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
         screen._goto_title_with_page("No Such Story", "3")
         cast("MagicMock", screen.on_goto_title_with_page).assert_not_called()
+        assert 'No title "No Such Story" to go to.' in loguru_sink
 
     def test_a_bubble_pressed_closes_its_popup_and_goes_to_its_page(
         self, screen: SearchScreen, loguru_sink: list[str]

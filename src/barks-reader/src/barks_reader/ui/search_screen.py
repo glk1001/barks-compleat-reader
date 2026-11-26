@@ -1039,8 +1039,10 @@ class SearchScreen(FloatLayout):
 
         if list_words:
             self._list_query_words(query, notices, result.suggestions)
-        self._list_word_stories(result.title_dict, query, result.hit_counts)
-        logger.info(log_markers.WORD_QUERY_RUN.format(text=query, count=len(result.title_dict)))
+        # Counted as listed: the line says how many stories the screen shows.
+        found = self._stories_the_app_has(result.title_dict, query)
+        self._list_word_stories(found, query, result.hit_counts)
+        logger.info(log_markers.WORD_QUERY_RUN.format(text=query, count=len(found)))
 
     def _list_query_words(
         self, query: str, notices: list[str], suggestions: tuple[Suggestion, ...]
@@ -1264,6 +1266,17 @@ class SearchScreen(FloatLayout):
         found = self._search.find_words(self._selected_word, speaker=speaker)
         return found if word_filter is None else apply_filter(word_filter, found)
 
+    @staticmethod
+    def _stories_the_app_has(found: dict[str, TitleInfo], searched: str) -> dict[str, TitleInfo]:
+        """Return the found stories less any the app has no title for, each of those warned of.
+
+        A search index older than a title's renaming finds one: its row opened nothing.
+        """
+        for title_str in found:
+            if title_str not in STR_TITLE_TO_ENUM:
+                logger.warning(f'No title "{title_str}" for the search "{searched}".')
+        return {t: info for t, info in found.items() if t in STR_TITLE_TO_ENUM}
+
     def _list_word_stories(
         self, found: dict[str, TitleInfo], searched: str, hit_counts: dict[str, int] | None = None
     ) -> None:
@@ -1272,11 +1285,11 @@ class SearchScreen(FloatLayout):
         results_layout.clear_widgets()
         self._show_result_filters()
 
+        found = self._stories_the_app_has(found, searched)
         self._word_search_results = self._build_word_results(found, hit_counts)
         self._populate_word_results_layout(results_layout)
         self._update_background_from_results(
-            SearchScreenMode.WORD,
-            [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM],
+            SearchScreenMode.WORD, [STR_TITLE_TO_ENUM[ct] for ct in found]
         )
 
         if not found:
@@ -1633,6 +1646,7 @@ class SearchScreen(FloatLayout):
         self, title_str: str, page_to_goto: str, pages: Sequence[str] = ()
     ) -> None:
         if title_str not in STR_TITLE_TO_ENUM:
+            logger.warning(f'No title "{title_str}" to go to.')
             return
         title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
