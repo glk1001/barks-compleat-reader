@@ -16,8 +16,8 @@
 
 # Project-specific
 build/
-# The pages scripts/generate_how_to_pages.py writes for GIMP (PNGs), and the finished
-# page from scripts/generate_intro_page.py.
+# The finished pages scripts/generate_how_to_pages.py and scripts/generate_intro_page.py
+# write when no output directory is named.
 docs/how-to-pages/
 docs/intro-pages/
 # Standalone executables produced by scripts/build.sh (Nuitka output:

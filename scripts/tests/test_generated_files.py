@@ -13,6 +13,7 @@ from generated_files import (
     INDEX_SOURCE,
     GeneratedSet,
     ReaderDirs,
+    background_sources,
     document_sources,
     folder_hash,
     load_record,
@@ -116,6 +117,41 @@ class TestDocumentSources:
         assert "missing" not in found.values()
 
 
+class TestBackgroundSources:
+    def test_each_is_hashed_under_its_name_and_one_that_is_gone_is_missing(
+        self, tmp_path: Path
+    ) -> None:
+        fixes = write_tree(tmp_path / "fixes", {"Vol 7/images/244.jpg": b"art"})
+        backgrounds = {
+            "fixes/Vol 7/images/244.jpg": fixes / "Vol 7/images/244.jpg",
+            "fixes/Vol 7/images/245.jpg": fixes / "Vol 7/images/245.jpg",
+        }
+
+        found = background_sources(backgrounds, fixes)
+
+        assert found == {
+            "fixes/Vol 7/images/244.jpg": generated_files.file_hash(fixes / "Vol 7/images/244.jpg"),
+            "fixes/Vol 7/images/245.jpg": generated_files.MISSING,
+        }
+
+    def test_a_machine_with_no_fixes_directory_checks_none(self, tmp_path: Path) -> None:
+        backgrounds = {"fixes/Vol 7/images/244.jpg": tmp_path / "fixes/Vol 7/images/244.jpg"}
+
+        found = background_sources(backgrounds, tmp_path / "fixes")
+
+        assert found == {"fixes/Vol 7/images/244.jpg": generated_files.UNCHECKED}
+
+    def test_the_how_to_s_are_among_its_sources_named_from_the_barks_root(self) -> None:
+        by_name = {generated.name: generated for generated in GENERATED_SETS}
+
+        found = by_name[generated_files.HOW_TO].sources(_dirs(generated_files.REPO_ROOT))
+
+        assert "docs/how-to-use.md" in found
+        backgrounds = [name for name in found if name.endswith("/images/244.jpg")]
+        assert len(backgrounds) == 1
+        assert backgrounds[0].startswith("Fantagraphics-fixes-and-additions/Carl Barks Vol. 7 ")
+
+
 class TestFolderHash:
     def test_a_changed_added_or_renamed_file_changes_it(self, tmp_path: Path) -> None:
         root = write_tree(tmp_path / "Indexes", {"a.seg": b"aaaa", "sub/b.json": b"b"})
@@ -212,6 +248,70 @@ class TestStaleReasons:
 
         assert reason.count("page-") == 5  # noqa: PLR2004
         assert "and 3 more" in reason
+
+
+class TestSourcesThisMachineCannotSee:
+    """A background is `UNCHECKED` where there is no fixes directory to look in."""
+
+    @staticmethod
+    def _guide(source_dir: Path, art: str) -> tuple[GeneratedSet, ...]:
+        return (
+            GeneratedSet(
+                GUIDE,
+                lambda _dirs: {
+                    **document_sources(source_dir / "guide.md", source_dir / "style.css"),
+                    "fixes/art.jpg": art,
+                },
+                lambda dirs: sorted(dirs.how_to.glob("page-*")),
+                "the generator",
+            ),
+        )
+
+    def test_one_is_left_out_of_the_comparison(
+        self, tmp_path: Path, source_dir: Path, dirs: ReaderDirs
+    ) -> None:
+        record_path = tmp_path / "record.json"
+        record_sets([GUIDE], dirs, record_path, self._guide(source_dir, "a-hash"))
+        elsewhere = self._guide(source_dir, generated_files.UNCHECKED)
+
+        assert stale_reasons(load_record(record_path), dirs, elsewhere) == []
+
+    def test_the_sources_it_can_see_are_still_compared(
+        self, tmp_path: Path, source_dir: Path, dirs: ReaderDirs
+    ) -> None:
+        record_path = tmp_path / "record.json"
+        record_sets([GUIDE], dirs, record_path, self._guide(source_dir, "a-hash"))
+        (source_dir / "guide.md").write_text("# Edited\n", encoding="utf-8")
+        elsewhere = self._guide(source_dir, generated_files.UNCHECKED)
+
+        (reason,) = stale_reasons(load_record(record_path), dirs, elsewhere)
+
+        assert "changed since it was made: " in reason
+        assert "guide.md" in reason
+        assert "fixes/art.jpg" not in reason
+
+    def test_a_changed_one_is_stale_where_it_can_be_seen(
+        self, tmp_path: Path, source_dir: Path, dirs: ReaderDirs
+    ) -> None:
+        record_path = tmp_path / "record.json"
+        record_sets([GUIDE], dirs, record_path, self._guide(source_dir, "a-hash"))
+
+        (reason,) = stale_reasons(
+            load_record(record_path), dirs, self._guide(source_dir, "another-hash")
+        )
+
+        assert reason.startswith(f"{GUIDE} is stale: changed since it was made: fixes/art.jpg")
+
+    def test_such_a_machine_cannot_record_the_set(
+        self, tmp_path: Path, source_dir: Path, dirs: ReaderDirs
+    ) -> None:
+        record_path = tmp_path / "record.json"
+        elsewhere = self._guide(source_dir, generated_files.UNCHECKED)
+
+        with pytest.raises(ValueError, match="lacks some of its sources"):
+            record_sets([GUIDE], dirs, record_path, elsewhere)
+
+        assert not record_path.exists()
 
 
 class TestRecordSets:

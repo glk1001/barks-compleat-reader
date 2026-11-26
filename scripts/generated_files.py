@@ -19,12 +19,17 @@ ones recorded.
   uv run scripts/generated_files.py --list
 
 ``--record`` says "these files were made from these sources": run it only after the
-set's generator (and, for the how-to, the image editor's export), then commit the
-record. It is taken on trust; nothing here can redo a page to prove it.
+set's generator, then commit the record. It is taken on trust; nothing here can redo
+a page to prove it.
 
 A document's sources are its markdown, its stylesheet, every image the markdown
 shows and every file the stylesheet loads, found by reading them: a picture added
 to the text is a source from then on. The search index is one source, hashed whole.
+
+The how-to's backgrounds (``how_to_backgrounds.py``) are sources too, and are in the
+Fantagraphics fixes directories, not the repo. A machine with no such directory
+cannot say whether they have changed, so there they are left out of the comparison,
+and such a machine cannot record the how-to.
 """
 
 from __future__ import annotations
@@ -40,6 +45,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from barks_reader.core.statistics_series import MOST_FREQUENT_FILE, WORDCLOUD_GLOB
 from dotenv import load_dotenv
+from how_to_backgrounds import fixes_root_dir, how_to_backgrounds_by_name
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -57,6 +63,9 @@ HOW_TO = "how-to"
 INTRODUCTION = "introduction"
 WORD_STATISTICS = "word-statistics"
 INDEX_SOURCE = "the search index"
+MISSING = "missing"
+# In place of a hash: this machine has nowhere to look for the source.
+UNCHECKED = "not on this machine"
 # Written beside each word cloud by scripts/generate_tfidf_wordcloud.py.
 RANKED_WORDS_GLOB = "tfidf_ranked_words_*.txt"
 
@@ -160,7 +169,31 @@ def document_sources(md: Path, css: Path, *extras: Path) -> Hashes:
         files += _referenced(md.read_text(encoding="utf-8"), _MD_IMAGE, md.parent)
     if css.is_file():
         files += _referenced(css.read_text(encoding="utf-8"), _CSS_URL, css.parent)
-    return {_name(path): file_hash(path) if path.is_file() else "missing" for path in files}
+    return {_name(path): file_hash(path) if path.is_file() else MISSING for path in files}
+
+
+def background_sources(backgrounds: dict[str, Path], fixes_root: Path) -> Hashes:
+    """Hash a document's backgrounds, which are outside the repo.
+
+    Args:
+        backgrounds: Each background's name in the record and its file.
+        fixes_root: The directory of fixes they are under, which a machine may lack.
+
+    Returns:
+        Each background's name and hash: ``missing`` for one that is not there, and
+        `UNCHECKED` for them all on a machine with no such directory.
+
+    """
+    if not fixes_root.is_dir():
+        return dict.fromkeys(backgrounds, UNCHECKED)
+    return {
+        name: file_hash(path) if path.is_file() else MISSING for name, path in backgrounds.items()
+    }
+
+
+def _how_to_sources(_dirs: ReaderDirs) -> Hashes:
+    backgrounds = background_sources(how_to_backgrounds_by_name(), fixes_root_dir())
+    return document_sources(HOW_TO_MD, HOW_TO_CSS) | backgrounds
 
 
 def _pages(folder: Path) -> list[Path]:
@@ -178,15 +211,15 @@ def _word_statistics_files(folder: Path) -> list[Path]:
 
 
 def _index_source(dirs: ReaderDirs) -> Hashes:
-    return {INDEX_SOURCE: folder_hash(dirs.indexes) if dirs.indexes.is_dir() else "missing"}
+    return {INDEX_SOURCE: folder_hash(dirs.indexes) if dirs.indexes.is_dir() else MISSING}
 
 
 GENERATED_SETS: tuple[GeneratedSet, ...] = (
     GeneratedSet(
         HOW_TO,
-        lambda _dirs: document_sources(HOW_TO_MD, HOW_TO_CSS),
+        _how_to_sources,
         lambda dirs: _pages(dirs.how_to),
-        "scripts/generate_how_to_pages.py, then the image editor's export",
+        "scripts/generate_how_to_pages.py --output-dir <the how-to's folder>",
     ),
     GeneratedSet(
         INTRODUCTION,
@@ -220,6 +253,10 @@ def _differing(recorded: Hashes, found: Hashes) -> str:
     return shown if len(names) <= _SHOWN else f"{shown} and {len(names) - _SHOWN} more"
 
 
+def _without(hashes: Hashes, names: set[str]) -> Hashes:
+    return {name: value for name, value in hashes.items() if name not in names}
+
+
 def stale_reasons(
     record: dict[str, dict[str, Hashes]],
     dirs: ReaderDirs,
@@ -248,8 +285,11 @@ def stale_reasons(
             reasons.append(f"{generated.name}: not in {RECORD_PATH.name}; {redo}")
             continue
         found = current(generated, dirs)
-        if found["sources"] != recorded.get("sources"):
-            changed = _differing(recorded.get("sources", {}), found["sources"])
+        unchecked = {name for name, value in found["sources"].items() if value == UNCHECKED}
+        found_sources = _without(found["sources"], unchecked)
+        recorded_sources = _without(recorded.get("sources", {}), unchecked)
+        if found_sources != recorded_sources:
+            changed = _differing(recorded_sources, found_sources)
             reasons.append(
                 f"{generated.name} is stale: changed since it was made: {changed}; {redo}"
             )
@@ -286,7 +326,8 @@ def record_sets(
         The names recorded.
 
     Raises:
-        ValueError: A name is not a set's, or a set has no files to record.
+        ValueError: A name is not a set's, a set has no files to record, or this
+            machine cannot see one of a set's sources.
 
     """
     by_name = {generated.name: generated for generated in sets}
@@ -301,6 +342,9 @@ def record_sets(
         found = current(by_name[name], dirs)
         if not found["outputs"]:
             msg = f"{name}: no generated files found to record."
+            raise ValueError(msg)
+        if UNCHECKED in found["sources"].values():
+            msg = f"{name}: this machine lacks some of its sources, so it cannot be recorded here."
             raise ValueError(msg)
         record[name] = found
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")

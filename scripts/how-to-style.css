@@ -1,12 +1,12 @@
 /* Theme for the how-to's text pages (scripts/generate_how_to_pages.py).
  *
- * Pages render on a TRANSPARENT background so each PNG can be dropped into the
- * GIMP how-to project as the text layer over the Barks background art. Every
- * visual choice lives here — edit freely; no Python changes needed. The boxes
+ * Pages render on a TRANSPARENT background and the script lays each over its
+ * Barks background art (scripts/how_to_backgrounds.py), blending in linear light.
+ * Every visual choice lives here — edit freely; no Python changes needed. The boxes
  * carry their own, nearly opaque, fill, so they read over any background.
  *
- * Page size 2120x3200 px matches the existing GIMP background layers, and the
- * script writes each page as a PNG of exactly that size.
+ * Page size 2120x3200 px is the size of the pages the Reader shows: each background
+ * is stretched to it, and the script writes each page as a JPEG of exactly that size.
  *
  * The markdown's classes:
  *   div.must-know  the two things a new reader cannot guess (red box, numbered)
@@ -58,11 +58,11 @@
 
 html,
 body {
-    background: transparent;      /* no page fill, for the GIMP overlay */
+    background: transparent;      /* no page fill: the art shows */
     color: #000000;
     font-family: "Source Serif", "Liberation Serif", "DejaVu Serif", Georgia, serif;
     font-size: 37px;
-    line-height: 1.42;
+    line-height: 1.38;
 }
 
 /* The paper: a pale sheet behind the text of every page (a fixed box repeats on each),

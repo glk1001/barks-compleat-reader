@@ -283,14 +283,15 @@ in the OCR repo, which is read-only from here:
       level with the portal's top. What was made before then still shows the old view:
   - [ ] **The in-app How To pages** — `docs/how-to-use.md` gained two passages on untitled
         stories, and its peek-toggle entry says the eye is on the single page only (the
-        spread lost it the same day). Regenerate the text pages (`uv run scripts/generate_how_to_pages.py`, which writes
-        transparent PNGs to `docs/how-to-pages`),
-        export the composited `page-N.png` files from the GIMP how-to project to
-        `Various/documents/how-to`, and ship them in the next data pack. Since 2026-11-19
+        spread lost it the same day). Regenerate the pages into
+        `Various/documents/how-to` (`uv run scripts/generate_how_to_pages.py --output-dir`,
+        which lays the text over the backgrounds listed in `scripts/how_to_backgrounds.py`),
+        record them (`uv run scripts/generated_files.py --record how-to`), and ship them in
+        the next data pack. The text fills its seven pages (the last is three-quarters
+        full at a line height of 1.38): an eighth needs an eighth background listed. Since 2026-11-19
         the pages are restyled (`scripts/how-to-style.css`: coloured section bands, boxes,
         the two things a new reader cannot guess alone on page 1 with marked-up
-        screenshots) and there are seven of them, so the GIMP project needs one more
-        background than the six shipped. The three `docs/how-to-*.jpg` screenshots are
+        screenshots). The three `docs/how-to-*.jpg` screenshots are
         cut from `website/screenshot-title-view-single-page.jpg` and
         `website/screenshot-reading-a-story.jpg`: remake them when those are re-shot.
   - [ ] **The README screenshots** — `website/screenshot-selecting-a-title.jpg` and

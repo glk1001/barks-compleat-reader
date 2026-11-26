@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 PAGE_SIZE = (200, 300)
 TRANSPARENT = (0, 0, 0, 0)
 BLUE = (0, 0, 255)
+RED = (255, 0, 0)
 PAGE_CSS = (
     "@page { size: 200px 300px; margin: 20px; }\nbody { font-size: 12px; }\n"
     "h1 { break-before: page; }\n"
@@ -41,6 +42,12 @@ def _sources(tmp_path: Path, markdown: str) -> tuple[Path, Path]:
     return md_path, css_path
 
 
+def _near(pixel: object, colour: tuple[int, int, int], within: int = 6) -> bool:
+    """Whether a pixel of a JPEG is the colour it was saved as, give or take."""
+    assert isinstance(pixel, tuple)
+    return all(abs(got - want) <= within for got, want in zip(pixel, colour, strict=True))
+
+
 def _background(tmp_path: Path, size: tuple[int, int] = PAGE_SIZE) -> Path:
     background = tmp_path / "background.png"
     Image.new("RGB", size, BLUE).save(background)
@@ -52,11 +59,24 @@ class TestHowToCommand:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         md_path, css_path = _sources(tmp_path, "One.\n\n# Two\n")
+        background = _background(tmp_path)
 
-        how_to.main(md_path, css_path, tmp_path / "out")
+        how_to.main(md_path, css_path, tmp_path / "out", [background, background])
 
         out = capsys.readouterr().out.splitlines()
-        assert out == [f"Wrote 2 page(s) to {tmp_path / 'out'}:", "  page-1.png", "  page-2.png"]
+        assert out == [f"Wrote 2 page(s) to {tmp_path / 'out'}:", "  page-1.jpg", "  page-2.jpg"]
+
+    def test_with_no_background_named_the_listed_ones_are_used(self, tmp_path: Path) -> None:
+        md_path, css_path = _sources(tmp_path, "One.\n")
+        listed = [_background(tmp_path)]
+
+        with (
+            patch.object(how_to, "how_to_background_paths", return_value=listed),
+            patch.object(how_to, "build_pages", return_value=[]) as build,
+        ):
+            how_to.main(md_path, css_path, tmp_path / "out")
+
+        build.assert_called_once_with(md_path, css_path, listed, tmp_path / "out")
 
     @pytest.mark.parametrize(
         ("missing", "says"),
@@ -69,38 +89,103 @@ class TestHowToCommand:
         (tmp_path / missing).unlink()
 
         with pytest.raises(how_to.typer.Exit) as refused:
-            how_to.main(md_path, css_path, tmp_path / "out")
+            how_to.main(md_path, css_path, tmp_path / "out", [_background(tmp_path)])
 
         assert refused.value.exit_code == 1
         assert f"{says}: {tmp_path / missing}" in capsys.readouterr().err
         assert not (tmp_path / "out").exists()
 
+    def test_a_refusal_is_reported_and_exits_1(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        md_path, css_path = _sources(tmp_path, "One.\n\n# Two\n")
+
+        with pytest.raises(how_to.typer.Exit) as refused:
+            how_to.main(md_path, css_path, tmp_path / "out", [_background(tmp_path)])
+
+        assert refused.value.exit_code == 1
+        assert "takes 2 pages and there are 1 backgrounds" in capsys.readouterr().err
+
 
 class TestHowToPages:
-    def test_each_page_is_a_transparent_image_of_the_page_size(self, tmp_path: Path) -> None:
+    def test_each_page_is_its_text_over_its_background_stretched_to_the_page(
+        self, tmp_path: Path
+    ) -> None:
         md_path, css_path = _sources(tmp_path, "One.\n\n# Two\n\nMore.\n")
-        out_dir = tmp_path / "out"
+        blue = _background(tmp_path, (100, 100))
+        red = tmp_path / "red.png"
+        Image.new("RGB", PAGE_SIZE, RED).save(red)
 
-        written = how_to.build_pages(md_path, css_path, out_dir)
+        written = how_to.build_pages(md_path, css_path, [blue, red, blue], tmp_path / "out")
 
-        assert [path.name for path in written] == ["page-1.png", "page-2.png"]
-        for path in written:
+        assert [path.name for path in written] == ["page-1.jpg", "page-2.jpg"]
+        for path, art in zip(written, (BLUE, RED), strict=True):
             with Image.open(path) as page:
-                assert page.mode == "RGBA"
+                assert page.mode == "RGB"
                 assert page.size == PAGE_SIZE
-                assert page.getpixel((2, 2)) == TRANSPARENT
-                assert page.getbbox() is not None  # the text is drawn
+                for corner in ((2, 2), (197, 297)):  # the margins: the art alone
+                    assert _near(page.getpixel(corner), art)
+                assert len(page.getcolors(maxcolors=100_000) or [None, None]) > 1  # text too
 
     def test_a_shorter_run_removes_the_pages_a_longer_one_left(self, tmp_path: Path) -> None:
         md_path, css_path = _sources(tmp_path, "One.\n")
         out_dir = tmp_path / "out"
         out_dir.mkdir()
-        (out_dir / "page-2.png").write_bytes(b"stale")
+        (out_dir / "page-2.jpg").write_bytes(b"stale")
+        (out_dir / "page-1.png").write_bytes(b"an earlier version's text page")
         (out_dir / "notes.txt").write_text("kept", encoding="utf-8")
 
-        how_to.build_pages(md_path, css_path, out_dir)
+        how_to.build_pages(md_path, css_path, [_background(tmp_path)], out_dir)
 
-        assert sorted(path.name for path in out_dir.iterdir()) == ["notes.txt", "page-1.png"]
+        assert sorted(path.name for path in out_dir.iterdir()) == ["notes.txt", "page-1.jpg"]
+
+    def test_more_pages_than_backgrounds_is_refused_and_nothing_is_touched(
+        self, tmp_path: Path
+    ) -> None:
+        md_path, css_path = _sources(tmp_path, "One.\n\n# Two\n")
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        (out_dir / "page-1.jpg").write_bytes(b"the page shown now")
+
+        with pytest.raises(how_to.HowToPagesError, match="takes 2 pages and there are 1"):
+            how_to.build_pages(md_path, css_path, [_background(tmp_path)], out_dir)
+
+        assert (out_dir / "page-1.jpg").read_bytes() == b"the page shown now"
+
+    def test_a_background_that_is_not_there_is_named(self, tmp_path: Path) -> None:
+        md_path, css_path = _sources(tmp_path, "One.\n")
+
+        with pytest.raises(how_to.HowToPagesError, match=r"Background not found: .*gone\.jpg"):
+            how_to.build_pages(md_path, css_path, [tmp_path / "gone.jpg"], tmp_path / "out")
+
+        assert not (tmp_path / "out").exists()
+
+    def test_a_background_no_page_uses_need_not_be_there(self, tmp_path: Path) -> None:
+        md_path, css_path = _sources(tmp_path, "One.\n")
+        backgrounds = [_background(tmp_path), tmp_path / "gone.jpg"]
+
+        written = how_to.build_pages(md_path, css_path, backgrounds, tmp_path / "out")
+
+        assert [path.name for path in written] == ["page-1.jpg"]
+
+
+class TestLayTextOver:
+    def test_opaque_text_hides_the_art_and_none_shows_it(self) -> None:
+        text = Image.new("RGBA", (2, 1), TRANSPARENT)
+        text.putpixel((0, 0), (*RED, 255))
+
+        page = how_to.lay_text_over(Image.new("RGB", (2, 1), BLUE), text)
+
+        assert page.mode == "RGB"
+        assert [page.getpixel((0, 0)), page.getpixel((1, 0))] == [RED, BLUE]
+
+    def test_a_translucent_sheet_is_blended_in_linear_light(self) -> None:
+        """Half white over black is 188 in linear light; blended as encoded it is 128."""
+        text = Image.new("RGBA", (1, 1), (255, 255, 255, 128))
+
+        page = how_to.lay_text_over(Image.new("RGB", (1, 1), (0, 0, 0)), text)
+
+        assert page.getpixel((0, 0)) == (188, 188, 188)
 
 
 class TestIntroPage:

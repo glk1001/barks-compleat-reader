@@ -61,7 +61,9 @@ uv run scripts/data_manifest.py --pack
 **Check the generated files are current** (the how-to's pages, the introduction's page
 and the Statistics screen's word table and clouds, each held to the hashes of its sources
 and of its files in `scripts/generated-files.json`; `validate` runs the same check;
-`--list`; after regenerating a set, `--record NAME` or `--record all`, then commit the record):
+`--list`; after regenerating a set, `--record NAME` or `--record all`, then commit the record;
+the how-to's backgrounds are in the Fantagraphics fixes directories, so a machine without
+them leaves those out of the check and cannot record the how-to):
 ```bash
 uv run scripts/generated_files.py
 uv run scripts/generated_files.py --record how-to
