@@ -550,7 +550,7 @@ class _SpecBuilder:
     def _illustrated_history_specs(self) -> tuple[NodeSpec, ...]:
         """Return the history's node with a child per chapter on disk; none without chapters."""
         root = self._reader_settings.sys_file_paths.get_illustrated_history_doc_dir()
-        chapters = find_document_chapters(root)
+        chapters = tuple(find_document_chapters(root))
         if not chapters:
             return ()
         view_state = ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE
@@ -567,6 +567,7 @@ class _SpecBuilder:
                             view_state=view_state,
                             doc_dir=chapter.doc_dir,
                             title=chapter.title,
+                            chapters=chapters,
                         ),
                         press_action=PressAction.OPEN_DOCUMENT,
                     )

@@ -58,20 +58,32 @@ class DocumentPager:
         """The current page's index, from 0."""
         return self._current_page_index
 
-    def open(self, doc_dir: Path, pages: list[Path], *, resume: bool) -> None:
-        """Open a document at its first page, or with `resume` at the page last shown.
+    @property
+    def doc_dir(self) -> Path | None:
+        """The folder of the document last opened; None before the first."""
+        return self._doc_dir
+
+    def open(
+        self, doc_dir: Path, pages: list[Path], *, resume: bool, at_last_page: bool = False
+    ) -> None:
+        """Open a document at its first page, the page last shown, or its last page.
 
         Args:
             doc_dir: The document's folder: what its page is remembered by.
             pages: The document's pages, in reading order.
             resume: Open at the page of this folder last shown, held inside the
                 document should it have fewer pages now.
+            at_last_page: Open at the last page (a turn back into the document from
+                the one after it); `resume` is then ignored.
 
         """
         self._doc_dir = doc_dir
         self._pages = list(pages)
         self._units, self._unit_idx_for_index = build_document_units(len(self._pages))
-        last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
+        if at_last_page:
+            last_index = len(self._pages) - 1
+        else:
+            last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
         self._current_page_index = max(0, min(last_index, len(self._pages) - 1))
 
     def close(self) -> None:

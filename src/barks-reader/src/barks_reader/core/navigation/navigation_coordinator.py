@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from comic_utils.comic_consts import PanelPath
 
     from barks_reader.core.comic_reader_manager import ComicReaderManager
+    from barks_reader.core.document_chapters import DocumentChapter
     from barks_reader.core.ports import (
         GroupNodePort,
         ScreenSwitcherPort,
@@ -449,6 +450,7 @@ class NavigationCoordinator:
         *,
         resume: bool = False,
         single_page: bool = False,
+        chapters: Sequence[DocumentChapter] = (),
     ) -> None:
         """Open a document in the document reader.
 
@@ -458,6 +460,9 @@ class NavigationCoordinator:
             return_view_state: The view to come back to when the document closes.
             resume: Open at the page last left on.
             single_page: Show one page at a time on the two-page spread as well.
+            chapters: The parts the document is one of, in reading order: a page turn
+                past either end of it opens the part beside it. None for a document
+                that stands alone.
 
         """
         # Before the main screen is left: a folder the data pack lacks raised from the
@@ -469,7 +474,7 @@ class NavigationCoordinator:
         self._on_active_changed(False)  # noqa: FBT003
         self._doc_reader_close_view_state = return_view_state
         self._screen_switchers.switch_to_document_reader(
-            doc_dir, title, resume=resume, single_page=single_page
+            doc_dir, title, resume=resume, single_page=single_page, chapters=chapters
         )
 
     def open_wiki(self) -> None:

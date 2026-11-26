@@ -988,7 +988,7 @@ class TestOpenDocument:
 
         nav_coord_deps["on_active_changed"].assert_called_once_with(False)  # noqa: FBT003
         nav_coord_deps["screen_switchers"].switch_to_document_reader.assert_called_once_with(
-            tmp_path, "How To", resume=True, single_page=False
+            tmp_path, "How To", resume=True, single_page=False, chapters=()
         )
 
     def test_a_document_whose_folder_is_missing_leaves_the_main_screen_as_it_is(

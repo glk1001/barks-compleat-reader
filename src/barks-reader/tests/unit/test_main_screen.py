@@ -475,6 +475,15 @@ class TestMainScreen:
         assert main_screen._active is True
         main_screen._nav_coord.on_document_closed.assert_called_once()
 
+    def test_a_chapter_the_document_reader_turns_to_is_selected_in_the_tree(
+        self, main_screen: MainScreen
+    ) -> None:
+        doc_dir = Path("/docs/illustrated-history/02-later")
+
+        main_screen.on_document_chapter_shown(doc_dir)
+
+        main_screen._tree_view_manager.select_chapter_node.assert_called_once_with(doc_dir)
+
 
 class TestMenuDotsOffScreen:
     def test_enter_off_screen_stays_in_menu_mode(self, main_screen: MainScreen) -> None:

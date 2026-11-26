@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
+    from barks_reader.core.document_chapters import DocumentChapter
     from barks_reader.core.this_month import MonthDate
 
     from .view_states import ViewStates
@@ -311,8 +312,11 @@ class DocumentDestination(Destination):
 
     `view_state` is the view the node shows, and the one the main screen returns to when
     the document closes. (`ViewRequest` never carries the folder, so it is a `Path`.)
+    `chapters` are the parts the document is one of, in reading order, which the reader
+    turns on into at either end; none for a document that stands alone.
     """
 
     view_state: ViewStates
     doc_dir: Path
     title: str
+    chapters: tuple[DocumentChapter, ...] = ()

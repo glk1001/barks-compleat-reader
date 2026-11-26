@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core.document_chapters import DocumentChapter
 from barks_reader.core.document_links import StoryLink
 from barks_reader.core.keys import KEY_LEFT, KEY_RIGHT
 from barks_reader.core.main_layout import MainLayoutMode
@@ -69,6 +70,7 @@ def screen() -> DocumentReaderScreen:
             window_manager=MagicMock(),
             on_close_screen=MagicMock(),
             on_goto_story=MagicMock(),
+            on_chapter_shown=MagicMock(),
         )
         built._menu_mode = False
         # As `_setup_action_bar_nav`, patched out above, leaves them: Close the default.
@@ -91,12 +93,15 @@ def _open(
     *,
     resume: bool = False,
     single_page: bool = False,
+    chapters: tuple[DocumentChapter, ...] = (),
 ) -> None:
     with (
         patch.object(document_reader_module, "Window"),
         patch.object(document_reader_module, "get_action_bar_title", return_value=title),
     ):
-        screen.open_document(doc_dir, title, resume=resume, single_page=single_page)
+        screen.open_document(
+            doc_dir, title, resume=resume, single_page=single_page, chapters=chapters
+        )
 
 
 class TestDocumentReaderMarkers:
@@ -1007,7 +1012,13 @@ def test_the_screen_is_built_from_its_kv_file() -> None:
         patch.object(document_reader_module, "DocumentReaderScreen", return_value=made) as cls,
     ):
         screen = document_reader_module.get_document_reader_screen(
-            "document", MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+            "document",
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
         )
 
     builder.load_file.assert_called_once_with(str(document_reader_module.DOCUMENT_READER_KV_FILE))
@@ -1022,3 +1033,180 @@ def test_a_missing_folder_opens_as_an_empty_document(
     _open(screen, tmp_path / "gone")
 
     assert screen.page_source == ""
+
+
+def _history(root: Path, *page_counts: int) -> tuple[DocumentChapter, ...]:
+    """Make a chapter folder for each count of pages, and return the chapters in order."""
+    chapters = []
+    for number, count in enumerate(page_counts, start=1):
+        doc_dir = root / f"{number:02d}"
+        doc_dir.mkdir()
+        for page in range(1, count + 1):
+            (doc_dir / f"page-{page:03d}.png").write_bytes(b"")
+        chapters.append(DocumentChapter(doc_dir, f"Chapter {number}"))
+    return tuple(chapters)
+
+
+def _turn(screen: DocumentReaderScreen, *, forward: bool) -> None:
+    """Turn a page with the bar's title made as the chapter's own, unformatted."""
+    with patch.object(
+        document_reader_module, "get_action_bar_title", side_effect=lambda _fonts, title: title
+    ):
+        if forward:
+            screen.next_page()
+        else:
+            screen.prev_page()
+
+
+class TestReadingOnThroughTheChapters:
+    def test_a_turn_past_the_last_page_opens_the_next_chapter_at_its_first(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        chapters = _history(tmp_path, 2, 3)
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+        _turn(screen, forward=True)
+        assert Path(screen.page_source) == chapters[0].doc_dir / "page-002.png"
+
+        _turn(screen, forward=True)
+
+        assert Path(screen.page_source) == chapters[1].doc_dir / "page-001.png"
+        assert screen.action_bar_title == "Chapter 2"
+        assert 'Document reader turned to chapter "Chapter 2" with 3 pages.' in loguru_sink
+        assert 'Document page 1/3: "page-001.png".' in loguru_sink
+        screen._on_chapter_shown.assert_called_once_with(chapters[1].doc_dir)
+
+    def test_a_turn_back_from_the_first_page_opens_the_chapter_before_at_its_last(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        chapters = _history(tmp_path, 3, 2)
+        _open(screen, chapters[1].doc_dir, "Chapter 2", chapters=chapters)
+
+        _turn(screen, forward=False)
+
+        assert Path(screen.page_source) == chapters[0].doc_dir / "page-003.png"
+        assert screen.action_bar_title == "Chapter 1"
+        assert 'Document reader turned to chapter "Chapter 1" with 3 pages.' in loguru_sink
+        screen._on_chapter_shown.assert_called_once_with(chapters[0].doc_dir)
+
+    def test_the_next_chapter_opens_at_its_first_page_wherever_it_was_left(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        chapters = _history(tmp_path, 1, 3)
+        _open(screen, chapters[1].doc_dir, "Chapter 2", chapters=chapters)
+        _turn(screen, forward=True)  # left on its page 2
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+
+        _turn(screen, forward=True)
+
+        assert Path(screen.page_source) == chapters[1].doc_dir / "page-001.png"
+
+    def test_the_chapter_turned_to_is_the_one_resumed(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        """Go Back after a Go to Story opens the chapter read to, at the page left."""
+        chapters = _history(tmp_path, 1, 3)
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+        _turn(screen, forward=True)
+        _turn(screen, forward=True)  # chapter 2, page 2
+        with patch.object(document_reader_module, "Window"):
+            screen.close()
+
+        _open(screen, chapters[1].doc_dir, "Chapter 2", resume=True, chapters=chapters)
+
+        assert Path(screen.page_source) == chapters[1].doc_dir / "page-002.png"
+
+    def test_the_reading_goes_on_through_every_chapter(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        chapters = _history(tmp_path, 1, 1, 1)
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+
+        _turn(screen, forward=True)
+        _turn(screen, forward=True)
+
+        assert Path(screen.page_source) == chapters[2].doc_dir / "page-001.png"
+        assert screen._on_chapter_shown.call_args_list == [
+            call(chapters[1].doc_dir),
+            call(chapters[2].doc_dir),
+        ]
+
+    def test_the_history_ends_at_its_last_page_and_starts_at_its_first(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        chapters = _history(tmp_path, 1, 1)
+        _open(screen, chapters[1].doc_dir, "Chapter 2", chapters=chapters)
+        _turn(screen, forward=True)
+        assert Path(screen.page_source) == chapters[1].doc_dir / "page-001.png"
+
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+        _turn(screen, forward=False)
+        assert Path(screen.page_source) == chapters[0].doc_dir / "page-001.png"
+        screen._on_chapter_shown.assert_not_called()
+
+    def test_a_document_that_stands_alone_stays_put_at_its_ends(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        """The chapters of a history read before are not the How To's."""
+        chapters = _history(tmp_path, 1, 1)
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+        _open(screen, chapters[0].doc_dir)
+
+        _turn(screen, forward=True)
+
+        assert Path(screen.page_source) == chapters[0].doc_dir / "page-001.png"
+        screen._on_chapter_shown.assert_not_called()
+
+    def test_a_chapter_whose_pages_have_gone_leaves_the_one_showing(
+        self, screen: DocumentReaderScreen, tmp_path: Path, loguru_sink: list[str]
+    ) -> None:
+        chapters = _history(tmp_path, 1, 1)
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+        (chapters[1].doc_dir / "page-001.png").unlink()
+
+        _turn(screen, forward=True)
+
+        assert Path(screen.page_source) == chapters[0].doc_dir / "page-001.png"
+        assert screen.action_bar_title == "Chapter 1"
+        assert (
+            f'Document "Chapter 2" not opened: no pages in "{chapters[1].doc_dir}".' in loguru_sink
+        )
+        screen._on_chapter_shown.assert_not_called()
+
+    def test_a_closed_reader_turns_to_no_chapter(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        chapters = _history(tmp_path, 1, 1)
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+        with patch.object(document_reader_module, "Window"):
+            screen.close()
+
+        _turn(screen, forward=True)
+
+        # The page it closed on is still the one drawn: nothing was opened under it.
+        assert Path(screen.page_source) == chapters[0].doc_dir / "page-001.png"
+        assert screen._pager.is_open is False
+        screen._on_chapter_shown.assert_not_called()
+
+    def test_on_the_spread_a_turn_back_shows_the_last_pair_of_the_chapter_before(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        chapters = _history(tmp_path, 4, 2)
+        screen.layout_mode = MainLayoutMode.SPREAD.value
+        _open(screen, chapters[1].doc_dir, "Chapter 2", chapters=chapters)
+
+        _turn(screen, forward=False)
+
+        assert Path(screen.page_source) == chapters[0].doc_dir / "page-003.png"
+        assert Path(screen.right_page_source) == chapters[0].doc_dir / "page-004.png"
+
+    def test_on_the_spread_a_turn_past_an_odd_last_page_starts_the_next_chapters_pairs(
+        self, screen: DocumentReaderScreen, tmp_path: Path
+    ) -> None:
+        chapters = _history(tmp_path, 1, 2)
+        screen.layout_mode = MainLayoutMode.SPREAD.value
+        _open(screen, chapters[0].doc_dir, "Chapter 1", chapters=chapters)
+
+        _turn(screen, forward=True)
+
+        assert Path(screen.page_source) == chapters[1].doc_dir / "page-001.png"
+        assert Path(screen.right_page_source) == chapters[1].doc_dir / "page-002.png"

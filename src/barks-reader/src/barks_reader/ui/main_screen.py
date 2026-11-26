@@ -1188,6 +1188,15 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._is_active(active=True)
         self._nav_coord.on_document_closed()
 
+    def on_document_chapter_shown(self, doc_dir: Path) -> None:
+        """Move the tree's selection to the chapter the document reader turned to.
+
+        Args:
+            doc_dir: The folder of the chapter now on show.
+
+        """
+        self._tree_view_manager.select_chapter_node(doc_dir)
+
     def on_checkbox_custom_image_types_changed(
         self, _instance: Widget, use_custom_images: bool
     ) -> None:

@@ -34,6 +34,7 @@ from .tree_view_nodes import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
+    from pathlib import Path
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from kivy.uix.button import Button
@@ -50,7 +51,13 @@ if TYPE_CHECKING:
 def _open_chapter(nav: NavigationCoordinator, destination: Destination | None) -> None:
     """Open an illustrated-history chapter at the page it was last left on."""
     assert isinstance(destination, DocumentDestination)
-    nav.open_document(destination.doc_dir, destination.title, destination.view_state, resume=True)
+    nav.open_document(
+        destination.doc_dir,
+        destination.title,
+        destination.view_state,
+        resume=True,
+        chapters=destination.chapters,
+    )
 
 
 # How each full-window screen that Go Back opens again is opened; which nodes these
@@ -572,6 +579,40 @@ class TreeViewManager:
     def on_document_node_pressed(self, node: ButtonTreeViewNode) -> None:
         """Open a document node's folder of pages (an illustrated-history chapter)."""
         _open_chapter(self._nav, node.destination)
+
+    def select_chapter_node(self, doc_dir: Path) -> None:
+        """Move the selection to the chapter in `doc_dir`, which the document reader turned to.
+
+        The chapter is a sibling of the selected one, the chapter the reader was opened
+        on. The move is a step: closing the reader then lands on the chapter read last,
+        and Go Back after its Go to Story opens that one again, with no way back to the
+        chapters read through on the way.
+
+        Args:
+            doc_dir: The folder of the chapter now on show.
+
+        """
+        selected = self._tree_view_screen.get_selected_node()
+        siblings = (
+            [] if selected is None or selected.parent_node is None else (selected.parent_node.nodes)
+        )
+        node = next(
+            (
+                n
+                for n in siblings
+                if isinstance(n, BaseTreeViewNode)
+                and isinstance(n.destination, DocumentDestination)
+                and n.destination.doc_dir == doc_dir
+            ),
+            None,
+        )
+        if node is None:
+            logger.warning(log_markers.DOCUMENT_CHAPTER_NODE_MISSING.format(path=doc_dir))
+            return
+        with self._tree.stepping():
+            self._tree_view_screen.select_node(node)
+        self.scroll_to_node(node)
+        logger.info(log_markers.DOCUMENT_CHAPTER_NODE_SELECTED.format(name=node.get_name()))
 
     def on_article_node_pressed(self, node: ButtonTreeViewNode) -> None:
         """Consolidate handling of all simple article nodes."""

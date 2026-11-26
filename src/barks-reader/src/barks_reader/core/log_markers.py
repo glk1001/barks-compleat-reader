@@ -291,6 +291,10 @@ DOCUMENT_LINKS_UNREADABLE: Final = 'Document story links "{path}" unreadable: {e
 DOCUMENT_LINK_SKIPPED: Final = 'Document story links "{path}": skipped {entry}.'
 DOCUMENT_GOTO_STORY: Final = 'Document goto story: "{name}", page {page}.'
 DOCUMENT_NOT_OPENED: Final = 'Document "{title}" not opened: no pages in "{path}".'
+# A page turn past a chapter's end, or back from its start, opened the chapter beside it.
+DOCUMENT_CHAPTER_TURNED: Final = 'Document reader turned to chapter "{title}" with {pages} pages.'
+DOCUMENT_CHAPTER_NODE_SELECTED: Final = 'Tree follows the document reader to chapter "{name}".'
+DOCUMENT_CHAPTER_NODE_MISSING: Final = 'No tree node for the chapter in "{path}": tree left alone.'
 DOCUMENT_CHAPTER_NO_PAGES: Final = 'Document chapter "{path}" has no pages: left out.'
 DOCUMENT_CHAPTER_UNTITLED: Final = (
     'Document chapter info "{path}" unreadable ({error}): titled by its folder.'

@@ -18,7 +18,11 @@ from kivy.uix.button import Button
 from loguru import logger
 
 from barks_reader.core import log_markers
-from barks_reader.core.document_chapters import list_document_pages
+from barks_reader.core.document_chapters import (
+    DocumentChapter,
+    adjacent_chapter,
+    list_document_pages,
+)
 from barks_reader.core.document_links import StoryLink, load_story_links
 from barks_reader.core.document_pager import DocumentPager
 from barks_reader.core.main_layout import MainLayoutMode
@@ -45,7 +49,7 @@ from .tap_targets import Rect, window_rect
 from .ui_helpers import is_tap
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from barks_fantagraphics.barks_titles import Titles
     from kivy.input import MotionEvent
@@ -75,6 +79,12 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
     A page may name the stories its figures come from (``core.document_links``). "Go to
     Story" then closes the document and selects the story with the figure's page offered: at
     once for one story, from a list for several. The button is greyed on a page with none.
+
+    A document opened as one of several chapters (the illustrated history's) reads on
+    through them: a turn past its last page opens the next chapter at its first page,
+    and a turn back from its first page the chapter before at its last, whatever page
+    either was last left on. The bar's title changes with it, and the tree is told
+    (``on_chapter_shown``), so the document closes onto the chapter it was read to.
 
     Each document's last page is kept until the app quits, so one opened to resume (an
     illustrated-history chapter, from its node or from Go Back after a story) comes back at
@@ -119,6 +129,7 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         window_manager: WindowManager,
         on_close_screen: Callable[[], None],
         on_goto_story: GotoStory,
+        on_chapter_shown: Callable[[Path], None],
         **kwargs: str,
     ) -> None:
         super().__init__(**kwargs)
@@ -126,6 +137,10 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         self._font_manager = font_manager
         self._on_close_screen = on_close_screen
         self._on_goto_story = on_goto_story
+        self._on_chapter_shown = on_chapter_shown
+        # The chapters the open document is one of, in reading order; none when it
+        # stands alone.
+        self._chapters: tuple[DocumentChapter, ...] = ()
 
         # The window-mode engine is shared with the main and comic screens (one geometry
         # store); this controller carries this screen's completion callbacks.
@@ -167,7 +182,13 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         return self.ids.doc_action_bar.drag_region
 
     def open_document(
-        self, doc_dir: Path, title: str, *, resume: bool = False, single_page: bool = False
+        self,
+        doc_dir: Path,
+        title: str,
+        *,
+        resume: bool = False,
+        single_page: bool = False,
+        chapters: Sequence[DocumentChapter] = (),
     ) -> None:
         """Open a folder of page images at its first page, or with `resume` at its last one.
 
@@ -176,9 +197,12 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
             title: The title shown in the action bar.
             resume: Open at the page the document was last left on in this session.
             single_page: Show one page at a time on the two-page spread as well.
+            chapters: The chapters the document is one of, in reading order, to turn
+                on into at either end; none for a document that stands alone.
 
         """
         self.single_page = single_page
+        self._chapters = tuple(chapters)
         self.action_bar_title = get_action_bar_title(self._font_manager, title)
         # The screen outlives its documents: each opens with Close the menu's default,
         # not the button last used in the one before.
@@ -239,14 +263,44 @@ class DocumentReaderScreen(ReaderScreen, ReaderCloseMixin, DropdownNavMixin, Act
         self.has_story_links = bool(self._story_links)
 
     def next_page(self) -> None:
-        """Show the page after those showing, if there is one."""
+        """Show the page after those showing, or the next chapter's first; else stay put."""
         if self._pager.next_page(two_up=self._shows_two_up()):
             self._update_page_source()
+        else:
+            self._turn_to_chapter(1)
 
     def prev_page(self) -> None:
-        """Turn back a page, or stay put on the first."""
+        """Turn back a page, or to the last page of the chapter before; else stay put."""
         if self._pager.prev_page():
             self._update_page_source()
+        else:
+            self._turn_to_chapter(-1)
+
+    def _turn_to_chapter(self, step: int) -> None:
+        """Open the chapter `step` on from the one showing, if there is one with pages."""
+        doc_dir = self._pager.doc_dir
+        if not self._pager.is_open or doc_dir is None:
+            return
+        chapter = adjacent_chapter(self._chapters, doc_dir, step)
+        if chapter is None:
+            return
+        pages = list_document_pages(chapter.doc_dir)
+        if not pages:
+            # Gone since the tree was built: the chapter showing stays.
+            logger.error(
+                log_markers.DOCUMENT_NOT_OPENED.format(title=chapter.title, path=chapter.doc_dir)
+            )
+            return
+
+        self.action_bar_title = get_action_bar_title(self._font_manager, chapter.title)
+        self._pager.open(chapter.doc_dir, pages, resume=False, at_last_page=step < 0)
+        logger.info(
+            log_markers.DOCUMENT_CHAPTER_TURNED.format(
+                title=chapter.title, pages=self._pager.page_count
+            )
+        )
+        self._update_page_source()
+        self._on_chapter_shown(chapter.doc_dir)
 
     def tap_target_regions(self) -> dict[str, Rect]:
         """Return the page box's two halves, back and forward, for a GUI test to tap.
@@ -540,6 +594,7 @@ def get_document_reader_screen(
     window_manager: WindowManager,
     on_close_screen: Callable[[], None],
     on_goto_story: GotoStory,
+    on_chapter_shown: Callable[[Path], None],
 ) -> DocumentReaderScreen:
     """Load the document reader's kv file and build its screen.
 
@@ -550,6 +605,7 @@ def get_document_reader_screen(
         window_manager: The window's fullscreen and size state.
         on_close_screen: Called once the reader has closed.
         on_goto_story: Called to go to a story a document page lists.
+        on_chapter_shown: Called with a chapter's folder when a page turn opens it.
 
     Returns:
         The screen, ready to add to the screen manager.
@@ -563,5 +619,6 @@ def get_document_reader_screen(
         window_manager,
         on_close_screen,
         on_goto_story,
+        on_chapter_shown,
         name=screen_name,
     )

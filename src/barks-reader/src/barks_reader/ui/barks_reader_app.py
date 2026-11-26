@@ -430,6 +430,7 @@ class BarksReaderApp(App):
             window_manager,
             self._screen_switchers.close_document_reader,
             self._main_screen.goto_title_from_document,
+            self._main_screen.on_document_chapter_shown,
         )
 
         logger.debug("Instantiating wiki reader screen...")

@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.reader_screens
 import pytest
 from barks_reader.core import screen_transition
+from barks_reader.core.document_chapters import DocumentChapter
 from barks_reader.core.screen_transition import SCREEN_TRANSITION_ENV_VAR
 from barks_reader.ui.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
@@ -320,7 +321,27 @@ class TestReaderScreenManager:
         open_document_mock = cast(
             "MagicMock", mock_reader_screens.document_reader_screen.open_document
         )
-        open_document_mock.assert_called_with(doc_dir, "Test Title", resume=True, single_page=True)
+        open_document_mock.assert_called_with(
+            doc_dir, "Test Title", resume=True, single_page=True, chapters=()
+        )
+
+    def test_a_chapter_is_opened_with_the_chapters_it_is_one_of(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+    ) -> None:
+        reader_screen_manager.add_screens(mock_reader_screens)
+        doc_dir = Path("/history/01")
+        chapters = (DocumentChapter(doc_dir, "One"), DocumentChapter(Path("/history/02"), "Two"))
+
+        reader_screen_manager._switch_to_document_reader(doc_dir, "One", chapters=chapters)
+
+        open_document_mock = cast(
+            "MagicMock", mock_reader_screens.document_reader_screen.open_document
+        )
+        open_document_mock.assert_called_with(
+            doc_dir, "One", resume=False, single_page=False, chapters=chapters
+        )
 
     def test_close_document_reader(
         self,

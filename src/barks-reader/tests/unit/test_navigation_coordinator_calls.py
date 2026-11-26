@@ -18,6 +18,7 @@ from barks_fantagraphics.comic_book_info import COVERS_SET, ONE_PAGERS
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import log_markers
+from barks_reader.core.document_chapters import DocumentChapter
 from barks_reader.core.goto_page import GotoPageOffer, goto_page_after_reading
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation import NavigationCoordinator, TitleTarget
@@ -397,7 +398,22 @@ class TestOpeningADocument:
     ) -> None:
         nav_coord.open_document(doc_dir, "How To")
         switch = nav_coord_deps["screen_switchers"].switch_to_document_reader
-        switch.assert_called_once_with(doc_dir, "How To", resume=False, single_page=False)
+        switch.assert_called_once_with(
+            doc_dir, "How To", resume=False, single_page=False, chapters=()
+        )
+
+    def test_a_chapter_is_opened_with_the_chapters_it_is_one_of(
+        self,
+        nav_coord: NavigationCoordinator,
+        nav_coord_deps: dict[str, MagicMock],
+        doc_dir: Path,
+    ) -> None:
+        chapters = (DocumentChapter(doc_dir, "One"), DocumentChapter(doc_dir / "2", "Two"))
+        nav_coord.open_document(doc_dir, "One", resume=True, chapters=chapters)
+        switch = nav_coord_deps["screen_switchers"].switch_to_document_reader
+        switch.assert_called_once_with(
+            doc_dir, "One", resume=True, single_page=False, chapters=chapters
+        )
 
     def test_closed_it_shows_the_view_it_was_given(
         self,

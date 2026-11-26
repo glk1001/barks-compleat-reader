@@ -235,3 +235,38 @@ class TestClose:
         pager.view(two_up=True)
         pager.open(DOC, _pages(7), resume=True)
         assert _shown(pager, two_up=False) == (3, None)
+
+
+class TestOpeningAtTheLastPage:
+    """A turn back from a chapter's first page opens the chapter before at its end."""
+
+    def test_it_opens_on_the_last_page_whatever_page_was_last_shown(self) -> None:
+        pager = _opened(5)
+        pager.view(two_up=False)  # page 1 remembered
+        pager.open(DOC, _pages(5), resume=True, at_last_page=True)
+        assert _shown(pager, two_up=False) == (4, None)
+        assert pager.next_page(two_up=False) is False
+
+    def test_two_up_it_shows_the_last_pair(self) -> None:
+        pager = DocumentPager()
+        pager.open(DOC, _pages(4), resume=False, at_last_page=True)
+        assert _shown(pager, two_up=True) == (2, 3)
+
+    def test_two_up_an_odd_last_page_shows_alone(self) -> None:
+        pager = DocumentPager()
+        pager.open(DOC, _pages(5), resume=False, at_last_page=True)
+        assert _shown(pager, two_up=True) == (4, None)
+
+    def test_a_document_with_no_pages_is_still_empty(self) -> None:
+        pager = DocumentPager()
+        pager.open(DOC, [], resume=False, at_last_page=True)
+        assert pager.is_open is False
+        assert pager.current_page_index == 0
+
+
+def test_the_pager_names_the_folder_last_opened() -> None:
+    pager = DocumentPager()
+    assert pager.doc_dir is None
+    pager.open(DOC, _pages(1), resume=False)
+    pager.open(OTHER_DOC, _pages(1, OTHER_DOC), resume=False)
+    assert pager.doc_dir == OTHER_DOC

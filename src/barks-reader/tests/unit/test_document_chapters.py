@@ -11,6 +11,7 @@ import pytest
 from barks_reader.core import log_markers
 from barks_reader.core.document_chapters import (
     DocumentChapter,
+    adjacent_chapter,
     find_document_chapters,
     list_document_pages,
 )
@@ -153,3 +154,21 @@ class TestListDocumentPages:
             )
             in loguru_sink
         )
+
+
+_PARTS = tuple(DocumentChapter(Path(f"history/0{n}"), f"Part {n}") for n in (1, 2, 3))
+
+
+class TestAdjacentChapter:
+    def test_the_next_and_the_one_before_are_the_parts_beside_it(self) -> None:
+        assert adjacent_chapter(_PARTS, _PARTS[1].doc_dir, 1) == _PARTS[2]
+        assert adjacent_chapter(_PARTS, _PARTS[1].doc_dir, -1) == _PARTS[0]
+
+    def test_nothing_follows_the_last_part_or_comes_before_the_first(self) -> None:
+        """Before the first is not the last: a negative index would wrap round to it."""
+        assert adjacent_chapter(_PARTS, _PARTS[2].doc_dir, 1) is None
+        assert adjacent_chapter(_PARTS, _PARTS[0].doc_dir, -1) is None
+
+    def test_a_folder_that_is_no_part_has_no_parts_beside_it(self) -> None:
+        assert adjacent_chapter(_PARTS, Path("How To"), 1) is None
+        assert adjacent_chapter((), _PARTS[0].doc_dir, 1) is None

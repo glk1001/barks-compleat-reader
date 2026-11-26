@@ -39,6 +39,7 @@ from barks_fantagraphics.fanta_comics_info import (
     get_fanta_info,
     get_num_comic_book_titles,
 )
+from barks_reader.core.document_chapters import DocumentChapter
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN
 from barks_reader.core.navigation import (
@@ -1251,6 +1252,10 @@ class TestSearchAppendixIndex:
             view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
             doc_dir=root / "03-learning",
             title="Learning the Medium",
+            chapters=(
+                DocumentChapter(root / "00-intro", "Introduction"),
+                DocumentChapter(root / "03-learning", "Learning the Medium"),
+            ),
         )
 
     def test_index_without_wiki_bundle(self, specs: tuple[NodeSpec, ...]) -> None:

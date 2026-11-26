@@ -10,6 +10,10 @@ The parts come in folder-name order. A folder with no page images is left out, a
 a warning, is one that cannot be listed; one with no readable ``document.json`` is titled by
 its folder name, with a warning. A missing root, or one that cannot be listed, means no
 parts: the folder is optional, so it is not among the reader's required directories.
+
+The parts read as one book: a page turn past a part's last page opens the next part, and
+one back from its first page the part before (``adjacent_chapter``, which the document
+reader asks).
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from loguru import logger
 from . import log_markers
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 PAGE_IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png"})
@@ -97,6 +102,26 @@ def find_document_chapters(root: Path) -> list[DocumentChapter]:
             continue
         chapters.append(DocumentChapter(doc_dir, _chapter_title(doc_dir)))
     return chapters
+
+
+def adjacent_chapter(
+    chapters: Sequence[DocumentChapter], doc_dir: Path, step: int
+) -> DocumentChapter | None:
+    """Return the part `step` places on from the one in `doc_dir`, if there is one.
+
+    Args:
+        chapters: The document's parts, in reading order.
+        doc_dir: The folder of the part to step from.
+        step: How many parts on: 1 for the next, -1 for the one before.
+
+    Returns:
+        The part, or None when `doc_dir` is not one of the parts or the step leaves them.
+
+    """
+    index = next((i for i, c in enumerate(chapters) if c.doc_dir == doc_dir), None)
+    if index is None or not 0 <= index + step < len(chapters):
+        return None
+    return chapters[index + step]
 
 
 def _chapter_title(doc_dir: Path) -> str:

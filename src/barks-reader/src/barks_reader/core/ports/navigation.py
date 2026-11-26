@@ -14,12 +14,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
 
+    from barks_reader.core.document_chapters import DocumentChapter
     from barks_reader.core.goto_page import GotoPageOffer
     from barks_reader.core.navigation.view_states import ViewStates
 
@@ -102,11 +103,18 @@ class SwitchToDocumentReader(Protocol):
     """Open a folder of page images in the document reader.
 
     With `resume` it opens at its last page; with `single_page` it shows one page at a
-    time on the two-page spread as well.
+    time on the two-page spread as well. `chapters` are the parts it is one of, which
+    the reader turns on into at either end.
     """
 
     def __call__(
-        self, doc_dir: Path, title: str, *, resume: bool = False, single_page: bool = False
+        self,
+        doc_dir: Path,
+        title: str,
+        *,
+        resume: bool = False,
+        single_page: bool = False,
+        chapters: Sequence[DocumentChapter] = (),
     ) -> None:
         """Open the folder `doc_dir` under `title`."""
         ...

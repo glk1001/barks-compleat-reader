@@ -26,11 +26,12 @@ from barks_reader.core.screen_transition import pick_transition
 from .platform_window_utils import set_titlebar_drag_region
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     from kivy.uix.widget import Widget
 
+    from barks_reader.core.document_chapters import DocumentChapter
     from barks_reader.core.ports import SwitchToDocumentReader
 
     from .corpus_stats_screen import CorpusStatsScreen
@@ -329,7 +330,13 @@ class ReaderScreenManager:
         logger.info(log_markers.MAIN_SCREEN_ACTIVE.format(origin=origin))
 
     def _switch_to_document_reader(
-        self, doc_dir: Path, title: str, *, resume: bool = False, single_page: bool = False
+        self,
+        doc_dir: Path,
+        title: str,
+        *,
+        resume: bool = False,
+        single_page: bool = False,
+        chapters: Sequence[DocumentChapter] = (),
     ) -> None:
         logger.debug(log_markers.SWITCHING_TO_DOCUMENT_READER.format(title=title))
         assert self._reader_screens
@@ -338,7 +345,7 @@ class ReaderScreenManager:
             self._reader_screens.main_screen.app_icon_filepath
         )
         self._reader_screens.document_reader_screen.open_document(
-            doc_dir, title, resume=resume, single_page=single_page
+            doc_dir, title, resume=resume, single_page=single_page, chapters=chapters
         )
         self._hand_window_drag_to(self._reader_screens.document_reader_screen)
         self._screen_manager.current = DOCUMENT_READER_SCREEN

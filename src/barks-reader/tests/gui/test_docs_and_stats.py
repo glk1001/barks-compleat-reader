@@ -7,6 +7,7 @@ reader.
 from __future__ import annotations
 
 import re
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,11 +16,16 @@ from barks_gui import expected, nodes
 from barks_gui.logs import fields_of, last_field
 from barks_gui.steps import DOCUMENT_ENTERED, MAIN_FROM_DOCUMENT, open_document
 from barks_reader.core import log_markers as markers
+from barks_reader.core.display_unit import build_document_units
+from barks_reader.core.document_chapters import list_document_pages
 from barks_reader.core.log_markers import pattern
 from barks_reader.core.main_layout import MainLayoutMode
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from barks_gui.harness import AppBoot
+    from barks_reader.core.document_chapters import DocumentChapter
     from barks_reader.core.document_links import StoryLink
     from gui_driver import Driver
 
@@ -269,6 +275,60 @@ def test_go_to_story_then_go_back_returns_to_the_page(boot: AppBoot) -> None:
     d.key_then_wait(d.MENU_ENTERED, "Escape")
     with d.expect(markers.DOCUMENT_CLOSING), d.expect(MAIN_FROM_DOCUMENT):
         d.key("Return")
+
+
+def _page_turns(chapter: DocumentChapter, *, paired: bool) -> list[int]:
+    """Return the page each Right logs on the way from a chapter's first page to its last."""
+    count = len(list_document_pages(chapter.doc_dir))
+    if not paired:
+        return list(range(2, count + 1))
+    units, _ = build_document_units(count)
+    return [unit.left_page_index + 1 for unit in units[1:]]
+
+
+@contextmanager
+def _turns_to(d: Driver, chapter: DocumentChapter, *, page: int) -> Generator[None]:
+    """Expect the key pressed inside to open `chapter` at `page`, the tree following."""
+    with (
+        d.expect(pattern(markers.DOCUMENT_CHAPTER_TURNED, title=chapter.title)),
+        d.expect(pattern(markers.DOCUMENT_PAGE, page=page)),
+        d.expect(pattern(markers.DOCUMENT_CHAPTER_NODE_SELECTED, name=chapter.title)),
+    ):
+        yield
+
+
+def test_the_chapters_read_on_from_one_to_the_next(boot: AppBoot) -> None:
+    """Right past a chapter's last page opens the next; Left from its first, the one before.
+
+    The tree follows, so closing the reader lands on the chapter read to.
+    """
+    chapters = expected.illustrated_history_chapters()
+    if len(chapters) < CHAPTERS_FOR_A_TURN:
+        pytest.skip(f"fewer than two history chapters here: {expected.illustrated_history_dir()}")
+    first, second = chapters[0], chapters[1]
+    d = boot(nodes.INTRODUCTION)
+    paired = last_field(d, markers.MAIN_LAYOUT_MODE, "mode") == MainLayoutMode.SPREAD.value
+    turns = _page_turns(first, paired=paired)
+    d.open_branch(nodes.ILLUSTRATED_HISTORY)
+    open_document(d, first.title)
+    for page in turns:
+        d.key_then_wait(pattern(markers.DOCUMENT_PAGE, page=page), "Right")
+
+    with _turns_to(d, second, page=1):
+        d.key("Right")
+    # Back into the first chapter at its last page.
+    with _turns_to(d, first, page=turns[-1] if turns else 1):
+        d.key("Left")
+    with _turns_to(d, second, page=1):
+        d.key("Right")
+
+    d.key_then_wait(d.MENU_ENTERED, "Escape")
+    with d.expect(markers.DOCUMENT_CLOSING), d.expect(MAIN_FROM_DOCUMENT):
+        d.key("Return")
+    assert d.current_node() == second.title
+
+
+CHAPTERS_FOR_A_TURN = 2
 
 
 def test_several_stories_on_a_page_are_picked_from_a_list(boot: AppBoot) -> None:

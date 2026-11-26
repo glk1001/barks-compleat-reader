@@ -11,6 +11,7 @@ import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import log_markers
+from barks_reader.core.document_chapters import DocumentChapter
 from barks_reader.core.navigation import (
     ArticleDestination,
     BackHistory,
@@ -343,6 +344,7 @@ class TestTreeViewManager:
             "Becoming Himself",
             ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
             resume=True,
+            chapters=(),
         )
         mock_setup.assert_not_called()
 
@@ -920,6 +922,33 @@ class TestTreeViewManager:
             "Becoming Himself",
             ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
             resume=True,
+            chapters=(),
+        )
+
+    def test_a_chapter_node_opens_with_the_chapters_it_is_one_of(
+        self, tree_view_manager: TreeViewManager, tree_view_manager_deps: dict[str, MagicMock]
+    ) -> None:
+        doc_dir = Path("/docs/illustrated-history/04-becoming-himself")
+        chapters = (
+            DocumentChapter(Path("/docs/illustrated-history/03-learning"), "Learning"),
+            DocumentChapter(doc_dir, "Becoming Himself"),
+        )
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = DocumentDestination(
+            view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+            doc_dir=doc_dir,
+            title="Becoming Himself",
+            chapters=chapters,
+        )
+
+        tree_view_manager.on_document_node_pressed(node)
+
+        tree_view_manager_deps["nav_coordinator"].open_document.assert_called_with(
+            doc_dir,
+            "Becoming Himself",
+            ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+            resume=True,
+            chapters=chapters,
         )
 
     def test_the_intro_node_opens_the_introduction_and_comes_back_to_itself(
@@ -1519,3 +1548,73 @@ class TestWhatOnlyTheGuiTestsRan:
 
         assert tree_view_manager._child_to_open_on(node) is None
         assert tree_view_manager._auto_select_target_node(node) is None
+
+
+def _chapter_node(name: str) -> MagicMock:
+    node = MagicMock(spec=ButtonTreeViewNode)
+    node.get_name.return_value = name
+    node.destination = DocumentDestination(
+        view_state=ViewStates.ON_INTRO_ILLUSTRATED_HISTORY_NODE,
+        doc_dir=Path("/docs/illustrated-history") / name,
+        title=name,
+    )
+    return node
+
+
+class TestSelectChapterNode:
+    """The tree follows the document reader as it reads on from chapter to chapter."""
+
+    def test_the_selection_steps_to_the_chapter_turned_to(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        loguru_sink: list[str],
+    ) -> None:
+        first, second = _chapter_node("01-early"), _chapter_node("02-later")
+        history_node = MagicMock(spec=ButtonTreeViewNode)
+        history_node.nodes = [first, second]
+        first.parent_node = second.parent_node = history_node
+        tree_screen = screen_mocks["tree_view"]
+        tree_screen.get_selected_node.return_value = first
+        mock_tree = tree_screen.ids.reader_tree_view
+        in_step: list[bool] = []
+        stepping = mock_tree.stepping.return_value
+        tree_screen.select_node.side_effect = lambda _node: in_step.append(
+            stepping.__enter__.called and not stepping.__exit__.called
+        )
+
+        with patch.object(tree_view_manager, "scroll_to_node") as mock_scroll:
+            tree_view_manager.select_chapter_node(second.destination.doc_dir)
+
+        tree_screen.select_node.assert_called_once_with(second)
+        # A step, not a jump: Go Back does not walk back through the chapters read.
+        assert in_step == [True]
+        mock_scroll.assert_called_once_with(second)
+        assert 'Tree follows the document reader to chapter "02-later".' in loguru_sink
+
+    @pytest.mark.parametrize("selected", ["none", "orphan", "stranger"])
+    def test_a_chapter_with_no_node_beside_the_selected_one_leaves_the_tree_alone(
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        loguru_sink: list[str],
+        selected: str,
+    ) -> None:
+        tree_screen = screen_mocks["tree_view"]
+        node = _chapter_node("01-early")
+        if selected == "none":
+            tree_screen.get_selected_node.return_value = None
+        elif selected == "orphan":
+            node.parent_node = None
+            tree_screen.get_selected_node.return_value = node
+        else:
+            parent = MagicMock(spec=ButtonTreeViewNode)
+            parent.nodes = [node, MagicMock(spec=ButtonTreeViewNode, destination=None)]
+            node.parent_node = parent
+            tree_screen.get_selected_node.return_value = node
+        gone = Path("/docs/illustrated-history/09-gone")
+
+        tree_view_manager.select_chapter_node(gone)
+
+        tree_screen.select_node.assert_not_called()
+        assert f'No tree node for the chapter in "{gone}": tree left alone.' in loguru_sink
