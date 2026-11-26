@@ -35,6 +35,9 @@ sudo apt install build-essential git rsync gh tmux \
 | `xclip` | Kivy's X clipboard (`xsel` also does). Without either, Kivy logs a critical line at every boot and every GUI test fails its clean-log check. |
 | `xdotool` | The smoke stage presses Escape in the built app with it. `gui-probe.sh doctor` calls it optional, since the GUI tests use `xte`, but the overnight smoke stage fails without it. |
 
+Only the machine the app's icons are redrawn on also needs `inkscape`, which
+`scripts/render_reader_icons.py` renders their SVG sources with.
+
 A desktop install already has the OpenGL and input libraries Kivy loads. On a server or
 minimal image, add `libgl1 libmtdev1t64`, as CI does.
 

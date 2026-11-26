@@ -24,7 +24,7 @@ By keyboard: <kbd>Enter</kbd> on the story, then <kbd>Enter</kbd> again on the p
 
 A comic read in fullscreen fills the screen, and the reader's menu bar is hidden.
 **Tap or click anywhere in the top tenth of the screen to bring the bar down.** Its
-<img src="icon-close-orig.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
+<img src="icon-close.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
 button, at the far right, takes you back to the main screen. Tap just below the bar to put it
 away again.
 
@@ -88,23 +88,23 @@ describe the single page: on the spread, what sits *below* the tree sits *beside
 The bar across the top of the main screen contains:
 
 - **App icon** — on the far left, clickable; go to the story associated with icon image.
-- <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-fullscreen.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggles between windowed and fullscreen mode.
-- <img src="icon-back-arrow-orig.png" alt="[b]Back[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-back-arrow.png" alt="[b]Back[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — returns to the previously selected navigation node.
-- <img src="icon-collapse-black.png" alt="[b]Collapse[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-collapse.png" alt="[b]Collapse[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — collapses all expanded nodes in the navigation tree.
-- <img src="icon-search-black.png" alt="[b]Search[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-search.png" alt="[b]Search[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — on the two-page spread only: collapses the tree and opens <strong>Search</strong> on the search you
   used last (<em>Titles</em> until you use another), ready to type.
-- <img src="icon-refresh-arrow-orig.png" alt="[b]Refresh[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-refresh-arrow.png" alt="[b]Refresh[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — randomly refreshes the background and panel images.
-- <img src="icon-menu-dots-too-big-black.png" alt="[b]Menu[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-menu-dots.png" alt="[b]Menu[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — opens a dropdown containing
     <strong><em>Settings,</em></strong> <strong><em>How To,</em></strong> <strong><em>Update Data,</em></strong>
     and <strong><em>About.</em></strong> <em>Update Data</em> looks for newer data packs placed beside the app
     and offers to install them (or says why there is nothing to install).
-- <img src="icon-power-black.png" alt="[b]Quit[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-power.png" alt="[b]Quit[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — a power button at the far right, set apart in the window corner; quits the application.
 
 ### Navigation Tree (left panel)
@@ -198,7 +198,7 @@ the comic reader's top bar shows the same two lines. Contains:
   Wiki; opens that story's page in the Wiki Reader.
 - An **override toggle** (optional) — lets you turn off the censorship fix for this specific story.
 - A **peek toggle**
-  <img src="icon-eye-peek-black.png" alt="[b]Peek[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  <img src="icon-eye-open.png" alt="[b]Peek[/b]" style="position: relative; top: 3px;" width="15" height="15">
   (top right of the bottom view, on the single page) — a themed eye that hides the title info to
   reveal just the art behind it. The two-page spread has no eye: there the art is a picture of
   its own, with nothing over it. The eye is open while the info panel is showing and slashed once it is hidden, and it
@@ -251,17 +251,17 @@ From the keyboard, the **up arrow key** or <kbd>Esc</kbd> shows the bar with a b
 <kbd>Left</kbd> <kbd>Right</kbd> move between the buttons, <kbd>Enter</kbd> presses one, and <kbd>Esc</kbd> puts the bar
 away again. In windowed mode the bar is always shown. It contains:
 
-- <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-fullscreen.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggles between windowed and fullscreen mode.
-- <img src="icon-double-page-spread-black.png" alt="[b]Double Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-double-page.png" alt="[b]Double Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggle double page mode for this comic (a comic opens two-up on the two-page spread).
-- <img src="icon-goto-start-orig.png" alt="[b]Go to Start[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-goto-start.png" alt="[b]Go to Start[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — jump to the first page.
-- <img src="icon-goto-end-orig.png" alt="[b]Go to End[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-goto-end.png" alt="[b]Go to End[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — jump to the last page.
-- <img src="icon-goto-orig-2.png" alt="[b]Go to Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-goto.png" alt="[b]Go to Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — opens a page selector showing all pages in the comic.
-- <img src="icon-close-orig.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-close.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — at the far right; return to the main screen.
 
 ---

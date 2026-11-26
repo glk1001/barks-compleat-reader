@@ -59,9 +59,6 @@ class _Asset(Enum):
         "Reader Icons/ActionBar Icons/icon-refresh-arrow.png",
         _Need.REQUIRED_FILE,
     )
-    SETTINGS_ICON_PATH = _Where(
-        "Reader Icons/ActionBar Icons/icon-settings.png", _Need.REQUIRED_FILE
-    )
     MENU_DOTS_ICON_PATH = _Where(
         "Reader Icons/ActionBar Icons/icon-menu-dots.png", _Need.REQUIRED_FILE
     )
@@ -253,10 +250,6 @@ class SystemFilePaths:
     def get_barks_reader_refresh_arrow_icon_file(self) -> Path:
         """Return the refresh-arrow icon of the main action bar's Change Pics button."""
         return self._path(_Asset.REFRESH_ARROW_ICON_PATH)
-
-    def get_barks_reader_settings_icon_file(self) -> Path:
-        """Return the action bar's settings icon."""
-        return self._path(_Asset.SETTINGS_ICON_PATH)
 
     def get_barks_reader_menu_dots_icon_file(self) -> Path:
         """Return the action bar's menu icon, three dots."""

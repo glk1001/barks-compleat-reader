@@ -3,7 +3,8 @@
 
 Some of the Reader's files are made from sources that live elsewhere: the how-to
 pages from ``docs/how-to-use.md``, the introduction page from its markdown and art,
-the Statistics screen's word table and word clouds from the search index. Edit a
+the Statistics screen's word table and word clouds from the search index, the app's
+icons from the SVGs in ``assets/reader-icon-sources``. Edit a
 source and nothing redoes the file: the how-to's pages lacked a button for days
 after its text gained one, and every check passed.
 
@@ -46,6 +47,7 @@ from typing import TYPE_CHECKING, Protocol
 from barks_reader.core.statistics_series import MOST_FREQUENT_FILE, WORDCLOUD_GLOB
 from dotenv import load_dotenv
 from how_to_backgrounds import fixes_root_dir, how_to_backgrounds_by_name
+from render_reader_icons import installed_paths, source_paths
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -62,6 +64,7 @@ INTRO_BACKGROUND = REPO_ROOT / "docs" / "intro-to-barks-reader-bgnd.png"
 HOW_TO = "how-to"
 INTRODUCTION = "introduction"
 WORD_STATISTICS = "word-statistics"
+ICONS = "icons"
 INDEX_SOURCE = "the search index"
 MISSING = "missing"
 # In place of a hash: this machine has nowhere to look for the source.
@@ -86,6 +89,7 @@ class _Paths(Protocol):
     def get_intro_doc_dir(self) -> Path: ...
     def get_statistics_dir(self) -> Path: ...
     def get_barks_reader_indexes_dir(self) -> Path: ...
+    def get_reader_icon_files_dir(self) -> Path: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +100,7 @@ class ReaderDirs:
     intro: Path
     statistics: Path
     indexes: Path
+    reader_files: Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,6 +215,14 @@ def _word_statistics_files(folder: Path) -> list[Path]:
     )
 
 
+def _icon_sources(_dirs: ReaderDirs) -> Hashes:
+    return {_name(path): file_hash(path) if path.is_file() else MISSING for path in source_paths()}
+
+
+def _installed_icons(dirs: ReaderDirs) -> list[Path]:
+    return sorted(path for path in installed_paths(dirs.reader_files) if path.is_file())
+
+
 def _index_source(dirs: ReaderDirs) -> Hashes:
     return {INDEX_SOURCE: folder_hash(dirs.indexes) if dirs.indexes.is_dir() else MISSING}
 
@@ -232,6 +245,12 @@ GENERATED_SETS: tuple[GeneratedSet, ...] = (
         _index_source,
         lambda dirs: _word_statistics_files(dirs.statistics),
         "scripts/generate_stats_images.py --indexes-dir, and scripts/generate_tfidf_wordcloud.py",
+    ),
+    GeneratedSet(
+        ICONS,
+        _icon_sources,
+        _installed_icons,
+        "scripts/render_reader_icons.py, then the how-to's pages, which show them",
     ),
 )
 
@@ -373,6 +392,8 @@ def dirs_from(sys_paths: _Paths) -> ReaderDirs:
         intro=sys_paths.get_intro_doc_dir(),
         statistics=sys_paths.get_statistics_dir(),
         indexes=sys_paths.get_barks_reader_indexes_dir(),
+        # The icons' folder is directly in Reader Files, which has no getter of its own.
+        reader_files=sys_paths.get_reader_icon_files_dir().parent,
     )
 
 

@@ -36,6 +36,7 @@ def _dirs(root: Path) -> ReaderDirs:
         intro=root / "intro",
         statistics=root / "Statistics",
         indexes=root / "Indexes",
+        reader_files=root,
     )
 
 
@@ -394,6 +395,48 @@ class TestTheSetsThereAre:
 
         assert [path.name for path in how_to] == ["page-1.jpg"]
         assert [path.parent.name for path in intro] == ["intro"]
+
+    def test_the_icons_are_made_from_their_sources_and_found_where_the_app_reads_them(
+        self, tmp_path: Path
+    ) -> None:
+        root = write_tree(
+            tmp_path,
+            {
+                "Reader Icons/ActionBar Icons/icon-power.png": b"power",
+                "Reader Icons/ActionBar Icons/icon-next-orig.png": b"not an icon the app reads",
+                "Various/icon-eye-open.png": b"eye",
+                "Various/empty-page.jpg": b"not an icon",
+            },
+        )
+        by_name = {generated.name: generated for generated in GENERATED_SETS}
+        icons = by_name[generated_files.ICONS]
+
+        found = generated_files.current(icons, _dirs(root))
+
+        assert set(found["outputs"]) == {"icon-power.png", "icon-eye-open.png"}
+        assert "assets/reader-icon-sources/icon-power.svg" in found["sources"]
+        assert generated_files.MISSING not in found["sources"].values()
+
+    def test_the_reader_files_folder_is_the_one_the_icons_folder_is_in(
+        self, tmp_path: Path
+    ) -> None:
+        class Paths:
+            def get_how_to_doc_dir(self) -> Path:
+                return tmp_path / "how-to"
+
+            def get_intro_doc_dir(self) -> Path:
+                return tmp_path / "intro"
+
+            def get_statistics_dir(self) -> Path:
+                return tmp_path / "Statistics"
+
+            def get_barks_reader_indexes_dir(self) -> Path:
+                return tmp_path / "Indexes"
+
+            def get_reader_icon_files_dir(self) -> Path:
+                return tmp_path / "Reader Files" / "Reader Icons"
+
+        assert generated_files.dirs_from(Paths()).reader_files == tmp_path / "Reader Files"
 
     def test_every_set_committed_as_recorded_names_sources_that_exist(self) -> None:
         """A record made on one machine must be checkable on another: no absolute paths."""

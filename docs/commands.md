@@ -58,8 +58,15 @@ stamps the packs):
 uv run scripts/data_manifest.py --pack
 ```
 
-**Check the generated files are current** (the how-to's pages, the introduction's page
-and the Statistics screen's word table and clouds, each held to the hashes of its sources
+**Render the app's icons from their SVG sources** (`assets/reader-icon-sources`, with
+Inkscape, into Reader Files and, in black, into `docs/` for the how-to; `--list` says where
+each goes; then `--record icons` below and regenerate the how-to's pages):
+```bash
+uv run scripts/render_reader_icons.py
+```
+
+**Check the generated files are current** (the how-to's pages, the introduction's page,
+the app's icons and the Statistics screen's word table and clouds, each held to the hashes of its sources
 and of its files in `scripts/generated-files.json`; `validate` runs the same check;
 `--list`; after regenerating a set, `--record NAME` or `--record all`, then commit the record;
 the how-to's backgrounds are in the Fantagraphics fixes directories, so a machine without
