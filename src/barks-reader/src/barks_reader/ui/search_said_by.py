@@ -209,7 +209,14 @@ class SaidByFilter(DropdownNavMixin):
         return self.dropdown.parent is not None and not self._dropdown_nav_mode
 
     def close_list(self) -> None:
-        """Close the list."""
+        """Close the list, the keys off it at once.
+
+        Kivy closes a list a moment after it is asked to, and says so only then: the
+        keys still on the list at that point went to the chip, on a screen that had
+        since given them up. Whoever closes the list this way says where they go.
+        """
+        if self._dropdown_nav_mode:
+            self._exit_dropdown_nav()
         self.dropdown.dismiss()
 
     def take_keys_onto_list(self) -> None:

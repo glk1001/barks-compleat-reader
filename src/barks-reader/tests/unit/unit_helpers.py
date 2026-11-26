@@ -124,7 +124,12 @@ class FakeSpeakerList:
 
     It keeps the handlers it is bound with and calls those: a pick tells `on_select`,
     then closes the list, which tells `on_dismiss`, open or not.
+
+    Kivy's list tells `on_dismiss` a moment after it is asked to close. With
+    `closes_later` set, this one waits for `finish_closing` to do the same.
     """
+
+    closes_later = False
 
     def __init__(self, **_kwargs: object) -> None:
         self.container = SimpleNamespace(children=[])
@@ -158,6 +163,11 @@ class FakeSpeakerList:
         self.dismiss()
 
     def dismiss(self) -> None:
+        if not self.closes_later:
+            self.finish_closing()
+
+    def finish_closing(self) -> None:
+        """Close the list and tell `on_dismiss`, as Kivy does a moment after `dismiss`."""
         self.is_open = False
         self._handlers["on_dismiss"](self)
 

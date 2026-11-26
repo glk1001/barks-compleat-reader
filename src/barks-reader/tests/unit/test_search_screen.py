@@ -1902,6 +1902,36 @@ class TestSpeakerFilter:
         assert screen._said_by.row.focused is None
         assert (screen._focus.active, screen._focus.area) == (False, "input")
 
+    @pytest.mark.parametrize("leave", ["exit_nav_focus", "hide"])
+    def test_a_list_that_closes_a_moment_later_gives_the_chip_no_keys(
+        self, screen: SearchScreen, loguru_sink: list[str], leave: str
+    ) -> None:
+        """Kivy tells of the close a moment after it is asked: the screen has left by then."""
+        screen._selected_word = "money"
+        _offer_speakers(screen, "Donald")
+        with patch.object(screen._said_by, "story_counts", return_value=_SPEAKER_COUNTS):
+            press(_said_by_chip(screen))
+        speaker_list = cast("FakeSpeakerList", screen._said_by.dropdown)
+        with (
+            patch.object(screen._said_by, "_update_dropdown_focus"),
+            patch.object(screen, "_clear_result_focus"),
+            patch.object(screen, "_clear_chip_focus"),
+            patch.object(screen, "_clear_clear_focus"),
+            patch.object(screen, "_blur_all_inputs"),
+            patch.object(speaker_list, "closes_later", new=True),
+        ):
+            screen.take_keys_onto_open_list(MagicMock())
+            if leave == "hide":
+                screen.on_is_visible(screen, value=False)
+            screen.exit_nav_focus()
+            assert speaker_list.is_open  # Kivy has not closed it yet
+            loguru_sink.clear()
+            speaker_list.finish_closing()
+        assert not speaker_list.is_open
+        assert screen._said_by.row.focused is None
+        assert (screen._focus.active, screen._focus.area) == (False, "input")
+        assert not [line for line in loguru_sink if "Nav focus" in line]
+
     def test_picking_a_speaker_reruns_the_search_filtered(
         self, screen: SearchScreen, loguru_sink: list[str]
     ) -> None:
