@@ -1,0 +1,33 @@
+{
+  "introduction": {
+    "outputs": {
+      "page-1.jpg": "4177101e335f686dc74cea23c0547d5a559818b0c0dbab071a6dc9abe0837127"
+    },
+    "sources": {
+      "docs/intro-to-barks-reader-bgnd.png": "73218e4442e65299a38d21d688ba807f0f27ea8c81e598d19352f3f69fd2a59a",
+      "docs/intro-to-barks-reader.md": "144431980b4b622927d5acf9a492f5db4ebddaa744e01c642dca33fb6765b28d",
+      "scripts/intro-style.css": "b3e493e6eb7f1cccf8365847ce7797b424653eab72d0b1a5dac32d6d47935e42",
+      "src/barks-fantagraphics/data/fonts/Carl Barks Script.ttf": "d77c56b44f8965d45aeff07717ab8d2d9218e25a602aba6c591ac23f9f24f930",
+      "src/barks-fantagraphics/data/fonts/SourceSerif4SmText-Bold.ttf": "072c77a0dbffbcb7e99dda31de16e096bd99d1345fd6037d3e153ea315547c25",
+      "src/barks-fantagraphics/data/fonts/SourceSerif4SmText-BoldIt.ttf": "0a0828eb760127b4ff1e6d01852465fdce05ceff99a1a5f5b01f4f1ef1633f0d",
+      "src/barks-fantagraphics/data/fonts/SourceSerif4SmText-It.ttf": "74963111a9dc458611e6eaa62a6bff8811855f67e015f91b728fb52567020c5e",
+      "src/barks-fantagraphics/data/fonts/SourceSerif4SmText-Regular.ttf": "54379656e8fa22bfbb7a783f8fe4269c9ae4eb966c1c3fcb17ee3b50cba95813"
+    }
+  },
+  "word-statistics": {
+    "outputs": {
+      "most_frequent.png": "d61048e04f285bc08273550ea27f973ed36f1eb0d8406ae0f5858626f61a5df7",
+      "tfidf_ranked_words_1943-46.txt": "a507a954eeba31125e25754a7df3d46cc8505973250a23f1bcd1d961e09a008d",
+      "tfidf_ranked_words_1947-50.txt": "66abb20ded63271408d23926c5b23cad9684c8fd62e7bcf69a6bf1fcd873e871",
+      "tfidf_ranked_words_1951-55.txt": "0575d453a63e9b80493baadc57561089b2fa696d919634c651b0c9a6f5468962",
+      "tfidf_ranked_words_1956-59.txt": "4c9073bc5f4fef8b153064e6cdd1e94949480f759a37aa906a18c5ba9613da73",
+      "tfidf_wordcloud_1943-46.png": "ad7d87973433c67a91738533ac2bb65d87faa594118cd16445c4e4e33724f1d1",
+      "tfidf_wordcloud_1947-50.png": "32459fa97dd626f7a78fb62580fbdcfa7f8602d17e70162f8ac9417c00f651c7",
+      "tfidf_wordcloud_1951-55.png": "1a61bd67fc843f7390ad41d12f6a51224cbaf3e90aec473a39fb6e1255d93cf7",
+      "tfidf_wordcloud_1956-59.png": "33c97a74aea193e021878b8a7183bbac9628166000eec8ab1aec3a11759f49ff"
+    },
+    "sources": {
+      "the search index": "c6f9aaed084eaafed77ba7953842bb33d89d78b25907b16a293c352f64793cd1"
+    }
+  }
+}

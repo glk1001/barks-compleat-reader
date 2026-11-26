@@ -17,6 +17,9 @@ output directory by an earlier, longer run are removed.
 Workflow: open the PNGs in the GIMP how-to project as the text layer over the
 Barks backgrounds, then export the composited ``page-N.png`` files to the Reader's
 ``Various/documents/how-to`` directory.
+Then ``uv run scripts/generated_files.py --record how-to`` and commit
+the record: the corpus validator reports the pages as stale from the moment the
+markdown, the stylesheet or a picture changes until that is done.
 
 All styling — page size, margins, fonts, colours, boxes, table look — lives in
 ``scripts/how-to-style.css``. Edit that file to taste; no code changes needed.

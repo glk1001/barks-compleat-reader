@@ -89,6 +89,36 @@ class TestPhase2SystemFilePaths:
         eye_icon = tmp_path / "Various" / "icon-eye-open.png"
         assert f"eye_open_icon_path: missing file {eye_icon}" in errors
 
+    def test_a_stale_generated_set_is_an_error(self, tmp_path: Path) -> None:
+        sys_paths = SystemFilePaths()
+        sys_paths.set_barks_reader_files_dir(tmp_path, check_files=False)
+        phase = core.PhaseResult("System File Paths")
+
+        with (
+            patch.object(core.generated_files, "load_record", return_value={"a": {}}) as load,
+            patch.object(
+                core.generated_files, "stale_reasons", return_value=["how-to is stale: x"]
+            ) as stale,
+        ):
+            core._check_generated_files(phase, sys_paths)  # noqa: SLF001
+
+        assert phase.errors == ["generated files: how-to is stale: x"]
+        record, dirs = stale.call_args.args
+        assert record == load.return_value
+        assert dirs.how_to == sys_paths.get_how_to_doc_dir()
+        assert dirs.indexes == sys_paths.get_barks_reader_indexes_dir()
+
+    def test_generated_sets_as_recorded_add_no_error(self, tmp_path: Path) -> None:
+        sys_paths = SystemFilePaths()
+        sys_paths.set_barks_reader_files_dir(tmp_path, check_files=False)
+        phase = core.PhaseResult("System File Paths")
+
+        with patch.object(core.generated_files, "stale_reasons", return_value=[]):
+            core._check_generated_files(phase, sys_paths)  # noqa: SLF001
+
+        assert phase.errors == []
+        assert phase.items_checked == len(core.generated_files.GENERATED_SETS)
+
 
 # ---------------------------------------------------------------------------
 # Phase 10

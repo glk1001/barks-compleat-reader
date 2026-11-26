@@ -12,6 +12,8 @@ whose renderer this uses), drawn over the background art and written as
 ``page-1.jpg``, 2120x3200 pixels: the finished page, with no image-editor step. The
 default output directory is ``docs/intro-pages`` (gitignored); name the Reader's
 ``Various/documents/intro-to-barks-reader`` directory to replace the page the app shows.
+After replacing it, ``uv run scripts/generated_files.py --record introduction`` and commit
+the record, which the corpus validator holds the page and its sources to.
 
 The text must fit one page: a second is an error, not a second file. All styling —
 margins, fonts, the drop cap, the sheet behind the text — lives in

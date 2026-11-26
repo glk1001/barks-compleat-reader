@@ -18,6 +18,7 @@ from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
 
+import generated_files
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, BARKS_TAGGED_TITLES, Tags
 from barks_fantagraphics.barks_tags_data import SPLASH_EXCEPTIONS
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
@@ -319,6 +320,20 @@ def _check_statistics_dir(phase: PhaseResult, path: Path) -> None:
             )
 
 
+def _check_generated_files(phase: PhaseResult, sys_paths: SystemFilePaths) -> None:
+    """Check the files made from sources elsewhere are the ones recorded, and current.
+
+    The how-to's pages, the introduction's page and the Statistics screen's word
+    table and clouds are each held to ``scripts/generated-files.json``: a source
+    edited since the set was made, or files that are not the ones recorded, is a
+    stale set (``scripts/generated_files.py``, which also records them).
+    """
+    record = generated_files.load_record()
+    phase.items_checked += len(generated_files.GENERATED_SETS)
+    for reason in generated_files.stale_reasons(record, generated_files.dirs_from(sys_paths)):
+        phase.add(f"generated files: {reason}")
+
+
 # ---------------------------------------------------------------------------
 # Phase 1 - Config
 # ---------------------------------------------------------------------------
@@ -394,6 +409,7 @@ def phase2_system_file_paths(
         sys_paths.get_barks_reader_fantagraphics_panel_segments_root_dir(),
     )
     _check_statistics_dir(phase, sys_paths.get_statistics_dir())
+    _check_generated_files(phase, sys_paths)
 
     collector.finalize_phase(phase)
 
