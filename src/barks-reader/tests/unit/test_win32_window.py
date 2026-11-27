@@ -628,9 +628,9 @@ class TestHoldToClientMinimum:
         info = win32_window.MINMAXINFO()
         info.ptMinTrackSize.x, info.ptMinTrackSize.y = SDL_MIN_TRACK
 
-        win32_window.hold_to_client_minimum(info, CLIENT_MINIMUM, (16, 39))
+        win32_window.hold_to_client_minimum(info, CLIENT_MINIMUM, (20, 45))
 
-        assert (info.ptMinTrackSize.x, info.ptMinTrackSize.y) == SDL_MIN_TRACK
+        assert (info.ptMinTrackSize.x, info.ptMinTrackSize.y) == (653, 1045)
 
     def test_under_the_custom_titlebar_it_is_the_minimum_itself(self) -> None:
         info = win32_window.MINMAXINFO()
@@ -689,21 +689,64 @@ class TestClientMinimum:
     def test_with_the_desktops_titlebar_the_frame_is_added(
         self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
     ) -> None:
+        """The frame is the window's own, read now: here thicker than the one SDL counts."""
         self._sdl_answers(guard_user32)
-        guard_user32.GetWindowRect.side_effect = _fill_rect((644, 40, 644 + 649, 40 + 1039))
+        guard_user32.GetWindowRect.side_effect = _fill_rect((644, 40, 644 + 653, 40 + 1045))
         guard_user32.GetClientRect.side_effect = _fill_rect((0, 0, 633, 1000))
         win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
 
-        assert self._min_track_asked(guard) == SDL_MIN_TRACK
+        assert self._min_track_asked(guard) == (653, 1045)
 
+    @pytest.mark.parametrize("unreadable", ["GetWindowRect", "GetClientRect"])
     def test_a_window_whose_rectangles_cannot_be_read_counts_no_frame(
-        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock, unreadable: str
     ) -> None:
+        """Either read failing: what the calls filled in, or left over, is not a frame."""
         self._sdl_answers(guard_user32)
-        guard_user32.GetWindowRect.return_value = 0
+        guard_user32.GetWindowRect.side_effect = _fill_rect((644, 40, 644 + 649, 40 + 1039))
+        guard_user32.GetClientRect.side_effect = _fill_rect((0, 0, 633, 1000))
+        fill = getattr(guard_user32, unreadable).side_effect
+        getattr(guard_user32, unreadable).side_effect = lambda *args: fill(*args) * 0
         win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
 
         assert self._min_track_asked(guard) == CLIENT_MINIMUM
+
+    def test_the_frame_is_read_from_the_window_that_was_asked(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        self._sdl_answers(guard_user32)
+        win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
+
+        self._min_track_asked(guard)
+
+        assert guard_user32.GetWindowRect.call_args.args[0] == HIGH_HWND
+        assert guard_user32.GetClientRect.call_args.args[0] == HIGH_HWND
+
+    def test_the_answer_of_the_window_is_still_what_is_returned(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        guard_user32.CallWindowProcW.return_value = 7
+        win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
+        info = win32_window.MINMAXINFO()
+
+        result = guard._on_message(
+            HIGH_HWND, win32_window.WM_GETMINMAXINFO, 0, ctypes.addressof(info)
+        )
+
+        assert result == 7  # noqa: PLR2004
+
+    def test_a_question_with_nowhere_to_answer_is_left_alone(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        """A null lParam is no MINMAXINFO: writing through it would stop the app."""
+        guard_user32.CallWindowProcW.return_value = 0
+        win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
+
+        # Stood in for: the real one, wrongly called, would write through address 0.
+        with patch.object(win32_window, "hold_to_client_minimum") as hold:
+            assert guard._on_message(HIGH_HWND, win32_window.WM_GETMINMAXINFO, 0, 0) == 0
+
+        hold.assert_not_called()
 
     def test_another_message_is_left_as_the_window_answered_it(
         self, guard: win32_window.CaptionGuard, guard_user32: MagicMock

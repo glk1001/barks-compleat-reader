@@ -27,6 +27,21 @@ def test_the_window_is_shown_after_its_geometry_is_ready_and_then_logged(
     log_settings.assert_called_once()
 
 
+def test_the_shown_line_comes_before_the_boot_size(loguru_sink: list[str]) -> None:
+    """A probe that boots on the shown line then finds the boot size after it."""
+    parent = MagicMock()
+    shown_when_asked: list[bool] = []
+    parent.geometry.when_settled.side_effect = lambda _callback: shown_when_asked.append(
+        log_markers.MAIN_WINDOW_SHOWN in loguru_sink
+    )
+    with (
+        patch.object(barks_reader_app, "_log_screen_settings"),
+        patch.object(barks_reader_app, "log_window_geometry"),
+    ):
+        _show_main_window(parent.window, parent.geometry)
+    assert shown_when_asked == [True]
+
+
 def test_the_boot_size_waits_for_the_window_to_settle(loguru_sink: list[str]) -> None:
     """A window still to be corrected to its shape is logged at the size it settles at."""
     parent = MagicMock()

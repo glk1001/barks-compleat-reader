@@ -670,9 +670,25 @@ def test_a_settled_callback_waits_again_when_the_correction_brings_another(
     fake_clock.fire_last()
     settled.assert_not_called()  # a second correction is pending
 
-    sized.side_effect = None
-    fake_window.size = (width, height)
+    sized.side_effect = None  # the second one is taken as asked
     fake_clock.fire_last()
+    assert sized.call_args_list == [call(width, height), call(width, height)]
+    settled.assert_called_once_with()
+
+
+def test_a_settled_callback_runs_once_only(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    """The boot size is logged at the first settling, not at every correction after it."""
+    _out_of_shape(helper, fake_window)
+    settled = MagicMock()
+    helper.when_settled(settled)
+    fake_clock.fire_last()
+    settled.assert_called_once_with()
+
+    _out_of_shape(helper, fake_window)
+    fake_clock.fire_last()
+
     settled.assert_called_once_with()
 
 
@@ -2303,14 +2319,61 @@ def test_a_raised_window_is_sized_again_after_sdl_where_the_platform_says_so(
     fake_window: MagicMock,
     sized: MagicMock,
     platform_minimum: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """On Windows SDL's minimum resized a window just raised by its frame (2026-11-27)."""
+    """On Windows SDL's minimum resized a window just raised by its frame (2026-11-27).
+
+    So the second sizing is after SDL has the minimum: before it, it undoes nothing.
+    """
+    order: list[str] = []
+    platform_minimum.side_effect = lambda *_size: order.append("platform") or True
+    sized.side_effect = lambda *_size: order.append("sized")
+    monkeypatch.setattr(
+        geometry_module, "_set_window_minimum_size", lambda *_size: order.append("sdl")
+    )
     fake_window.size = (1000, 800)
     minimum = helper._minimum_size()  # noqa: SLF001
 
     helper.apply_minimum_size()
 
+    assert order == ["platform", "sized", "sdl", "sized"]
     assert sized.call_args_list == [call(1000, minimum[1]), call(1000, minimum[1])]
+
+
+def test_the_platform_is_given_a_minimum_set_in_fullscreen(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    sized: MagicMock,
+    platform_minimum: MagicMock,
+) -> None:
+    """On Windows nothing gives it one when fullscreen is left (`on_fullscreen_left`).
+
+    Left with the spread's minimum after a change to the single page made in
+    fullscreen, Windows would hold the restored window to the spread's width.
+    """
+    fake_window.fullscreen = True
+    fake_window.size = (1000, 800)
+
+    helper.apply_minimum_size()
+
+    platform_minimum.assert_called_once_with(*helper._minimum_size())  # noqa: SLF001
+    sized.assert_not_called()  # a fullscreen window is not raised
+
+
+def test_a_raise_taken_by_a_guarded_resize_is_not_sized_again(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    sized: MagicMock,
+    platform_minimum: MagicMock,
+) -> None:
+    """The guard sizes the window when its resize comes: a size now would be a second."""
+    fake_window.size = (1000, 800)
+    helper._resize_event = MagicMock()  # noqa: SLF001
+    helper._resize_requested_size = (1500, 2000)  # noqa: SLF001
+
+    helper.apply_minimum_size()
+
+    sized.assert_not_called()
     assert platform_minimum.called
 
 
@@ -2342,6 +2405,7 @@ def test_a_raised_window_moves_through_the_platform_not_kivy(
     fake_window: MagicMock,
     fake_clock: FakeClock,
     sized: MagicMock,
+    loguru_sink: list[str],
 ) -> None:
     """Moved through Kivy on Windows, the window grew by its frame (2026-11-27)."""
     move_window = MagicMock()
@@ -2362,6 +2426,7 @@ def test_a_raised_window_moves_through_the_platform_not_kivy(
     assert top < saved_top
     assert left == fake_window.left
     assert fake_window.top == saved_top  # not through Kivy as well
+    assert f"Repositioning window to ({left}, {top})." in loguru_sink
 
 
 def test_a_guarded_resize_moves_through_the_platform(

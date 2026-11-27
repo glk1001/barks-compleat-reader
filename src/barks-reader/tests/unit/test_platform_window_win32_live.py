@@ -9,7 +9,7 @@ leg runs these tests: the ``needs_no_opengl`` marker keeps its UI skip off them.
 """
 
 # ruff: noqa: SLF001
-# cspell:ignore CXMINTRACK CYMINTRACK lpfn lpsz OVERLAPPEDWINDOW
+# cspell:ignore CXMINTRACK CYMINTRACK GETMINMAXINFO lpfn lpsz OVERLAPPEDWINDOW
 # cspell:ignore pytestmark SHOWNOACTIVATE WNDCLASSW wndproc
 # cspell:ignore NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME
 
@@ -25,6 +25,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.core import win32_window
 from barks_reader.core.win32_window import (
+    MINMAXINFO,
     NO_FRAME_REPAINT,
     RECT,
     WM_NCACTIVATE,
@@ -34,6 +35,7 @@ from barks_reader.core.win32_window import (
     guard_against_native_caption,
     hold_window_rect,
     release_window_rect,
+    set_window_client_minimum,
 )
 from barks_reader.core.window_state import WindowState
 from barks_reader.ui import platform_window_win32 as win32_module
@@ -55,6 +57,8 @@ _SW_SHOWNOACTIVATE = 4
 _SM_CXMINTRACK, _SM_CYMINTRACK = 34, 35
 # A size no overlapped window can take: Windows holds it at its minimum track size.
 _TOO_SMALL = 20
+# A drawable area's minimum for a test: above Windows' own, below the test rectangles.
+_CLIENT_MINIMUM = (300, 200)
 
 # What the live window's own procedure was sent: (message, lParam), in order.
 _messages_seen: list[tuple[int, int]] = []
@@ -70,6 +74,8 @@ def _user32() -> Any:  # noqa: ANN401
     user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[missing-attribute]
     user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
     user32.GetWindowRect.restype = wintypes.BOOL
+    user32.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
+    user32.GetClientRect.restype = wintypes.BOOL
     user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
     user32.GetSystemMetrics.argtypes = [ctypes.c_int]
@@ -91,8 +97,20 @@ def _window_rect(hwnd: int) -> tuple[int, int, int, int]:
     return rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top
 
 
+def _client_size(hwnd: int) -> tuple[int, int]:
+    """Return the size of the window's drawable area: its frame left out."""
+    rect = RECT()
+    assert _user32().GetClientRect(hwnd, ctypes.byref(rect))
+    return rect.right, rect.bottom
+
+
 def _move(hwnd: int, rect: tuple[int, int, int, int]) -> None:
     assert _user32().MoveWindow(hwnd, *rect, True)  # noqa: FBT003
+
+
+def _shrink(hwnd: int) -> None:
+    """Ask for a size no window can take: Windows holds it at its smallest."""
+    _move(hwnd, (*_RECT_B[:2], _TOO_SMALL, _TOO_SMALL))
 
 
 def _run_now(callback: Callable[[float], None], _timeout: float = 0) -> MagicMock:
@@ -307,6 +325,89 @@ class TestHeldRectOnARealWindow:
         backend.schedule_restore(state, MagicMock(), MagicMock())  # its move lets go
         _move(live_window, _RECT_B)
         assert _window_rect(live_window) == _RECT_B
+
+
+def test_the_min_max_info_is_laid_out_as_windows_has_it() -> None:
+    """Five POINTs of two LONGs; a wrong layout writes the minimum over another field."""
+    assert ctypes.sizeof(MINMAXINFO) == 40  # noqa: PLR2004
+    assert MINMAXINFO.ptMinTrackSize.offset == 24  # noqa: PLR2004
+
+
+class TestClientMinimumOnARealWindow:
+    """The guard's answer to the WM_GETMINMAXINFO that Windows itself sends in a resize.
+
+    The test's window has the desktop's frame, so its smallest size is the minimum
+    plus the frame the guard measures: its drawable area is then the minimum exactly.
+    """
+
+    def test_a_guarded_window_shrinks_to_its_client_minimum_and_no_further(
+        self, live_window: int
+    ) -> None:
+        assert guard_against_native_caption(live_window)
+        assert set_window_client_minimum(live_window, *_CLIENT_MINIMUM)
+
+        _shrink(live_window)
+
+        assert _client_size(live_window) == _CLIENT_MINIMUM
+        width, height = _window_rect(live_window)[2:]
+        assert width > _CLIENT_MINIMUM[0]  # the frame, measured and added
+        assert height > _CLIENT_MINIMUM[1]
+
+    def test_with_no_minimum_given_the_window_shrinks_as_far_as_windows_lets_it(
+        self, live_window: int
+    ) -> None:
+        assert guard_against_native_caption(live_window)
+
+        _shrink(live_window)
+
+        width, height = _client_size(live_window)
+        assert width < _CLIENT_MINIMUM[0]
+        assert height < _CLIENT_MINIMUM[1]
+
+    def test_a_window_with_no_guard_has_no_minimum_held(self, live_window: int) -> None:
+        assert not set_window_client_minimum(live_window, *_CLIENT_MINIMUM)
+        assert Win32WindowBackend(hwnd=live_window).set_minimum_size(*_CLIENT_MINIMUM) is False
+
+    def test_the_backend_holds_its_windows_minimum_through_the_guard(
+        self, live_window: int
+    ) -> None:
+        assert guard_against_native_caption(live_window)
+
+        assert Win32WindowBackend(hwnd=live_window).set_minimum_size(*_CLIENT_MINIMUM) is True
+
+        _shrink(live_window)
+        assert _client_size(live_window) == _CLIENT_MINIMUM
+
+
+def test_move_to_moves_the_window_and_keeps_its_size(
+    live_window: int, kivy_window: MagicMock, loguru_sink: list[str]
+) -> None:
+    """Moved through Kivy, the window grew by its frame on each move (2026-11-27)."""
+    kivy_window.left, kivy_window.top = _RECT_A[:2]
+
+    Win32WindowBackend(hwnd=live_window).move_to(*_RECT_B[:2])
+
+    assert _window_rect(live_window) == (*_RECT_B[:2], *_RECT_A[2:])
+    assert (kivy_window.left, kivy_window.top) == _RECT_A[:2]  # not through Kivy as well
+    assert any("its size kept" in line for line in loguru_sink)
+
+
+def test_move_to_keeps_the_size_of_a_guarded_window_at_its_minimum(
+    live_window: int, kivy_window: MagicMock
+) -> None:
+    """As at boot on a 1920x1080 screen: raised to the minimum, then moved up to fit."""
+    kivy_window.left, kivy_window.top = _RECT_B[:2]
+    assert guard_against_native_caption(live_window)
+    backend = Win32WindowBackend(hwnd=live_window)
+    assert backend.set_minimum_size(*_CLIENT_MINIMUM)
+    _shrink(live_window)
+    size = _window_rect(live_window)[2:]
+
+    backend.move_to(*_RECT_A[:2])
+
+    assert _window_rect(live_window) == (*_RECT_A[:2], *size)
+    assert _client_size(live_window) == _CLIENT_MINIMUM
+    assert (kivy_window.left, kivy_window.top) == _RECT_B[:2]
 
 
 def test_a_backend_bound_to_the_window_is_available(live_window: int) -> None:

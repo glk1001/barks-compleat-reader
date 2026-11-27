@@ -433,6 +433,20 @@ def test_a_move_the_window_did_not_take_is_made_through_kivy(loguru_sink: list[s
     assert any("not the (644, 40, 1277, 1040) asked for" in line for line in loguru_sink)
 
 
+def test_a_move_that_changed_the_windows_size_is_made_through_kivy(
+    loguru_sink: list[str],
+) -> None:
+    """Where it was asked to be, but the frame bigger: not the move that was asked for."""
+    rectangles = iter([(644, 100, 633, 1000), (644, 40, 649, 1039)])
+    backend = _backend(MagicMock(), MagicMock(side_effect=_rect_filler(rectangles)))
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.move_to(644, 40)
+
+    assert (window.left, window.top) == (644, 40)
+    assert any("was put at (644, 40, 1293, 1079)" in line for line in loguru_sink)
+
+
 def test_a_move_that_raises_is_logged_and_made_through_kivy(loguru_sink: list[str]) -> None:
     move_window = MagicMock(side_effect=OSError("access violation"))
     backend = _backend(move_window, _window_at(644, 100, 633, 1000))

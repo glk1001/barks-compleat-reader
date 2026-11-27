@@ -380,6 +380,33 @@ def test_build_applies_the_kivy_patches() -> None:
     swap.assert_called_once_with()
 
 
+def test_build_hands_the_window_managers_sizing_and_moving_to_the_geometry_helper() -> None:
+    """Left out, the helper sizes and moves through Kivy: on Windows, the frame bigger.
+
+    Nothing else fails then: only a Windows run on a 1920x1080 screen showed the
+    window come up taller than the screen (2026-11-27).
+    """
+    app = MagicMock()
+    with (
+        patch.object(app_module, "apply_text_input_remove_group_patch"),
+        patch.object(app_module, "apply_swap_transition_remove_group_patch"),
+        patch.object(app_module, "Builder"),
+        patch.object(app_module, "Window"),
+    ):
+        BarksReaderApp.build(app)
+
+    manager = app._window_manager
+    app._window_geometry.set_main_screen_callbacks.assert_called_once_with(
+        update_fonts=app._main_screen.update_fonts,
+        layout_mode_changed=app._set_layout_mode,
+        reshape_saved_window=manager.reshape_saved_window,
+        set_window_size=manager.set_window_size,
+        set_window_minimum_size=manager.set_window_minimum_size,
+        move_window=manager.move_window,
+    )
+    manager.set_on_fullscreen_left.assert_called_once_with(app._window_geometry.on_fullscreen_left)
+
+
 # Everything _build_screens makes before the wiki screen, stood in for.
 _BUILT_BEFORE_THE_WIKI = (
     "UserErrorHandler",

@@ -56,6 +56,8 @@ class _FakeBackend:
         self.saved_states: list[WindowState] = []
         self.sizes_set: list[tuple[int, int]] = []
         self.minimums_set: list[tuple[int, int]] = []
+        # What set_minimum_size answers: whether a raised window is to be sized again.
+        self.holds_minimum = True
         self.moves_to: list[tuple[int, int]] = []
         self.restore_calls: list[WindowState] = []
         self.cancel_calls = 0
@@ -77,7 +79,7 @@ class _FakeBackend:
 
     def set_minimum_size(self, width: int, height: int) -> bool:
         self.minimums_set.append((width, height))
-        return True
+        return self.holds_minimum
 
     def move_to(self, left: int, top: int) -> None:
         self.moves_to.append((left, top))
@@ -194,12 +196,16 @@ def test_a_size_is_set_by_the_backend(manager: ManagerFixture, backend: _FakeBac
     assert backend.sizes_set == [(719, 1130)]
 
 
+@pytest.mark.parametrize("holds_minimum", [True, False])
 def test_a_minimum_is_held_by_the_backend_which_says_whether_to_size_a_raise_again(
-    manager: ManagerFixture, backend: _FakeBackend
+    manager: ManagerFixture,
+    backend: _FakeBackend,
+    holds_minimum: bool,
 ) -> None:
     wm = manager[0]
+    backend.holds_minimum = holds_minimum
 
-    assert wm.set_window_minimum_size(633, 1000) is True
+    assert wm.set_window_minimum_size(633, 1000) is holds_minimum
 
     assert backend.minimums_set == [(633, 1000)]
 
