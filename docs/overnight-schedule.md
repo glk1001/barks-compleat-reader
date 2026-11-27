@@ -1,6 +1,6 @@
 # The nightly schedule: wake, run, sleep
 
-<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP Containerfile subuid subgid libpod MSYS PATHCONV -->
+<!-- cspell:ignore gmktec gregspc runuser nmcli conhost journalctl OptiPlex lastwake Autologon cctk logind UNATTENDSLEEP Containerfile subuid subgid libpod MSYS PATHCONV setvideomodehint -->
 <!-- docs-refs: skip -->
 <!-- (check_docs_refs.py: the job scripts named here live on each machine, outside the repo) -->
 
@@ -244,6 +244,12 @@ collect their logs. They live outside any repo; each one's header says what it a
   the Task Scheduler task "Barks Reader overnight now"; macOS: a Terminal window, which
   holds the permissions the GUI stages need), and `stop` shuts the VM's OS down, refused
   while a run is going.
+- **win-vm's display is 1920x1080**, set on every start (VirtualBox's
+  `setvideomodehint`), so the Windows GUI runs have a 1080p screen: greg-dell's is
+  2560x1440. On a 1080p screen the window opens at its minimum, and a window raised to it
+  must be moved to fit, which is where Windows sized it wrong under the custom titlebar
+  (2026-11-27). Its GUI timing budgets were calibrated at 1080 (`run_gui_tests.py
+  --calibrate`); calibrate again after a change of resolution.
 - **`overnight-local`** runs them one at a time, since run together they share the main
   machine's 16 threads and fail each other's timing budgets: win-vm (about 2 h), then
   mac-vm (about 1.5 h), each VM shut down after its run, then the main machine's own run
