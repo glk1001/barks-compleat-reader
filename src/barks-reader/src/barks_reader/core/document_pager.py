@@ -80,11 +80,12 @@ class DocumentPager:
         self._doc_dir = doc_dir
         self._pages = list(pages)
         self._units, self._unit_idx_for_index = build_document_units(len(self._pages))
+        last_page = len(self._pages) - 1
         if at_last_page:
-            last_index = len(self._pages) - 1
+            wanted = last_page
         else:
-            last_index = self._last_page_indexes.get(doc_dir, 0) if resume else 0
-        self._current_page_index = max(0, min(last_index, len(self._pages) - 1))
+            wanted = self._last_page_indexes.get(doc_dir, 0) if resume else 0
+        self._current_page_index = max(0, min(wanted, last_page))
 
     def close(self) -> None:
         """Close the document: no pages, so no view. The remembered pages stay."""
