@@ -2797,15 +2797,6 @@ reason = "Lower and upper case order alike but for the six characters between Z 
 module = "barks_reader.core.document_pager"
 function = "DocumentPager.__init__"
 change = """
-- self._doc_dir: Path | None = None
-+ self._doc_dir: Path | None = ""
-"""
-reason = "Set by open before any read: view reads it only with pages, and only open gives pages."
-
-[[equivalent]]
-module = "barks_reader.core.document_pager"
-function = "DocumentPager.__init__"
-change = """
 - self._units: list[DisplayUnit] = []
 + self._units: list[DisplayUnit] = None
 """
