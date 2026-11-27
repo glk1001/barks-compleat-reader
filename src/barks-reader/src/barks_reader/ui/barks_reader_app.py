@@ -677,7 +677,8 @@ def _show_main_window(window: Any, window_geometry: AppWindowGeometryHelper) -> 
     seconds earlier and lost the test's first key.
 
     The window's boot size is logged once it has settled: a window raised to the
-    minimum is corrected to its shape after it is shown (`when_settled`).
+    minimum is corrected to its shape after it is shown (`when_settled`). The position
+    in that line is not waited for: a raised window's is from before it is moved.
     """
     window_geometry.set_window_ready()
     window.show()

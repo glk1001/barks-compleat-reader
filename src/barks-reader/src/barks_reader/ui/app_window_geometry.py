@@ -169,6 +169,11 @@ class AppWindowGeometryHelper:
         SDL's minimum gave it the frame's 16x39 more, and the boot size was logged 10
         wide of the size the correction put it at a moment later (2026-11-27).
 
+        It is the size that has settled, not the position: a move still to come is not
+        waited for. A window raised to the minimum is moved onto its monitor a tenth of
+        a second later, and a guarded resize repositions when it is done, so a position
+        read in the callback can be the one from before that move.
+
         Args:
             callback: What to run. A correction dropped or cancelled runs it too.
 

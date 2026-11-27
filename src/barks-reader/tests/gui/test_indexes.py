@@ -272,8 +272,8 @@ def test_a_names_index_title_offers_every_page_its_row_lists(boot: AppBoot) -> N
 
 # Below the minimum window, so the app raises the window to it: a 1080-tall screen's
 # window (`minimum_window_size`), or the screen's largest when that is shorter. That is
-# short enough that a letter page is taller than its view on any screen. On a 2560x1440
-# Windows screen the window comes up 1039 high, not 800, and is then corrected to its shape.
+# short enough that a letter page is taller than its view on any screen. So the window
+# comes up at that minimum, not 800 high.
 SHORT_WINDOW_HEIGHT = "800"
 
 # A cross-reference on the D page whose target entry is on the M page.

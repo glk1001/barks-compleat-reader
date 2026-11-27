@@ -83,12 +83,19 @@ class WindowBackend(Protocol):
     def set_minimum_size(self, width: int, height: int) -> bool:
         """Hold the window's drawable area to this minimum, before SDL is given it.
 
-        In ``Window.system_size`` units. SDL's own minimum counts a frame the custom
-        titlebar hides on Windows (`Win32WindowBackend.set_minimum_size`); a backend
-        where SDL's is exact does nothing.
+        SDL's own minimum counts a frame the custom titlebar hides on Windows
+        (`Win32WindowBackend.set_minimum_size`); a backend where SDL's is exact does
+        nothing.
 
-        Returns whether a window just raised to the minimum is to be sized again once
-        SDL has it: SDL resizes such a window by the frame it counts.
+        Args:
+            width: The narrowest to let the drawable area be, in ``Window.system_size``
+                units.
+            height: The shortest, in the same units.
+
+        Returns:
+            Whether a window just raised to the minimum is to be sized again once SDL
+            has it: SDL resizes such a window by the frame it counts.
+
         """
         ...
 
@@ -97,6 +104,11 @@ class WindowBackend(Protocol):
 
         What ``Window.left, Window.top =`` is meant to do, and does not on Windows under
         the custom titlebar: SDL sizes the window again on each (`Win32WindowBackend.move_to`).
+
+        Args:
+            left: Where to put the window's left edge.
+            top: Where to put its top edge.
+
         """
         ...
 
@@ -164,6 +176,10 @@ class KivyWindowBackend:
     @staticmethod
     def set_minimum_size(width: int, height: int) -> bool:  # noqa: ARG004
         """Do nothing: SDL's minimum, set after this, is exact here.
+
+        Args:
+            width: The narrowest to let the window be; not used.
+            height: The shortest; not used.
 
         Returns:
             False: SDL leaves a raised window at the size it was raised to.
