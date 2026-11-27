@@ -2347,7 +2347,9 @@ def test_a_raised_window_moves_through_the_platform_not_kivy(
     move_window = MagicMock()
     helper.set_main_screen_callbacks(MagicMock(), set_window_size=sized, move_window=move_window)
     fake_window.size = (1000, 800)
-    saved_top = 1400  # raised, the window would run off the monitor's bottom
+    # Raised, the window runs off the monitor's bottom, whatever the platform's minimum:
+    # 1400 left a Windows minimum (a taller taskbar, so shorter) just fitting, unmoved.
+    saved_top = _make_screen_info().height_pixels - helper._minimum_size()[1] // 2  # noqa: SLF001
     fake_window.top = saved_top
     before = len(fake_clock.calls)
 
