@@ -410,13 +410,20 @@ def test_with_no_window_handle_no_minimum_is_held() -> None:
 # --- Moving the window, its size kept ---
 
 
+def _windowed(**attributes: int) -> MagicMock:
+    """Stand in for Kivy's Window, not fullscreen (a bare mock's ``fullscreen`` is truthy)."""
+    window = MagicMock(fullscreen=False)
+    window.configure_mock(**attributes)
+    return window
+
+
 def test_a_move_keeps_the_windows_size() -> None:
     """Moved through Kivy, the window grew by its frame on each (2026-11-27)."""
     move_window = MagicMock()
     rectangles = iter([(644, 100, 633, 1000), (644, 40, 633, 1000)])
     backend = _backend(move_window, MagicMock(side_effect=_rect_filler(rectangles)))
 
-    with patch.object(win32_module, "Window", MagicMock(left=644, top=100)) as window:
+    with patch.object(win32_module, "Window", _windowed(left=644, top=100)) as window:
         backend.move_to(644, 40)
 
     move_window.assert_called_once_with(_HWND, 644, 40, 633, 1000, True)  # noqa: FBT003
@@ -426,7 +433,7 @@ def test_a_move_keeps_the_windows_size() -> None:
 def test_a_move_the_window_did_not_take_is_made_through_kivy(loguru_sink: list[str]) -> None:
     backend = _backend(MagicMock(), _window_at(644, 100, 633, 1000))  # left where it was
 
-    with patch.object(win32_module, "Window", MagicMock()) as window:
+    with patch.object(win32_module, "Window", _windowed()) as window:
         backend.move_to(644, 40)
 
     assert (window.left, window.top) == (644, 40)
@@ -440,7 +447,7 @@ def test_a_move_that_changed_the_windows_size_is_made_through_kivy(
     rectangles = iter([(644, 100, 633, 1000), (644, 40, 649, 1039)])
     backend = _backend(MagicMock(), MagicMock(side_effect=_rect_filler(rectangles)))
 
-    with patch.object(win32_module, "Window", MagicMock()) as window:
+    with patch.object(win32_module, "Window", _windowed()) as window:
         backend.move_to(644, 40)
 
     assert (window.left, window.top) == (644, 40)
@@ -451,7 +458,7 @@ def test_a_move_that_raises_is_logged_and_made_through_kivy(loguru_sink: list[st
     move_window = MagicMock(side_effect=OSError("access violation"))
     backend = _backend(move_window, _window_at(644, 100, 633, 1000))
 
-    with patch.object(win32_module, "Window", MagicMock()) as window:
+    with patch.object(win32_module, "Window", _windowed()) as window:
         backend.move_to(644, 40)
 
     assert (window.left, window.top) == (644, 40)
@@ -463,11 +470,29 @@ def test_a_window_whose_rectangle_cannot_be_read_is_moved_through_kivy() -> None
     backend = _backend(move_window, MagicMock())
     backend._hwnd = None
 
-    with patch.object(win32_module, "Window", MagicMock()) as window:
+    with patch.object(win32_module, "Window", _windowed()) as window:
         backend.move_to(644, 40)
 
     assert (window.left, window.top) == (644, 40)
     move_window.assert_not_called()
+
+
+def test_a_fullscreen_window_is_not_moved_but_its_position_kept_through_kivy(
+    loguru_sink: list[str],
+) -> None:
+    """A raise's move comes a tenth of a second later: the window may be fullscreen by then.
+
+    Moved then, the fullscreen window sat where the window was to go, the monitor's size.
+    """
+    move_window = MagicMock()
+    backend = _backend(move_window, _window_at(0, 0, 1920, 1080))
+
+    with patch.object(win32_module, "Window", MagicMock(fullscreen=True)) as window:
+        backend.move_to(644, 40)
+
+    move_window.assert_not_called()
+    assert (window.left, window.top) == (644, 40)
+    assert any("fullscreen, so (644, 40) is kept" in line for line in loguru_sink)
 
 
 # --- Saving the window's rectangle ---

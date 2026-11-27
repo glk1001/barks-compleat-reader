@@ -397,11 +397,21 @@ class Win32WindowBackend:
 
         A failed move falls back to Kivy's, a frame out but moved.
 
+        A fullscreen window is not moved here, but through Kivy as it always was: SDL
+        then only keeps the position for the window's return. A move asked for a
+        moment before (a raise to the minimum is moved a tenth of a second later)
+        would otherwise put the fullscreen window, the monitor's size, where the
+        window was to go, and leave the desktop showing beside it.
+
         Args:
             left: Where to put the window's left edge.
             top: Where to put its top edge.
 
         """
+        if Window.fullscreen:
+            logger.debug(f"Win32: fullscreen, so ({left}, {top}) is kept for the window's return.")
+            Window.left, Window.top = left, top
+            return
         rect = self._window_rect()
         if rect is None:
             Window.left, Window.top = left, top

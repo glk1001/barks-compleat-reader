@@ -410,6 +410,18 @@ def test_move_to_keeps_the_size_of_a_guarded_window_at_its_minimum(
     assert (kivy_window.left, kivy_window.top) == _RECT_B[:2]
 
 
+def test_move_to_leaves_a_fullscreen_window_where_it_is(
+    live_window: int, kivy_window: MagicMock
+) -> None:
+    """Its position goes to Kivy, which keeps it for the return from fullscreen."""
+    kivy_window.fullscreen = True
+
+    Win32WindowBackend(hwnd=live_window).move_to(*_RECT_B[:2])
+
+    assert _window_rect(live_window) == _RECT_A
+    assert (kivy_window.left, kivy_window.top) == _RECT_B[:2]
+
+
 def test_a_backend_bound_to_the_window_is_available(live_window: int) -> None:
     assert Win32WindowBackend(hwnd=live_window).is_available()
 
