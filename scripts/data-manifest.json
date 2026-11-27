@@ -1,9 +1,9 @@
 {
   "entries": {
     "Barks Panels.zip": {
-      "bytes": 1388876280,
+      "bytes": 1369196303,
       "files": 1,
-      "md5": "033d1175798551975442cfb7a1fe8926"
+      "md5": "389a4f8b0c096169ee5c078b5668de7e"
     },
     "Fantagraphics Volumes Overrides": {
       "bytes": 1362158866,
@@ -21,9 +21,9 @@
       "md5": "b6338432c4f0a8253b81b313c916df4f"
     },
     "PNG panels": {
-      "bytes": 4583818997,
-      "files": 3920,
-      "md5": "a5ad970ae8c984acc9cd205fb52ead84"
+      "bytes": 4448322873,
+      "files": 3918,
+      "md5": "7c2fe80abbced7d27376ec29a1d84740"
     },
     "Reader Icons": {
       "bytes": 11498261,
@@ -36,9 +36,9 @@
       "md5": "37019e50c3b25e36bc00e8035fcc89d9"
     },
     "Various": {
-      "bytes": 244489716,
-      "files": 252,
-      "md5": "2d13b52e41c5c73a5ffd51cc80a679d1"
+      "bytes": 263736632,
+      "files": 256,
+      "md5": "7e774f9cbdd983c2cad2768ab296e408"
     },
     "prebuilt comics": {
       "bytes": 9743872746,
@@ -46,6 +46,6 @@
       "md5": "9c192c5be057bdd913cd92b0ef26f9ba"
     }
   },
-  "written_at": "2026-11-26T11:22:50+00:00",
+  "written_at": "2026-11-27T23:42:43+00:00",
   "written_on": "gregspc2"
 }
