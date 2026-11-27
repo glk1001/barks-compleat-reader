@@ -12,6 +12,7 @@ from contextlib import ExitStack
 from typing import TYPE_CHECKING, Self
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_reader.core.window_state import WindowState
 from barks_reader.ui import platform_window_win32 as win32_module
 from barks_reader.ui.platform_window_win32 import Win32WindowBackend
@@ -365,6 +366,24 @@ def test_a_sizing_that_raises_is_logged_and_set_through_kivy(loguru_sink: list[s
     assert any("access violation" in line for line in loguru_sink)
 
 
+@pytest.mark.parametrize("unreadable", ["_get_window_rect", "_get_client_rect"])
+def test_a_window_whose_rectangles_cannot_be_read_is_sized_through_kivy(
+    unreadable: str, loguru_sink: list[str]
+) -> None:
+    """A failed read leaves zeros: sized from them, the window went to the screen's corner."""
+    move_window = MagicMock()
+    backend = _backend(move_window, _window_at(150, 120, 1058, 1130))
+    backend._get_client_rect = _window_at(0, 0, 1058, 1130)
+    setattr(backend, unreadable, MagicMock(return_value=0))
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.set_size(719, 1130)
+
+    assert window.size == (719, 1130)
+    move_window.assert_not_called()
+    assert any("no rectangle read" in line for line in loguru_sink)
+
+
 def test_with_no_window_handle_the_size_is_set_through_kivy() -> None:
     move_window = MagicMock()
     backend = _backend(move_window, MagicMock())
@@ -493,6 +512,21 @@ def test_a_fullscreen_window_is_not_moved_but_its_position_kept_through_kivy(
     move_window.assert_not_called()
     assert (window.left, window.top) == (644, 40)
     assert any("fullscreen, so (644, 40) is kept" in line for line in loguru_sink)
+
+
+def test_a_window_whose_rectangle_read_fails_is_moved_through_kivy(
+    loguru_sink: list[str],
+) -> None:
+    """A failed read leaves zeros: moved with them, the window was given no size."""
+    move_window = MagicMock()
+    backend = _backend(move_window, MagicMock(return_value=0))
+
+    with patch.object(win32_module, "Window", _windowed()) as window:
+        backend.move_to(644, 40)
+
+    assert (window.left, window.top) == (644, 40)
+    move_window.assert_not_called()
+    assert any("GetWindowRect failed" in line for line in loguru_sink)
 
 
 # --- Saving the window's rectangle ---

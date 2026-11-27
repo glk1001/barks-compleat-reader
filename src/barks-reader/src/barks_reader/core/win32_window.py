@@ -12,9 +12,12 @@ import ctypes
 import os
 import time
 from ctypes import wintypes
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # cspell:ignore NOMOVE NOSIZE WINDOWPOS
 # cspell:ignore ERASEBKGND WINDOWPOSCHANGED STYLECHANGING STYLECHANGED SETICON NCPAINT
@@ -151,14 +154,54 @@ def find_hwnd_by_enum_windows() -> int:
     return found_hwnd
 
 
+def _rect_readers(user32: Any) -> tuple[Any, Any]:  # noqa: ANN401
+    """Return `user32`'s ``GetWindowRect`` and ``GetClientRect``, typed to fill a `RECT`.
+
+    Each is ``(hwnd, RECT) -> BOOL``: ctypes passes the `RECT` it is given by reference.
+    """
+    readers = (user32.GetWindowRect, user32.GetClientRect)
+    for reader in readers:
+        reader.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
+        reader.restype = wintypes.BOOL
+    return readers
+
+
+def read_window_frame(
+    hwnd: int | None,
+    get_window_rect: Callable[..., Any],
+    get_client_rect: Callable[..., Any],
+) -> tuple[RECT, tuple[int, int]] | None:
+    """Read a window's rectangle, and how much bigger it is than its drawable area.
+
+    The one reading of a window's frame, for sizing it (`Win32WindowBackend.set_size`)
+    and for its smallest size (`hold_to_client_minimum`).
+
+    Args:
+        hwnd: The window handle.
+        get_window_rect: ``GetWindowRect``, as `Win32Window` types it.
+        get_client_rect: ``GetClientRect``, the same.
+
+    Returns:
+        The window's rectangle and its frame (width, height): nothing under the custom
+        titlebar, all of the desktop's frame where its titlebar survived. None when
+        either rectangle could not be read: what was read is then not a frame.
+
+    """
+    window_rect, client_rect = RECT(), RECT()
+    if not (get_window_rect(hwnd, window_rect) and get_client_rect(hwnd, client_rect)):
+        return None
+    width, height = window_rect.size
+    return window_rect, (width - client_rect.right, height - client_rect.bottom)
+
+
 class Win32Window:
     """A window by its handle, with ``user32``'s calls on it typed for 64-bit handles.
 
     Attributes:
         hwnd: The window handle.
         move_window: ``MoveWindow``: ``(hwnd, x, y, width, height, repaint) -> BOOL``.
-        get_window_rect: ``GetWindowRect``: ``(hwnd, byref(RECT)) -> BOOL``.
-        get_client_rect: ``GetClientRect``: ``(hwnd, byref(RECT)) -> BOOL``.
+        get_window_rect: ``GetWindowRect``: ``(hwnd, RECT) -> BOOL`` (`_rect_readers`).
+        get_client_rect: ``GetClientRect``: ``(hwnd, RECT) -> BOOL``.
 
     """
 
@@ -184,13 +227,9 @@ class Win32Window:
         ]
         self.move_window.restype = wintypes.BOOL
 
-        self.get_window_rect: Any = user32.GetWindowRect
-        self.get_window_rect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
-        self.get_window_rect.restype = wintypes.BOOL
-
-        self.get_client_rect: Any = user32.GetClientRect
-        self.get_client_rect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
-        self.get_client_rect.restype = wintypes.BOOL
+        self.get_window_rect: Any
+        self.get_client_rect: Any
+        self.get_window_rect, self.get_client_rect = _rect_readers(user32)
 
 
 # The messages whose default handling paints the desktop's own caption straight onto
@@ -355,13 +394,9 @@ class CaptionGuard:
         ]
         self._call_window_proc.restype = lresult
 
-        rect_function = (wintypes.HWND, ctypes.POINTER(RECT))
-        self._get_window_rect: Any = user32.GetWindowRect
-        self._get_window_rect.argtypes = rect_function
-        self._get_window_rect.restype = wintypes.BOOL
-        self._get_client_rect: Any = user32.GetClientRect
-        self._get_client_rect.argtypes = rect_function
-        self._get_client_rect.restype = wintypes.BOOL
+        self._get_window_rect: Any
+        self._get_client_rect: Any
+        self._get_window_rect, self._get_client_rect = _rect_readers(user32)
 
         set_window_long_ptr: Any = user32.SetWindowLongPtrW
         set_window_long_ptr.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_void_p]
@@ -417,14 +452,8 @@ class CaptionGuard:
 
     def _frame(self, hwnd: int | None) -> tuple[int, int]:
         """Return how much bigger the window is than its drawable area: width, height."""
-        window_rect, client_rect = RECT(), RECT()
-        if not (
-            self._get_window_rect(hwnd, ctypes.byref(window_rect))
-            and self._get_client_rect(hwnd, ctypes.byref(client_rect))
-        ):
-            return 0, 0
-        width, height = window_rect.size
-        return width - client_rect.right, height - client_rect.bottom
+        found = read_window_frame(hwnd, self._get_window_rect, self._get_client_rect)
+        return (0, 0) if found is None else found[1]
 
     def release_rect(self) -> None:
         """Let the window go where it is sent again, and log the frame messages it had."""

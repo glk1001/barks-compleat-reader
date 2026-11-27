@@ -24,6 +24,7 @@ from barks_reader.core.win32_window import (
     find_app_hwnd,
     hold_window_rect,
     quiet_window_frame,
+    read_window_frame,
     release_window_rect,
     set_window_client_minimum,
 )
@@ -330,29 +331,32 @@ class Win32WindowBackend:
             height: The height to give it.
 
         """
-        if not self._hwnd:
+        if not self._size_drawable_area(width, height):
             Window.size = (width, height)
-            return
+
+    def _size_drawable_area(self, width: int, height: int) -> bool:
+        """Size the window by its outer rectangle; False when Kivy is to size it instead."""
+        if not self._hwnd:
+            return False
         try:
-            window_rect = RECT()
-            client_rect = RECT()
-            self._get_window_rect(self._hwnd, window_rect)
-            self._get_client_rect(self._hwnd, client_rect)
-            outer_w, outer_h = window_rect.size
-            outer = (width + outer_w - client_rect.right, height + outer_h - client_rect.bottom)
+            found = read_window_frame(self._hwnd, self._get_window_rect, self._get_client_rect)
+            if found is None:
+                logger.error("Win32 set size: no rectangle read, falling back to Kivy.")
+                return False
+            window_rect, frame = found
+            outer = (width + frame[0], height + frame[1])
             result, actual_rect = self._move_and_read_back(*window_rect.pos, *outer)
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 set size failed, falling back to Kivy: {e}")
-            Window.size = (width, height)
-            return
+            return False
         if actual_rect.size != outer:
             logger.warning(
                 f"Win32: the window was sized {actual_rect.size}, not the {outer} asked for"
                 f" (result = {result}); falling back to Window.size = ({width}, {height})."
             )
-            Window.size = (width, height)
-            return
+            return False
         logger.debug(f"Win32: sized the window {outer} for a drawable area of {width}x{height}.")
+        return True
 
     def set_minimum_size(self, width: int, height: int) -> bool:
         """Hold the window's drawable area to this minimum, whatever frame SDL counts.
@@ -410,28 +414,29 @@ class Win32WindowBackend:
         """
         if Window.fullscreen:
             logger.debug(f"Win32: fullscreen, so ({left}, {top}) is kept for the window's return.")
-            Window.left, Window.top = left, top
+        elif self._move_keeping_size(left, top):
             return
-        rect = self._window_rect()
+        Window.left, Window.top = left, top
+
+    def _move_keeping_size(self, left: int, top: int) -> bool:
+        """Move the window by its outer rectangle; False when Kivy is to move it instead."""
+        rect = self._read_window_rect()
         if rect is None:
-            Window.left, Window.top = left, top
-            return
-        width, height = rect[2] - rect[0], rect[3] - rect[1]
+            return False
+        wanted = (left, top, left + rect.size[0], top + rect.size[1])
         try:
-            result, actual = self._move_and_read_back(left, top, width, height)
+            result, actual = self._move_and_read_back(left, top, *rect.size)
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 move failed, falling back to Kivy: {e}")
-            Window.left, Window.top = left, top
-            return
-        if actual.edges != (left, top, left + width, top + height):
+            return False
+        if actual.edges != wanted:
             logger.warning(
-                f"Win32: the window was put at {actual.edges}, not the"
-                f" {(left, top, left + width, top + height)} asked for (result = {result});"
-                f" falling back to Window.left, Window.top = {left}, {top}."
+                f"Win32: the window was put at {actual.edges}, not the {wanted} asked for"
+                f" (result = {result}); falling back to Window.left, Window.top = {left}, {top}."
             )
-            Window.left, Window.top = left, top
-            return
+            return False
         logger.debug(f"Win32: moved the window to ({left}, {top}), its size kept.")
+        return True
 
     def schedule_restore(
         self,
@@ -504,15 +509,26 @@ class Win32WindowBackend:
 
     def _window_rect(self) -> tuple[int, int, int, int] | None:
         """Return the window's rectangle (left, top, right, bottom), or None when unreadable."""
+        rect = self._read_window_rect()
+        return None if rect is None else rect.edges
+
+    def _read_window_rect(self) -> RECT | None:
+        """Return the window's rectangle, or None when it has no handle or cannot be read.
+
+        A read that fails leaves the rectangle all zeros, which is no window's: a move
+        made from it would give the window no size.
+        """
         if not self._hwnd:
             return None
         try:
             rect = RECT()
-            self._get_window_rect(self._hwnd, rect)
+            if not self._get_window_rect(self._hwnd, rect):
+                logger.error("Win32 GetWindowRect failed.")
+                return None
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 GetWindowRect failed: {e}")
             return None
-        return rect.edges
+        return rect
 
     def _move_and_read_back(self, x: int, y: int, width: int, height: int) -> tuple[Any, RECT]:
         """Call ``MoveWindow``, then ``GetWindowRect``: the move's result and where the window is.

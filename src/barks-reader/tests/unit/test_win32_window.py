@@ -175,6 +175,16 @@ class TestTyping:
             assert getattr(user32, call).argtypes == argtypes, call
             assert getattr(user32, call).restype is restype, call
 
+    def test_the_guards_rectangle_reads_are_typed_as_the_windows_are(
+        self, guard_user32: MagicMock
+    ) -> None:
+        """Untyped, a 64-bit handle is cut short and the read fails inside the procedure."""
+        win32_window.guard_against_native_caption(HIGH_HWND)
+
+        for call in (guard_user32.GetWindowRect, guard_user32.GetClientRect):
+            assert call.argtypes == [wintypes.HWND, ctypes.POINTER(win32_window.RECT)]
+            assert call.restype is wintypes.BOOL
+
     def test_the_windows_calls_are_typed(self, fresh_user32: MagicMock) -> None:
         window = win32_window.Win32Window(HIGH_HWND)
 
@@ -218,6 +228,15 @@ def guard_user32() -> Iterator[MagicMock]:
         patch.object(win32_window, "_caption_guards", []),
     ):
         yield user32
+
+
+@pytest.fixture
+def guard(guard_user32: MagicMock) -> win32_window.CaptionGuard:
+    """Guard the window `HIGH_HWND`, and return its guard."""
+    assert guard_user32 is not None
+    win32_window.guard_against_native_caption(HIGH_HWND)
+    (guard,) = win32_window._caption_guards
+    return guard
 
 
 class TestCaptionGuard:
@@ -379,13 +398,6 @@ class TestHeldRect:
             HIGH_HWND, win32_window.WM_WINDOWPOSCHANGING, 0, ctypes.addressof(window_pos)
         )
         return _rect_of(window_pos)
-
-    @pytest.fixture
-    def guard(self, guard_user32: MagicMock) -> win32_window.CaptionGuard:
-        assert guard_user32 is not None
-        win32_window.guard_against_native_caption(HIGH_HWND)
-        (guard,) = win32_window._caption_guards
-        return guard
 
     def test_with_nothing_held_the_window_goes_where_it_is_sent(
         self, guard: win32_window.CaptionGuard
@@ -612,15 +624,51 @@ CLIENT_MINIMUM = (633, 1000)
 SDL_MIN_TRACK = (649, 1039)
 
 
-def _fill_rect(edges: tuple[int, int, int, int]) -> Callable[[int, Any], int]:
-    """Stand in for GetWindowRect or GetClientRect: fill the RECT passed by reference."""
+def _fill_rect(edges: tuple[int, int, int, int]) -> Callable[[int, win32_window.RECT], int]:
+    """Stand in for GetWindowRect or GetClientRect: fill the RECT it is passed."""
 
-    def fill(_hwnd: int, rect_ref: Any) -> int:  # noqa: ANN401
-        rect = rect_ref._obj  # what ctypes.byref was given
+    def fill(_hwnd: int, rect: win32_window.RECT) -> int:
         rect.left, rect.top, rect.right, rect.bottom = edges
         return 1
 
     return fill
+
+
+class TestReadWindowFrame:
+    """The one reading of a window's frame: for its size and for its smallest size."""
+
+    WINDOW = (644, 40, 644 + 649, 40 + 1039)
+    CLIENT = (0, 0, 633, 1000)
+
+    def test_the_frame_is_what_the_window_has_over_its_drawable_area(self) -> None:
+        get_window_rect = MagicMock(side_effect=_fill_rect(self.WINDOW))
+        get_client_rect = MagicMock(side_effect=_fill_rect(self.CLIENT))
+
+        found = win32_window.read_window_frame(HIGH_HWND, get_window_rect, get_client_rect)
+
+        assert found is not None
+        window_rect, frame = found
+        assert window_rect.edges == self.WINDOW
+        assert frame == (16, 39)
+        assert get_window_rect.call_args.args[0] == HIGH_HWND
+        assert get_client_rect.call_args.args[0] == HIGH_HWND
+
+    def test_under_the_custom_titlebar_there_is_no_frame(self) -> None:
+        found = win32_window.read_window_frame(
+            HIGH_HWND, _fill_rect((644, 40, 644 + 633, 40 + 1000)), _fill_rect(self.CLIENT)
+        )
+
+        assert found is not None
+        assert found[1] == (0, 0)
+
+    @pytest.mark.parametrize("unreadable", [0, 1], ids=["window", "client"])
+    def test_a_rectangle_that_cannot_be_read_gives_no_frame_at_all(self, unreadable: int) -> None:
+        """A failed read fills nothing in, or leaves the other's rectangle: not a frame."""
+        readers = [_fill_rect(self.WINDOW), _fill_rect(self.CLIENT)]
+        fill = readers[unreadable]
+        readers[unreadable] = lambda hwnd, rect: fill(hwnd, rect) * 0
+
+        assert win32_window.read_window_frame(HIGH_HWND, *readers) is None
 
 
 class TestHoldToClientMinimum:
@@ -643,13 +691,6 @@ class TestHoldToClientMinimum:
 
 class TestClientMinimum:
     """A guard answering WM_GETMINMAXINFO with the app's minimum, not SDL's."""
-
-    @pytest.fixture
-    def guard(self, guard_user32: MagicMock) -> win32_window.CaptionGuard:
-        assert guard_user32 is not None
-        win32_window.guard_against_native_caption(HIGH_HWND)
-        (guard,) = win32_window._caption_guards
-        return guard
 
     @staticmethod
     def _sdl_answers(guard_user32: MagicMock) -> None:
