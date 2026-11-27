@@ -47,7 +47,7 @@ def expand_path_vars(path: str | PathLike[str]) -> str:
 
     Windows sets no HOME (Git Bash and ssh sessions do), and `os.path.expandvars` leaves
     a variable it cannot find as it is: the app started from Explorer, or a run started
-    from PowerShell, read "${HOME}/Books/..." as a folder of that name (win_lg's
+    from PowerShell, read "${HOME}/Books/..." as a folder of that name (win-lg's
     overnight validate, 2026-10-11). Where HOME is set, it is used, as before.
 
     Args:

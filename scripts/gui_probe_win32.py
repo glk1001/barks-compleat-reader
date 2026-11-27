@@ -364,7 +364,7 @@ def opengl_renderer() -> str | None:
     VirtualBox guest's "GDI Generic", OpenGL 1.1), waiting for a click that an
     unattended run never gives. None too in session 0, where an ssh login runs:
     Windows offers no GPU driver there, so every machine would answer "GDI
-    Generic" (win_lg's did, a real GPU and all) and the answer is not the desktop's.
+    Generic" (win-lg's did, a real GPU and all) and the answer is not the desktop's.
     """
     if not _ON_WINDOWS or _session_id() == 0:
         return None

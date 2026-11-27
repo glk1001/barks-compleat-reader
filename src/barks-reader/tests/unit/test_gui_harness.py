@@ -153,7 +153,7 @@ class TestBuildTemplate:
     def test_the_copies_are_fresh_not_dated_like_the_live_files(
         self, live: Path, tmp_path: Path
     ) -> None:
-        # macOS's temp cleaner deletes what looks days unused, mid-run (mac_vm, 2026-10-26).
+        # macOS's temp cleaner deletes what looks days unused, mid-run (mac-vm, 2026-10-26).
         for path in (live / "log-config.yaml", live / "kivy" / "config.ini"):
             os.utime(path, (OLD_TIME, OLD_TIME))
         (tmp_path / "template").mkdir()

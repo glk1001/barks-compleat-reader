@@ -154,7 +154,7 @@ def build_template(live_dir: Path, template: Path) -> Path:
 
     """
     # Plain copies, not copy2: a file keeping its source's old times looks days
-    # unused, and macOS's daily temp cleaner deletes it mid-run (mac_vm, 2026-10-26).
+    # unused, and macOS's daily temp cleaner deletes it mid-run (mac-vm, 2026-10-26).
     for name in COPIED_FILES:
         source = live_dir / name
         if source.is_file():
@@ -608,7 +608,7 @@ def missing_dirs_from_setting_changes(app_log: str) -> list[str]:
     """Return the missing-folder error lines a setting just changed in the app brought on.
 
     The random walk presses Return wherever it lands, the Settings panel too: on
-    mac_vm on 2026-10-13 it turned on the live wiki, whose folder (set for another
+    mac-vm on 2026-10-13 it turned on the live wiki, whose folder (set for another
     machine) was not there, and the app flagged it at error level, as it should for a
     user who does that. Only a line that comes straight after the app's own "Config
     change" line counts; the same error anywhere else, such as at boot, is still one.
@@ -641,7 +641,7 @@ def missing_volumes_from_fanta_dir_changes(app_log: str) -> list[str]:
     """Return the missing-volume error lines that follow a change of the Fantagraphics folder.
 
     The random walk presses Return in the Settings panel's folder chooser too: on
-    greg-dell, win_vm and mac_vm on 2026-11-11 it set the Fantagraphics folder to one
+    greg-dell, win-vm and mac-vm on 2026-11-11 it set the Fantagraphics folder to one
     with no volumes in it, and every story opened after that was reported missing its
     volume, as it should be for a user who does that. Only a line after the app's own
     "Config change" line for `fanta_dir` counts; the same error before it, or with the

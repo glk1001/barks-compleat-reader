@@ -146,7 +146,7 @@ that task too, or two runs start in a night.
   process; the machine's own policy is left at Windows' default.
 - **Ping goes unanswered**: Windows' firewall drops it. Watch a wake with ssh, or
   afterwards in `powercfg /lastwake`, which names the task (over ssh, see the table).
-- **The ssh shell is Git Bash** (since 2026-11-02; PowerShell before), as on win_vm:
+- **The ssh shell is Git Bash** (since 2026-11-02; PowerShell before), as on win-vm:
   `scripts/windows/setup-ssh-server.ps1 -Shell bash` sets it. Task Scheduler is
   PowerShell's, so those commands go through `powershell`, quoted once more for bash;
   `~` and forward slashes work, Git Bash turning a path into Windows' for `powershell`.

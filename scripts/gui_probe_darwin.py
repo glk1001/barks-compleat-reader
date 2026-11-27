@@ -70,7 +70,7 @@ _CF_NUMBER_SINT64 = 4
 _NS_ACTIVATE_IGNORING_OTHER_APPS = 1 << 1
 # A process signalled to stop gets this long before it is killed outright.
 _TERM_GRACE_SECS = 3
-# How long the app gets to come to the front, asked again this often. At 5 s, mac_vm's
+# How long the app gets to come to the front, asked again this often. At 5 s, mac-vm's
 # runs on 2026-10-19 each lost one test, about an hour into the GUI stage, to something
 # that held the front that long and then let go (every test after passed).
 _FRONT_WAIT_SECS = 15

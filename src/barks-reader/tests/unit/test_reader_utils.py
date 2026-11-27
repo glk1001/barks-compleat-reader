@@ -563,7 +563,7 @@ class TestExpandPathVars:
     def test_the_default_prebuilt_dir_is_under_the_home_when_the_environment_has_none(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """win_lg's overnight validate looked for a folder named "${HOME}" (2026-10-11)."""
+        """win-lg's overnight validate looked for a folder named "${HOME}" (2026-10-11)."""
         monkeypatch.delenv("HOME", raising=False)
         with patch.object(Path, Path.home.__name__, return_value=self.FAKE_HOME):
             prebuilt_dir = ReaderFilePaths.get_default_prebuilt_comic_zips_dir()
