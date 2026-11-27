@@ -542,6 +542,36 @@ def test_the_saved_state_is_the_windows_own_rectangle() -> None:
     assert (state.pos, state.size) == ((150, 120), (700, 500))
 
 
+def test_the_saved_rectangle_is_logged_with_its_drawable_area(loguru_sink: list[str]) -> None:
+    backend = _backend(MagicMock(), _window_at(150, 120, 716, 539))
+    backend._get_client_rect = _window_at(0, 0, 700, 500)  # a frame of 16x39
+
+    backend.save_state(WindowState())
+
+    assert any(
+        "size = (716, 539), pos = (150, 120), client size = (700, 500)." in line
+        for line in loguru_sink
+    )
+
+
+@pytest.mark.parametrize("unreadable", ["_get_window_rect", "_get_client_rect"])
+def test_a_window_whose_rectangles_cannot_be_read_is_saved_as_kivy_has_it(
+    unreadable: str, loguru_sink: list[str]
+) -> None:
+    """A failed read leaves zeros: restored from them, the window would have no size."""
+    backend = _backend(MagicMock(), _window_at(150, 120, 700, 500))
+    backend._get_client_rect = _window_at(0, 0, 700, 500)
+    setattr(backend, unreadable, MagicMock(return_value=0))
+    state = WindowState()
+    kivy_window = MagicMock(system_size=[800, 600], left=10, top=20)
+
+    with patch.object(win32_module, "Window", kivy_window):
+        backend.save_state(state)
+
+    assert (state.size, state.pos) == ((800, 600), (10, 20))
+    assert any("Win32 save state: no rectangle read" in line for line in loguru_sink)
+
+
 def test_a_save_that_raises_takes_the_state_from_kivy(loguru_sink: list[str]) -> None:
     backend = _backend(MagicMock(), MagicMock(side_effect=OSError("bad handle")))
     state = WindowState()

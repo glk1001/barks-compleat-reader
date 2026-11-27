@@ -193,24 +193,36 @@ class Win32WindowBackend:
         return self._hwnd is not None
 
     def save_state(self, state: WindowState) -> None:
-        """Populate ``state`` from the current Win32 window rectangle."""
+        """Populate ``state`` from the current Win32 window rectangle.
+
+        A window whose rectangle cannot be read is saved as Kivy reports it: a failed
+        read leaves zeros, and a window restored from them would have no size.
+
+        Args:
+            state: The state to fill.
+
+        """
         try:
-            window_rect = RECT()
-            client_rect = RECT()
-            self._get_window_rect(self._hwnd, window_rect)
-            self._get_client_rect(self._hwnd, client_rect)
-
-            state.pos = window_rect.pos
-            state.size = window_rect.size
-
-            logger.debug(
-                f"Win32: Saved window rect size = {window_rect.size},"
-                f" pos = {window_rect.pos},"
-                f" client size = ({client_rect.right}, {client_rect.bottom})."
-            )
+            found = read_window_frame(self._hwnd, self._get_window_rect, self._get_client_rect)
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 save state failed, falling back to Kivy: {e}")
+            found = None
+        else:
+            if found is None:
+                logger.error("Win32 save state: no rectangle read, falling back to Kivy.")
+        if found is None:
             state.save(tuple(Window.system_size), (Window.left, Window.top))
+            return
+
+        window_rect, frame = found
+        state.pos = window_rect.pos
+        state.size = window_rect.size
+        width, height = window_rect.size
+        logger.debug(
+            f"Win32: Saved window rect size = {window_rect.size},"
+            f" pos = {window_rect.pos},"
+            f" client size = ({width - frame[0]}, {height - frame[1]})."
+        )
 
     def hold_windowed_rect(self, state: WindowState) -> None:
         """Keep the window at ``state``'s rectangle through the fullscreen exit to come.
