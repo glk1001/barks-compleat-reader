@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 from typing import TYPE_CHECKING, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from barks_reader.core import log_markers, screen_metrics
@@ -2265,3 +2265,115 @@ def test_the_minimum_window_in_the_spread_is_the_pairs(
     assert spread_height == height
     assert spread_width == pytest.approx(SPREAD_WIDTH_IN_PAGES * single_width, abs=2)
     assert (fake_window.minimum_width, fake_window.minimum_height) == (spread_width, spread_height)
+
+
+# --- The platform's minimum, and moves that keep the size (Windows' custom titlebar) ---
+
+
+@pytest.fixture
+def platform_minimum(helper: AppWindowGeometryHelper, sized: MagicMock) -> MagicMock:
+    """Stand in for `WindowManager.set_window_minimum_size`, saying to size a raise again."""
+    set_minimum = MagicMock(return_value=True)
+    helper.set_main_screen_callbacks(
+        MagicMock(), set_window_size=sized, set_window_minimum_size=set_minimum
+    )
+    return set_minimum
+
+
+def test_the_platform_is_given_the_minimum_before_sdl(
+    helper: AppWindowGeometryHelper,
+    platform_minimum: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SDL's resizing to its minimum is held to the platform's, so that comes first."""
+    order: list[str] = []
+    platform_minimum.side_effect = lambda *_size: order.append("platform") or True
+    monkeypatch.setattr(
+        geometry_module, "_set_window_minimum_size", lambda *_size: order.append("sdl")
+    )
+
+    helper.apply_minimum_size()
+
+    assert order == ["platform", "sdl"]
+    platform_minimum.assert_called_once_with(*helper._minimum_size())  # noqa: SLF001
+
+
+def test_a_raised_window_is_sized_again_after_sdl_where_the_platform_says_so(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    sized: MagicMock,
+    platform_minimum: MagicMock,
+) -> None:
+    """On Windows SDL's minimum resized a window just raised by its frame (2026-11-27)."""
+    fake_window.size = (1000, 800)
+    minimum = helper._minimum_size()  # noqa: SLF001
+
+    helper.apply_minimum_size()
+
+    assert sized.call_args_list == [call(1000, minimum[1]), call(1000, minimum[1])]
+    assert platform_minimum.called
+
+
+def test_a_raised_window_is_sized_once_where_the_minimum_of_sdl_leaves_it(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    sized: MagicMock,
+    platform_minimum: MagicMock,
+) -> None:
+    platform_minimum.return_value = False
+    fake_window.size = (1000, 800)
+
+    helper.apply_minimum_size()
+
+    sized.assert_called_once()
+
+
+def test_a_window_not_raised_is_not_sized_again(
+    helper: AppWindowGeometryHelper, sized: MagicMock, platform_minimum: MagicMock
+) -> None:
+    helper.apply_minimum_size()  # the fixture's window is above the minimum
+
+    sized.assert_not_called()
+    assert platform_minimum.called
+
+
+def test_a_raised_window_moves_through_the_platform_not_kivy(
+    helper: AppWindowGeometryHelper,
+    fake_window: MagicMock,
+    fake_clock: FakeClock,
+    sized: MagicMock,
+) -> None:
+    """Moved through Kivy on Windows, the window grew by its frame (2026-11-27)."""
+    move_window = MagicMock()
+    helper.set_main_screen_callbacks(MagicMock(), set_window_size=sized, move_window=move_window)
+    fake_window.size = (1000, 800)
+    saved_top = 1400  # raised, the window would run off the monitor's bottom
+    fake_window.top = saved_top
+    before = len(fake_clock.calls)
+
+    helper.apply_minimum_size()
+    ((move, delay),) = fake_clock.calls[before:]
+    assert delay == RESIZE_CORRECTION_DELAY
+    move(0.0)
+
+    ((left, top),) = [c.args for c in move_window.call_args_list]
+    assert top < saved_top
+    assert left == fake_window.left
+    assert fake_window.top == saved_top  # not through Kivy as well
+
+
+def test_a_guarded_resize_moves_through_the_platform(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock, fake_clock: FakeClock
+) -> None:
+    move_window = MagicMock()
+    helper.set_main_screen_callbacks(
+        MagicMock(), set_window_size=MagicMock(), move_window=move_window
+    )
+    before = len(fake_clock.calls)
+
+    helper._schedule_guarded_resize(700, 1100, reposition=(30, 40))  # noqa: SLF001
+    for callback, _delay in fake_clock.calls[before:]:
+        callback(0.0)
+
+    move_window.assert_called_once_with(30, 40)
+    assert (fake_window.left, fake_window.top) == (100, 100)

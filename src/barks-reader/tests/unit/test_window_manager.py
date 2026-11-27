@@ -55,6 +55,8 @@ class _FakeBackend:
     def __init__(self) -> None:
         self.saved_states: list[WindowState] = []
         self.sizes_set: list[tuple[int, int]] = []
+        self.minimums_set: list[tuple[int, int]] = []
+        self.moves_to: list[tuple[int, int]] = []
         self.restore_calls: list[WindowState] = []
         self.cancel_calls = 0
         self.move_calls: list[WindowState] = []
@@ -72,6 +74,13 @@ class _FakeBackend:
         state.size = (1200, 1800)
         state.pos = (100, 50)
         self.saved_states.append(state)
+
+    def set_minimum_size(self, width: int, height: int) -> bool:
+        self.minimums_set.append((width, height))
+        return True
+
+    def move_to(self, left: int, top: int) -> None:
+        self.moves_to.append((left, top))
 
     def hold_windowed_rect(self, state: WindowState) -> None:
         self.hold_calls.append(replace(state))
@@ -183,6 +192,40 @@ def test_a_size_is_set_by_the_backend(manager: ManagerFixture, backend: _FakeBac
     wm.set_window_size(719, 1130)
 
     assert backend.sizes_set == [(719, 1130)]
+
+
+def test_a_minimum_is_held_by_the_backend_which_says_whether_to_size_a_raise_again(
+    manager: ManagerFixture, backend: _FakeBackend
+) -> None:
+    wm = manager[0]
+
+    assert wm.set_window_minimum_size(633, 1000) is True
+
+    assert backend.minimums_set == [(633, 1000)]
+
+
+def test_a_move_is_made_by_the_backend(manager: ManagerFixture, backend: _FakeBackend) -> None:
+    """Not by a ``Window.left =``, which on Windows grows the window by its frame."""
+    wm = manager[0]
+
+    wm.move_window(644, 40)
+
+    assert backend.moves_to == [(644, 40)]
+
+
+def test_the_kivy_backend_holds_no_minimum_of_its_own() -> None:
+    """SDL's minimum is exact here, and leaves a raised window as it was raised."""
+    assert KivyWindowBackend.set_minimum_size(633, 1000) is False
+
+
+def test_the_kivy_backend_moves_through_kivy(
+    monkeypatch: pytest.MonkeyPatch, fake_window: MagicMock
+) -> None:
+    monkeypatch.setattr(window_utils_module, "Window", fake_window)
+
+    KivyWindowBackend.move_to(644, 40)
+
+    assert (fake_window.left, fake_window.top) == (644, 40)
 
 
 def test_the_kivy_backend_sets_a_size_through_kivy(

@@ -7,6 +7,8 @@ with an ``SDL_SetWindowSize``-based recovery path for the cases where
 ``MoveWindow`` silently no-ops.
 """
 
+# cspell:ignore GETMINMAXINFO
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -23,6 +25,7 @@ from barks_reader.core.win32_window import (
     hold_window_rect,
     quiet_window_frame,
     release_window_rect,
+    set_window_client_minimum,
 )
 
 if TYPE_CHECKING:
@@ -350,6 +353,75 @@ class Win32WindowBackend:
             Window.size = (width, height)
             return
         logger.debug(f"Win32: sized the window {outer} for a drawable area of {width}x{height}.")
+
+    def set_minimum_size(self, width: int, height: int) -> bool:
+        """Hold the window's drawable area to this minimum, whatever frame SDL counts.
+
+        SDL answers Windows' ``WM_GETMINMAXINFO`` with its minimum plus the frame the
+        window style declares, which the custom titlebar hides: Windows would not let
+        the window be made smaller than the minimum and that frame, not by `set_size`
+        nor by dragging. The window's caption guard answers it instead
+        (`hold_to_client_minimum`). Without a guard SDL's minimum stands.
+
+        SDL's minimum, set after this, then resizes a window just raised to it by the
+        frame it counts. With the guard holding the real minimum, that window can be
+        sized back exactly, and is to be.
+
+        Args:
+            width: The narrowest to let the drawable area be.
+            height: The shortest.
+
+        Returns:
+            Whether the guard holds the minimum, so a window just raised to it is to be
+            sized again once SDL has it. Without the guard Windows holds the window to
+            SDL's minimum, and sizing it again would only be refused.
+
+        """
+        if not self._hwnd:
+            return False
+        if not set_window_client_minimum(self._hwnd, width, height):
+            logger.debug("Win32: no caption guard to hold the minimum; SDL's stands.")
+            return False
+        return True
+
+    def move_to(self, left: int, top: int) -> None:
+        """Put the window at (left, top), its size kept.
+
+        A ``Window.left =`` or ``Window.top =`` goes through ``SDL_SetWindowPosition``,
+        which sizes the window as its client rectangle plus the frame the window style
+        declares, like ``Window.size =`` (see `set_size`): each grew the window by the
+        frame. Raised to the minimum on a 1920x1080 screen and moved up to fit, the
+        window ended taller than the screen (2026-11-27). So the window is moved here
+        by its outer rectangle, which is where ``Window.left`` and ``Window.top`` read
+        it to be under the custom titlebar (as `move_now` takes them).
+
+        A failed move falls back to Kivy's, a frame out but moved.
+
+        Args:
+            left: Where to put the window's left edge.
+            top: Where to put its top edge.
+
+        """
+        rect = self._window_rect()
+        if rect is None:
+            Window.left, Window.top = left, top
+            return
+        width, height = rect[2] - rect[0], rect[3] - rect[1]
+        try:
+            result, actual = self._move_and_read_back(left, top, width, height)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Win32 move failed, falling back to Kivy: {e}")
+            Window.left, Window.top = left, top
+            return
+        if actual.edges != (left, top, left + width, top + height):
+            logger.warning(
+                f"Win32: the window was put at {actual.edges}, not the"
+                f" {(left, top, left + width, top + height)} asked for (result = {result});"
+                f" falling back to Window.left, Window.top = {left}, {top}."
+            )
+            Window.left, Window.top = left, top
+            return
+        logger.debug(f"Win32: moved the window to ({left}, {top}), its size kept.")
 
     def schedule_restore(
         self,

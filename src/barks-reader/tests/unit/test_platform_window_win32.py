@@ -377,6 +377,85 @@ def test_with_no_window_handle_the_size_is_set_through_kivy() -> None:
     move_window.assert_not_called()
 
 
+# --- The minimum, held by the caption guard ---
+
+
+def test_the_minimum_is_held_by_the_windows_guard_and_a_raise_is_sized_again() -> None:
+    backend = _backend(MagicMock(), MagicMock())
+
+    with patch.object(win32_module, "set_window_client_minimum", return_value=True) as hold:
+        assert backend.set_minimum_size(633, 1000) is True
+
+    hold.assert_called_once_with(_HWND, 633, 1000)
+
+
+def test_with_no_guard_the_minimum_of_sdl_stands_and_a_raise_is_not_sized_again() -> None:
+    """Windows would hold the window to SDL's minimum, and refuse the exact size."""
+    backend = _backend(MagicMock(), MagicMock())
+
+    with patch.object(win32_module, "set_window_client_minimum", return_value=False):
+        assert backend.set_minimum_size(633, 1000) is False
+
+
+def test_with_no_window_handle_no_minimum_is_held() -> None:
+    backend = _backend(MagicMock(), MagicMock())
+    backend._hwnd = None
+
+    with patch.object(win32_module, "set_window_client_minimum") as hold:
+        assert backend.set_minimum_size(633, 1000) is False
+
+    hold.assert_not_called()
+
+
+# --- Moving the window, its size kept ---
+
+
+def test_a_move_keeps_the_windows_size() -> None:
+    """Moved through Kivy, the window grew by its frame on each (2026-11-27)."""
+    move_window = MagicMock()
+    rectangles = iter([(644, 100, 633, 1000), (644, 40, 633, 1000)])
+    backend = _backend(move_window, MagicMock(side_effect=_rect_filler(rectangles)))
+
+    with patch.object(win32_module, "Window", MagicMock(left=644, top=100)) as window:
+        backend.move_to(644, 40)
+
+    move_window.assert_called_once_with(_HWND, 644, 40, 633, 1000, True)  # noqa: FBT003
+    assert (window.left, window.top) == (644, 100)  # not through Kivy as well
+
+
+def test_a_move_the_window_did_not_take_is_made_through_kivy(loguru_sink: list[str]) -> None:
+    backend = _backend(MagicMock(), _window_at(644, 100, 633, 1000))  # left where it was
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.move_to(644, 40)
+
+    assert (window.left, window.top) == (644, 40)
+    assert any("not the (644, 40, 1277, 1040) asked for" in line for line in loguru_sink)
+
+
+def test_a_move_that_raises_is_logged_and_made_through_kivy(loguru_sink: list[str]) -> None:
+    move_window = MagicMock(side_effect=OSError("access violation"))
+    backend = _backend(move_window, _window_at(644, 100, 633, 1000))
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.move_to(644, 40)
+
+    assert (window.left, window.top) == (644, 40)
+    assert any("access violation" in line for line in loguru_sink)
+
+
+def test_a_window_whose_rectangle_cannot_be_read_is_moved_through_kivy() -> None:
+    move_window = MagicMock()
+    backend = _backend(move_window, MagicMock())
+    backend._hwnd = None
+
+    with patch.object(win32_module, "Window", MagicMock()) as window:
+        backend.move_to(644, 40)
+
+    assert (window.left, window.top) == (644, 40)
+    move_window.assert_not_called()
+
+
 # --- Saving the window's rectangle ---
 
 

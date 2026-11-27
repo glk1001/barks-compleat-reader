@@ -7,6 +7,7 @@ which window the lookup takes, and that a 64-bit handle comes back whole.
 # ruff: noqa: N802, SLF001
 # cspell:ignore NOMOVE NOSIZE WINDOWPOS NCPAINT wndproc
 # cspell:ignore WINDOWPOSCHANGING NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME
+# cspell:ignore GETMINMAXINFO MINMAXINFO
 
 from __future__ import annotations
 
@@ -604,3 +605,115 @@ class TestHeldRect:
     def test_a_window_with_no_guard_holds_nothing(self) -> None:
         assert not win32_window.hold_window_rect(HIGH_HWND + 1, HELD)
         win32_window.release_window_rect(HIGH_HWND + 1)  # and letting go is safe
+
+
+# The app's minimum, and what SDL answers WM_GETMINMAXINFO with: it plus the frame it counts.
+CLIENT_MINIMUM = (633, 1000)
+SDL_MIN_TRACK = (649, 1039)
+
+
+def _fill_rect(edges: tuple[int, int, int, int]) -> Callable[[int, Any], int]:
+    """Stand in for GetWindowRect or GetClientRect: fill the RECT passed by reference."""
+
+    def fill(_hwnd: int, rect_ref: Any) -> int:  # noqa: ANN401
+        rect = rect_ref._obj  # what ctypes.byref was given
+        rect.left, rect.top, rect.right, rect.bottom = edges
+        return 1
+
+    return fill
+
+
+class TestHoldToClientMinimum:
+    def test_the_smallest_size_is_the_minimum_plus_the_frame_the_window_has(self) -> None:
+        info = win32_window.MINMAXINFO()
+        info.ptMinTrackSize.x, info.ptMinTrackSize.y = SDL_MIN_TRACK
+
+        win32_window.hold_to_client_minimum(info, CLIENT_MINIMUM, (16, 39))
+
+        assert (info.ptMinTrackSize.x, info.ptMinTrackSize.y) == SDL_MIN_TRACK
+
+    def test_under_the_custom_titlebar_it_is_the_minimum_itself(self) -> None:
+        info = win32_window.MINMAXINFO()
+        info.ptMinTrackSize.x, info.ptMinTrackSize.y = SDL_MIN_TRACK
+
+        win32_window.hold_to_client_minimum(info, CLIENT_MINIMUM, (0, 0))
+
+        assert (info.ptMinTrackSize.x, info.ptMinTrackSize.y) == CLIENT_MINIMUM
+
+
+class TestClientMinimum:
+    """A guard answering WM_GETMINMAXINFO with the app's minimum, not SDL's."""
+
+    @pytest.fixture
+    def guard(self, guard_user32: MagicMock) -> win32_window.CaptionGuard:
+        assert guard_user32 is not None
+        win32_window.guard_against_native_caption(HIGH_HWND)
+        (guard,) = win32_window._caption_guards
+        return guard
+
+    @staticmethod
+    def _sdl_answers(guard_user32: MagicMock) -> None:
+        """Have the window's own procedure (SDL's) answer with its minimum."""
+
+        def answer(_proc: int, _hwnd: int, msg: int, _wparam: int, lparam: int) -> int:
+            if msg == win32_window.WM_GETMINMAXINFO:
+                info = win32_window.MINMAXINFO.from_address(lparam)
+                info.ptMinTrackSize.x, info.ptMinTrackSize.y = SDL_MIN_TRACK
+            return 0
+
+        guard_user32.CallWindowProcW.side_effect = answer
+
+    @staticmethod
+    def _min_track_asked(guard: win32_window.CaptionGuard) -> tuple[int, int]:
+        info = win32_window.MINMAXINFO()
+        guard._on_message(HIGH_HWND, win32_window.WM_GETMINMAXINFO, 0, ctypes.addressof(info))
+        return info.ptMinTrackSize.x, info.ptMinTrackSize.y
+
+    def test_with_no_minimum_given_the_answer_of_sdl_stands(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        self._sdl_answers(guard_user32)
+        assert self._min_track_asked(guard) == SDL_MIN_TRACK
+
+    def test_under_the_custom_titlebar_the_window_may_go_down_to_the_minimum(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        """SDL's answer held the window the frame bigger: 649x1039, on Windows (2026-11-27)."""
+        self._sdl_answers(guard_user32)
+        guard_user32.GetWindowRect.side_effect = _fill_rect((644, 40, 644 + 633, 40 + 1000))
+        guard_user32.GetClientRect.side_effect = _fill_rect((0, 0, 633, 1000))
+        assert win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
+
+        assert self._min_track_asked(guard) == CLIENT_MINIMUM
+
+    def test_with_the_desktops_titlebar_the_frame_is_added(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        self._sdl_answers(guard_user32)
+        guard_user32.GetWindowRect.side_effect = _fill_rect((644, 40, 644 + 649, 40 + 1039))
+        guard_user32.GetClientRect.side_effect = _fill_rect((0, 0, 633, 1000))
+        win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
+
+        assert self._min_track_asked(guard) == SDL_MIN_TRACK
+
+    def test_a_window_whose_rectangles_cannot_be_read_counts_no_frame(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        self._sdl_answers(guard_user32)
+        guard_user32.GetWindowRect.return_value = 0
+        win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
+
+        assert self._min_track_asked(guard) == CLIENT_MINIMUM
+
+    def test_another_message_is_left_as_the_window_answered_it(
+        self, guard: win32_window.CaptionGuard, guard_user32: MagicMock
+    ) -> None:
+        guard_user32.CallWindowProcW.return_value = 7
+        win32_window.set_window_client_minimum(HIGH_HWND, *CLIENT_MINIMUM)
+
+        assert guard._on_message(HIGH_HWND, OTHER_MESSAGE, 1, 2) == 7  # noqa: PLR2004
+        guard_user32.GetWindowRect.assert_not_called()
+
+    @pytest.mark.usefixtures("guard")
+    def test_a_window_with_no_guard_keeps_the_minimum_of_sdl(self) -> None:
+        assert not win32_window.set_window_client_minimum(HIGH_HWND + 1, *CLIENT_MINIMUM)

@@ -20,6 +20,7 @@ from loguru import logger
 # cspell:ignore ERASEBKGND WINDOWPOSCHANGED STYLECHANGING STYLECHANGED SETICON NCPAINT
 # cspell:ignore THEMECHANGED DWMCOMPOSITIONCHANGED DWMNCRENDERINGCHANGED
 # cspell:ignore GWLP WINDOWPOSCHANGING NCACTIVATE NCUAHDRAWCAPTION NCUAHDRAWFRAME wndproc
+# cspell:ignore GETMINMAXINFO MINMAXINFO
 
 
 class RECT(ctypes.Structure):
@@ -209,6 +210,9 @@ SWP_NOMOVE = 0x0002
 # A rectangle is held for no longer than this, whoever forgets to let it go.
 _HELD_RECT_SECONDS = 2.0
 
+# Sent to ask a window the smallest and largest it may be made, with a MINMAXINFO.
+WM_GETMINMAXINFO = 0x0024
+
 # The messages that change or paint a window's frame, logged for a window held
 # through a fullscreen exit: what could paint the desktop's caption during one.
 _FRAME_MESSAGE_NAMES = {
@@ -244,6 +248,42 @@ class WINDOWPOS(ctypes.Structure):
         ("cy", ctypes.c_int),
         ("flags", wintypes.UINT),
     )
+
+
+class MINMAXINFO(ctypes.Structure):
+    """A Win32 ``MINMAXINFO``: the sizes a window may be made, its frame included."""
+
+    _fields_ = (
+        ("ptReserved", wintypes.POINT),
+        ("ptMaxSize", wintypes.POINT),
+        ("ptMaxPosition", wintypes.POINT),
+        ("ptMinTrackSize", wintypes.POINT),
+        ("ptMaxTrackSize", wintypes.POINT),
+    )
+
+
+def hold_to_client_minimum(
+    info: MINMAXINFO, client_minimum: tuple[int, int], frame: tuple[int, int]
+) -> None:
+    """Make a window's smallest size its drawable area's minimum plus the frame it has.
+
+    SDL answers ``WM_GETMINMAXINFO`` with its minimum plus the frame its window style
+    declares (16x39 at 100% scaling). Under the custom titlebar the drawable area fills
+    the whole window, so the window could not be made smaller than the minimum and
+    that frame: raised to the minimum, it came up the frame bigger, and on a
+    1920x1080 screen a move then added the frame again, the window ending taller
+    than the screen (2026-11-27).
+
+    Args:
+        info: The ``MINMAXINFO`` of a ``WM_GETMINMAXINFO``, changed in place.
+        client_minimum: The smallest the drawable area may be: width, height.
+        frame: How much bigger the window is than its drawable area: width, height.
+            Nothing under the custom titlebar; all of the frame when the desktop's
+            titlebar survived.
+
+    """
+    info.ptMinTrackSize.x = client_minimum[0] + frame[0]
+    info.ptMinTrackSize.y = client_minimum[1] + frame[1]
 
 
 def put_at_held_rect(window_pos: WINDOWPOS, held: tuple[int, int, int, int]) -> None:
@@ -315,6 +355,14 @@ class CaptionGuard:
         ]
         self._call_window_proc.restype = lresult
 
+        rect_function = (wintypes.HWND, ctypes.POINTER(RECT))
+        self._get_window_rect: Any = user32.GetWindowRect
+        self._get_window_rect.argtypes = rect_function
+        self._get_window_rect.restype = wintypes.BOOL
+        self._get_client_rect: Any = user32.GetClientRect
+        self._get_client_rect.argtypes = rect_function
+        self._get_client_rect.restype = wintypes.BOOL
+
         set_window_long_ptr: Any = user32.SetWindowLongPtrW
         set_window_long_ptr.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_void_p]
         set_window_long_ptr.restype = ctypes.c_void_p
@@ -331,6 +379,7 @@ class CaptionGuard:
         self._quiet_until = 0.0
         self._quiet_number = 0  # the newest quiet's, from 1: what `end_quiet` is given
         self._frame_messages: list[tuple[int, str]] = []
+        self._client_minimum: tuple[int, int] | None = None
 
         self._next_proc: int | None = None
         next_proc = set_window_long_ptr(
@@ -355,6 +404,27 @@ class CaptionGuard:
         self._held_rect = rect
         self._held_until = time.monotonic() + _HELD_RECT_SECONDS
         self.quiet_frame(_HELD_RECT_SECONDS)
+
+    def set_client_minimum(self, width: int, height: int) -> None:
+        """Hold the window's drawable area to this minimum, whatever frame SDL counts.
+
+        Args:
+            width: The smallest the drawable area may be made.
+            height: The shortest it may be made.
+
+        """
+        self._client_minimum = width, height
+
+    def _frame(self, hwnd: int | None) -> tuple[int, int]:
+        """Return how much bigger the window is than its drawable area: width, height."""
+        window_rect, client_rect = RECT(), RECT()
+        if not (
+            self._get_window_rect(hwnd, ctypes.byref(window_rect))
+            and self._get_client_rect(hwnd, ctypes.byref(client_rect))
+        ):
+            return 0, 0
+        width, height = window_rect.size
+        return width - client_rect.right, height - client_rect.bottom
 
     def release_rect(self) -> None:
         """Let the window go where it is sent again, and log the frame messages it had."""
@@ -434,7 +504,12 @@ class CaptionGuard:
         passed_on = guarded_frame_message(msg, lparam)
         if passed_on is None:
             return 0
-        return self._call_window_proc(self._next_proc, hwnd, msg, wparam, passed_on)
+        result = self._call_window_proc(self._next_proc, hwnd, msg, wparam, passed_on)
+        if msg == WM_GETMINMAXINFO and self._client_minimum is not None and lparam:
+            hold_to_client_minimum(
+                MINMAXINFO.from_address(lparam), self._client_minimum, self._frame(hwnd)
+            )
+        return result
 
 
 # Each guard's callback is its window's procedure until the window is gone.
@@ -523,3 +598,22 @@ def release_window_rect(hwnd: int) -> None:
     guard = _guard_for(hwnd)
     if guard is not None:
         guard.release_rect()
+
+
+def set_window_client_minimum(hwnd: int, width: int, height: int) -> bool:
+    """Hold the drawable area of the window `hwnd` to a minimum (`hold_to_client_minimum`).
+
+    Args:
+        hwnd: The window handle.
+        width: The smallest the drawable area may be made.
+        height: The shortest it may be made.
+
+    Returns:
+        Whether the window has a guard to hold it; without one SDL's minimum stands.
+
+    """
+    guard = _guard_for(hwnd)
+    if guard is None:
+        return False
+    guard.set_client_minimum(width, height)
+    return True

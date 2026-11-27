@@ -80,6 +80,26 @@ class WindowBackend(Protocol):
         """
         ...
 
+    def set_minimum_size(self, width: int, height: int) -> bool:
+        """Hold the window's drawable area to this minimum, before SDL is given it.
+
+        In ``Window.system_size`` units. SDL's own minimum counts a frame the custom
+        titlebar hides on Windows (`Win32WindowBackend.set_minimum_size`); a backend
+        where SDL's is exact does nothing.
+
+        Returns whether a window just raised to the minimum is to be sized again once
+        SDL has it: SDL resizes such a window by the frame it counts.
+        """
+        ...
+
+    def move_to(self, left: int, top: int) -> None:
+        """Put the window at (left, top), as ``Window.left`` and ``Window.top`` read, its size kept.
+
+        What ``Window.left, Window.top =`` is meant to do, and does not on Windows under
+        the custom titlebar: SDL sizes the window again on each (`Win32WindowBackend.move_to`).
+        """
+        ...
+
     def schedule_restore(
         self,
         state: WindowState,
@@ -140,6 +160,27 @@ class KivyWindowBackend:
 
         """
         Window.size = (width, height)
+
+    @staticmethod
+    def set_minimum_size(width: int, height: int) -> bool:  # noqa: ARG004
+        """Do nothing: SDL's minimum, set after this, is exact here.
+
+        Returns:
+            False: SDL leaves a raised window at the size it was raised to.
+
+        """
+        return False
+
+    @staticmethod
+    def move_to(left: int, top: int) -> None:
+        """Move the window through Kivy, which keeps its size here.
+
+        Args:
+            left: Where to put the window's left edge.
+            top: Where to put its top edge.
+
+        """
+        Window.left, Window.top = left, top
 
     @staticmethod
     def schedule_restore(
@@ -302,6 +343,30 @@ class WindowManager:
 
         """
         self._backend.set_size(width, height)
+
+    def set_window_minimum_size(self, width: int, height: int) -> bool:
+        """Hold the window's drawable area to a minimum, before SDL is given it.
+
+        Args:
+            width: The narrowest to let the window be, in ``Window.system_size`` units.
+            height: The shortest.
+
+        Returns:
+            Whether a window just raised to the minimum is to be sized again once SDL
+            has it (`WindowBackend.set_minimum_size`).
+
+        """
+        return self._backend.set_minimum_size(width, height)
+
+    def move_window(self, left: int, top: int) -> None:
+        """Put the window at (left, top), its size kept.
+
+        Args:
+            left: Where to put the window's left edge, as ``Window.left`` reads.
+            top: Where to put its top edge, as ``Window.top`` reads.
+
+        """
+        self._backend.move_to(left, top)
 
     def reshape_saved_window(self, reshape: RectReshape) -> bool:
         """Give the windowed rectangle saved for the return from fullscreen a new shape.

@@ -110,6 +110,8 @@ class AppWindowGeometryHelper:
 
         self._update_fonts: Callable[[int], None] | None = None
         self._set_window_size: Callable[[int, int], None] = _set_kivy_window_size
+        self._set_platform_minimum: Callable[[int, int], bool] = _no_platform_minimum
+        self._move_window: Callable[[int, int], None] = _move_kivy_window
 
     def set_main_screen_callbacks(
         self,
@@ -117,6 +119,8 @@ class AppWindowGeometryHelper:
         layout_mode_changed: Callable[[MainLayoutMode], None] | None = None,
         reshape_saved_window: Callable[[RectReshape], bool] | None = None,
         set_window_size: Callable[[int, int], None] | None = None,
+        set_window_minimum_size: Callable[[int, int], bool] | None = None,
+        move_window: Callable[[int, int], None] | None = None,
     ) -> None:
         """Set callbacks that require the main screen to be built first.
 
@@ -129,6 +133,13 @@ class AppWindowGeometryHelper:
             set_window_size: Gives the window exactly a size (`WindowManager.set_window_size`):
                 on Windows a ``Window.size =`` comes back the window's frame bigger. Left
                 out, the size is set through Kivy.
+            set_window_minimum_size: Holds the window to a minimum before SDL is given it,
+                and says whether a window raised to it is to be sized again after SDL
+                (`WindowManager.set_window_minimum_size`): on Windows SDL's counts a frame
+                the custom titlebar hides. Left out, SDL's minimum is the only one.
+            move_window: Puts the window at a left and top, its size kept
+                (`WindowManager.move_window`): on Windows a ``Window.left =`` grows the
+                window by its frame. Left out, the window is moved through Kivy.
 
         """
         self._update_fonts = update_fonts
@@ -136,6 +147,10 @@ class AppWindowGeometryHelper:
         self._reshape_saved_window = reshape_saved_window
         if set_window_size is not None:
             self._set_window_size = set_window_size
+        if set_window_minimum_size is not None:
+            self._set_platform_minimum = set_window_minimum_size
+        if move_window is not None:
+            self._move_window = move_window
 
     def set_window_ready(self) -> None:
         """Mark the window as ready to accept resize corrections, and set its minimum size."""
@@ -314,15 +329,25 @@ class AppWindowGeometryHelper:
         A fullscreen window fills its monitor and is not raised. SDL only keeps a
         minimum it is given in fullscreen, and does not tell the desktop: that waits
         for `on_fullscreen_left`.
+
+        The platform is given the minimum first, so that SDL's resizing to it is held
+        to the real one. Where the platform says so, a window raised to the minimum is
+        then sized again exactly: on Windows, SDL's minimum resizes a window just
+        raised, the frame the custom titlebar hides bigger, and the window was then
+        out of shape (2026-11-27).
         """
         monitor = self._current_monitor
         width, height = self._minimum_size()
+        size_raised_again = self._set_platform_minimum(width, height)
+        raised = None
         if Window.fullscreen:
             self._minimum_hint_due = True
         else:
             self._minimum_hint_due = False
-            self._raise_to_minimum(width, height)
+            raised = self._raise_to_minimum(width, height)
         _set_window_minimum_size(width, height)
+        if raised is not None and size_raised_again:
+            self._set_window_size(*raised)
         logger.info(
             log_markers.WINDOW_MINIMUM_SET.format(
                 width=width,
@@ -353,7 +378,7 @@ class AppWindowGeometryHelper:
         _set_window_minimum_size(width, height)
         logger.debug(f"Gave the desktop the minimum set in fullscreen: ({width}, {height}).")
 
-    def _raise_to_minimum(self, min_width: int, min_height: int) -> None:
+    def _raise_to_minimum(self, min_width: int, min_height: int) -> tuple[int, int] | None:
         """Raise the window, or the guarded resize on its way, to the minimum.
 
         A window opened smaller (--win-height, a saved height) goes up through Kivy first.
@@ -364,6 +389,11 @@ class AppWindowGeometryHelper:
         A guarded resize does the same job if its size is large enough. A guard can outlive
         its resize and an older monitor's minimum, and it would force the window back, so
         one too small is armed again at the raised size.
+
+        Returns:
+            The size the window was given now, or None: it was large enough, or the
+            guarded resize on its way takes the raise.
+
         """
         if self._resize_event is not None:
             raised = raised_to_minimum(self._resize_requested_size, (min_width, min_height))
@@ -371,16 +401,21 @@ class AppWindowGeometryHelper:
                 self._schedule_guarded_resize(
                     *raised, reposition=self._on_monitor_position(*raised)
                 )
-            return
+            return None
 
         system_size = tuple(Window.system_size)
         raised = raised_to_minimum(system_size, (min_width, min_height))
         if raised == system_size:
-            return
+            return None
         position = self._on_monitor_position(*raised)
         self._set_window_size(*raised)
         if position is not None:
-            Clock.schedule_once(lambda _dt: _move_window(position), RESIZE_CORRECTION_DELAY)
+            Clock.schedule_once(lambda _dt: self._move_to(position), RESIZE_CORRECTION_DELAY)
+        return raised
+
+    def _move_to(self, position: tuple[int, int]) -> None:
+        logger.debug(f"Repositioning window to {position}.")
+        self._move_window(*position)
 
     @staticmethod
     def _on_monitor_position(width: int, height: int) -> tuple[int, int] | None:
@@ -728,7 +763,7 @@ class AppWindowGeometryHelper:
 
         def do_reposition(_dt: float) -> None:
             if reposition is not None:
-                _move_window(reposition)
+                self._move_to(reposition)
 
         def do_reset_resize(_dt: float) -> None:
             logger.debug("Clearing resize guard.")
@@ -758,9 +793,13 @@ def _set_kivy_window_size(width: int, height: int) -> None:
     Window.size = (width, height)
 
 
-def _move_window(position: tuple[int, int]) -> None:
-    logger.debug(f"Repositioning window to {position}.")
-    Window.left, Window.top = position
+def _move_kivy_window(left: int, top: int) -> None:
+    Window.left, Window.top = left, top
+
+
+def _no_platform_minimum(_width: int, _height: int) -> bool:
+    """Hold the window to no minimum of the platform's own: SDL's is the only one."""
+    return False
 
 
 def _window_units() -> WindowUnits:
