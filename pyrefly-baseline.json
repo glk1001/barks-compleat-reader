@@ -1,13 +1,6 @@
 {
   "errors": [
     {
-      "column": 17,
-      "path": "src/barks-kivy-ui/src/barks_kivy_ui/kivy_patches.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `remove_group`",
-      "severity": "error"
-    },
-    {
       "column": 37,
       "path": "src/barks-reader/src/barks_reader/core/config_info.py",
       "name": "bad-assignment",
@@ -162,20 +155,6 @@
       "severity": "error"
     },
     {
-      "column": 37,
-      "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
-      "name": "bad-assignment",
-      "concise_description": "`TagGroups | Tags | Titles | str` is not assignable to `TagGroups | Tags`",
-      "severity": "error"
-    },
-    {
-      "column": 17,
-      "path": "src/barks-reader/src/barks_reader/ui/main_index_screen.py",
-      "name": "missing-attribute",
-      "concise_description": "Object of class `NoneType` has no attribute `id`",
-      "severity": "error"
-    },
-    {
       "column": 70,
       "path": "src/barks-reader/src/barks_reader/ui/main_screen.py",
       "name": "missing-attribute",
@@ -229,13 +208,6 @@
       "path": "src/barks-reader/src/barks_reader/ui/reader_keyboard_nav.py",
       "name": "missing-attribute",
       "concise_description": "Object of class `object` has no attribute `_handle_menu_key`",
-      "severity": "error"
-    },
-    {
-      "column": 27,
-      "path": "src/barks-reader/src/barks_reader/ui/speech_index_screen.py",
-      "name": "bad-assignment",
-      "concise_description": "`TagGroups | Tags | Titles | str` is not assignable to `str`",
       "severity": "error"
     },
     {

@@ -365,21 +365,6 @@ class TestOnStop:
         assert any(line.startswith("Could not save the main screen state") for line in loguru_sink)
 
 
-def test_build_applies_the_kivy_patches() -> None:
-    class _StopBuildError(Exception):
-        pass
-
-    app = _app(_initialize_settings_and_db=MagicMock(side_effect=_StopBuildError))
-    with (
-        patch.object(app_module, "apply_text_input_remove_group_patch") as text_input,
-        patch.object(app_module, "apply_swap_transition_remove_group_patch") as swap,
-        pytest.raises(_StopBuildError),
-    ):
-        BarksReaderApp.build(app)
-    text_input.assert_called_once_with()
-    swap.assert_called_once_with()
-
-
 def test_build_hands_the_window_managers_sizing_and_moving_to_the_geometry_helper() -> None:
     """Left out, the helper sizes and moves through Kivy: on Windows, the frame bigger.
 
@@ -388,8 +373,6 @@ def test_build_hands_the_window_managers_sizing_and_moving_to_the_geometry_helpe
     """
     app = MagicMock()
     with (
-        patch.object(app_module, "apply_text_input_remove_group_patch"),
-        patch.object(app_module, "apply_swap_transition_remove_group_patch"),
         patch.object(app_module, "Builder"),
         patch.object(app_module, "Window"),
     ):

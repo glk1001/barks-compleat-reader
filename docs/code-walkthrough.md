@@ -45,7 +45,7 @@ development it's a `uv` workspace of six Python packages (`src/…`):
 | `barks_fantagraphics` | The domain/data layer: titles, stories, tags, volumes. |
 | `barks_build_comic_images` | Image-building utilities (panel assembly). |
 | `comic_utils` | Low-level shared utilities (image I/O, timing, decryption). |
-| `barks_kivy_ui` | Kivy widgets shared with okf-reader: `ReaderScrollView` / `ReaderDropDown` (`scrolling.py`), a per-page image viewer (`page_viewer.py`), the Kivy 2.3.1 `TextInput` patch (`kivy_patches.py`). |
+| `barks_kivy_ui` | Kivy widgets shared with okf-reader: `ReaderScrollView` / `ReaderDropDown` (`scrolling.py`), a per-page image viewer (`page_viewer.py`). |
 | `okf_reader` | The OKF wiki viewer (`core/` pure, `ui/` Kivy), hosted by `WikiReaderScreen`; independent of the Barks packages (contracts 5–6). |
 
 ### The one architectural idea that explains everything
@@ -169,9 +169,7 @@ Numbered, in the order it actually happens:
    `kivy_app.run()`. The whole thing is wrapped in a try/except that
    renders a crash screen.
 8. **`BarksReaderApp.build()`** (`ui/barks_reader_app.py`) is Kivy's build
-   hook. In order: apply two Kivy 2.3.1 `_remove_group` workarounds
-   (`barks_kivy_ui.kivy_patches.apply_text_input_remove_group_patch()` and an
-   inline `SwapTransition.on_complete` patch); `_initialize_settings_and_db()`;
+   hook. In order: `_initialize_settings_and_db()`;
    hand the layout setting to the window helper
    (`_window_geometry.set_layout_setting(...)`); load every `.kv` file via
    `Builder`; `_build_screens()`; lay the screens out for the helper's layout

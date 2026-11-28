@@ -11,7 +11,5 @@ groma:
     - scanner: python
       file: src/barks-kivy-ui/src/barks_kivy_ui/page_viewer.py
     - scanner: python
-      file: src/barks-kivy-ui/src/barks_kivy_ui/kivy_patches.py
-    - scanner: python
       file: src/barks-kivy-ui/src/barks_kivy_ui/__init__.py
 ---
