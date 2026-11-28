@@ -52,12 +52,15 @@ curl -fsSL https://bun.sh/install | bash                  # bun: runs cspell (bu
 ```
 
 - **uv** installs Python itself (the version `.python-version` names), so no system Python
-  setup is needed. The pin is a patch release, 3.13.12, so that every machine, CI and the
+  setup is needed. The pin is a patch release, 3.14.10, so that every machine, CI and the
   release builds run the same Python: with plain `3.13` they took the newest uv knew, and
   on 2026-10-13 that was a 3.13.16 build that ran plain Python about 11% and comic image
-  loading about 20% slower (alternating benchmark runs, same `uv.lock`). Before moving the
-  pin, run `bash scripts/run_benchmark.sh` on the candidate. The file's `#` lines need a
-  uv that ignores comments there (0.13 does).
+  loading about 20% slower than 3.13.12 (alternating benchmark runs, same `uv.lock`).
+  Before moving the pin, run `bash scripts/run_benchmark.sh` on the candidate; 3.14.10
+  measured level with 3.13.12 (2026-11-28). pytest-benchmark keeps its baselines in a
+  folder named for the Python minor version, so on a move to a new one copy the old
+  folder under `.benchmarks/` to the new name, or the comparison finds no baseline. The
+  file's `#` lines need a uv that ignores comments there (0.13 does).
 - **bun** is what the cspell hooks and `full-lint.sh` run cspell with. Without it every
   commit fails its spell-check hook.
 

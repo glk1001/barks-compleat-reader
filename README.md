@@ -66,8 +66,8 @@ More screenshots (including the full index and speech bubble index) are on
 
 ## Requirements
 
-- **Python**: 3.13 (3.14 is not yet supported; `uv` installs the pinned 3.13.x from
-  `.python-version`).
+- **Python**: 3.14 (`uv` installs the pinned 3.14.x from `.python-version`). 3.13 is
+  still allowed, for the sibling repositories that share packages with this one.
 - **Fantagraphics Comic Archives**: You must have access to the digital versions of the Fantagraphics Carl Barks
   Library, typically as `.zip` or `.cbz` files.
 - **Python Dependencies**: The required Python packages can be installed via `uv.`
