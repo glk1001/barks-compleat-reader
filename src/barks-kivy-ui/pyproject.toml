@@ -3,7 +3,7 @@ name = "barks-kivy-ui"
 version = "0.1.0"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "kivy==2.3.1",
+    "kivy==2.3.2",
     "pillow",
 ]
 
