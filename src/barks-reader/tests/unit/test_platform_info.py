@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from barks_reader.core import platform_info as platform_info_module
-from barks_reader.core.platform_info import Platform, _get_platform
+from barks_reader.core.platform_info import Platform, _get_platform, log_runtime_versions
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -163,3 +163,21 @@ class TestModuleConstants:
         assert (
             platform_info_module.PLATFORM in (Platform.MACOS_ARM64, Platform.MACOS_X64)
         ) == platform_info_module.IS_MACOS
+
+
+class TestLogRuntimeVersions:
+    def test_the_line_names_the_reader_python_and_kivy(self, loguru_sink: list[str]) -> None:
+        # Kivy's own version lines are printed before the log file exists, so this line
+        # is the only place a run's log says what it ran on.
+        with (
+            patch.object(platform_info_module, "VERSION", "v9.8.7"),
+            patch.object(platform_mod, "python_version", return_value="3.99.1"),
+        ):
+            log_runtime_versions("2.9.9")
+
+        assert "Versions: reader v9.8.7, Python 3.99.1, Kivy 2.9.9." in loguru_sink
+
+    def test_the_python_named_is_the_one_running(self, loguru_sink: list[str]) -> None:
+        log_runtime_versions("2.9.9")
+
+        assert f"Python {platform_mod.python_version()}," in loguru_sink[-1]

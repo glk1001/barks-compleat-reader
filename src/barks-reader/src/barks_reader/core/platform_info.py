@@ -3,6 +3,10 @@ import platform as _platform_mod
 from enum import Enum
 from sys import platform as _sys_platform
 
+from loguru import logger
+
+from barks_reader._version import VERSION
+
 
 class Platform(Enum):
     ANDROID = "android"
@@ -46,3 +50,18 @@ def _get_platform() -> Platform:
 PLATFORM: Platform = _get_platform()
 
 IS_MACOS: bool = PLATFORM in (Platform.MACOS_ARM64, Platform.MACOS_X64)
+
+
+def log_runtime_versions(kivy_version: str) -> None:
+    """Log which reader, Python and Kivy this run is on.
+
+    Kivy prints its own version and Python's as it is imported, before the app's log file
+    is set up, so without this line the log never says which ones a run used.
+
+    Args:
+        kivy_version: Kivy's version, passed in because ``core`` does not import Kivy.
+
+    """
+    logger.info(
+        f"Versions: reader {VERSION}, Python {_platform_mod.python_version()}, Kivy {kivy_version}."
+    )

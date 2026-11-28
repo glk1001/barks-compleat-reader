@@ -36,7 +36,12 @@ from barks_reader.core.kivy_log_handler import LoguruKivyHandler
 from barks_reader.core.log_markers import APP_STARTING, DATA_PACK_INSTALLED
 from barks_reader.core.main_layout import choose_main_layout, content_aspect_ratio
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
-from barks_reader.core.platform_info import IS_MACOS, PLATFORM, Platform
+from barks_reader.core.platform_info import (
+    IS_MACOS,
+    PLATFORM,
+    Platform,
+    log_runtime_versions,
+)
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_utils import get_win_dimensions
@@ -112,6 +117,7 @@ threading.excepthook = handle_thread_exception
 def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> None:
     # 'kivy.Config' is defined under an 'if'.
     from kivy import Config, kivy_home_dir
+    from kivy import __version__ as kivy_version
 
     setup_loguru(cfg_info, min_options.log_level)
 
@@ -128,6 +134,7 @@ def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> No
 
     logger.info(APP_STARTING)
     logger.info(f"running_compiled_standalone = {cfg_info.is_running_compiled}")
+    log_runtime_versions(kivy_version)
     installed_pack = read_installed(ReaderSettings.get_reader_files_dir(cfg_info.app_data_dir))
     pack_text = "not versioned" if installed_pack is None else installed_pack.display()
     logger.info(DATA_PACK_INSTALLED.format(version=pack_text))
