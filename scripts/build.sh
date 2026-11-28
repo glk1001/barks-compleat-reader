@@ -169,6 +169,15 @@ NUITKA_START=$SECONDS
 # (No kivy flags needed: the kivy plugin is always enabled, and Nuitka's built-in kivy
 # package config bundles the whole kivy/data dir - adding --include-package-data=kivy
 # would only produce duplicate-data-file warnings.)
+#
+# Two installed packages are kept out of the build. Nothing the app runs imports either,
+# but Nuitka follows optional imports and compiled both in:
+#   - pygments: imported only by Kivy's code-editor widget (kivy.uix.codeinput) and
+#     kivy.extras.highlight. It was the largest package in the build (324 modules).
+#   - numpy: imported inside functions of Pillow and toml and by Kivy's camera providers.
+#     It brought its OpenBLAS and Fortran runtime libraries with it.
+# Test a change here with the smoke test and the built-app GUI stage: a wrongly excluded
+# package fails only when the code that imports it runs.
 uv run python -m nuitka \
     --mode=app \
     --assume-yes-for-downloads \
@@ -177,13 +186,14 @@ uv run python -m nuitka \
     --include-package-data=okf_reader \
     --include-package-data=comic_utils \
     --include-package-data=pyuca \
-    --include-package-data=docutils \
     --include-package=barks_reader \
     --include-package=barks_fantagraphics \
     --include-package=barks_build_comic_images \
     --include-package=barks_kivy_ui \
     --include-package=okf_reader \
     --include-package=comic_utils \
+    --nofollow-import-to=pygments \
+    --nofollow-import-to=numpy \
     --include-data-dir=src/barks-fantagraphics/data=barks_fantagraphics/data \
     --output-dir="${NUITKA_OUT_DIR}" \
     --output-filename="${EXE}" \
